@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  celtronics-db:
+    image: postgres:15-alpine
+    container_name: celtronics-postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DATABASE_USERNAME:-strapi}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-strapi}
+      POSTGRES_DB: ${DATABASE_NAME:-strapi}
+    ports:
+      - "5432:5432"
+    volumes:
+      - celtronics-db-data:/var/lib/postgresql/data
+
+volumes:
+  celtronics-db-data:

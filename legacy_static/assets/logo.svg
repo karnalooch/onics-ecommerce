@@ -1,0 +1,31 @@
+<svg viewBox="0 0 450 85" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .txt-cel {
+        font-family: 'Inter', 'Arial', sans-serif;
+        font-weight: 900;
+        font-size: 60px;
+        font-style: italic;
+        fill: #D30000;
+        letter-spacing: -2px;
+      }
+      .txt-tronics {
+        font-family: 'Inter', 'Arial', sans-serif;
+        font-weight: 900;
+        font-size: 60px;
+        font-style: italic;
+        fill: #000000;
+        letter-spacing: -1px;
+      }
+    </style>
+  </defs>
+  
+  <!-- Text parts -->
+  <text x="5" y="60" class="txt-cel">CE</text>
+  <text x="80" y="60" class="txt-cel">L</text>
+  <text x="115" y="60" class="txt-tronics">TRONICS</text>
+
+  <!-- Arrow line extending from the bottom of L -->
+  <!-- Top edge: y=59, Bottom edge: y=67 -->
+  <path d="M 85,59 L 420,59 L 410,50 L 440,63 L 410,76 L 420,67 L 85,67 Z" fill="#D30000" />
+</svg>
