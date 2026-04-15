@@ -1,0 +1,6 @@
+﻿<html><head><title>Zabezpieczona strona g┼é├│wna celtronics.pl</title></head>
+<body>
+<center>Witamy w celtronics.pl<br>
+Je┼╝eli chcesz zmieni─ç t─Ö stron─Ö, wgraj w┼éasny plik index.html do katalogu private_html<br></center>
+</body>
+</html>
