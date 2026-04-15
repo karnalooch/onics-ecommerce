@@ -120,8 +120,9 @@ export default async function AdminDashboard() {
                       <TableCell className="font-medium">{user.companyName}</TableCell>
                       <TableCell>{user.nip}</TableCell>
                       <TableCell>{new Date(user.createdAt).toLocaleDateString("pl-PL")}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right flex justify-end gap-2">
                         <AdminActions actionType="approveUser" userId={user.id} />
+                        <AdminActions actionType="deleteUser" userId={user.id} />
                       </TableCell>
                     </TableRow>
                   ))}
