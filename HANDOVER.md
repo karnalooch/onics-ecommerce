@@ -12,6 +12,11 @@
 2. **Backend / CMS**
    - Ścieżka `/celtronics-backend` zawiera ukrytą instancję **Strapi 5**, którą w Faza_8 spięto z PostgreSQL.
    - Posiadamy działający `api/quotes/route.ts` - RESTowy symulator SMTP (Nodemailer) wysyłający leade'y od klientów hurtowych prosto na firmowego maila.
+3. **Zarządzanie (Moduły zrealizowane DZIŚ - Phase 10)**
+   - **Moduł Klienci (CRM):** Wdrożono zarządzanie portfolio klientów B2B/B2C z hard-blokadą logowania (`isBlocked`) sprzężoną z auth.js na poziomie Store'a.
+   - **Zarządzanie Kategoriami:** Odwzorowano w pełni drzewiaste zarządzanie kategoriami z WF-Maga (z lewym menu wyboru). Wynik eksportowany jest prosto do API filtrowania.
+   - **Centrum Zarządzania Produktami:** Całkowicie przebudowany komponent na architekturę "use client" ze wspomaganiem Filtrowania.
+   - **Import WF-Mag Staging (Poczekalnia):** Wdrożony system ładowania prawdziwych arkuszy .XLS lokalnie (SheetJS). Zamiast surowego zapisu do bazy stawia on system "Poczekalni" i koloruje margines zysków/strat (Diffing cen). Wspiera tzw. Akceptację Pojedynczą (Per-item Commit) oraz nowości korzystają ze zintegrowanego modelu AI przypisywania do kategorii na podstawie Słów Kluczowych!
 
 ## Procedura Odpalenia na Nowej Maszynie (Domowej PC)
 Aby odpalić projekt i rozpocząć pracę tam gdzie ją skończyliśmy:

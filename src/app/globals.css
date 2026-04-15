@@ -5,34 +5,64 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 213 72% 16%; /* Primary #0B2545 */
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 213 72% 16%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 213 72% 16%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 213 72% 16%; /* Deep Navy */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 215 66% 22%; /* Medium Blue */
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted-foreground: 213 25% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 217 91% 60%; /* Techno Blue */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 217 91% 60%; /* Accent blue ring */
 
     --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 210 41% 7%; /* #0A1118 */
+    --foreground: 210 40% 98%;
+
+    --card: 213 72% 12%; 
+    --card-foreground: 210 40% 98%;
+
+    --popover: 213 72% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 184 100% 50%; /* Neon Cyan #00F0FF */
+    --primary-foreground: 213 72% 16%; 
+
+    --secondary: 213 72% 16%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 213 30% 20%;
+    --muted-foreground: 210 40% 80%;
+
+    --accent: 217 91% 60%; 
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 213 40% 25%;
+    --input: 213 40% 25%;
+    --ring: 184 100% 50%;
   }
 }
 

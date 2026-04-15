@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { UserCircle, ShieldAlert, PackageSearch, ShoppingCart } from "lucide-react"
+import { UserCircle, PackageSearch, ShoppingCart } from "lucide-react"
 import { useCartStore } from "@/store/cartStore"
 import { useEffect, useState } from "react"
+import { ModeToggle } from "@/components/ui/mode-toggle"
 
 export function Navbar() {
   const pathname = usePathname()
@@ -24,8 +25,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center px-4 justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <ShieldAlert className="h-6 w-6 text-primary" />
-          <span className="text-xl font-extrabold tracking-tight">CEL-TRONICS</span>
+          <img src="/assets/logo.svg" alt="Celtronics" className="h-10 w-auto" />
         </Link>
         <nav className="hidden md:flex gap-6 items-center flex-1 ml-10">
           <Link href="/produkty" className={`flex items-center gap-2 text-sm ${isActive('/produkty')}`}>
@@ -39,6 +39,7 @@ export function Navbar() {
           </Link>
         </nav>
         <div className="flex items-center gap-4">
+          <ModeToggle />
           <Link href="/koszyk" className="relative flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
             <ShoppingCart className="w-5 h-5" />
             {mounted && totalItems > 0 && (

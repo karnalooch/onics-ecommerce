@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import ClientShop from "./ClientShop";
@@ -28,14 +27,9 @@ export default async function SklepPage() {
     );
   }
 
-  const products = await prisma.product.findMany({ 
-    orderBy: { name: "asc" },
-    include: { categoryRef: true }
-  });
+  const products: any[] = [];
 
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" }
-  });
+  const categories: any[] = [];
 
   const roleLabel = role === "BIZ" ? "Instalator B2B" : role === "ADMIN" ? "Administrator" : "Klient Detaliczny";
   const roleBadgeClass = role === "BIZ" ? "biz" : role === "ADMIN" ? "admin" : "retail";

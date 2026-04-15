@@ -1,8 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import AdminActions from "./AdminActions";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+
+import { initializeMockData } from "@/store/serverStore";
 
 export default async function AdminDashboard() {
   const session = await auth();
@@ -12,156 +16,155 @@ export default async function AdminDashboard() {
     // redirect("/");
   }
 
-  const [unapprovedUsers, quotes, totalProducts, totalUsers] = await Promise.all([
-    prisma.user.findMany({ where: { isApproved: false, role: "BIZ" } }),
-    prisma.quote.findMany({
-      include: { user: true, items: { include: { product: true } } },
-      orderBy: { createdAt: "desc" }
-    }),
-    prisma.product.count(),
-    prisma.user.count({ where: { role: { not: "ADMIN" } } }),
-  ]);
-
-  const pendingQuotes = quotes.filter(q => q.status === "PENDING");
+  const { users, orders, repairs } = initializeMockData();
+  
+  const unapprovedUsers = users.filter((u: any) => u.roleType === "BIZ" && !u.isApproved);
+  const registeredUsers = users.filter((u: any) => u.roleType === "BIZ" && u.isApproved);
+  const totalProducts = 455; // Można zasymulować lub później podpiąć Strapi
+  const pendingQuotes = orders.filter((o: any) => o.status === "INQUIRY" || o.orderType === "INQUIRY");
+  const pendingRepairs = repairs.filter((r: any) => r.status !== "DONE");
 
   return (
-    <div className="admin-layout">
-      {/* Sidebar */}
-      <div className="admin-sidebar">
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <img src="/assets/logo.png" alt="CEL-TRONICS" style={{ height: "36px", filter: "brightness(0) invert(1)" }} />
-        </div>
-        <div className="admin-sidebar-title">Panel Admina</div>
-        <nav className="admin-nav">
-          <Link href="/admin" className="active">📊 Dashboard</Link>
-          <Link href="/admin/products" style={{ fontWeight: 600, color: "var(--accent-blue)" }}>📦 Baza Produktów</Link>
-          <Link href="/admin/import">📥 Import WF-Mag</Link>
-          <Link href="/sklep">🛒 Sklep (podgląd)</Link>
-          <Link href="/">🌐 Strona główna</Link>
-        </nav>
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-3xl font-bold tracking-tight">Overview</h2>
+        <p className="text-muted-foreground">
+          Zarządzaj statystykami swojego e-commerce, zgłoszeniami RMA oraz weryfikuj klientów hurtowych.
+        </p>
       </div>
 
-      {/* Content */}
-      <div className="admin-content">
-        <div className="admin-header">
-          <h1>Dashboard</h1>
-          <p>Zarządzaj klientami, ofertami i cennikami.</p>
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Użytkownicy B2B</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{registeredUsers.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Zarejestrowani instalatorzy
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Aktywne Naprawy</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{pendingRepairs.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Zgłoszenia RMA w toku
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Baza Produktów</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{totalProducts}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Aktywne indeksy
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Nowe Zapytania</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">{pendingQuotes.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Oczekujące u handlowca
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-600">Oczekujący (KSeF)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{unapprovedUsers.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Konta do zatwierdzenia wpisu rejestru
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Stats */}
-        <div className="admin-cards">
-          <div className="admin-stat-card orange">
-            <div className="admin-stat-num">{unapprovedUsers.length}</div>
-            <div className="admin-stat-label">⏳ Oczekujących B2B</div>
-          </div>
-          <div className="admin-stat-card">
-            <div className="admin-stat-num">{pendingQuotes.length}</div>
-            <div className="admin-stat-label">📋 Nowych zapytań</div>
-          </div>
-          <div className="admin-stat-card green">
-            <div className="admin-stat-num">{totalProducts}</div>
-            <div className="admin-stat-label">📦 Produktów w bazie</div>
-          </div>
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Oczekujący Instalatorzy B2B</CardTitle>
+            <CardDescription>
+              Wymagana weryfikacja NIP w białej księdze dla tych firm.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {unapprovedUsers.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-6">
+                ✅ Brak kont oczekujących na zatwierdzenie.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Firma</TableHead>
+                    <TableHead>NIP</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className="text-right">Akcja</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {unapprovedUsers.map(user => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.companyName}</TableCell>
+                      <TableCell>{user.nip}</TableCell>
+                      <TableCell>{new Date(user.createdAt).toLocaleDateString("pl-PL")}</TableCell>
+                      <TableCell className="text-right">
+                        <AdminActions actionType="approveUser" userId={user.id} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
-        {/* Awaiting B2B approval */}
-        <div className="admin-section">
-          <div className="admin-section-title">
-            ⏳ Oczekujący Instalatorzy B2B
-            {unapprovedUsers.length > 0 && <span className="badge-count">{unapprovedUsers.length}</span>}
-          </div>
-
-          {unapprovedUsers.length === 0 ? (
-            <div className="alert-box success">✅ Brak kont oczekujących na zatwierdzenie.</div>
-          ) : (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Firma</th>
-                  <th>NIP</th>
-                  <th>E-mail</th>
-                  <th>Data rejestracji</th>
-                  <th>Akcja</th>
-                </tr>
-              </thead>
-              <tbody>
-                {unapprovedUsers.map(user => (
-                  <tr key={user.id}>
-                    <td><strong>{user.companyName || "—"}</strong></td>
-                    <td><code>{user.nip || "—"}</code></td>
-                    <td>{user.email}</td>
-                    <td style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
-                      {new Date(user.createdAt).toLocaleDateString("pl-PL")}
-                    </td>
-                    <td>
-                      <AdminActions actionType="approveUser" userId={user.id} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Quotes */}
-        <div className="admin-section">
-          <div className="admin-section-title">
-            📋 Zapytania Ofertowe
-            {pendingQuotes.length > 0 && <span className="badge-count">{pendingQuotes.length} nowych</span>}
-          </div>
-
-          {quotes.length === 0 ? (
-            <div className="alert-box info">ℹ️ Brak zgłoszeń ofertowych.</div>
-          ) : (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>ID Oferty</th>
-                  <th>Klient</th>
-                  <th>Produkty</th>
-                  <th>Status</th>
-                  <th>Data</th>
-                  <th>Akcja</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quotes.map(q => (
-                  <tr key={q.id}>
-                    <td><strong style={{ fontFamily: "monospace" }}>#{q.id.slice(-6)}</strong></td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{q.user.companyName || q.user.email}</div>
-                      {q.user.nip && <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>NIP: {q.user.nip}</div>}
-                    </td>
-                    <td>
-                      <div style={{ fontSize: "0.85rem" }}>
-                        {q.items.map(i => `${i.product.name} ×${i.quantity}`).join(", ")}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`status-badge ${q.status.toLowerCase()}`}>
-                        {q.status === "PENDING" ? "Oczekuje" : q.status === "QUOTED" ? "Wycenione" : q.status === "ACCEPTED" ? "Przyjęte" : "Odrzucone"}
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Ostatnie Zapytania Ofertowe</CardTitle>
+            <CardDescription>
+              Zgłoszenia wolumenu oczekujące na dodanie stawek.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {pendingQuotes.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-6">
+                ℹ️ Brak ruszonych zapytań ofertowych.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pendingQuotes.slice(0, 5).map((quote: any) => (
+                  <div key={quote.id} className="flex justify-between items-start border-b pb-3 last:border-0 last:pb-0">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-sm">{quote.id}</span>
+                      <span className="text-xs text-muted-foreground">{quote.user?.email}</span>
+                      <span className="text-xs text-primary mt-1">
+                        Suma cennikowa: {quote.totalPriceOrig.toFixed(2)} PLN
                       </span>
-                    </td>
-                    <td style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
-                      {new Date(q.createdAt).toLocaleDateString("pl-PL", { day:"2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    </td>
-                    <td>
-                      <AdminActions actionType="processQuote" quoteId={q.id} currentStatus={q.status} />
-                    </td>
-                  </tr>
+                    </div>
+                    <Link href="/admin/orders">
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
+                        Otwórz Negocjacje
+                      </Badge>
+                    </Link>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Tools */}
-        <div className="admin-section">
-          <div className="admin-section-title">🛠️ Narzędzia</div>
-          <Link href="/admin/import" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
-            📥 Import Cennika WF-Mag (CSV/XLS)
-          </Link>
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

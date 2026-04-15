@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldAlert, KeyRound, Loader2 } from "lucide-react";
 
@@ -11,25 +11,51 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setLoading(true);
     setError("");
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    
-    if (res?.error) {
-      setError("Nieprawidłowy e-mail lub hasło. Sprawdź poprawność danych.");
+
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setError("Błąd: Nieprawidłowy e-mail lub hasło (sprawdź literówki).");
+        setLoading(false);
+        return;
+      }
+
+      // Bezpieczne odczekanie 1 sekundy by NextAuth zsynchronizował Sesję
+      await new Promise(r => setTimeout(r, 1000));
+      
+      const sessionRes = await fetch('/api/auth/session', { cache: 'no-store' });
+      const session = await sessionRes.json();
+      
+      if (session?.user?.role === 'ADMIN') {
+        window.location.href = "/admin";
+      } else if (session?.user?.role === 'BIZ') {
+        window.location.href = "/oferty";
+      } else {
+        window.location.href = "/sklep";
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Wystąpił problem techniczny podczas logowania.");
       setLoading(false);
-    } else {
-      router.push("/oferty"); // Przekierowanie do panelu ofert (Dynamic B2B)
-      router.refresh();
     }
   };
+
+  if (!mounted) return null; // Zabezpieczenie przed błędem wtyczek przeglądarki (omija SSR całkowicie)
 
   return (
     <div className="flex min-h-[calc(100vh-64px)] w-full items-center justify-center bg-muted/30 px-4 py-8 relative overflow-hidden">
@@ -52,7 +78,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form className="space-y-5" onSubmit={(e) => handleSubmit(e)}>
           <div className="space-y-2">
             <label htmlFor="login-email" className="text-sm font-semibold text-card-foreground">Adres e-mail</label>
             <input 
@@ -62,7 +88,7 @@ export default function LoginPage() {
               onChange={e => setEmail(e.target.value)} 
               required 
               placeholder="adres@twojafirma.pl" 
-              className="w-full flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           
@@ -75,12 +101,13 @@ export default function LoginPage() {
               onChange={e => setPassword(e.target.value)} 
               required 
               placeholder="••••••••" 
-              className="w-full flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
 
           <button 
-            type="submit" 
+            type="button" 
+            onClick={(e) => handleSubmit(e)}
             disabled={loading}
             className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 py-2 mt-2"
           >
@@ -94,6 +121,15 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-8 text-center text-sm border-t pt-6">
+          <div className="mb-4 text-left bg-primary/5 p-4 rounded-lg text-xs space-y-1">
+            <strong className="text-primary block mb-2 font-bold text-sm">Gotowi Klienci (Demo):</strong>
+            <p className="flex justify-between"><span>Admin:</span> <code className="font-bold">admin@celtronics.pl</code></p>
+            <p className="flex justify-between"><span>Instalator B2B:</span> <code className="font-bold">instalator@celtronics.pl</code></p>
+            <p className="flex justify-between"><span>Detal:</span> <code className="font-bold">detal@celtronics.pl</code></p>
+            <div className="text-center mt-2 border-t pt-2 border-primary/10">
+              Hasło dla każdego: <strong className="text-base text-primary">test</strong>
+            </div>
+          </div>
           <p className="text-muted-foreground">
             Brak przydzielonego konta KSeF?&nbsp;
             <a href="/rejestracja" className="text-primary font-semibold hover:underline">

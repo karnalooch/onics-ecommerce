@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useCartStore } from "@/store/cartStore";
 
 type Category = { id: string; name: string; slug: string; parentId: string | null };
 type Product = { id: string; name: string; price: number; description: string | null; sku: string; category: string | null; categoryId: string | null; categoryRef?: Category | null };
-type CartItem = Product & { quantity: number };
 
 export default function ClientShop({ initialProducts, categories, role }: { initialProducts: Product[], categories?: Category[], role: string }) {
   const router = useRouter();
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const { items: cart, addItem, removeItem, getTotalItems, getTotalPrice } = useCartStore();
   const [search, setSearch] = useState("");
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
-  const isB2B = role === "BIZ";
+  const [mounted, setMounted] = useState(false);
+  const isB2B = role === "BIZ" || role === "ADMIN";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // B2B Advanced Filtering
   const filtered = initialProducts.filter(p => {
@@ -22,39 +26,8 @@ export default function ClientShop({ initialProducts, categories, role }: { init
     return matchesSearch && matchesCategory;
   });
 
-  const addToCart = (product: Product) => {
-    setCart(prev => {
-      const ex = prev.find(i => i.id === product.id);
-      if (ex) return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...product, quantity: 1 }];
-    });
-  };
-
-  const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.id !== id));
-
-  const submitQuote = async () => {
-    if (cart.length === 0) return;
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/quotes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart.map(c => ({ id: c.id, quantity: c.quantity })) })
-      });
-      if (res.ok) {
-        alert(isB2B ? "✅ Zapytanie wysłane! Administrator wyceni i odpowie e-mailem." : "✅ Zamówienie złożone!");
-        setCart([]);
-      } else {
-        alert("Wystąpił błąd. Spróbuj ponownie.");
-      }
-    } catch {
-      alert("Błąd sieciowy.");
-    }
-    setSubmitting(false);
-  };
-
-  const total = cart.reduce((acc, i) => acc + i.price * i.quantity, 0);
-  const cartCount = cart.reduce((acc, i) => acc + i.quantity, 0);
+  const cartCount = getTotalItems();
+  const total = getTotalPrice();
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 300px", gap: "2rem", marginTop: "1.5rem", alignItems: "start" }}>
@@ -123,16 +96,13 @@ export default function ClientShop({ initialProducts, categories, role }: { init
                 )}
                 
                 <div className="product-footer" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "1rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  {isB2B
-                    ? <span style={{ fontWeight: 700, color: "var(--text-main)", fontSize: "0.9rem" }}>Wycena B2B</span>
-                    : <span style={{ fontWeight: 800, color: "var(--primary)", fontSize: "1.2rem" }}>{p.price.toFixed(2)} zł</span>
-                  }
+                  <span style={{ fontWeight: 800, color: "var(--primary)", fontSize: "1.2rem", visibility: isB2B ? 'hidden' : 'visible' }}>{p.price.toFixed(2)} zł</span>
                   <button
-                    onClick={() => addToCart(p)}
+                    onClick={() => addItem({...p, quantity: 1})}
                     className="btn btn-primary"
                     style={{ padding: "8px 16px", fontSize: "0.85rem" }}
                   >
-                    {isB2B ? "Do zapytania" : "Do koszyka"}
+                    Dodaj do koszyka
                   </button>
                 </div>
               </div>
@@ -143,54 +113,54 @@ export default function ClientShop({ initialProducts, categories, role }: { init
 
       {/* 3. Cart / Quote panel (Fixed position sidebar logic) */}
       <div className="cart-panel" style={{ position: "sticky", top: "110px", background: "#fff", borderRadius: "8px", border: "1px solid #e2e8f0", padding: "1.5rem" }}>
-        <div className="cart-panel-header" style={{ marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #e2e8f0" }}>
-          <div>
-            <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "1.1rem" }}>{isB2B ? "Zapytanie ofertowe" : "Koszyk"}</div>
-            {cartCount > 0 && <div style={{ fontSize: "0.8rem", color: "#64748b" }}>{cartCount} pozycji</div>}
-          </div>
-        </div>
-
-        {cart.length === 0 ? (
+        {!mounted ? (
           <div style={{ textAlign: "center", color: "#94a3b8", padding: "2rem 0" }}>
-            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{isB2B ? "📋" : "🛒"}</div>
-            <p style={{ fontSize: "0.9rem" }}>{isB2B ? "Wybierz produkty z lewej do wyceny" : "Twój koszyk jest pusty"}</p>
+            <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>⌚</div>
+            <p style={{ fontSize: "0.9rem" }}>Wczytywanie...</p>
           </div>
         ) : (
           <>
-            <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1rem 0", maxHeight: "40vh", overflowY: "auto" }}>
-              {cart.map(item => (
-                <li key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", fontSize: "0.9rem", borderBottom: "1px dashed #e2e8f0", paddingBottom: "0.5rem" }}>
-                  <div style={{ paddingRight: "0.5rem" }}>
-                    <div style={{ fontWeight: 600, color: "var(--text-main)", lineHeight: 1.2, marginBottom: "4px" }}>{item.name}</div>
-                    <div style={{ color: "var(--accent-blue)", fontSize: "0.8rem", fontWeight: 700 }}>x{item.quantity}</div>
-                  </div>
-                  <button onClick={() => removeFromCart(item.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "1.2rem", lineHeight: 1, padding: "0 4px" }}>×</button>
-                </li>
-              ))}
-            </ul>
+            <div className="cart-panel-header" suppressHydrationWarning style={{ marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #e2e8f0" }}>
+              <div>
+                <div style={{ fontWeight: 700, color: "var(--primary)", fontSize: "1.1rem" }}>{isB2B ? "Produkty B2B" : "Koszyk"}</div>
+                {cartCount > 0 && <div style={{ fontSize: "0.8rem", color: "#64748b" }}>Razem sztuk: {cartCount}</div>}
+              </div>
+            </div>
 
-            {!isB2B && (
-              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "1.1rem", marginBottom: "1rem" }}>
-                <span>Suma br.:</span>
-                <span style={{ color: "var(--primary)" }}>{total.toFixed(2)} zł</span>
+            {cart.length === 0 ? (
+              <div style={{ textAlign: "center", color: "#94a3b8", padding: "2rem 0" }}>
+                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🛒</div>
+                <p style={{ fontSize: "0.9rem" }}>Koszyk jest pusty</p>
+              </div>
+            ) : (
+              <div suppressHydrationWarning>
+                <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1rem 0", maxHeight: "40vh", overflowY: "auto" }}>
+                  {cart.map(item => (
+                    <li key={item.id} suppressHydrationWarning style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", fontSize: "0.9rem", borderBottom: "1px dashed #e2e8f0", paddingBottom: "0.5rem" }}>
+                      <div style={{ paddingRight: "0.5rem" }}>
+                        <div style={{ fontWeight: 600, color: "var(--text-main)", lineHeight: 1.2, marginBottom: "4px" }}>{item.name}</div>
+                        <div style={{ color: "var(--accent-blue)", fontSize: "0.8rem", fontWeight: 700 }}>x{item.quantity}</div>
+                      </div>
+                      <button onClick={() => removeItem(item.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "1.2rem", lineHeight: 1, padding: "0 4px" }}>×</button>
+                    </li>
+                  ))}
+                </ul>
+
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "1.1rem", marginBottom: "1rem" }}>
+                  <span className="text-sm">Suma w koszyku:</span>
+                  <span style={{ color: "var(--primary)" }}>{total.toFixed(2)} zł</span>
+                </div>
+
+                <button
+                  onClick={() => router.push('/koszyk')}
+                  className="btn btn-primary full-width"
+                  style={{ background: "#475569", borderRadius: "30px", padding: "12px" }}
+                >
+                  Przejdź do Koszyka
+                </button>
               </div>
             )}
-
-            <button
-              onClick={submitQuote}
-              disabled={submitting}
-              className="btn btn-primary full-width"
-              style={{ background: isB2B ? "var(--primary)" : "var(--accent-blue)" }}
-            >
-              {submitting ? "Wysyłanie..." : (isB2B ? "Wyślij wycenę" : "Zamówienie")}
-            </button>
           </>
-        )}
-
-        {isB2B && cart.length > 0 && (
-          <div style={{ marginTop: "1rem", fontSize: "0.8rem", color: "#64748b", background: "#f8fafc", padding: "0.75rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
-            💡 Ceny B2B zostaną nadane indywidualnie po otrzymaniu zapytania. Wymagana akceptacja handlowca.
-          </div>
         )}
       </div>
     </div>

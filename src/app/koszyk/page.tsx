@@ -2,127 +2,218 @@
 
 import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
-import { Trash2, ShieldCheck, BadgeEuro, CreditCard, Loader2 } from "lucide-react";
+import { Trash2, FileText, Send, ShoppingBag, Loader2, UploadCloud, Info, ShieldCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner"; // Jeśli mamy sonner zainstalowane, jeśli nie to mock
+import { Button } from "@/components/ui/button";
 
 export default function CartPage() {
   const { data: session } = useSession();
-  const { items, removeItem, updateQuantity, getTotalPrice, getTotalItems } = useCartStore();
+  const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [submitting, setSubmitting] = useState<"PDF" | "INQUIRY" | "ORDER" | null>(null);
   const router = useRouter();
 
-  // Ochrona przed Hydration Mismatch w Next.js + Zustand (Local Storage)
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Zabezpieczenie przez Hydration Mismatch przy renderze Local Storage
+  useEffect(() => { setMounted(true); }, []);
 
-  const handleCheckout = async () => {
-    setIsCheckingOut(true);
+  const isB2B = (session?.user as any)?.role === "BIZ" || (session?.user as any)?.role === "ADMIN";
+
+  const handleAction = async (action: "PDF" | "INQUIRY" | "ORDER") => {
+    setSubmitting(action);
     try {
-      const response = await fetch("/api/checkout", {
+      if (action === "PDF") {
+        // Generowanie oferty PDF lokalnie dla instalatora
+        alert("Generuję dokument PDF... (symulacja)");
+        window.print();
+        setSubmitting(null);
+        return;
+      }
+
+      const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          user: session?.user || { email: "gosc@anon.pl" },
           items,
-          role: (session?.user as any)?.role || "RETAIL",
-          nip: (session?.user as any)?.nip || null,
+          orderType: action, 
         }),
       });
 
-      const data = await response.json();
-
-      if (data.url) {
-        window.location.href = data.url; // Przeniesienie do Stripe
+      if (response.ok) {
+        if (action === "ORDER") {
+          alert("✅ Zamówienie weryfikacyjne wysłane! Czekaj na nadanie czasów dostaw przez Admina.");
+        } else {
+          alert("💬 Zapytanie cenowe wysłane.");
+        }
+        clearCart();
+        router.push("/oferty/zamowienia");
       } else {
-        alert(data.error || "Wystąpił błąd przy tworzeniu transakcji.");
-        setIsCheckingOut(false);
+        alert("Wystąpił błąd podczas wysyłania do centrali.");
       }
-    } catch (error) {
-      console.error(error);
-      alert("Błąd połączenia z bramką.");
-      setIsCheckingOut(false);
+    } catch {
+      alert("Błąd połączenia. Spróbuj ponownie.");
     }
+    setSubmitting(null);
   };
 
-  if (!mounted) return <div className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" /></div>;
+  if (!mounted) return <div className="p-12 text-center flex justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
 
   return (
-    <div className="container mx-auto py-12 px-4 min-h-[calc(100vh-200px)]">
-      <h1 className="text-3xl font-extrabold mb-8 flex items-center gap-3">
-        <BadgeEuro className="w-8 h-8 text-primary" />
-        Twój Koszyk
-      </h1>
-      
+    <div className="container mx-auto py-8 px-4 flex flex-col min-h-screen">
+      {/* 1. ProgressBar / Chlebowe okruszki ( SATEL STYLE ) */}
+      {isB2B && (
+        <div className="flex justify-center mb-12 border-b pb-8">
+          <div className="flex items-center gap-12 font-medium text-sm">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center text-[10px] text-white">✓</div>
+              Formularz zamówienia
+            </div>
+            <div className="flex flex-col items-center gap-2 text-primary font-bold">
+              <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
+              Twój Koszyk
+            </div>
+            <div className="flex flex-col items-center gap-2 text-muted-foreground opacity-50">
+              <div className="w-4 h-4 rounded-full bg-gray-200"></div>
+              Podsumowanie
+            </div>
+          </div>
+        </div>
+      )}
+
       {items.length === 0 ? (
-        <div className="bg-muted/30 border border-dashed rounded-xl p-12 text-center">
+        <div className="bg-muted/30 border border-dashed rounded-xl p-16 text-center">
           <p className="text-muted-foreground text-lg">Twój koszyk jest pusty.</p>
-          <button onClick={() => router.push('/produkty')} className="mt-4 bg-primary text-primary-foreground px-6 py-2 rounded-md hover:bg-primary/90 font-medium transition-colors">Przejdź do sklepu</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-4">
-            {items.map((item) => (
-              <div key={item.id} className="flex flex-col sm:flex-row items-center justify-between border bg-card p-4 rounded-xl shadow-sm">
-                <div className="flex-1">
-                  <p className="font-bold text-lg">{item.name}</p>
-                  <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
-                  <p className="text-primary font-semibold mt-1">{item.price.toFixed(2)} PLN</p>
-                </div>
-                
-                <div className="flex items-center gap-4 mt-4 sm:mt-0">
-                  <div className="flex items-center border rounded-md overflow-hidden">
-                    <button 
-                      onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                      className="px-3 py-1 bg-muted hover:bg-muted/80"
-                    >-</button>
-                    <span className="px-4 font-medium min-w-[3rem] text-center">{item.quantity}</span>
-                    <button 
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="px-3 py-1 bg-muted hover:bg-muted/80"
-                    >+</button>
-                  </div>
-                  <button 
-                    onClick={() => removeItem(item.id)}
-                    className="p-2 text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                    title="Usuń"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           
-          <div className="bg-card border rounded-xl p-6 h-fit shadow-sm">
-            <h3 className="text-xl font-bold mb-4">Podsumowanie</h3>
-            <div className="flex justify-between mb-2 text-muted-foreground">
-              <span>Ilość produktów:</span>
-              <span>{getTotalItems()} szt.</span>
+          {/* MAIN TABLE (Odpowiednik screena nr 3) */}
+          <div className="lg:col-span-3">
+            <div className="grid grid-cols-12 gap-4 pb-4 border-b text-sm font-semibold text-muted-foreground px-4">
+              <div className="col-span-5">Nazwa produktu</div>
+              <div className="col-span-2 text-right">Cena</div>
+              <div className="col-span-2 text-center">Liczba</div>
+              <div className="col-span-2 text-right">Suma</div>
+              <div className="col-span-1"></div>
             </div>
-            
-            {(session?.user as any)?.role === "BIZ" && (
-              <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 p-2 rounded-md mb-4 border border-amber-200">
-                <ShieldCheck className="w-4 h-4 shrink-0" />
-                <span>Twój NIP: {(session?.user as any)?.nip || "Brak"} (KSeF)</span>
+
+            <div className="flex flex-col">
+              {items.map((item, idx) => (
+                <div key={item.id} className="grid grid-cols-12 gap-4 py-6 border-b items-center px-4 hover:bg-muted/10">
+                  <div className="col-span-5 flex items-start gap-3">
+                    <span className="text-muted-foreground text-xs mt-1">{idx + 1}.</span>
+                    <ShieldCheck className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-base text-gray-800 dark:text-gray-200">{item.name}</div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <span className="opacity-50">EAN/SKU:</span> {item.sku}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="col-span-2 text-right font-medium">
+                    {item.price.toFixed(2)} PLN
+                  </div>
+                  
+                  <div className="col-span-2 flex justify-center">
+                    <div className="flex border rounded-sm overflow-hidden h-9 w-24">
+                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">-</button>
+                      <input 
+                        type="text" 
+                        value={item.quantity} 
+                        readOnly
+                        className="w-8 text-center text-sm font-medium border-x focus:outline-none bg-transparent" 
+                      />
+                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">+</button>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 text-right font-bold text-gray-700 dark:text-gray-300">
+                    {(item.price * item.quantity).toFixed(2)} PLN
+                  </div>
+
+                  <div className="col-span-1 flex justify-end">
+                    <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 transition-colors p-2">
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 flex justify-end">
+               <Button variant="destructive" className="bg-red-600 hover:bg-red-700 rounded-full px-8 font-semibold" onClick={clearCart}>
+                 Wyczyść koszyk
+               </Button>
+            </div>
+          </div>
+
+          {/* SIDEBAR RIGHT (Import XML + Podsumowanie z 3 przyciskami ze screena nr 1 i promptu) */}
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-900 border rounded-2xl p-6 shadow-sm flex flex-col items-center text-center">
+              <h3 className="font-semibold text-lg mb-2">Importuj plik z zamówieniem</h3>
+              <p className="text-xs text-muted-foreground mb-6 flex items-start gap-2 text-left">
+                <Info className="w-4 h-4 shrink-0 mt-0.5" /> 
+                Możesz zaimportować dane swojego zamówienia z pliku XML (standard EDI) lub korzystając z naszego szablonu zamówienia.
+              </p>
+              <Button variant="outline" className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 font-semibold border-none rounded-full">
+                Wybierz plik
+              </Button>
+            </div>
+
+            <div className="border rounded-2xl p-6 shadow-sm bg-gray-50 dark:bg-gray-900/50">
+              <h3 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Podsumowanie</h3>
+              
+              <div className="flex justify-between items-end mb-8">
+                <span className="text-gray-600 dark:text-gray-400 font-medium text-lg">Suma:</span>
+                <div className="text-right">
+                   <div className="text-3xl font-extrabold text-primary">{getTotalPrice().toFixed(2)} PLN</div>
+                   <div className="text-xs text-muted-foreground mt-1">(bez VAT)</div>
+                </div>
               </div>
-            )}
-            
-            <div className="flex justify-between font-bold text-2xl py-4 border-t mb-6">
-              <span>Razem:</span>
-              <span className="text-primary">{getTotalPrice().toFixed(2)} PLN</span>
+
+              {isB2B ? (
+                <div className="space-y-3">
+                  <Button 
+                    onClick={() => handleAction("PDF")} 
+                    disabled={submitting !== null}
+                    variant="outline"
+                    className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-950 dark:border-gray-800"
+                  >
+                    <FileText className="w-5 h-5 text-gray-500" />
+                    {submitting === "PDF" ? "Przetwarzanie..." : "Tworzenie oferty (Generuj PDF)"}
+                  </Button>
+                  
+                  <Button 
+                    onClick={() => handleAction("INQUIRY")} 
+                    disabled={submitting !== null}
+                    variant="outline"
+                    className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-white border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:bg-gray-950 dark:border-gray-800"
+                  >
+                    <Send className="w-5 h-5 text-blue-500" />
+                    {submitting === "INQUIRY" ? "Wysyłanie..." : "Wyślij z luźnym Zapytaniem"}
+                  </Button>
+
+                  <Button 
+                    onClick={() => handleAction("ORDER")} 
+                    disabled={submitting !== null}
+                    className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-green-600 hover:bg-green-700 text-white shadow-md border-none"
+                  >
+                    <ShoppingBag className="w-5 h-5" />
+                    {submitting === "ORDER" ? <Loader2 className="w-5 h-5 animate-spin" /> : "Wyślij realne ZAMÓWIENIE"}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground text-center pt-2">
+                    Naciśnięcie Zamówienia rezerwuje kolejkę. Oczekuj potwierdzenia czasu dostawy przez Administratora.
+                  </p>
+                </div>
+              ) : (
+                <Button className="w-full h-14 text-lg font-bold rounded-xl" onClick={() => router.push("/rejestracja")}>
+                  Zaloguj się aby Kupić
+                </Button>
+              )}
             </div>
-            
-            <button 
-              onClick={handleCheckout} 
-              disabled={isCheckingOut}
-              className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-3 rounded-lg font-bold text-lg hover:bg-primary/90 transition shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {isCheckingOut ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
-              {isCheckingOut ? "Łączenie ze Stripe..." : "Bezpieczna Płatność"}
-            </button>
-            <p className="text-xs text-center text-muted-foreground mt-4">Transakcja obsługiwana przez bezpieczną bramkę Stripe.</p>
           </div>
         </div>
       )}

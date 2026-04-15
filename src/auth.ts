@@ -1,6 +1,8 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 
+import { initializeMockData } from "@/store/serverStore";
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -11,6 +13,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        const { users } = initializeMockData();
+        const mockUser = users.find((u: any) => u.email === credentials.email);
+
+        if (credentials.password === "test" && mockUser) {
+           if (mockUser.isBlocked) {
+             console.log("Logowanie odrzucone - konto zablokowane:", mockUser.email);
+             return null; // Konto zablokowane
+           }
+
+           return {
+              id: mockUser.id,
+              email: mockUser.email,
+              name: mockUser.companyName || mockUser.username,
+              jwt: mockUser.jwt,
+              role: mockUser.roleType,
+              isApproved: mockUser.isApproved,
+              nip: mockUser.nip
+           } as any;
+        }
 
         try {
           // Autoryzacja przez instancję Strapi CMS

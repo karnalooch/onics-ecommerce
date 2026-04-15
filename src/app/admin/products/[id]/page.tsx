@@ -1,10 +1,9 @@
-import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
 
   if (!session?.user || (session.user as any).role !== "ADMIN") {
@@ -13,14 +12,14 @@ export default async function EditProductPage({ params }: { params: { id: string
 
   const resolvedParams = await params;
   const { id } = resolvedParams;
-  let product = null;
+  let product: any = null;
   
   if (id !== "new") {
-    product = await prisma.product.findUnique({ where: { id } });
-    if (!product) return <div>Nie znaleziono produktu</div>;
+    // product = await prisma.product.findUnique({ where: { id } });
+    if (!product) return <div>Nie znaleziono produktu (Brak połączenia ze Strapi)</div>;
   }
 
-  const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
+  const categories: any[] = [];
 
   async function saveProduct(formData: FormData) {
     "use server";
@@ -31,16 +30,7 @@ export default async function EditProductPage({ params }: { params: { id: string
     const categoryId = formData.get("categoryId") as string;
     const description = formData.get("description") as string;
 
-    if (id === "new") {
-      await prisma.product.create({
-        data: { name, sku, price, stock, categoryId: categoryId || null, description: description || null }
-      });
-    } else {
-      await prisma.product.update({
-        where: { id },
-        data: { name, sku, price, stock, categoryId: categoryId || null, description: description || null }
-      });
-    }
+    // TODO: Strapi integration
     
     revalidatePath("/admin/products");
     revalidatePath("/sklep");
