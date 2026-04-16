@@ -11,7 +11,8 @@ import {
   LogOut,
   ChevronLeft,
   Users,
-  FolderTree
+  FolderTree,
+  Brain
 } from "lucide-react"
 
 export default function AdminLayout({
@@ -27,6 +28,7 @@ export default function AdminLayout({
     { name: "Klienci", path: "/admin/clients", icon: Users },
     { name: "Baza Produktów", path: "/admin/products", icon: PackageSearch },
     { name: "Struktura Kategorii", path: "/admin/categories", icon: FolderTree },
+    { name: "Baza Wiedzy AI", path: "/admin/knowledge", icon: Brain },
     { name: "Generator Ofert", path: "/admin/quotes", icon: FileText },
     { name: "Generator Cenników", path: "/admin/price-lists", icon: FileSpreadsheet },
     { name: "Serwis / RMA", path: "/admin/repairs", icon: Wrench },
@@ -83,7 +85,7 @@ export default function AdminLayout({
       {/* Main Content */}
       <main className="flex-1 sm:pl-64 flex flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-6 shadow-sm">
-          <div className="flex-1">
+          <div className="flex-1" suppressHydrationWarning>
             <h1 className="text-lg font-semibold capitalize">
               {navItems.find(n => isActive(n.path))?.name || "Panel B2B"}
             </h1>

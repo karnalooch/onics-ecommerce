@@ -1,0 +1,964 @@
+
+
+=== START PROCESSING: Cennik SSWiN_2026-02-16_BF.pdf (16.04.2026, 20:33:00) ===
+PAGE 1 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 2 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 3 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 4 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 5 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 6 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 7 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 8 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 9 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 10 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 11 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 12 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 13 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 14 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 15 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 16 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 17 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 18 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 19 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 20 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+=== END PROCESSING: Saved 0 models ===
+
+
+=== START PROCESSING: cennik_ropam-elektronik_20260302.pdf (16.04.2026, 20:33:56) ===
+PAGE 1 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 2 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 3 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 4 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 5 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 6 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 7 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 8 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 9 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 10 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 11 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 12 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 13 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 14 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+=== END PROCESSING: Saved 0 models ===
+
+
+=== START PROCESSING: cennik_ropam-elektronik_20260302.pdf (16.04.2026, 20:35:58) ===
+PAGE 1 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 2 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 3 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 4 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 5 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 6 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 7 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 8 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 9 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 10 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 11 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 12 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 13 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 14 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"response_mime_type\" at 'generation_config': Cannot find field."}]}]}}
+=== END PROCESSING: Saved 0 models ===
+
+
+=== START PROCESSING: cennik_ropam-elektronik_20260302.pdf (16.04.2026, 20:37:59) ===
+PAGE 1 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 2 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 3 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 4 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 5 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 6 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 7 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 8 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 9 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 10 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 11 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 12 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 13 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+PAGE 14 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"generation_config","description":"Invalid JSON payload received. Unknown name \"responseMimeType\" at 'generation_config': Cannot find field."}]}]}}
+=== END PROCESSING: Saved 0 models ===
+
+
+=== START PROCESSING: cennik_ropam-elektronik_20260302.pdf (16.04.2026, 20:40:00) ===
+PAGE 1 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 2 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 3 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 4 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 5 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 6 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 7 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 8 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 9 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 10 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 11 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 12 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 13 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 14 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+=== END PROCESSING: Saved 0 models ===
+
+
+=== START PROCESSING: Cennik SSWiN_2026-02-16_BF.pdf (16.04.2026, 20:42:35) ===
+AVAILABLE MODELS: ["models/gemini-2.5-flash","models/gemini-2.5-pro","models/gemini-2.0-flash","models/gemini-2.0-flash-001","models/gemini-2.0-flash-lite-001","models/gemini-2.0-flash-lite","models/gemini-2.5-flash-preview-tts","models/gemini-2.5-pro-preview-tts","models/gemma-3-1b-it","models/gemma-3-4b-it","models/gemma-3-12b-it","models/gemma-3-27b-it","models/gemma-3n-e4b-it","models/gemma-3n-e2b-it","models/gemma-4-26b-a4b-it","models/gemma-4-31b-it","models/gemini-flash-latest","models/gemini-flash-lite-latest","models/gemini-pro-latest","models/gemini-2.5-flash-lite","models/gemini-2.5-flash-image","models/gemini-3-pro-preview","models/gemini-3-flash-preview","models/gemini-3.1-pro-preview","models/gemini-3.1-pro-preview-customtools","models/gemini-3.1-flash-lite-preview","models/gemini-3-pro-image-preview","models/nano-banana-pro-preview","models/gemini-3.1-flash-image-preview","models/lyria-3-clip-preview","models/lyria-3-pro-preview","models/gemini-3.1-flash-tts-preview","models/gemini-robotics-er-1.5-preview","models/gemini-robotics-er-1.6-preview","models/gemini-2.5-computer-use-preview-10-2025","models/deep-research-pro-preview-12-2025","models/gemini-embedding-001","models/gemini-embedding-2-preview","models/aqa","models/imagen-4.0-generate-001","models/imagen-4.0-ultra-generate-001","models/imagen-4.0-fast-generate-001","models/veo-2.0-generate-001","models/veo-3.0-generate-001","models/veo-3.0-fast-generate-001","models/veo-3.1-generate-preview","models/veo-3.1-fast-generate-preview","models/veo-3.1-lite-generate-preview","models/gemini-2.5-flash-native-audio-latest","models/gemini-2.5-flash-native-audio-preview-09-2025"]
+PAGE 1 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 2 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 3 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 4 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 5 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 6 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 7 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 8 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 9 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 10 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 11 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 12 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 13 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 14 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 15 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 16 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 17 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 18 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 19 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 20 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+=== END PROCESSING: Saved 0 models ===
+
+
+=== START PROCESSING: cennik_ropam-elektronik_20260302.pdf (16.04.2026, 20:44:45) ===
+AVAILABLE MODELS RAW: {"models":[{"name":"models/gemini-2.5-flash","version":"001","displayName":"Gemini 2.5 Flash","description":"Stable version of Gemini 2.5 Flash, our mid-size multimodal model that supports up to 1 million tokens, released in June of 2025.","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-2.5-pro","version":"2.5","displayName":"Gemini 2.5 Pro","description":"Stable release (June 17th, 2025) of Gemini 2.5 Pro","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-2.0-flash","version":"2.0","displayName":"Gemini 2.0 Flash","description":"Gemini 2.0 Flash","inputTokenLimit":1048576,"outputTokenLimit":8192,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":40,"maxTemperature":2},{"name":"models/gemini-2.0-flash-001","version":"2.0","displayName":"Gemini 2.0 Flash 001","description":"Stable version of Gemini 2.0 Flash, our fast and versatile multimodal model for scaling across diverse tasks, released in January of 2025.","inputTokenLimit":1048576,"outputTokenLimit":8192,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":40,"maxTemperature":2},{"name":"models/gemini-2.0-flash-lite-001","version":"2.0","displayName":"Gemini 2.0 Flash-Lite 001","description":"Stable version of Gemini 2.0 Flash-Lite","inputTokenLimit":1048576,"outputTokenLimit":8192,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":40,"maxTemperature":2},{"name":"models/gemini-2.0-flash-lite","version":"2.0","displayName":"Gemini 2.0 Flash-Lite","description":"Gemini 2.0 Flash-Lite","inputTokenLimit":1048576,"outputTokenLimit":8192,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":40,"maxTemperature":2},{"name":"models/gemini-2.5-flash-preview-tts","version":"gemini-2.5-flash-exp-tts-2025-05-19","displayName":"Gemini 2.5 Flash Preview TTS","description":"Gemini 2.5 Flash Preview TTS","inputTokenLimit":8192,"outputTokenLimit":16384,"supportedGenerationMethods":["countTokens","generateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2},{"name":"models/gemini-2.5-pro-preview-tts","version":"gemini-2.5-pro-preview-tts-2025-05-19","displayName":"Gemini 2.5 Pro Preview TTS","description":"Gemini 2.5 Pro Preview TTS","inputTokenLimit":8192,"outputTokenLimit":16384,"supportedGenerationMethods":["countTokens","generateContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2},{"name":"models/gemma-3-1b-it","version":"001","displayName":"Gemma 3 1B","inputTokenLimit":32768,"outputTokenLimit":8192,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64},{"name":"models/gemma-3-4b-it","version":"001","displayName":"Gemma 3 4B","inputTokenLimit":32768,"outputTokenLimit":8192,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64},{"name":"models/gemma-3-12b-it","version":"001","displayName":"Gemma 3 12B","inputTokenLimit":32768,"outputTokenLimit":8192,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64},{"name":"models/gemma-3-27b-it","version":"001","displayName":"Gemma 3 27B","inputTokenLimit":131072,"outputTokenLimit":8192,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64},{"name":"models/gemma-3n-e4b-it","version":"001","displayName":"Gemma 3n E4B","inputTokenLimit":8192,"outputTokenLimit":2048,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64},{"name":"models/gemma-3n-e2b-it","version":"001","displayName":"Gemma 3n E2B","inputTokenLimit":8192,"outputTokenLimit":2048,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64},{"name":"models/gemma-4-26b-a4b-it","version":"001","displayName":"Gemma 4 26B A4B IT","description":"Gemma 4 26B A4B IT","inputTokenLimit":262144,"outputTokenLimit":32768,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemma-4-31b-it","version":"001","displayName":"Gemma 4 31B IT","description":"Gemma 4 31B IT","inputTokenLimit":262144,"outputTokenLimit":32768,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-flash-latest","version":"Gemini Flash Latest","displayName":"Gemini Flash Latest","description":"Latest release of Gemini Flash","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-flash-lite-latest","version":"Gemini Flash-Lite Latest","displayName":"Gemini Flash-Lite Latest","description":"Latest release of Gemini Flash-Lite","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-pro-latest","version":"Gemini Pro Latest","displayName":"Gemini Pro Latest","description":"Latest release of Gemini Pro","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-2.5-flash-lite","version":"001","displayName":"Gemini 2.5 Flash-Lite","description":"Stable version of Gemini 2.5 Flash-Lite, released in July of 2025","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-2.5-flash-image","version":"2.0","displayName":"Nano Banana","description":"Gemini 2.5 Flash Preview Image","inputTokenLimit":32768,"outputTokenLimit":32768,"supportedGenerationMethods":["generateContent","countTokens","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":1},{"name":"models/gemini-3-pro-preview","version":"3-pro-preview-11-2025","displayName":"Gemini 3 Pro Preview","description":"Gemini 3 Pro Preview","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-3-flash-preview","version":"3-flash-preview-12-2025","displayName":"Gemini 3 Flash Preview","description":"Gemini 3 Flash Preview","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-3.1-pro-preview","version":"3.1-pro-preview-01-2026","displayName":"Gemini 3.1 Pro Preview","description":"Gemini 3.1 Pro Preview","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-3.1-pro-preview-customtools","version":"3.1-pro-preview-01-2026","displayName":"Gemini 3.1 Pro Preview Custom Tools","description":"Gemini 3.1 Pro Preview optimized for custom tool usage","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-3.1-flash-lite-preview","version":"3.1-flash-lite-preview-03-2026","displayName":"Gemini 3.1 Flash Lite Preview","description":"Gemini 3.1 Flash Lite Preview","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-3-pro-image-preview","version":"3.0","displayName":"Nano Banana Pro","description":"Gemini 3 Pro Image Preview","inputTokenLimit":131072,"outputTokenLimit":32768,"supportedGenerationMethods":["generateContent","countTokens","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":1,"thinking":true},{"name":"models/nano-banana-pro-preview","version":"3.0","displayName":"Nano Banana Pro","description":"Gemini 3 Pro Image Preview","inputTokenLimit":131072,"outputTokenLimit":32768,"supportedGenerationMethods":["generateContent","countTokens","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":1,"thinking":true},{"name":"models/gemini-3.1-flash-image-preview","version":"3.0","displayName":"Nano Banana 2","description":"Gemini 3.1 Flash Image Preview.","inputTokenLimit":65536,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":1,"thinking":true},{"name":"models/lyria-3-clip-preview","version":"lyria-3-clip-preview","displayName":"Lyria 3 Clip Preview","description":"Lyria 3 30s model Preview","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2},{"name":"models/lyria-3-pro-preview","version":"lyria-3-pro-preview","displayName":"Lyria 3 Pro Preview","description":"Lyria 3 Pro Preview","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2},{"name":"models/gemini-3.1-flash-tts-preview","version":"3.1-flash-tts-preview","displayName":"Gemini 3.1 Flash TTS Preview","description":"Gemini 3.1 Flash TTS Preview","inputTokenLimit":8192,"outputTokenLimit":16384,"supportedGenerationMethods":["generateContent","countTokens","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-robotics-er-1.5-preview","version":"1.5-preview","displayName":"Gemini Robotics-ER 1.5 Preview","description":"Gemini Robotics-ER 1.5 Preview","inputTokenLimit":1048576,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-robotics-er-1.6-preview","version":"1.6-preview","displayName":"Gemini Robotics-ER 1.6 Preview","description":"Gemini Robotics-ER 1.6 Preview","inputTokenLimit":131072,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens","createCachedContent","batchGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-2.5-computer-use-preview-10-2025","version":"Gemini 2.5 Computer Use Preview 10-2025","displayName":"Gemini 2.5 Computer Use Preview 10-2025","description":"Gemini 2.5 Computer Use Preview 10-2025","inputTokenLimit":131072,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/deep-research-pro-preview-12-2025","version":"deepthink-exp-05-20","displayName":"Deep Research Pro Preview (Dec-12-2025)","description":"Preview release (December 12th, 2025) of Deep Research Pro","inputTokenLimit":131072,"outputTokenLimit":65536,"supportedGenerationMethods":["generateContent","countTokens"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-embedding-001","version":"001","displayName":"Gemini Embedding 001","description":"Obtain a distributed representation of a text.","inputTokenLimit":2048,"outputTokenLimit":1,"supportedGenerationMethods":["embedContent","countTextTokens","countTokens","asyncBatchEmbedContent"]},{"name":"models/gemini-embedding-2-preview","version":"2","displayName":"Gemini Embedding 2 Preview","description":"Obtain a distributed representation of multimodal content.","inputTokenLimit":8192,"outputTokenLimit":1,"supportedGenerationMethods":["embedContent","countTextTokens","countTokens","asyncBatchEmbedContent"]},{"name":"models/aqa","version":"001","displayName":"Model that performs Attributed Question Answering.","description":"Model trained to return answers to questions that are grounded in provided sources, along with estimating answerable probability.","inputTokenLimit":7168,"outputTokenLimit":1024,"supportedGenerationMethods":["generateAnswer"],"temperature":0.2,"topP":1,"topK":40},{"name":"models/imagen-4.0-generate-001","version":"001","displayName":"Imagen 4","description":"Vertex served Imagen 4.0 model","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predict"]},{"name":"models/imagen-4.0-ultra-generate-001","version":"001","displayName":"Imagen 4 Ultra","description":"Vertex served Imagen 4.0 ultra model","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predict"]},{"name":"models/imagen-4.0-fast-generate-001","version":"001","displayName":"Imagen 4 Fast","description":"Vertex served Imagen 4.0 Fast model","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predict"]},{"name":"models/veo-2.0-generate-001","version":"2.0","displayName":"Veo 2","description":"Vertex served Veo 2 model. Access to this model requires billing to be enabled on the associated Google Cloud Platform account. Please visit https://console.cloud.google.com/billing to enable it.","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predictLongRunning"]},{"name":"models/veo-3.0-generate-001","version":"3.0","displayName":"Veo 3","description":"Veo 3","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predictLongRunning"]},{"name":"models/veo-3.0-fast-generate-001","version":"3.0","displayName":"Veo 3 fast","description":"Veo 3 fast","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predictLongRunning"]},{"name":"models/veo-3.1-generate-preview","version":"3.1","displayName":"Veo 3.1","description":"Veo 3.1","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predictLongRunning"]},{"name":"models/veo-3.1-fast-generate-preview","version":"3.1","displayName":"Veo 3.1 fast","description":"Veo 3.1 fast","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predictLongRunning"]},{"name":"models/veo-3.1-lite-generate-preview","version":"3.1","displayName":"Veo 3.1 lite","description":"Veo 3.1 lite","inputTokenLimit":480,"outputTokenLimit":8192,"supportedGenerationMethods":["predictLongRunning"]},{"name":"models/gemini-2.5-flash-native-audio-latest","version":"Gemini 2.5 Flash Native Audio Latest","displayName":"Gemini 2.5 Flash Native Audio Latest","description":"Latest release of Gemini 2.5 Flash Native Audio","inputTokenLimit":131072,"outputTokenLimit":8192,"supportedGenerationMethods":["countTokens","bidiGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true},{"name":"models/gemini-2.5-flash-native-audio-preview-09-2025","version":"gemini-2.5-flash-preview-native-audio-dialog-2025-05-19","displayName":"Gemini 2.5 Flash Native Audio Preview 09-2025","description":"Gemini 2.5 Flash Native Audio Preview 09-2025","inputTokenLimit":131072,"outputTokenLimit":8192,"supportedGenerationMethods":["countTokens","bidiGenerateContent"],"temperature":1,"topP":0.95,"topK":64,"maxTemperature":2,"thinking":true}],"nextPageToken":"CjRtb2RlbHMvZ2VtaW5pLTIuNS1mbGFzaC1uYXRpdmUtYXVkaW8tcHJldmlldy0wOS0yMDI1"}
+PAGE 1 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 2 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 3 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 4 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 5 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 6 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 7 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 8 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 9 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 10 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 11 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 12 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 13 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+PAGE 14 ERROR: Gemini API Error (Status 404): {"error":{"code":404,"message":"models/gemini-1.5-flash is not found for API version v1, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.","status":"NOT_FOUND"}}
+=== END PROCESSING: Saved 0 models ===
+
+
+=== START PROCESSING: cennik_ropam-elektronik_20260302.pdf (16.04.2026, 20:47:15) ===
+PAGE 1 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"API key expired. Please renew the API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key expired. Please renew the API key."}]}}
+PAGE 2 RAW:
+```json
+{
+  "Neo-IP-64-PS-D12M": "centrala alarmowa z IP (WIFI ant zewn.), zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 4 strefy, Blx16-64, BOx8-4
+PAGE 3 RAW:
+```json
+{
+  "NeoLTE-IP-64-PS-D12M": "centrala alarmowa z LTE/IP (WIFI ant zewn.), zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 4 strefy, Blx16-64, BO
+PAGE 4 RAW:
+```json
+{
+  "EXP-NFC-RN": "wewnętrzny czytnik zbliżeniowy Mifare 13.56MHz, obsługa kart i breloków MF 1kB, Bluetooth* kompatybilność: NeoLTE-IP-64, Neo-IP-64, NeoGSM-IP-64, do 32 breloków/kart (4 breloki w zestawie), 2 wejscia, 1 wyjście przekaźnikowe i tranzystorowe, magistrala RopamNET obudowa natynkowa, biała, (*BTready - współpraca z aplikacją i sterowania przez Bluetooth - w przygotowaniu)",
+  "MFT-1": "brelok zbliżeniowy Mifare z pamięcią 1kB, standard 13,56 MHz Mifare",
+  "MFC-1": "karta zbliżeniowa Mifare z pamięcią 1kB, standard 13,56 MHz Mifare PCV, rozmiar ISO 86×54×0,8mm"
+}
+```
+PAGE 5 RAW:
+```json
+{
+  "BasicLTE-PS-SET": "BasicLTE-PS/AT-GSM-MINI90/O-R3P/PS-3024/ zestaw, moduł LTE w obudowie natynkowej z zasilaczem AC/DC i anteną GSM/LTE.",
+  "BasicLTE-SET": "BasicLTE
+PAGE 6 RAW:
+```json
+{
+  "MultiLTE-RF-SETH": "MultiLTE-RF/AT-GSM-MINI90/zasilacz 230VAC/12VDC zestaw w obudowie hermetycznej, zasilanie 12VDC/230VAC, zaprogramowany do sterowania bramą, szlabanem
+PAGE 7 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"API key expired. Please renew the API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key expired. Please renew the API key."}]}}
+PAGE 8 RAW:
+```json
+{
+  "RF-4C": "Odbiornik sterownika radiowego, 433MHz, superheterodyna, 4 kanały, praca systemowa: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, OptimaGSM lub autonomiczna, obudowa natynkowa.",
+PAGE 9 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"API key expired. Please renew the API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key expired. Please renew the API key."}]}}
+PAGE 10 RAW:
+```json
+{
+  "TSR-H-RN": "przewodowy czujnik temperatury,-20..+80°C, magistrala RopamNET, kompatybilność: Neo-IP-64, NeoLTE-IP-64, NeoGSM-IP-64, obudowa natynkowa ABS, IP6
+PAGE 11 RAW:
+```json
+{
+  "AT-GSM-MOD": "antena GSM/LTE pionowa/kątowa 90°, 4,5dBi, VSWR< 2.1, 800-2700 MHz,, SMAm, 20x151 mm, czarna.",
+  "AT-GSM-MINI9
+PAGE 12 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"API key expired. Please renew the API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key expired. Please renew the API key."}]}}
+PAGE 13 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"API key expired. Please renew the API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key expired. Please renew the API key."}]}}
+PAGE 14 RAW:
+```json
+{
+  "RM85-12V-1P": "moduł przekaźnika na szynę DIN 1M, cewka 12Vdc, SPDT, 12A/250VAC",
+  "RM85-LED-12V": "moduł LED, wskaź
+=== END PROCESSING: Saved 3 models ===
+
+
+=== START PROCESSING: cennik_ropam-elektronik_20260302.pdf (16.04.2026, 20:56:11) ===
+PAGE 1 RAW:
+```json
+[
+  {
+    "MODEL": "Neo-IP-PS-SET",
+    "OPIS": "Neo-IP-PS/O-R3P/PS-3024/ zestaw, centrala alarmowa IP (WIFI) w obudowie natynkowej, zasilacz AC/DC, 2 strefy, Blx8-32, BOx8-24, AI,TEMPx2, Ari, opcje: EXP-LAN, EXP-LTE"
+  },
+  {
+    "MODEL": "Neo-IP-SET",
+    "OPIS": "Neo-IP/O-R3P/PSR-ECO-2012/ zestaw, centrala alarmowa IP (WIFI) w obudowie natynkowej z zasilaczem ECO, 2 strefy, Blx8-32, BOx8-24, AI,TEMPx2, Ari, opcje: EXP-LAN, EXP-LTE."
+  },
+  {
+    "MODEL": "Neo-IP",
+    "OPIS": "Neo-IP centrala alarmowa z IP (WIFI), 12VDC zasilanie PSR-ECO, 2 strefy, Blx8-32, BOx8-24, AI,TEMPx2, Ari, opcje: EXP LAN, EXP-LTE, РСВ."
+  },
+  {
+    "MODEL": "Neo-IP-D9M",
+    "OPIS": "Neo-IP-D9M centrala alarmowa z IP (WIFI), 12VDC zasilanie PSR-ECO, 2 strefy, Blx8-32, BOx8-24, AI, TEMPx2, Ari, opcje: EXP-LAN, EXP-LTE, obudowa DIN-9M."
+  },
+  {
+    "MODEL": "Neo-IP-PS",
+    "OPIS": "Neo-IP-PS centrala alarmowa z IP (WIFI), zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 2 strefy, Blx8-32, BOx8-24, AI, TEMPx2, Ari, opcje: EXP-LAN, EXP-LTE, PCB."
+  },
+  {
+    "MODEL": "Neo-IP-PS-D9M",
+    "OPIS": "Neo-IP-PS-D9M centrala alarmowa z IP (WIFI) zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 2 strefy, Blx8-32, BOx8-24, AI, TEMPx2, Ari, opcje: EXP-LAN, EXP-LTE, obudowa DIN-9M."
+  },
+  {
+    "MODEL": "Neo-IP-64-SET",
+    "OPIS": "Neo-IP-64/O-R4D/PSR-ECO-5012-RS zestaw, centrala alarmowa IP (WIFI ant zewn.), w obudowie natynkowej z zasilaczem ECO, antena WIFI, 4 strefy, Blx16-64, BOx8-40, AI,TEMP/RH/AQ, Ari, opcje: EXP-LAN, EXP-LTE."
+  },
+  {
+    "MODEL": "Neo-IP-64",
+    "OPIS": "Neo-IP-64 centrala alarmowa z IP (WIFI ant zewn.), 12VDC zasilanie PSR-ECO, 4 strefy, Blx16-64, BOx8-40, TEMP/RH/AQ, Ari, opcje: EXP-LAN, EXP-LTE, РСВ."
+  },
+  {
+    "MODEL": "Neo-IP-64-D12M",
+    "OPIS": "Neo-IP-64-D9M centrala alarmowa z IP (WIFI ant zewn.), 12VDC zasilanie PSR-ECO, 4 strefy, Blx16-64, BOx8-40, Al, TEMP/RH/AQ, Ari, opcje: EXP-LAN, EXP-LTE, obudowa DIN-12M."
+  },
+  {
+    "MODEL": "Neo-IP-64-PS",
+    "OPIS": "Neo-IP-64-PS centrala alarmowa z IP (WIFI ant zewn.), zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 4 strefy, Blx16-64, BOx8-40, AI, TEMP/RH/AQ, Ari, opcje: EXP-LAN, EXP-LTE, PCB."
+  }
+]
+```
+PAGE 2 RAW:
+```json
+[
+  {
+    "MODEL": "Neo-IP-64-PS-D12M",
+    "OPIS": "centrala alarmowa z IP (WIFI ant zewn.), zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 4 strefy, Blx16-64, BOx8-40, AI, TEMP/RH/AQ, Ari, opcje: EXP-LAN, EXP-LTE obudowa DIN-12M."
+  },
+  {
+    "MODEL": "NeoLTE-IP-PS-SET",
+    "OPIS": "NeoLTE-IP-PS/O-R3P/PS-3024/AT-GSM-MINI90 zestaw, centrala alarmowa LTE/IP (WIFI), obudowa natynkowa, zasilacz AC/DC, 2 strefy, Blx8-32, BOx8-24, AI, TEMPx2, Ari, opcje: EXP-LAN."
+  },
+  {
+    "MODEL": "NeoLTE-IP-SET",
+    "OPIS": "NeoLTE-IP/O-R3P/PSR-ECO-2012/AT-GSM-MINI90 zestaw, centrala alarmowa LTE/IP (WIFI) w obudowie natynkowej z zasilaczem ECO, 2 strefy, Blx8-32, BOx8-24, ΑΙ,TEMPx2, Ari, opcje: EXP-LAN."
+  },
+  {
+    "MODEL": "NeoLTE-IP",
+    "OPIS": "centrala alarmowa z LTE/IP (WIFI), 12VDC zasilanie PSR-ECO, 2 strefy, Blx8-32, BOx8-24, AI, TEMPx2, Ari, opcje: EXP-LAN, PCB."
+  },
+  {
+    "MODEL": "NeoLTE-IP-D9M",
+    "OPIS": "centrala alarmowa z LTE/IP (WIFI), 12VDC zasilanie PSR-ECO, 2 strefy, Blx8-32, BOx8-24, AI, TEMPx2, Ari, opcje: EXP-LAN, obudowa DIN-9M."
+  },
+  {
+    "MODEL": "NeoLTE-IP-PS",
+    "OPIS": "centrala alarmowa z LTE/IP (WIFI), zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 2 strefy, Blx8-32, BOx8-24, AI,TEMPx2, Ari, opcje: EXP-LAN, PCB"
+  },
+  {
+    "MODEL": "NeoLTE-IP-PS-D9M",
+    "OPIS": "centrala alarmowa z LTE/IP (WIFI) zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 2 strefy, Blx8-32, BOx8-24, AI,TEMPx2, Ari, opcje: EXP-LAN, obudowa DIN-9M."
+  },
+  {
+    "MODEL": "NeoLTE-IP-64-SET",
+    "OPIS": "NeoLTE-IP-64/O-R4D/PSR-ECO-5012-RS zestaw, centrala alarmowa IP (WIFI ant zewn.), w obudowie natynkowej z zasilaczem ECO, antena WIFI i LTE (zewn.), 4 strefy, Blx16-64, BOx8-40, AI,TEMP/RH/AQ, Ari, opcje: EXP-LAN."
+  },
+  {
+    "MODEL": "NeoLTE-IP-64",
+    "OPIS": "centrala alarmowa z LTE/IP (WIFI ant zewn.), 12VDC zasilanie PSR-ECO, 4 strefy, Blx16-64, BOx8-40, TEMP/RH/AQ, Ari, opcje: EXP-LAN, PCB."
+  },
+  {
+    "MODEL": "NeoLTE-IP-64-D12M",
+    "OPIS": "centrala alarmowa z LTE/IP (WIFI ant zewn.), 12VDC zasilanie PSR-ECO, 4 strefy, Blx16-64, BOx8-40, AI, TEMP/RH/AQ, Ari, opcje: EXP-LAN, obudowa DIN-12M."
+  },
+  {
+    "MODEL": "NeoLTE-IP-64-PS",
+    "OPIS": "centrala alarmowa z LTE/IP (WIFI ant zewn.), zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 4 strefy, Blx16-64, BOx8-40, AI, TEMP/RH/AQ, Ari, opcje: EXP-LAN, PCB."
+  }
+]
+```
+PAGE 3 RAW:
+```json
+{
+  "NeoLTE-IP-64-PS-D12M": "centrala alarmowa z LTE/IP (WIFI ant zewn.), zasilanie 17VAC/24VDC, zasilacz 12V/1,5A, 4 strefy, Blx16-64, BOx8-40, AI, TEMP/RH/AQ, Ari, opcje: EXP-LAN, obudowa DIN-12M.",
+  "EXP-LAN": "port Ethernet: 10/100 BaseT, RJ45, kompatybilność: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, PCB moduł lokalny.",
+  "EXP-LTE": "modem LTE, obsługa sieci 2G/4G kompatybilność: Neo-IP/-64, PCB moduł lokalny, wymagana antena GSM/LTE.",
+  "TPR-7W": "panel dotykowy, 7” TFT LCD, dotyk pojemnościowy, obudowa: szklo+ABS, natynkowa, kolor biały, 182x120x17mm, złącza zaciskowe, kompatybilność: NeoLTE-IP-64, Neo-IP-64, NeoGSM-IP-64, montaż na płaskim podłożu lub puszka fi60mm.",
+  "TPR-7B": "panel dotykowy, 7” TFT LCD, dotyk pojemnościowy, obudowa: szklo+ABS, natynkowa, kolor czarny, 182x120x17mm, złącza zaciskowe, kompatybilność: NeoLTE-IP-64, Neo-IP-64, NeoGSM-IP-64, montaż na płaskim podłożu lub puszka fi60mm.",
+  "TPR-4W-P": "panel dotykowy, 4,3\" TFT LCD, dotyk pojemnościowy, obudowa: szklo+ABS, natynkowa, kolor biały, 123x89x18mm, montaż na płaskim podłożu lub puszka fi60, złącza nierozłączne, kompatybilność: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64.",
+  "TPR-4B-P": "panel dotykowy, 4,3\" TFT LCD, dotyk pojemnościowy, obudowa: szklo+ABS, natynkowa, kolor czarny, 123x89x18mm, montaż na płaskim podłożu lub puszka fi60, złącza nierozłączne, kompatybilność: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64.",
+  "TK-4W": "klawiatura dotykowa, strefowa: biała, obudowa: ABS, natynkowa, kolor biały, 123x89x18mm, system: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, OptimaGSM.",
+  "TK-4B": "klawiatura dotykowa, strefowa: biała, obudowa: ABS, natynkowa, kolor czarny, 123x89x18mm, system: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, OptimaGSM"
+}
+```
+PAGE 4 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"API key expired. Please renew the API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key expired. Please renew the API key."}]}}
+PAGE 5 ERROR: Gemini API Error (Status 503): {"error":{"code":503,"message":"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.","status":"UNAVAILABLE"}}
+PAGE 6 RAW:
+```json
+[
+  {
+    "MODEL": "MultiLTE-RF-SETH",
+    "OPIS": "MultiLTE-RF/AT-GSM-MINI90/zasilacz 230VAC/12VDC zestaw w obudowie hermetycznej, zasilanie 12VDC/230VAC, zaprogramowany do sterowania bramą, szlabanem, konfiguracja nr. tel. mozliwa przez SMS/aplikację RopamBasic."
+  },
+  {
+    "MODEL": "Basic4G-PS-SET",
+    "OPIS": "Basic4G-PS/AT-GSM-MINI90/O-R3P/PS-3024/ zestaw, moduł LTE w obudowie natynkowej z zasilaczem AC/DC i anteną GSM/LTE."
+  },
+  {
+    "MODEL": "Basic4G-SET",
+    "OPIS": "Basic4G/AT-GSM-MINI90/O-R3P/PSR-ECO-2012/ zestaw, moduł LTE w obudowie natynkowej z zasilaczem -ECO i anteną GSM/LTE."
+  },
+  {
+    "MODEL": "Basic4G",
+    "OPIS": "moduł komunikacyjny LTE (2G/4G), 12VDC, TELx8, E-MAIL x8, Blx6+ BI/AIx2, BOx4, SMS/CALL/E-MAIL, TEMP/RHx1, PCB."
+  },
+  {
+    "MODEL": "Basic4G-D4M",
+    "OPIS": "moduł komunikacyjny LTE (2G/4G), 12VDC, TELx8, E-MAIL x8, Blx6+ BI/AIx2, BOx4, SMS/CALL/E-MAIL, TEMP/RHx1, obudowa DIN-4M."
+  },
+  {
+    "MODEL": "Basic4G-PS",
+    "OPIS": "moduł powiadomienia i sterowania LTE (2G/4G), 16VAC/24VDC, zasilacz buforowy 12V/1,5A, TELx8, E-MAIL x8, Blx6+ BI/AIx2, BOx4, SMS/CALL/E-MAIL, TEMP/RHx1, PCB."
+  },
+  {
+    "MODEL": "Basic4G-PS-D4M",
+    "OPIS": "moduł komunikacyjny LTE (2G/4G), 16VAC/24VDC, zasilacz buforowy 12V/1,5A, TELx8, Blx8, BOx4, AI, SMS/VOICE/CLIP, TEMP/RHx1, obudowa DIN-4M."
+  },
+  {
+    "MODEL": "Basic4G-BOX",
+    "OPIS": "zestaw moduł LTE + AT-GSM-MINI90 w obudowie natynkowej, 12VDC, TELx8, E-MAIL x8, Blx6+ BI/AIx2, BOx4, SMS/CALL/E-MAIL, TEMP/RHx1."
+  },
+  {
+    "MODEL": "Basic4G-RopamBasic",
+    "OPIS": "licencja na uruchomienie aplikacji RopamBasic, generowana cyfrowo na podstawie ID modułu, wymaga wgrania do modułu przez program BasicLTE Manager"
+  },
+  {
+    "MODEL": "LCD-HMI-D4M",
+    "OPIS": "Panel LCD-HMI w obudowie na szynę DIN 4 moduły, kompatybilność: BasicLTE, MultiLTE, BasicGSM 2, MultiGSM 2 (bez -PS)"
+  },
+  {
+    "MODEL": "EXP-RF",
+    "OPIS": "Odbiornik RF 433 MHz do sterowania pilotami TR-4x, moduł lokalny, PCB, kompatybilność: BasicLTE/-PS"
+  }
+]
+```
+PAGE 7 RAW:
+```json
+{
+  "APm-ari": "APm-ari kontroler, systemu bezprzewodowego ari, ISM 868 MHz, magistrala RopamNET, obudowa natynkowa biała, kompatybilność: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64",
+  "PIR-ari": "PIR-ari cyfrowa, bezprzewodowa, pasywna czujka podczerwieni, system ari, szerokokątna, wewnętrzna, bateria ER14505.",
+  "MGD-ari-WH": "MGD-ari-WH bezprzewodowa czujka magnetyczna, system ari, biała, bateria ER14250.",
+  "FS-ari": "FS-ari bezprzewodowa czujka zalania wodą, sonda-1m, system ari, biała, bateria ER14250.",
+  "OSD-ari": "OSD-ari optyczna, bezprzewodowa, czujka dymu, system ari, wewnętrzna, natynkowa, biała, bateria ER14505.",
+  "TX4-ari-BCH": "TX4-ari-BCH pilot 4-kanałowy do dwukierunkowego systemu bezprzewodowego ari, obudowa czarna + chromowy bok, bat. CR2032.",
+  "TX4-ari-B": "TX4-ari-B pilot 4-kanałowy do dwukierunkowego systemu bezprzewodowego ari, obudowa czarna, bat. CR2032.",
+  "TX4-ari-W": "TX4-ari-B pilot 4-kanałowy do dwukierunkowego systemu bezprzewodowego ari, obudowa biała, bat. CR2032.",
+  "IO-ari": "IO-ari bezprzewodowy moduł wejścia/wyjścia system ari, wewnętrzny, obudowa natynkowa, biała, bateria ER14250.",
+  "RHT-ari": "RHT-ari bezprzewodowy czujnik wilgotności i temperatury, wewnętrzny, obudowa natynkowa, biała, bateria ER14505.",
+  "IO-ari-230V": "IO-ari-230V bezprzewodowy, douszkowy, dwukanałowy sterownik 230VAC, 2xNO, 2xIN (N).",
+  "SROL-ari": "SROL-ari bezprzewodowy, douszkowy sterownik rolety 230VAC, amperometryka, status rolety w aplikacji i panelu dotykowym (-IP-64).",
+  "BAT-ER14505M": "BAT- ER14505M bateria litowa 3.6V, 2000mAh AA, kompatybilność: PIR-ari, OSD-ari.",
+  "BAT-ER14250": "BAT- ER14250 bateria litowa 3.6V, 1200mAh, 1/2 AA, kompatybilność: MGD-ari, FS-ari, IO-ari",
+  "H-TX4": "H-TX4 uchwyt naścienny do pilotów TX4-ari, przeźroczysty 68x52x15mm"
+}
+```
+PAGE 8 RAW:
+```json
+{
+  "RF-4C": "Odbiornik sterownika radiowego, 433MHz, superheterodyna, 4 kanały, praca systemowa: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, OptimaGSM lub autonomiczna, obudowa natynkowa.",
+  "RF-4C-2K": "Sterownik radiowy, 433MHz, superheterodyna, 4 kanały, praca systemowa: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, OptimaGSM lub autonomiczna, obudowa natynkowa, 2 piloty TR-4H.",
+  "TR-4": "Pilot 4-kanałowy, 433MHz, bateria 27A/12V, przeznaczenie: RF-4.",
+  "TR-4H": "Pilot 4-kanałowy, 433MHz, bateria 27A/12V, współpraca z RF-4, MultiLTE-RF, EXP-RF. bryzgoszczelny.",
+  "TR-4H-ID": "Pilot 4-kanałowy, 433MHz, dedykowany do MultiLTE-RF, ID pilota- naklejka, bateria 27A, bryzgoszczelny.",
+  "EXP-RF": "Odbiornik RF 433 MHz do sterowania pilotami TR-4x, moduł lokalny, PCB, kompatybilność: BasicLTE/-PS. Basic4G/-PS.",
+  "EXP-18": "Ekspander, moduł 8 wejść BI, kompatybilność: Neo-IP, NeoLTE-IP, NeoGSM-IP, ekspander lokalny, PCB.",
+  "EXP-18-D2M": "Ekspander, moduł 8 wejść BI, kompatybilność:Neo-IP, NeolLTE-IP, NeoGSM-IP, ekspander lokalny, obudowa DIN-2M.",
+  "EXP-18-RN": "Ekspander, moduł 8 wejść BI, kompatybilmość: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, magistrala RopamNET, PCB.",
+  "EXP-18-RN-D4M": "Ekspander, moduł 8 wejść BI, kompatybilmość: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, magistrala RopamNET, obudowa DIN 4M.",
+  "EXP-O8T-RN": "Ekspander, moduł 8 wyjść tranzystorowych BO, 0,7A/30VDC, OCP, OVP, kompatybilność: Neo-IP/-64, NeolLTE-IP/-64, NeoGSM-IP/-64 magistrala RopamNET, PCB."
+}
+```
+PAGE 9 ERROR: Gemini API Error (Status 400): {"error":{"code":400,"message":"API key expired. Please renew the API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key expired. Please renew the API key."}]}}
+PAGE 10 RAW:
+```json
+{
+  "TSR-H-RN": "TSR-H-RN przewodowy czujnik temperatury,-20..+80°C, magistrala RopamNET, kompatybilność: Neo-IP-64, NeoLTE-IP-64, NeoGSM-IP-64, obudowa natynkowa ABS, IP65 do pracy w trudnych warunkach",
+  "RHT-2": "RHT-2 cyfrowy, przewodowy czujnik wilgotności i temperatury, pomiar wilgotności: 0-100 %RH bez kondensacji, pomiar temp: -20°C do +80°C (powietrze), obudowa natynkowa, biała, magistrala TSR: Neo-IP/-64, NeoLTE-IP/-64, BasicLTE/Basic4G/MultiLTE, lub uniwersalne 2 wyjścia analogowe 0-10V: TEMP. /HUM.",
+  "RHT-2H": "RHT-2 cyfrowy, przewodowy czujnik wilgotności i temperatury, pomiar wilgotności: 0-100 %RH bez kondensacji, pomiar temp: -20°C do +80°C (powietrze), obudowa natynkowa ABS, IP65 z filtrem ochronnym (IP63) do pracy w trudnych warunkach, magistrala TSR: Neo-IP/-64, NeolLTE-IP/-64, NeoGSM-IP/-64, BasicLTE/MultiLTE, BasicGSM/MultiGSM lub uniwersalne 2 wyjścia analogowe 0-10V: TEMP. /HUM.",
+  "RHT-RN": "RHT-RN przewodowy czujnik wilgotności i temperatury (powietrze),-20..+80°C, 0..100 %RH, magistrala RopamNET, kompatybilność: Neo-IP-64, NeoLTE-IP-64, NeoGSM-IP-64, obudowa natynkowa biała.",
+  "RHT-H-RN": "RHT-H-RN przewodowy czujnik wilgotności i temperatury (powietrze),-20..+80°C, 0..100%RH, magistrala RopamNET, kompatybilność: Neo-IP-64, NeoLTE-IP-64, NeoGSM-IP-64, obudowa natynkowa ABS, IP65 z filtrem ochronnym (IP63) do pracy w trudnych warunkach.",
+  "RHT-AQ-RN": "RHT-AQ-RN przewodowy czujnik temperatury, wilgotności i jakości powietrza: stężenie CO2 i TVOC, -20..+80°C, 0..100 %RH, magistrala RopamNET, kompatybilność: Neo-IP-64, NeoLTE-IP-64, NeoGSM-IP-64, obudowa natynkowa biała.",
+  "USB-USBmicro": "USB-USBmicro kabel USB A wtyk, USB B micro wtyk, niklowany, 3m, do programowania: Neo-IP/-64, NeolLTE-IP/-64, NeoGSM-IP/-64, BasicLTE/MultiLTE/Basic4G, TPR-4x.",
+  "USB-MGSM": "USB-MGSM kabel USB, konwerter: USB-RS232TTL, USB:A-RJ12, do programowania: OptimaGSM, aktualizacji: TPR-1/-2, EXP-18-RN, EXP-O8x-RN."
+}
+```
+PAGE 11 RAW:
+```json
+[
+  {
+    "MODEL": "AT-GSM-MOD",
+    "OPIS": "antena GSM/LTE pionowa/kątowa 90°, 4,5dBi, VSWR< 2.1, 800-2700 MHz,, SMAm, 20x151 mm, czarna."
+  },
+  {
+    "MODEL": "AT-GSM-MINI90",
+    "OPIS": "antena GSM/LTE, kątowa 90°, 2,15dBi, VSWR<2.0, 800-2100 MHz, SMAm, fi12 x 55 mm, czarna."
+  },
+  {
+    "MODEL": "AT-GSM-MAXI",
+    "OPIS": "antena GSM/LTE pionowa, 1/2 fali, 2,15 dBi, VSWR< 1.5, 800-2100 MHz, SMAm, fi12 mm x 160 mm, czarna."
+  },
+  {
+    "MODEL": "AT-GSM-MAG",
+    "OPIS": "antena GSM/LTE magnetyczna, zewnętrzna/wewnętrzna, 2,15dBi, VSWR<2, 820-2100 MHz, RG174-2,5m, SMAm, fi27mm x 107mm, czarna."
+  },
+  {
+    "MODEL": "AT-GSM-MAG-9dBi",
+    "OPIS": "antena GSM/LTE magnetyczna, zewnętrzna/wewnętrzna, 9dBi,VSWR<2, 820-2100 MHz, RG174-5m, SMAm, fi82 mm x 420 mm, czarna."
+  },
+  {
+    "MODEL": "AT-GSM-CAP",
+    "OPIS": "antena GSM/LTE zewnetrzna, wandaloodporna, wodoodporna, 2,2 dBi, VSWR< 2:1, 820-2100 MHz, RG174-5m, SMAm, 70x15 (Wx H1 mm), montaż śrubowy (fi14x15), czarna."
+  },
+  {
+    "MODEL": "AT-GSM-LOG",
+    "OPIS": "antena GSM/LTE zewnętrzna/wewnetrzna, 9dBi, WSWR< 2, 800/2100 Mhz, RG58-10m, SMAm, antena 1/4 fali, polaryzacja V."
+  },
+  {
+    "MODEL": "AT-GSM-LOG-EC",
+    "OPIS": "antena zewnętrznego, GSM/LTE, 800-2500 MHz, 9dBi, VSWR:< 1.5, 50 Ohm, V 80°, LMR195-10m, SMAm wymiary 29,3 x 20,8 x 6,4 [cm], biała."
+  },
+  {
+    "MODEL": "AT-GSM-TAG",
+    "OPIS": "antena GSM/LTE płaska, klejona, 2,5 dBi, VSWR< 1.5, 900/1800 Mhz, RG174 - 2,5m, SMAm, czarna."
+  },
+  {
+    "MODEL": "AT-GSM-WALL",
+    "OPIS": "antena GSM/LTE do montażu zewnętrznego/wewnętrznego, 2,15dBi, WSWR< 1.5, 900/1800 Mhz, LMR195-5m, SMAm, czarny/ stalowy, 1/2 fali."
+  },
+  {
+    "MODEL": "AT-GSM-WALL20",
+    "OPIS": "antena GSM/LTE do montażu zewnętrznego/wewnętrznego, 2,15dBi, WSWR< 1.5, 900/1800 Mhz, LMR195-20m, SMAm, czarny/ stalowy, 1/2 fali."
+  },
+  {
+    "MODEL": "AT-GSM-EXT3",
+    "OPIS": "przedłużacz do anten GSM, 50 Ohm, SMA/SMAf, kabel LMR195-3m, czarny."
+  },
+  {
+    "MODEL": "AT-GSM-EXT5",
+    "OPIS": "przedłużacz do anten GSM, 50 Ohm, SMA/SMAf, kabel LMR195-5m, czarny."
+  },
+  {
+    "MODEL": "AT-GSM-EXT10",
+    "OPIS": "przedłużacz do anten GSM, 50 Ohm, SMA/SMAf, kabel LMR195-10m, czarny."
+  },
+  {
+    "MODEL": "AT-GSM-EXT20",
+    "OPIS": "przedłużacz do anten GSM, 50 Ohm, SMA/SMAf, kabel LMR195-20m, czarny.."
+  }
+]
+```
+PAGE 12 RAW:
+```json
+{
+  "AT-SMAM-20-SMAf": "przedłużacz do obudów i anten SMA, RAm/SMAf, kabel RG174-20cm, czarny.",
+  "KON-U.FL-SMA(F)-150": "konektor, pigtail U.FL--RG1.13--SMA(f), 150 mm,",
+  "AT-SMAf-FMEf": "przejście, adapter gniazdo SMA - gniazdo FME, wkręcany do SMA-m",
+  "PSR-ECO-2012": "buforowy i nadzorowany zasilacz AC/DC, 12V/DC, 20W, obudowa DIN 2M, do zasilania central i ternminali 12V lub uniwersalny, kompensacja Ubat/temp.",
+  "PSR-ECO-5012-RS": "Inteligentny, buforowy i nadzorowany zasilacz AC/DC, RopamNET, 12V/DC, 50W, obudowa DIN 6M, system (wiązka): Neo-IP/-64, NeolLTE-IP/-64, NeoGSM-IP/-64",
+  "PSR-ECO-5012-RN": "Inteligentny, buforowy i nadzorowany zasilacz AC/DC, 12V/DC, 50W, obudowa DIN 6M, zasilacz uniwersalny (złącza)",
+  "PS-3012": "zasilacz AC/DC 30W/12VDC, 2,5A, dopuszkowy, IP67, zabezpieczenia: OCP, SCP, OVP, przwody 230VAC: 24cm/0,75mm2, 12VDC:24cm/ 0,32 mm2, 50x47x25 mm",
+  "PS-3024": "zasilacz AC/DC 30W/24VDC, 1,25A, dopuszkowy, IP67, zabezpieczenia: OCP, SCP, OVP, przwody 230VAC: 24cm/0,75mm2, 12VDC:24cm/ 0,32 mm2, 50x47x25 mm",
+  "PS-HDN-3024": "zasilacz impulsowy 30W/24VDC na szynę DIN 2M, sprawność 86%, zabezpieczenie OCP, SCP. (zamiennik transformatora 30VA/16V do płyt -PS)",
+  "TRA-30VA/16.5V": "transformator El-kompaktowy, zasilanie wersji -PS, montaż w O-R3D, O-R4D, O-RHD",
+  "O-R3P": "obudowa plastikowa, natynkowa, 264x253x85 WxHXD [mm], jasnoszara, tamper, przeznaczenie: centrala, terminale LTE 12V, PSR-ECO-2012, akum. 7Ah/1.2Ah.",
+  "O-R3D": "obudowa metalowa, natynkowa, 245x235x95 WxHXD [mm], RAL7035, tamper, przeznaczenie: centrala, terminale LTE 12V, PSR-ECO-2012, akum. 7Ah/1.2Ah.",
+  "O-R4D": "obudowa metalowa, natynkowa, 325x305x95 WxHXD [mm], RAL7035, tamper, przeznaczenie: centrale, PSR-ECO-5012-RS akum. 18Ah/7Ah"
+}
+```
+PAGE 13 RAW:
+```json
+[
+  {
+    "MODEL": "O-RHD",
+    "OPIS": "obudowa hermetyczna, ABS, natynkowa, 265x185x95 WxHXD [mm], RAL7035, przeznaczenie: centrala 12VDC, PSR-ECO-2012, akum. 2.2Ah/1.2Ah"
+  },
+  {
+    "MODEL": "O-RHS",
+    "OPIS": "obudowa hermetyczna, natynkowa, 176x126x58 WxHXD [mm], RAL7035, tamper, przeznaczenie: wersje BasiLTE/Basic4G/MultiLTE-RF/EXP-I8-RN, EXP-O8T-RN"
+  },
+  {
+    "MODEL": "O-RBOX",
+    "OPIS": "obudowa natynkowa, 130x100x36 WxHXD [mm], jasnoszara, tamper, przeznaczenie: BasicLTE/Basic4G/MultiLTE-RF/EXP-I8-RN, EXP-O8T-RN"
+  },
+  {
+    "MODEL": "O-R2D12",
+    "OPIS": "obudowa, rozdzielnia natynkowa, 350x310x104 WxHXD [mm], biała, tamper, 2 szyny DIN (2x12), rozbudowa przez łączenia, przeznaczenie: centrale, moduły DIN, akum. 7Ah/1.2Ah"
+  },
+  {
+    "MODEL": "O-R3D12",
+    "OPIS": "obudowa, rozdzielnia natynkowa, 350x475x104 WxHXD [mm], biała, tamper, 3 szyny DIN (3x12), rozbudowa przez łączenia, przeznaczenie: centrale, moduły DIN, akum. 7Ah/18Ah"
+  },
+  {
+    "MODEL": "O-KEY",
+    "OPIS": "metalowy zamek z dwoma kluczami do rozdzielni O-RxD12"
+  },
+  {
+    "MODEL": "O-LINK",
+    "OPIS": "O-LINK łaczniki do połączenia rozdzielni O-RxD12, w pionie lub poziomie (kpl.=2szt.)"
+  },
+  {
+    "MODEL": "BP 1.2Ah 12V",
+    "OPIS": "1.2Ah 12V akumulator AGM o żywotności projektowanej 3-5 lat (wg. Eurobat) dedykowana do O-R2D, O-RHD, O-R3x"
+  },
+  {
+    "MODEL": "BP 7Ah 12V",
+    "OPIS": "7Ah 12V akumulator AGM o żywotności projektowanej 3-5 lat (wg. Eurobat) dedykowana O-R3x, O-R4D, O-R2D12"
+  },
+  {
+    "MODEL": "BP 18Ah 12V",
+    "OPIS": "18Ah 12V akumulator AGM o żywotności projektowanej 3-5 lat (wg. Eurobat) dedykowana O-R4D, O-R3D12"
+  },
+  {
+    "MODEL": "AM 2.2Ah 12V",
+    "OPIS": "2,2Ah, 12V akumulator AGM o żywotności projektowanej 6-9 lat (wg. Eurobat) dedykowana do O-R2D, O-RHD."
+  },
+  {
+    "MODEL": "RM5-12V-1P",
+    "OPIS": "RM5-12V-1P moduł przekaźnika, dopuszkowy, instalacyjny, cewka 12Vdc, SPST, 5A/250VAC, sygnalizacja LED, zabezpieczenie przeciwprzepięciowe"
+  },
+  {
+    "MODEL": "RM5-12V-4P",
+    "OPIS": "RM5-12V-4P moduł przekaźnika, 4 przekaźniki na szynę w obudowie DIN 2M, cewka 12Vdc, SPST, 5A/250VAC, sygnalizacja LED, zabezpieczenie przeciwprzepięciowe"
+  },
+  {
+    "MODEL": "RM5-24V-4P",
+    "OPIS": "RM5-12V-1P moduł przekaźnika, 4 przekaźniki na szynę w obudowie DIN 2M, cewka 24Vdc, SPST, 5A/250VAC, sygnalizacja LED, zabezpieczenie przeciwprzepięciowe"
+  }
+]
+```
+PAGE 14 RAW:
+```json
+[
+  {
+    "MODEL": "RM85-12V-1P",
+    "OPIS": "moduł przekaźnika na szynę DIN 1M, cewka 12Vdc, SPDT, 12A/250VAC"
+  },
+  {
+    "MODEL": "RM85-LED-12V",
+    "OPIS": "moduł LED, wskaźnik, zabezpiecznie przeciwprzepięciowe."
+  },
+  {
+    "MODEL": "RM69-12V-1P",
+    "OPIS": "moduł przekaźnika na szynę DIN 1/3M (6mm), cewka 12Vdc, SPDT, 6A /250VAC."
+  },
+  {
+    "MODEL": "RM85-230V-1P",
+    "OPIS": "moduł przekaźnika na szynę DIN 1M, cewka 230Vac, SPDT, 12A/300VAC."
+  },
+  {
+    "MODEL": "RG25-230V-2P",
+    "OPIS": "przekaźnik przemysłowym, małogabarytowy, wysokoprądowe, DIN 2M, cewka 230Vac, DPST-NO, 2xNO, 25A/400VAC, 25A/24VDC."
+  },
+  {
+    "MODEL": "FS-NPN-2m",
+    "OPIS": "czujka zalania przewodowa, sonda+ 2m przewód, IP67, wyjście NPN 0,1A, zasilanie 12/24VDC."
+  },
+  {
+    "MODEL": "PMT",
+    "OPIS": "Kontroler fazy, IN: 230VAC L-N, OUT: OC NPN, 5mA/30VDC."
+  },
+  {
+    "MODEL": "KAB-12VDC-NeoX-IP",
+    "OPIS": "Wiązka do zasilania 12VDC: Neo-IP/-64, NeoLTE-IP/-64, NeoGSM-IP/-64, zabezpieczenie przed odwrotną polaryzacją, złącze PSR-ECO-2012."
+  },
+  {
+    "MODEL": "EV228BW-12E-IMPULSE",
+    "OPIS": "zawór elektromagnetyczny bistabilny sterowany impulsem Danfoss EV228BW, zestaw cewka 12VDC + wtyczka BB + moduł sterowania z centrali/modułu, typ elektrozaworu: 2/2 drożny, rozmiar przyłącza 1/2\", średnica gniazda DN 15, mosiądz + EPDM, atest PZΗ"
+  },
+  {
+    "MODEL": "EV228BW-34E-IMPULSE",
+    "OPIS": "zawór elektromagnetyczny bistabilny sterowany impulsem Danfoss EV228BW, zestaw cewka 12VDC + wtyczka BB + moduł sterowania z centrali/modułu, typ elektrozaworu: 2/2 drożny, rozmiar przyłącza 3/4\", średnica gniazda DN 20, mosiądz + EPDM, atest PΖΗ"
+  }
+]
+```
+=== END PROCESSING: Saved 56 models ===
+
+
+=== START PROCESSING: Cennik SSWiN_2026-02-16_BF.pdf (16.04.2026, 21:11:10) ===
+PAGE 1 RAW:
+```json
+{
+  "INTEGRA 64 Plus": "Płyta główna centrali alarmowej od 16 do 64 wejść i wyjść",
+  "INTEGRA 128 Plus": "Płyta główna centrali alarmowej od 16 do128 wejść i wyjść",
+  "INTEGRA 256 Plus": "Płyta główna centrali alarmowej od 16 do 256 wejść i wyjść",
+  "INTEGRA 32": "Płyta główna centrali alarmowej od 8 do 32 wejść i wyjść",
+  "INTEGRA 64": "Płyta główna centrali alarmowej od 16 do 64 wejść i wyjść",
+  "INTEGRA 128": "Płyta główna centrali alarmowej od 16 do 128 wejść i wyjść",
+  "INT-TSG2R-B": "Manipulator z ekranem dotykowym 4,3\" (czarny, czytnik kart zbliżeniowych MIFARE)",
+  "INT-TSG2R-W": "Manipulator z ekranem dotykowym 4,3\" (biały, czytnik kart zbliżeniowych MIFARE)",
+  "INT-TSH2R-B": "Manipulator z ekranem dotykowym 7\" (czarny, czytnik kart zbliżeniowych MIFARE)",
+  "INT-TSH2R-W": "Manipulator z ekranem dotykowym 7\" (biały, czytnik kart zbliżeniowych MIFARE)",
+  "INT-TSH210-B": "Manipulator z ekranem dotykowym 10\" (czarny)",
+  "INT-TSH210-W": "Manipulator z ekranem dotykowym 10\" (biały)",
+  "INT-TSI-B": "Manipulator z ekranem dotykowym 7\" (czarny; GRADE 3)",
+  "INT-TSI-W": "Manipulator z ekranem dotykowym 7\" (biały; GRADE 3)",
+  "INT-KWRL2-B": "Bezprzewodowy manipulator LCD (czarny, czytnik kart zbliżeniowych 125 kHz, współpraca z systemem ABAX 2)",
+  "INT-KWRL2-W": "Bezprzewodowy manipulator LCD (biały, czytnik kart zbliżeniowych 125 kHz, współpraca z systemem ABAX 2)",
+  "INT-KSG2R-B": "Manipulator z klawiaturą dotykową (czarny, czytnik kart zbliżeniowych MIFARE)",
+  "INT-KSG2R-W": "Manipulator z klawiaturą dotykową (biały, czytnik kart zbliżeniowych MIFARE)",
+  "INT-KLFR-B": "Manipulator LCD (czarny, czytnik kart zbliżeniowych 125 kHz, GRADE 3)",
+  "INT-KLFR-W": "Manipulator LCD (biały, czytnik kart zbliżeniowych 125 kHz, GRADE 3)",
+  "INT-KLCDR-W": "Manipulator LCD (białe podświetlenie, czytnik kart zbliżeniowych 125 kHz)",
+  "INT-KLCDR-BL": "Manipulator LCD (niebieskie podświetlenie, czytnik kart zbliżeniowych 125 kHz)",
+  "INT-KLCD-W": "Manipulator LCD (białe podświetlenie)",
+  "INT-KLCDS-BL": "Manipulator LCD (niebieskie podświetlenie)",
+  "INT-KLCDS-GR": "Manipulator LCD (zielone podświetlenie)",
+  "INT-SF-B": "Klawiatura strefowa (czarna, białe podświetlenie)",
+  "INT-SF-W": "Klawiatura strefowa (biała, białe podświetlenie)",
+  "INT-S-W": "Klawiatura strefowa (białe podświetlenie)"
+}
+```
+PAGE 2 RAW:
+```json
+{
+  "INT-S-BL": "Klawiatura strefowa (niebieskie podświetlenie)",
+  "INT-S-GR": "Klawiatura strefowa (zielone podświetlenie)",
+  "INT-SCR-BL": "Wielofunkcyjna klawiatura (szara, niebieskie podświetlenie, czytnik kart zbliżeniowych 125 kHz)",
+  "CR-MF5": "Klawiatura z czytnikiem kart zbliżeniowych (szara, białe podświetlenie klawiszy, standard MIFARE) - współpraca z centralami INTEGRA, praca autonomiczna",
+  "SO-MF5-B": "Klawiatura z czytnikiem kart zbliżeniowych (czarna, białe podświetlenie klawiszy, standard MIFARE) - współpraca z centralami INTEGRA, praca autonomiczna",
+  "SO-MF5-W": "Klawiatura z czytnikiem kart zbliżeniowych (biała, białe podświetlenie klawiszy, standard MIFARE) - współpraca z centralami INTEGRA, praca autonomiczna",
+  "INT-CR": "Moduł sterowania strefami (czytnik kart zbliżeniowych 125 kHz)",
+  "INT-RX-S": "Ekspander obsługi pilotów 433 MHz (w komplecie 2 piloty MPT-350)",
+  "INT-E": "Ekspander 8 wejść (GRADE 3)",
+  "INT-ADR": "Ekspander wejść adresowalnych (bez zasilacza)",
+  "CA-64 ADR-MOD": "Moduł wejścia adresowalnego do INT-ADR",
+  "INT-PP": "Ekspander 8 wejść + 8 wyjść (GRADE 3)",
+  "INT-O": "Ekspander 8 wyjść (OC/przekaźnik - konfiguracja za pomocą przełącznika typu DIP Switch; GRADE 3)",
+  "INT-ORS": "Ekspander 8 wyjść przekaźnikowych (obudowa plastikowa - modułowa, możliwy montaż w rozdzielnicach elektrycznych na szynie DIN)",
+  "INT-IORS": "Ekspander 8 wejść i 8 wyjść przekaźnikowych (obudowa plastikowa - modułowa, możliwy montaż w rozdzielnicach elektrycznych na szynie DIN)",
+  "ACU-220": "Kontroler systemu bezprzewodowego ABAX 2 (2 anteny)",
+  "ACU-280": "Kontroler systemu bezprzewodowego ABAX 2 (miniaturowy)",
+  "APS-412": "Zasilacz buforowy, impulsowy 12 V DC / 4 A do ekspanderów (obudowa plastikowa - modułowa, do montażu w obudowach uniwersalnych OPU-3 P i OPU-4 P/PW w miejscu transformatora oraz w rozdzielnicach elektrycznych na szynie DIN)",
+  "APS-612": "Zasilacz buforowy, impulsowy 12 V DC / 3A + 3 A do ekspanderów (obudowa plastikowa - modułowa, do montażu w obudowach uniwersalnych OMI-5 i OPU-3 P w miejscu transformatora oraz w rozdzielnicach elektrycznych na szynie DIN) zgodny z wymaganiami EN 50131 GRADE 3",
+  "ETHM-1 Plus": "Ethernetowy moduł komunikacyjny",
+  "INT-GSM LTE": "Moduł komunikacyjny z obsługą standardu LTE do central INTEGRA (w komplecie antena ANT-LTE-I, bez obudowy)",
+  "INT-VG": "Moduł głosowy - realizuje powiadamianie głosowe",
+  "INT-VMG": "Generator komunikatów głosowych (maks. 32) z wyjściem głośnikowym",
+  "ANT-LTE-I": "Antena do modułów komunikacyjnych pracujących w technologiach: LTE, UMTS/HSPA+, GSM/GPRS/EDGE (złącze IPX, montaż wewnątrz plastikowej obudowy: OPU-2 B, OPU-3 P, OPU-4 P)",
+  "ANT-LTE-O": "Antena do modułów komunikacyjnych pracujących w technologiach: LTE, UMTS/HSPA+, GSM/GPRS/EDGE (złącze SMA, montaż na zewnątrz obudowy)",
+  "ANT-900/1800": "Antena dwuzakresowa GSM z uchwytem magnetycznym (złącze SMA, długość kabla 2,5 m)",
+  "IPX-SMA": "Przejściówka umożliwiająca podłączenie do modułu komunikacyjnego, posiadającego gniazdo antenowe IPX, zewnętrznej anteny ze złączem SMA (długość 25 cm)"
+}
+```
+PAGE 3 RAW:
+```json
+{
+  "INT-AV": "Moduł dźwiękowej weryfikacji alarmu (w komplecie 1 szt. INT-AVT)",
+  "INT-AVT": "Terminal komunikacyjny do współpracy z modułem INT-AV",
+  "INT-KNX-2": "Moduł integracji z systemem KNX",
+  "INT-RS Plus": "Interfejs do integracji systemów",
+  "INT-FI": "Konwerter światłowodowy danych",
+  "INT-R": "Ekspander czytników kart zbliżeniowych i pastylek DALLAS",
+  "CZ-EMM": "Czytnik kart zbliżeniowych 125 kHz (biały, współpraca z ekspanderem INT-R oraz modułem kontroli przejścia ACCO-KP2)",
+  "CZ-EMM2": "Czytnik kart zbliżeniowych 125 kHz (biały, współpraca z ekspanderem INT-R oraz modułem kontroli przejścia ACCO-KP2)",
+  "CZ-EMM3": "Zewnętrzny czytnik kart zbliżeniowych 125 kHz (szary, współpraca z ekspanderem INT-R oraz modułem kontroli przejścia ACCO-KP2)",
+  "CZ-EMM4": "Zewnętrzny czytnik kart zbliżeniowych 125 kHz (szary, przycisk dzwonka, współpraca z ekspanderem INT-R oraz modułem kontroli przejścia ACCO-KP2)",
+  "CR-MF3": "Czytnik kart zbliżeniowych (szary, standard MIFARE) - współpraca z centralami INTEGRA (wymagany ekspander INT-R), praca autonomiczna",
+  "SO-MF3-B": "Czytnik kart zbliżeniowych (czarny, standard MIFARE) - współpraca z centralami INTEGRA (wymagany ekspander INT-R), praca autonomiczna",
+  "SO-MF3-W": "Czytnik kart zbliżeniowych (biały, standard MIFARE) - współpraca z centralami INTEGRA (wymagany ekspander INT-R), praca autonomiczna",
+  "CZ-DALLAS": "Czytnik pastylek DALLAS (współpraca z ekspanderem INT-R oraz modułem kontroli przejścia ACCO-KP2)",
+  "INT-SZ-BL": "Klawiatura typu zamek (niebieskie podświetlenie)",
+  "INT-SZ-GR": "Klawiatura typu zamek (zielone podświetlenie)",
+  "VERSA 10-KLCD": "Centrala alarmowa VERSA, w komplecie: płyta główna VERSA 10, manipulator VERSA-LCD-GR, obudowa OPU-4 P (bez transformatora)",
+  "VERSA 15-KLCD": "Centrala alarmowa VERSA, w komplecie: płyta główna VERSA 15, manipulator VERSA-LCD-GR, obudowa OPU-4 P (bez transformatora)",
+  "VERSA 10": "Płyta główna centrali alarmowej – 10 wejść, 4 wyjścia (maks. 30 wejść, 12 wyjść)",
+  "VERSA 15": "Płyta główna centrali alarmowej - 15 wejść, 4 wyjścia (maks. 30 wejść, 12 wyjść)",
+  "VERSA IP": "Centrala alarmowa z modułem komunikacyjnym ETH/PSTN i sygnalizatorem wewnętrznym (w komplecie: plastikowa obudowa OPU-4 PS, bez transformatora)",
+  "VERSA Plus LTE": "Centrala alarmowa z wielokanałowym modułem komunikacyjnym PSTN/GSM-LTE/ETH (w komplecie: sygnalizator wewnętrzny, antena ANT-LTE-I, plastikowa obudowa OPU-4 PS, bez transformatora)",
+  "INT-TSG2R-B": "Manipulator z ekranem dotykowym 4,3\" (czarny)",
+  "INT-TSG2R-W": "Manipulator z ekranem dotykowym 4,3\" (biały)",
+  "INT-TSH2R-B": "Manipulator z ekranem dotykowym 7\" (czarny)",
+  "INT-TSH2R-W": "Manipulator z ekranem dotykowym 7\" (biały)",
+  "INT-TSH210-B": "Manipulator z ekranem dotykowym 10\" (czarny)"
+}
+```
+PAGE 4 RAW:
+```json
+{
+  "INT-TSH210-W": "Manipulator z ekranem dotykowym 10\" (biały)",
+  "VERSA-KWRL2": "Manipulator bezprzewodowy LCD (białe podświetlenie, czytnik kart zbliżeniowych 125 kHz, współpraca z systemem ABAX 2)",
+  "VERSA-LCDR-WH": "Manipulator LCD (białe podświetlenie, czytnik kart zbliżeniowych 125 kHz, współpraca z centralami VERSA, VERSA IP i VERSA Plus z wersją oprogramowania v1.06 lub wyższą)",
+  "VERSA-LCDM-WH": "Manipulator LCD (białe podświetlenie)",
+  "VERSA-LCD-BL": "Manipulator LCD (niebieskie podświetlenie)",
+  "VERSA-LCD-GR": "Manipulator LCD (zielone podświetlenie)",
+  "INT-CR": "Moduł sterowania strefami (czytnik kart zbliżeniowych 125 kHz)",
+  "INT-RX-S": "Ekspander obsługi pilotów 433 MHz (w komplecie 2 piloty MPT-350)",
+  "ACU-220": "Kontroler dwukierunkowego bezprzewodowego systemu ABAX 2 (2 anteny)",
+  "ACU-280": "Kontroler dwukierunkowego bezprzewodowego systemu ABAX 2 (miniaturowy)",
+  "VERSA-MCU": "Moduł kontroli jednokierunkowych czujek i pilotów bezprzewodowego systemu MICRA",
+  "INT-E": "Ekspander 8 wejść (GRADE 3)",
+  "INT-O": "Ekspander 8 wyjść (OC/przekaźnik - konfiguracja za pomocą przełącznika typu DIP Switch; GRADE 3)",
+  "INT-ORS": "Ekspander 8 wyjść przekaźnikowych (obudowa plastikowa - modułowa, możliwy montaż w rozdzielnicach elektrycznych na szynie DIN)",
+  "ETHM-1 Plus": "Ethernetowy moduł komunikacyjny",
+  "INT-VG": "Moduł głosowy - realizuje powiadamianie głosowe",
+  "INT-VMG": "Generator komunikatów głosowych (maks. 32) z wyjściem głośnikowym",
+  "SM-2": "Syntezer mowy SM-2 (współpraca z centralami: INTEGRA, VERSA)",
+  "PERFECTA 16 LTE SET-A": "Centrala alarmowa PERFECTA 16 LTE w komplecie z anteną ANT-LTE-I i obudową OPU-4 P (bez transformatora)",
+  "PERFECTA 32 LTE SET-A": "Centrala alarmowa PERFECTA 32 LTE w komplecie z anteną ANT-LTE-I i obudową OPU-4 P (bez transformatora)",
+  "PERFECTA 64 M SET-A": "Centrala alarmowa PERFECTA 64 M w komplecie z anteną ANT-LTE-I i obudową OPU-4 P (bez transformatora)",
+  "PERFECTA 16 LTE": "Centrala alarmowa z komunikatorem GSM/LTE (w komplecie antena ANT-LTE-I, praca w sieciach 2G i 4G LTE)",
+  "PERFECTA 32 LTE": "Centrala alarmowa z komunikatorem GSM/LTE (w komplecie antena ANT-LTE-I, praca w sieciach 2G i 4G LTE)",
+  "PERFECTA 64 M": "Centrala alarmowa z komunikatorem GSM/LTE (w komplecie antena ANT-LTE-I, praca w sieciach 2G i 4G LTE)",
+  "PERFECTA-IP 32": "Centrala alarmowa z modułem komunikacyjnym ETH",
+  "PERFECTA-IP 64 M": "Centrala alarmowa z modułem komunikacyjnym ETH",
+  "PERFECTA-T 32": "Centrala alarmowa z dialerem telefonicznym PSTN",
+  "PERFECTA-T 32-WRL": "Centrala alarmowa z dialerem telefonicznym PSTN (obsługa urządzeń bezprzewodowego systemu MICRA)"
+}
+```
+PAGE 5 RAW:
+```json
+{
+  "PRF-LCD": "Manipulator LCD",
+  "PRF-LCD-WRL": "Bezprzewodowy manipulator LCD (współpraca z centralami PERFECTA typu WRL - obsługującymi urządzenia bezprzewodowego sytemu MICRA)",
+  "PRF-LCD-A2": "Bezprzewodowy manipulator LCD (czytnik kart zbliżeniowych 125 kHz, współpraca z centralami PERFECTA 64 M z kontrolerem systemu ABAX 2)",
+  "INT-TSG2R-B": "Manipulator z ekranem dotykowym 4,3\" (czarny, współpraca z centralami PERFECTA 64 M)",
+  "INT-TSG2R-W": "Manipulator z ekranem dotykowym 4,3\" (biały, współpraca z centralami PERFECTA 64 М)",
+  "INT-TSH2R-B": "Manipulator z ekranem dotykowym 7\" (czarny, współpraca z centralami PERFECTA 64 M)",
+  "INT-TSH2R-W": "Manipulator z ekranem dotykowym 7\" (biały, współpraca z centralami PERFECTA 64 M)",
+  "INT-TSH210-B": "Manipulator z ekranem dotykowym 10\" (czarny, współpraca z centralami PERFECTA 64 M)",
+  "INT-TSH210-W": "Manipulator z ekranem dotykowym 10\" (biały, współpraca z centralami PERFECТА 64 М)",
+  "INT-KSG2R-B": "Manipulator z klawiaturą dotykową (czarny, współpraca z centralami PERFECTA 64 М)",
+  "INT-KSG2R-W": "Manipulator z klawiaturą dotykową (biały, współpraca z centralami PERFECTA 64 M)",
+  "INT-CR": "Moduł sterowania strefami (czytnik kart zbliżeniowych 125 kHz, współpraca z centralami PERFECTA 64 M)",
+  "MPT-350": "Pilot zdalnego sterowania (5 przycisków, komunikacja jednokierunkowa, współpraca z centralami PERFECTA z obsługą urządzeń bezprzewodowego systemu MICRA)",
+  "PERFECTA-RF": "Moduł radiowy systemu bezprzewodowego MICRA (współpraca z centralami PERFECTA 16 LTE / 32 LTE / 64 M / IP 32 / IP 64 M - wyposażonymi w gniazdo umożliwiające montaż tego modułu)",
+  "INT-E": "Ekspander 8 wejść",
+  "INT-O": "Ekspander 8 wyjść (OC/przekaźnik - konfiguracja za pomocą przełącznika typu DIP Switch)",
+  "INT-ORS": "Ekspander 8 wyjść przekaźnikowych (obudowa plastikowa - modułowa, możliwy montaż w rozdzielnicach elektrycznych na szynie DIN)",
+  "MRU-300": "Retransmiter sygnałów radiowych (obsługuje czujki systemu MICRA, klawiaturę MKP-300 i piloty MPT-350)",
+  "MPD-300": "Bezprzewodowa pasywna czujka podczerwieni, opcja PET do wyboru (odporna na zwierzęta o masie do 15 kg, uchwyt w komplecie)",
+  "MPD-310": "Bezprzewodowa czujka ruchu (uchwyt w komplecie)",
+  "MPD-310 Pet": "Bezprzewodowa czujka ruchu odporna na ruch zwierząt o masie do 20 kg (bez uchwytu)",
+  "MXD-300": "Bezprzewodowa czujka uniwersalna (biała)",
+  "MXD-300 BR": "Bezprzewodowa czujka uniwersalna (brązowa)",
+  "MGD-300": "Bezprzewodowa czujka zbicia szyby (biała)",
+  "MGD-300 BR": "Bezprzewodowa czujka zbicia szyby (brązowa)",
+  "MSD-300": "Bezprzewodowa czujka dymu i ciepła",
+  "MSD-350": "Bezprzewodowa czujka dymu (spełnia wymagania EN14604, możliwość pracy autonomicznej)",
+  "MPB-300": "Bezprzewodowy przycisk napadowy (możliwość współpracy ze sterownikami radiowymi RK)",
+  "MSP-300 R": "Bezprzewodowy zewnętrzny sygnalizator akustyczno-optyczny (światło czerwone, przetw. PIEZO, zasilanie: bateria 3,6 V 13 Ah ER34615) - współpracuje z centralami PERFECTA wyposażonymi w moduł radiowy (WRL) i z kontrolerem MTX-300",
+  "ANT-LTE-I": "Antena do modułów komunikacyjnych pracujących w technologiach: LTE, UMTS/HSPA+, GSM/GPRS/EDGE (złącze IPX, montaż wewnątrz plastikowej obudowy: OPU-2 B, OPU-3 P, OPU-4 P)",
+  "ANT-LTE-O": "Antena do modułów komunikacyjnych pracujących w technologiach: LTE, UMTS/HSPA+, GSM/GPRS/EDGE (złącze SMA, montaż na zewnątrz obudowy)"
+}
+```
+PAGE 6 RAW:
+```json
+{
+  "ANT-900/1800": "Antena dwuzakresowa GSM z uchwytem magnetycznym (złącze SMA, długość kabla 2,5 m)",
+  "IPX-SMA": "Przejściówka umożliwiająca podłączenie do modułu telefonicznego GSM, posiadającego gniazdo antenowe IPX, zewnętrznej anteny ze złączem SMA; długość 25 cm",
+  "ACU-220": "Kontroler systemu bezprzewodowego ABAX 2 (2 anteny) - współpraca z centralami INTEGRA, VERSA, współpraca z dowolnymi centralami, praca autonomiczna",
+  "ACU-280": "Kontroler systemu bezprzewodowego ABAX 2 (miniaturowy) - współpraca z centralami INTEGRA, VERSA",
+  "ARU-200": "Retransmiter sygnałów radiowych",
+  "ARF-200": "Tester poziomu sygnału radiowego",
+  "INT-KWRL2-B": "Bezprzewodowy manipulator LCD (czarny, czytnik kart zbliżeniowych 125 kHz, współpraca z systemem ABAX 2)",
+  "INT-KWRL2-W": "Bezprzewodowy manipulator LCD (biały, czytnik kart zbliżeniowych 125 kHz, współpraca z systemem ABAX 2)",
+  "VERSA-KWRL2": "Bezprzewodowy manipulator LCD (czytnik kart zbliżeniowych 125 kHz, współpraca z systemem ABAX 2)",
+  "PRF-LCD-A2": "Bezprzewodowy manipulator LCD (czytnik kart zbliżeniowych 125 kHz, współpraca z centralami PERFECTA 64 M z kontrolerem systemu ABAX 2)",
+  "ACX-210": "Miniaturowy ekspander wejść i wyjść przewodowych (zasilanie 4 - 24 V DC)",
+  "ACX-220": "Ekspander wejść i wyjść przewodowych (zasilanie 12 V DC)",
+  "AOD-210": "Bezprzewodowa zewnętrzna dualna czujka ruchu (kolor biały, wbudowany czujnik zmierzchu, bez uchwytu)",
+  "AOD-210 GY": "Bezprzewodowa zewnętrzna dualna czujka ruchu (kolor szary, wbudowany czujnik zmierzchu, bez uchwytu)",
+  "APD-200": "Bezprzewodowa pasywna czujka podczerwieni (uchwyt w komplecie)",
+  "APD-200 Pet": "Bezprzewodowa pasywna czujka podczerwieni odporna na ruch zwierząt o masie do 20 kg (bez uchwytu)",
+  "APMD-250": "Bezprzewodowa dualna czujka ruchu (uchwyt w komplecie)",
+  "AOCD-260": "Bezprzewodowa zewnętrzna dualna czujka kurtynowa (PIR + MW, uchwyt kątowy)",
+  "ACD-220": "Bezprzewodowa czujka kurtynowa (biała)",
+  "ACD-220 BR": "Bezprzewodowa czujka kurtynowa (brązowa)",
+  "ACD-220 DG": "Bezprzewodowa czujka kurtynowa (ciemnoszara)",
+  "AXD-200": "Bezprzewodowa czujka uniwersalna (biała)",
+  "AXD-200 BR": "Bezprzewodowa czujka uniwersalna (brązowa)",
+  "AXD-200 DG": "Bezprzewodowa czujka uniwersalna (ciemnoszara)",
+  "AGD-200": "Bezprzewodowa czujka zbicia szyby (biała)",
+  "AGD-200 BR": "Bezprzewodowa czujka zbicia szyby (brązowa)",
+  "AGD-200 DG": "Bezprzewodowa czujka zbicia szyby (ciemnoszara)"
+}
+```
+PAGE 7 RAW:
+```json
+{
+  "AFD-200": "Bezprzewodowa czujka zalania wodą",
+  "ADD-200": "Zewnętrzna bezprzewodowa czujka zmierzchu i temperatury",
+  "ASD-200": "Bezprzewodowa czujka dymu i ciepła",
+  "ASD-250": "Bezprzewodowa czujka dymu (spełnia wymagania EN 14604, możliwość pracy autonomicznej)",
+  "ACMD-200": "Bezprzewodowa czujka tlenku węgla (możliwość pracy autonomicznej)",
+  "APT-200": "Dwukierunkowy pilot zdalnego sterowania",
+  "APT-210": "Dwukierunkowy pilot zdalnego sterowania",
+  "APB-200": "Bezprzewodowy przycisk napadowy",
+  "APB-210": "Bezprzewodowy przycisk sterujący",
+  "ART-210": "Bezprzewodowa głowica termostatyczna (zasilanie 2 x 1,5 V AA (LR6)); UWAGA: urządzenie sprzedawane bez baterii",
+  "ASW-200 E-W": "Inteligentna wtyczka (biała, sterowanie zasilaniem 230 V AC, gniazdo typu EURO)",
+  "ASW-200 F-W": "Inteligentna wtyczka (biała, sterowanie zasilaniem 230 V AC, gniazdo typu SCHUKO)",
+  "ASW-210": "Bezprzewodowy dwukanałowy sterownik 230 V AC, dopuszkowy",
+  "ASP-200 R": "Bezprzewodowy zewnętrzny sygnalizator akustyczno-optyczny (światło czerwone, przetw. PIEZO, zasilanie: bateria 3,6 V / 13 Ah ER34615)",
+  "ASP-215 R": "Bezprzewodowy sygnalizator wewnętrzny (światło czerwone, przetwornik PIEZO, zasilanie: bateria 3 V CR123A)",
+  "GKX-1": "Wymienna klawiatura z kolorowymi piktogramami do pilotów APT-200, MPT-350",
+  "HOLDER A2": "Uchwyt płytki elektroniki kontrolera systemu bezprzewodowego ACU-280 do obudowy OPU-4 P",
+  "MICRA": "Moduł alarmowy z komunikatorem GSM/GPRS i zasilaczem (w komplecie obudowa OPU-4 P, antena ANT-LTE-I, transformator sprzedawany oddzielnie). UWAGA: moduł obsługuje tylko jednokierunkowe urządzenia bezprzewodowego systemu MICRA - obsługa dwukierunkowego sygnalizatora bezprzewodowego MSP-300 R wymaga dokupienia modułu MTX-300",
+  "MTX-300": "Moduł kontroli czujek, sygnalizatorów i pilotów bezprzewodowego systemu MICRA (współpraca z dowolną centralą alarmową)",
+  "PERFECTA-RF": "Moduł radiowy systemu bezprzewodowego MICRA (współpraca z centralami PERFECTA 64 M)",
+  "VERSA-MCU": "Moduł kontroli jednokierunkowych czujek i pilotów bezprzewodowego systemu MICRA (współpraca z centralami VERSA)",
+  "MRU-300": "Retransmiter sygnałów radiowych (obsługuje czujki systemu MICRA, klawiaturę MKP-300 i piloty MPT-350)",
+  "MKP-300": "Bezprzewodowa klawiatura LED do modułu alarmowego MICRA (komunikacja jednokierunkowa)",
+  "PRF-LCD-WRL": "Bezprzewodowy manipulator LCD (współpraca z centralami PERFECTA WRL - z obsługą urządzeń bezprzewodowego sytemu MICRA)"
+}
+```
+PAGE 8 RAW:
+```json
+{
+  "MPT-350": "Pilot zdalnego sterowania (5 przycisków, współpraca z centralami PERFECTA z obsługą urządzeń bezprzewodowego systemu MICRA oraz ze sterownikami radiowymi RK i modułami: VERSA-MCU (od wersji 1.04), MTX-300 (od wersji 1.01), MICRA (od wersji 3.03), INT-RX-S (od wersji 1.04))",
+  "MPD-300": "Bezprzewodowa czujka ruchu (opcja PET do wyboru - odporna na zwierzęta o masie do 15 kg, uchwyt w komplecie)",
+  "MPD-310": "Bezprzewodowa czujka ruchu (uchwyt w komplecie)",
+  "MPD-310 Pet": "Bezprzewodowa czujka ruchu odporna na ruch zwierząt o masie do 20 kg (bez uchwytu)",
+  "MXD-300": "Bezprzewodowa czujka uniwersalna (biała)",
+  "MXD-300 BR": "Bezprzewodowa czujka uniwersalna (brązowa)",
+  "MGD-300": "Bezprzewodowa czujka zbicia szyby (biała)",
+  "MGD-300 BR": "Bezprzewodowa czujka zbicia szyby (brązowa)",
+  "MSD-300": "Bezprzewodowa czujka dymu i ciepła",
+  "MSD-350": "Bezprzewodowa czujka dymu (spełnia wymagania EN14604, możliwość pracy autonomicznej)",
+  "MPB-300": "Bezprzewodowy przycisk napadowy (możliwość współpracy ze sterownikami radiowymi RK)",
+  "MSP-300 R": "Bezprzewodowy zewnętrzny sygnalizator akustyczno-optyczny (światło czerwone, przetw. PIEZO, zasilanie: bateria 3,6 V 13 Ah ER34615) - współpraca z centralami PERFECTA wyposażonymi w moduł radiowy 433 MHz (WRL) i z kontrolerem MTX-300",
+  "MIC-1": "Mikrofon do współpracy z centralami PERFECTA i modułem MICRA (długość kabla 10 m)",
+  "GKX-1": "Wymienna klawiatura z kolorowymi piktogramami do pilotów MPT-350, APT-200",
+  "SLIM-PIR": "Cyfrowa czujka ruchu (bez uchwytu)",
+  "SLIM-PIR-PET": "Cyfrowa czujka ruchu odporna na obecność zwierząt o masie do 20 kg (bez uchwytu)",
+  "SLIM-PIR-LUNA": "Cyfrowa czujka ruchu z funkcją oświetlenia (uchwyt w komplecie)",
+  "SLIM-PIR-LUNA-PET": "Cyfrowa czujka ruchu z funkcją oświetlenia, odporna na obecność zwierząt o masie do 20 kg (bez uchwytu)",
+  "SLIM-PIR-PRO": "Cyfrowa czujka ruchu (aktywny antymasking IR, GRADE 3, uchwyt w komplecie)",
+  "TOPAZ": "Cyfrowa pasywna czujka podczerwieni (podwójny pyroelement, bez uchwytu)",
+  "TOPAZ Pet": "Cyfrowa pasywna czujka podczerwieni odporna na zwierzęta o masie do 20 kg (bez uchwytu)",
+  "AMBER": "Cyfrowa pasywna czujka podczerwieni (podwójny pyroelement, bez uchwytu)",
+  "AMBER 2E": "Cyfrowa pasywna czujka podczerwieni z 2 rezystorami parametrycznymi 1,1ko w konfiguracji 2EOL/NC (bez uchwytu)",
+  "AQUA Luna": "Cyfrowa pasywna czujka podczerwieni z funkcją oświetlenia (uchwyt w komplecie)",
+  "AQUA Pet": "Cyfrowa pasywna czujka podczerwieni odporna na zwierzęta o masie do 15 kg (bez uchwytu)",
+  "AQUA Plus": "Cyfrowa pasywna czujka podczerwieni (podwójny pyroelement, uchwyt w komplecie)",
+  "AQUA S": "Cyfrowa pasywna czujka podczerwieni, zasilanie 24 V AC/DC (uchwyt w komplecie)",
+  "GRAPHITE": "Cyfrowa pasywna czujka podczerwieni (podwójny pyroelement, opcja odporności na obecność zwierząt o masie do 15 kg, uchwyt w komplecie)"
+}
+```
+PAGE 9 RAW:
+```json
+{
+  "IVORY": "Cyfrowa pasywna czujka podczerwieni z optyką lustrzaną (uchwyt w komplecie)",
+  "OPAL": "Cyfrowa dualna czujka ruchu, zewnętrzna (kolor biały, bez uchwytu)",
+  "OPAL GY": "Cyfrowa dualna czujka ruchu, zewnętrzna (kolor szary, bez uchwytu)",
+  "OPAL Plus": "Cyfrowa dualna czujka ruchu, zewnętrzna (kolor biały, wbudowany czujnik zmierzchu, regulacja czułości za pomocą pilota OPT-1, bez uchwytu)",
+  "OPAL Plus GY": "Cyfrowa dualna czujka ruchu, zewnętrzna (kolor szary, wbudowany czujnik zmierzchu, regulacja czułości za pomocą pilota OPT-1, bez uchwytu)",
+  "OPAL Pro": "Cyfrowa dualna czujka ruchu, zewnętrzna (kolor biały, aktywny antymasking, wbudowany czujnik zmierzchu, regulacja czułości za pomocą pilota OPT-1, bez uchwytu) - certyfikat EN 50131-2-4 GRADE 3 dla zastosowań wewnętrznych",
+  "OPAL Pro GY": "Cyfrowa dualna czujka ruchu, zewnętrzna (kolor szary, aktywny antymasking, wbudowany czujnik zmierzchu, regulacja czułości za pomocą pilota OPT-1, bez uchwytu) - certyfikat EN 50131-2-4 GRADE 3 dla zastosowań wewnętrznych",
+  "SLIM-DUAL": "Cyfrowa dualna czujka ruchu (bez uchwytu)",
+  "SLIM-DUAL-PET": "Cyfrowa dualna czujka ruchu odporna na obecność zwierząt o masie do 20 kg (bez uchwytu)",
+  "SLIM-DUAL-LUNA": "Cyfrowa dualna czujka ruchu z funkcją oświetlenia (uchwyt w komplecie)",
+  "SLIM-DUAL-LUNA-PET": "Cyfrowa dualna czujka ruchu z funkcją oświetlenia, odporna na obecność zwierząt o masie do 20 kg (bez uchwytu)",
+  "SLIM-DUAL-PRO": "Cyfrowa dualna czujka ruchu (aktywny antymasking IR, GRADE 3, uchwyt w komplecie)",
+  "GREY": "Cyfrowa dualna czujka ruchu (podwójny pyroelement, mikrofala, opcja odporności na obecność zwierząt o masie do 15 kg, uchwyt w komplecie)",
+  "GREY Plus": "Cyfrowa dualna czujka ruchu (podwójny pyroelement, mikrofala, antymasking MW, opcja odporności na obecność zwierząt o masie do 15 kg, uchwyt w komplecie)",
+  "NAVY": "Cyfrowa dualna czujka PIR + GB (czujka ruchu z opcją odporności na obecność zwierząt o masie do 15 kg + czujka zbicia szyby; uchwyt w komplecie)",
+  "AQUA Ring": "Cyfrowa pasywna czujka podczerwieni sufitowa",
+  "AQUA Ring S": "Cyfrowa pasywna czujka podczerwieni sufitowa, zasilanie 24 V AC/DC",
+  "AGATE": "Zewnętrzna dualna czujka kurtynowa (PIR + MW, aktywny antymasking, uchwyt kątowy) - zgodna z EN 50131-2-4 GRADE 3 dla zastosowań wewnętrznych",
+  "CD-2": "Czujka kurtynowa (biała)",
+  "CD-2 BR": "Czujka kurtynowa (brązowa)",
+  "CD-2 DG": "Czujka kurtynowa (ciemnoszara)",
+  "ACTIVA-2": "Aktywna bariera podczerwieni -2 wiązki, długość listew 52 cm (srebrna)",
+  "ACTIVA-2 BR": "Aktywna bariera podczerwieni -2 wiązki, długość listew 52 cm (brązowa)",
+  "ACTIVA-3": "Aktywna bariera podczerwieni -3 wiązki, długość listew 78 cm (srebrna)",
+  "ACTIVA-3 BR": "Aktywna bariera podczerwieni -3 wiązki, długość listew 78 cm (brązowa)",
+  "ACTIVA-4": "Aktywna bariera podczerwieni -4 wiązki, długość listew 105 cm (srebrna)",
+  "ACTIVA-4 BR": "Aktywna bariera podczerwieni -4 wiązki, długość listew 105 cm (brązowa)",
+  "ACTIVA-5": "Aktywna bariera podczerwieni -5 wiązek, długość listew 130 cm (srebrna)",
+  "ACTIVA-5 BR": "Aktywna bariera podczerwieni -5 wiązek, długość listew 130 cm (brązowa)"
+}
+```
+PAGE 10 RATE LIMIT. Retry 1 in 30s.
+PAGE 10 RATE LIMIT. Retry 2 in 30s.
+PAGE 10 RATE LIMIT. Retry 3 in 30s.
+PAGE 11 RATE LIMIT. Retry 1 in 30s.
+PAGE 11 RATE LIMIT. Retry 2 in 30s.
+PAGE 11 RATE LIMIT. Retry 3 in 30s.
+PAGE 12 RATE LIMIT. Retry 1 in 30s.
+PAGE 12 RATE LIMIT. Retry 2 in 30s.
+PAGE 12 RATE LIMIT. Retry 3 in 30s.
+PAGE 13 RATE LIMIT. Retry 1 in 30s.
+PAGE 13 RATE LIMIT. Retry 2 in 30s.
+PAGE 13 RATE LIMIT. Retry 3 in 30s.
+PAGE 14 RATE LIMIT. Retry 1 in 30s.
+PAGE 14 RATE LIMIT. Retry 2 in 30s.
+PAGE 14 RATE LIMIT. Retry 3 in 30s.
+PAGE 15 RATE LIMIT. Retry 1 in 30s.
+PAGE 15 RATE LIMIT. Retry 2 in 30s.
+PAGE 15 RATE LIMIT. Retry 3 in 30s.
+PAGE 16 RATE LIMIT. Retry 1 in 30s.
+PAGE 16 RATE LIMIT. Retry 2 in 30s.
+PAGE 16 RATE LIMIT. Retry 3 in 30s.
+PAGE 17 RATE LIMIT. Retry 1 in 30s.
+PAGE 17 RATE LIMIT. Retry 2 in 30s.
+PAGE 17 RATE LIMIT. Retry 3 in 30s.
+PAGE 18 RATE LIMIT. Retry 1 in 30s.
+PAGE 18 RATE LIMIT. Retry 2 in 30s.
+PAGE 18 RATE LIMIT. Retry 3 in 30s.
+
+
+=== BATCH PROCESSING: Cennik SSWiN_2026-02-16_BF.pdf (16.04.2026, 21:27:26) ===
+BATCH 1-15 ERROR: Status 404
+BATCH 16-20 ERROR: Status 404
+=== END BATCH PROCESSING: Total models: 0 ===
+PAGE 19 RATE LIMIT. Retry 1 in 30s.
+PAGE 19 RATE LIMIT. Retry 2 in 30s.
+PAGE 19 RATE LIMIT. Retry 3 in 30s.
+PAGE 20 RATE LIMIT. Retry 1 in 30s.
+
+
+=== BATCH PROCESSING: Cennik SSWiN_2026-02-16_BF.pdf (16.04.2026, 21:29:26) ===
+BATCH 1-15 ERROR: Status 404
+BATCH 16-20 ERROR: Status 404
+=== END BATCH PROCESSING: Total models: 0 ===
+PAGE 20 RAW:
+```json
+{
+  "STAM-2 BE": "Karta podstawowa Ethernetowa STAM-1 PE + program STAM-2 BS (WIN) na 3 stanowiska + klucz sprzętowy + 1 dzień szkolenia w firmie SATEL",
+  "STAM-2 BE Pro": "Karta podstawowa Ethernetowa STAM-1 PE + Program PRO do stacji monitorującej STAM-2 (WIN) na 10 stanowisk z rozszerzoną funkcjonalnością + klucz sprzętowy + 1 dzień szkolenia w firmie SATEL",
+  "STAM-2 BT": "Karta podstawowa telefoniczna + program STAM-2 BS (WIN)na 3 stanowiska + klucz sprzętowy + 1 dzień szkolenia w firmie SATEL",
+  "STAM-2 SIA": "Program BASIC do stacji monitorującej STAM-2 (WIN) na 3 stanowiska + klucz sprzętowy (nie wymaga instalacji karty podstawowej), obsługa do 256 obiektów monitorujących w formacie SIA-IP",
+  "STAM-2 SIA-R": "Rozszerzenie programu STAM-2 SIA o obsługę kolejnych 256 obiektów monitorujących w formacie SIA-IP",
+  "STAM-2 BS": "Program BASIC do stacji monitorującej STAM-2 (WIN) na 3 stanowiska (umożliwia upgrade STAM-1) + klucz sprzętowy",
+  "STAM-2 EP": "Program umożliwiający upgrade STAM-2 BASIC do wersji PRO",
+  "STAM-2 RG": "Rozszerzenie programu STAM-2 PRO umożliwiające regionalizację",
+  "STAM-2 UE": "Rozszerzenie STAM-2 do 10 stanowisk",
+  "SZKOLENIE STAM u klienta": "Szkolenie u klienta w zakresie obsługi programów STAM, pomoc w instalacji i konfiguracji na PC klienta (należy doliczyć koszt dojazdu i zakwaterowania prowadzącego) za 1 dzień",
+  "SZKOLENIE STAM w firmie SATEL": "Szkolenie w firmie SATEL w zakresie obsługi programów STAM, pomoc w instalacji i konfiguracji na PC klienta za 1 dzień",
+  "POMOC STAM": "Zdalne przywracanie serwera STAM po uszkodzeniu komputera, przywracanie bazy danych itp. cena za 1 godz."
+}
+```
+=== END PROCESSING: Saved 261 models ===
+
+
+=== BATCH PROCESSING: Cennik SSWiN_2026-02-16_BF.pdf (16.04.2026, 21:30:35) ===
+BATCH 1-15 ERROR: Status 404
+BATCH 16-20 ERROR: Status 404
+=== END BATCH PROCESSING: Total models: 0 ===
+
+
+=== BATCH PROCESSING: Cennik SSWiN_2026-02-16_BF.pdf (16.04.2026, 21:32:06) ===
+BATCH 1-15 ERROR: Status 404
+BATCH 16-20 ERROR: Status 404
+=== END BATCH PROCESSING: Total models: 0 ===

@@ -27,6 +27,7 @@ export async function POST(req: Request) {
     const importedItems = body.items || [];
     const { categories } = initializeMockData();
     let updatedCount = 0;
+    let addedCount = 0;
     
     logImport(`--- START IMPORT (${importedItems.length} pozycji) ---`);
 
@@ -96,10 +97,10 @@ export async function POST(req: Request) {
         existing.stock = im.stock;
         existing.manufacturer = im.manufacturer || existing.manufacturer;
 
-        if (!existing.categoryId && finalCategoryId) {
+        if (finalCategoryId) {
           existing.categoryId = finalCategoryId;
           existing.subcategoryId = finalSubcategoryId;
-          logImport(`Przypisano kategoryzację do ${im.sku}: ${finalCategoryId} / ${finalSubcategoryId}`);
+          logImport(`Zaktualizowano kategoryzację dla ${im.sku}: ${finalCategoryId} / ${finalSubcategoryId}`);
         }
         
         updatedCount++;
@@ -112,12 +113,13 @@ export async function POST(req: Request) {
           seoDescription: "" 
         };
         products.push(newProd);
-        logImport(`Dodano NOWY produkt: ${im.sku} w ${finalCategoryId} / ${finalSubcategoryId}`);
+        addedCount++;
+        logImport(`Dodano NOWY produkt (${newProd.sku}): ${im.name}`);
       }
     });
-    
-    logImport(`--- KONIEC IMPORTU (Zaktualizowano: ${updatedCount}, Dodano: ${importedItems.length - updatedCount}) ---`);
-    return NextResponse.json({ success: true, updatedCount, addedCount: importedItems.length - updatedCount });
+
+    logImport(`--- KONIEC IMPORTU (Zaktualizowano: ${updatedCount}, Dodano: ${addedCount}, Suma w bazie: ${products.length}) ---`);
+    return NextResponse.json({ success: true, updatedCount, addedCount });
   }
 
   // Zwykłe dodanie pojedynczego produktu

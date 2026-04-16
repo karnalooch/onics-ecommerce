@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { 
   FolderTree, Folder, Plus, Trash2, Edit2, ChevronRight, 
-  Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Tool, Home, Activity, Speaker, Mic,
+  Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Wrench, Home, Activity, Speaker, Mic,
   Search
 } from "lucide-react";
 import * as Icons from "lucide-react";
@@ -19,7 +19,7 @@ const AVAILABLE_ICONS = [
   { name: "Cpu", Icon: Cpu },
   { name: "Zap", Icon: Zap },
   { name: "Activity", Icon: Activity },
-  { name: "Tool", Icon: Tool },
+  { name: "Wrench", Icon: Wrench },
   { name: "Home", Icon: Home },
   { name: "Speaker", Icon: Speaker },
   { name: "Mic", Icon: Mic }
