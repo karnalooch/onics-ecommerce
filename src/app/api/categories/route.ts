@@ -14,6 +14,7 @@ export async function POST(req: Request) {
   const newCat = {
     id: `c${Date.now()}`,
     name: body.name,
+    iconName: body.iconName || "Folder",
     subcategories: body.subcategories || []
   };
   categories.push(newCat);
@@ -26,6 +27,14 @@ export async function PUT(req: Request) {
   
   const idx = categories.findIndex((c: any) => c.id === body.id);
   if (idx !== -1) {
+    // Jeśli podkategorie przychodzą jako stringi, zamień je na obiekty z ID
+    if (body.subcategories && body.subcategories.length > 0 && typeof body.subcategories[0] === 'string') {
+        body.subcategories = body.subcategories.map((name: string) => ({
+            id: `s${Math.random().toString(36).substr(2, 9)}`,
+            name
+        }));
+    }
+
     categories[idx] = { ...categories[idx], ...body };
     return NextResponse.json(categories[idx]);
   }

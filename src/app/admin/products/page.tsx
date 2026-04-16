@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PackageSearch, Plus, UploadCloud, Search, Edit2, ShieldAlert, Check, X, AlertTriangle, Trash2, ArrowUpRight, ArrowDownRight, Sparkles } from "lucide-react";
+import { 
+  PackageSearch, Plus, UploadCloud, Search, Edit2, ShieldAlert, Check, X, 
+  AlertTriangle, Trash2, ArrowUpRight, ArrowDownRight, Sparkles, AlertCircle, RefreshCw,
+  ChevronRight, ChevronDown, Filter, Info, Layers, Tag as TagIcon,
+  ShoppingBag, HardDrive, BarChart3, Database, Save,
+  ChevronLeft
+} from "lucide-react";
+import { 
+  Dialog, DialogContent, DialogDescription, DialogFooter, 
+  DialogHeader, DialogTitle 
+} from "@/components/ui/dialog"
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -16,10 +25,24 @@ export default function AdminProductsPage() {
   // Staging Area
   const [stagingPayload, setStagingPayload] = useState<any[]>([]);
 
+  // Edit State
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
   // Filtry
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCat, setSelectedCat] = useState("ALL");
+  const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
+  const [selectedSubcatId, setSelectedSubcatId] = useState<string | null>(null);
   const [selectedManufacturer, setSelectedManufacturer] = useState("ALL");
+  
+  // Pagination
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [mounted, setMounted] = useState(false);
+  const [importSummary, setImportSummary] = useState<string | null>(null);
+  
+  // UI State
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
 
   const loadData = async () => {
     try {
@@ -39,10 +62,60 @@ export default function AdminProductsPage() {
   };
 
   useEffect(() => {
+    setMounted(true);
     loadData();
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCatId, selectedSubcatId, selectedManufacturer, pageSize]);
+
+  useEffect(() => {
+    if (importSummary) {
+      const timer = setTimeout(() => {
+        setImportSummary(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [importSummary]);
+
+  const handleUpdateProduct = async () => {
+    if (!editingProduct) return;
+    try {
+      const res = await fetch("/api/products", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingProduct)
+      });
+      if (res.ok) {
+        setIsEditOpen(false);
+        await loadData();
+      }
+    } catch (e) {
+      alert("Błąd podczas aktualizacji produktu.");
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm("Czy na pewno chcesz trwale usunąć ten produkt z bazy? Operacja jest nieodwracalna.")) return;
+    try {
+      const res = await fetch(`/api/products?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        await loadData();
+      }
+    } catch (e) {
+      alert("Błąd podczas usuwania produktu.");
+    }
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleCat = (id: string) => {
+    const next = new Set(expandedCats);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpandedCats(next);
+  };
 
   const handleWfMagImportClick = () => {
     if (fileInputRef.current) {
@@ -65,81 +138,151 @@ export default function AdminProductsPage() {
 
       const suggestCategory = (prodName: string) => {
         const nameL = prodName.toLowerCase();
+        let foundCatId = categories[0]?.id;
+        let foundSubId = undefined;
+
+        for (const cat of categories) {
+          if (cat.subcategories) {
+            for (const sub of cat.subcategories) {
+              if (nameL.includes(sub.name.toLowerCase())) {
+                return { categoryId: cat.id, subcategoryId: sub.id };
+              }
+            }
+          }
+        }
+
         if (nameL.includes('kamera') || nameL.includes('rejestrator') || nameL.includes('cctv') || nameL.includes('dvr') || nameL.includes('nvr') || nameL.includes('ip')) {
-           return categories.find(c => c.name.toLowerCase().includes('monitor'))?.id || categories[0]?.id;
+           foundCatId = categories.find(c => c.name.toLowerCase().includes('monitor'))?.id || foundCatId;
+        } else if (nameL.includes('antena') || nameL.includes('konwerter') || nameL.includes('dekoder') || nameL.includes('sat')) {
+           foundCatId = categories.find(c => c.name.toLowerCase().includes('tv-sat'))?.id || foundCatId;
+        } else if (nameL.includes('router') || nameL.includes('switch') || nameL.includes('punkt') || nameL.includes('ap') || nameL.includes('lan')) {
+           foundCatId = categories.find(c => c.name.toLowerCase().includes('lan'))?.id || foundCatId;
+        } else if (nameL.includes('alarm') || nameL.includes('czujka') || nameL.includes('syrena') || nameL.includes('satel')) {
+           foundCatId = categories.find(c => c.name.toLowerCase().includes('alarm'))?.id || foundCatId;
         }
-        if (nameL.includes('antena') || nameL.includes('konwerter') || nameL.includes('dekoder') || nameL.includes('sat')) {
-           return categories.find(c => c.name.toLowerCase().includes('tv-sat'))?.id || categories[0]?.id;
-        }
-        if (nameL.includes('router') || nameL.includes('switch') || nameL.includes('punkt') || nameL.includes('ap') || nameL.includes('lan')) {
-           return categories.find(c => c.name.toLowerCase().includes('lan'))?.id || categories[0]?.id;
-        }
-        if (nameL.includes('światłowod') || nameL.includes('patchcord') || nameL.includes('pigtajl')) {
-           return categories.find(c => c.name.toLowerCase().includes('światłowod'))?.id || categories[0]?.id;
-        }
-        if (nameL.includes('alarm') || nameL.includes('czujka') || nameL.includes('syrena') || nameL.includes('satel')) {
-           return categories.find(c => c.name.toLowerCase().includes('alarm'))?.id || categories[0]?.id;
-        }
-        return categories[0]?.id; // Default
+        
+        return { categoryId: foundCatId, subcategoryId: foundSubId };
       };
 
+      const fileSkus = new Set();
       const parsedPayload = json.map((row: any) => {
         const getVal = (keys: string[]) => {
           const foundKey = Object.keys(row).find(k => keys.some(keyMatch => k.toLowerCase().includes(keyMatch)));
           return foundKey ? row[foundKey] : undefined;
         };
 
-        const sku = String(getVal(["sku", "ean", "kod", "indeks"]) || `IMP-${Math.random().toString().slice(2,8)}`);
-        const price = Number(getVal(["price", "cena", "netto"]) || 0);
+        const rawSku = getVal(["sku", "ean", "kod", "indeks", "symbol", "nr katalogowy", "indeks", "kod towaru", "kod produktu", "nr. kat", "model", "article no", "part number", "index"]);
         const name = String(getVal(["name", "nazwa", "produkt"]) || "Nieznany Produkt");
+        const manufacturer = String(getVal(["manufacturer", "producent", "marka"]) || "Inny");
+        const price = Number(getVal(["price", "cena", "netto"]) || 0);
         
-        const existingProduct = products.find(p => p.sku === sku);
+        let isVirtualSku = false;
+        let sku = String(rawSku && String(rawSku).trim() ? rawSku : "");
+        
+        if (!sku) {
+           // Generujemy stabilne SKU na podstawie nazwy i producenta (hash-like)
+           const cleanName = name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 10);
+           const cleanManuf = manufacturer.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 5);
+           sku = `V-${cleanManuf}-${cleanName}`;
+           isVirtualSku = true;
+        }
+        const xlsCategoryName = String(getVal(["kategoria", "dział", "dzial", "grupa", "category", "group"]) || "").trim();
+        const xlsSubcategoryName = String(getVal(["podkategoria", "subkategoria", "subcategory", "sub-category"]) || "").trim();
+        
+        const skuMatch = String(sku).trim().toLowerCase();
+        const nameMatch = name.trim().toLowerCase();
+        
+        let existingProduct = products.find(p => String(p.sku || '').trim().toLowerCase() === skuMatch);
+        let matchSource: 'sku' | 'name' | 'none' = existingProduct ? 'sku' : 'none';
+
+        if (!existingProduct) {
+          existingProduct = products.find(p => p.name.trim().toLowerCase() === nameMatch);
+          if (existingProduct) matchSource = 'name';
+        }
+
+        let isDuplicateInFile = false;
+        if (sku && sku !== "" && !sku.startsWith('V-')) {
+          if (fileSkus.has(skuMatch)) {
+            isDuplicateInFile = true;
+          }
+          fileSkus.add(skuMatch);
+        }
+
         let priceDiff = 0;
         let isNew = !existingProduct;
         let categoryId = existingProduct?.categoryId;
+        let subcategoryId = existingProduct?.subcategoryId;
         let aiSuggested = false;
+
+        // Dopasowanie kategorii/podkategorii po nazwach z XLS
+        let isNewCategory = false;
+        let isNewSubcategory = false;
+        
+        if (xlsCategoryName) {
+           const foundCat = categories.find(c => c.name.toLowerCase().trim() === xlsCategoryName.toLowerCase());
+           if (foundCat) {
+              categoryId = foundCat.id;
+              if (xlsSubcategoryName) {
+                 const foundSub = foundCat.subcategories?.find((s:any) => s.name.toLowerCase().trim() === xlsSubcategoryName.toLowerCase());
+                 if (foundSub) {
+                    subcategoryId = foundSub.id;
+                 } else {
+                    isNewSubcategory = true;
+                 }
+              }
+           } else {
+              isNewCategory = true;
+              isNewSubcategory = !!xlsSubcategoryName;
+           }
+        }
 
         if (existingProduct) {
           priceDiff = price - existingProduct.price;
-        } else {
-          categoryId = suggestCategory(name);
+          // Blokada kategorii: Jeśli produkt ma już kategorię, nie sugerujemy nowej z AI
+          if (!existingProduct.categoryId && !categoryId) {
+            const suggestion = suggestCategory(name);
+            categoryId = suggestion.categoryId;
+            subcategoryId = suggestion.subcategoryId;
+            aiSuggested = true;
+          }
+        } else if (!categoryId) {
+          const suggestion = suggestCategory(name);
+          categoryId = suggestion.categoryId;
+          subcategoryId = suggestion.subcategoryId;
           aiSuggested = true;
         }
 
+        const tempId = `tmp-${sku}-${Math.random().toString(36).substr(2, 9)}`;
+
         return {
-          sku,
-          name,
-          price,
+          tempId, sku, name, price,
           stock: Number(getVal(["stock", "stan", "ilość", "ilosc", "magazyn"]) || 0),
-          manufacturer: String(getVal(["manufacturer", "producent", "marka"]) || existingProduct?.manufacturer || "Inny"),
-          categoryId,
+          manufacturer,
+          categoryId, subcategoryId,
+          xlsCategoryName, xlsSubcategoryName,
+          isNewCategory, isNewSubcategory,
+          isVirtualSku,
+          matchSource,
+          isDuplicateInFile,
+          categoryLocked: !!existingProduct?.categoryId,
           seoDescription: existingProduct?.seoDescription || "",
-          // Staging flags:
-          isNew,
-          priceDiff,
-          oldPrice: existingProduct?.price,
-          aiSuggested
+          isNew: !existingProduct, priceDiff, oldPrice: existingProduct?.price, aiSuggested
         };
       });
 
       setStagingPayload(parsedPayload);
     } catch (err) {
       console.error(err);
-      alert("Wystąpił błąd podczas analizy pliku Excel. Upewnij się, że struktura jest prawidłowa.");
+      alert("Wystąpił błąd podczas analizy pliku Excel.");
     } finally {
       setImporting(false);
       if (e.target) e.target.value = ''; 
     }
   };
 
-  // --- STAGING ACTIONS ---
-  const handleRemoveFromStaging = (sku: string) => {
-    setStagingPayload(prev => prev.filter(item => item.sku !== sku));
-  };
-
-  const handleUpdateStagingItem = (sku: string, field: string, value: any) => {
+  const handleUpdateStagingItem = (tempId: string, field: string, value: any) => {
     setStagingPayload(prev => prev.map(item => {
-       if (item.sku === sku) {
+       if (item.tempId === tempId) {
          const updated = { ...item, [field]: value };
          if (field === 'price') {
            const val = Number(value);
@@ -152,31 +295,30 @@ export default function AdminProductsPage() {
     }));
   };
 
-  // ZAPISUJEMY POJEDYNCZY ARTYKUŁ WPROST DO BAZY
-  const commitSingleItemToDatabase = async (sku: string) => {
-    const itemToCommit = stagingPayload.find(i => i.sku === sku);
+  const commitSingleItemToDatabase = async (tempId: string) => {
+    const itemToCommit = stagingPayload.find(i => i.tempId === tempId);
     if (!itemToCommit) return;
-    
-    // Wizualnie symulujemy że "leci do API", na chwilę można wyłączyć z widoku
-    handleRemoveFromStaging(sku);
-    
+    setStagingPayload(prev => prev.filter(i => i.tempId !== tempId));
     try {
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "IMPORT_WFMAG", items: [itemToCommit] }) // wysyłamy jako array jednoelementowy
+        body: JSON.stringify({ 
+          action: "IMPORT_WFMAG", 
+          items: [itemToCommit]
+        })
       });
-      if (res.ok) {
-        // Natychmiastowe dociągnięcie aktualnej bazy do głównej tabeli tle
+      const result = await res.json();
+      if (result.success) {
+        setImportSummary(`Sukces! Zaktualizowano: ${result.updatedCount}, Dodano: ${result.addedCount}`);
         await loadData();
       }
     } catch (e) {
-      alert("Wystąpił błąd podczas zapisywania artykułu do bazy. Rekord przywrócono.");
+      alert("Błąd zapisu.");
       setStagingPayload(prev => [itemToCommit, ...prev]);
     }
   };
 
-  // ZAPISUJEMY ZBIORCZO POZOSTAŁOŚCI
   const commitAllStagingToDatabase = async () => {
     if (stagingPayload.length === 0) return;
     setImporting(true);
@@ -188,345 +330,649 @@ export default function AdminProductsPage() {
       });
       const result = await res.json();
       if (result.success) {
-        alert(`✅ Import udany! Zaktualizowano / Dodano ${result.updatedCount + result.addedCount} indeksów.`);
+        setImportSummary(`Masowy import zakończony! Zaktualizowano: ${result.updatedCount}, Dodano: ${result.addedCount}`);
         setStagingPayload([]);
         await loadData();
       }
     } catch (e) {
-      alert("Wystąpił błąd podczas masowego zapisu.");
+      alert("Błąd masowego zapisu.");
     } finally {
       setImporting(false);
     }
   };
 
-  const cancelStaging = () => {
-    setStagingPayload([]);
+  // --- FILTROWANIE (OPTIMIZED) ---
+  const filteredProducts = useMemo(() => {
+    return products.filter(p => {
+      const matchSearch = String(p.name).toLowerCase().includes(searchTerm.toLowerCase()) || String(p.sku).toLowerCase().includes(searchTerm.toLowerCase());
+      const matchCat = !selectedCatId || p.categoryId === selectedCatId;
+      const matchSub = !selectedSubcatId || p.subcategoryId === selectedSubcatId;
+      const matchManuf = selectedManufacturer === "ALL" || p.manufacturer === selectedManufacturer;
+      return matchSearch && matchCat && matchSub && matchManuf;
+    });
+  }, [products, searchTerm, selectedCatId, selectedSubcatId, selectedManufacturer]);
+
+  const totalPages = useMemo(() => Math.ceil(filteredProducts.length / pageSize), [filteredProducts.length, pageSize]);
+  
+  const paginatedProducts = useMemo(() => {
+    return filteredProducts.slice(
+      (currentPage - 1) * pageSize,
+      currentPage * pageSize
+    );
+  }, [filteredProducts, currentPage, pageSize]);
+
+  const manufacturers = useMemo(() => Array.from(new Set(products.map(p => p.manufacturer).filter(Boolean))), [products]);
+
+  const getSubcategories = (catId?: string) => {
+    if (!catId) return [];
+    return categories.find(c => c.id === catId)?.subcategories || [];
   };
 
-  // --- FILTROWANIE ---
-  const manufacturers = Array.from(new Set(products.map(p => p.manufacturer).filter(Boolean)));
-  const filteredProducts = products.filter(p => {
-    const matchSearch = String(p.name).toLowerCase().includes(searchTerm.toLowerCase()) || String(p.sku).toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCat = selectedCat === "ALL" || p.categoryId === selectedCat;
-    const matchManuf = selectedManufacturer === "ALL" || p.manufacturer === selectedManufacturer;
-    return matchSearch && matchCat && matchManuf;
-  });
-  const getCategoryName = (id: string) => categories.find(c => c.id === id)?.name || "Kategoria Usunięta";
+  const getCatName = (id: string) => categories.find(c => c.id === id)?.name || "Kat.";
+  const getSubName = (catId: string, subId?: string) => {
+    if (!subId) return null;
+    return categories.find(c => c.id === catId)?.subcategories?.find((s: any) => s.id === subId)?.name || null;
+  };
 
-  // --- WIDOK POCZEKALNI (STAGING) ---
-  if (stagingPayload.length > 0) {
+  // --- KOMPONENTY POWTARZALNE ---
+  const renderStagingItem = (item: any) => {
+    let diffBg = "border-gray-200";
+    let statusText = "Aktualizacja";
+    let statusIcon = <ArrowUpRight className="w-3 h-3"/>;
+
+    if (item.isNew) {
+      diffBg = "border-blue-400 bg-blue-50/20";
+      statusText = "Nowy Produkt";
+    } else if (item.priceDiff > 0) {
+      diffBg = "border-emerald-500 bg-emerald-50/20";
+      statusText = `Wzrost: +${item.priceDiff.toFixed(2)}`;
+    } else if (item.priceDiff < 0) {
+      diffBg = "border-red-500 bg-red-50/20";
+      statusText = `Obniżka: ${item.priceDiff.toFixed(2)}`;
+    }
+
     return (
-      <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-[1600px] mx-auto border-[3px] border-orange-400 rounded-3xl p-6 bg-orange-50/30">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-orange-200">
-          <div className="flex flex-col gap-2">
-             <h2 className="text-3xl font-bold tracking-tight text-orange-600 flex items-center gap-3">
-               <AlertTriangle className="w-8 h-8" /> Biurko Klasyfikacyjne WF-Mag
-             </h2>
-             <p className="text-muted-foreground font-medium">
-               Plik odtworzony. Możesz zatwierdzać towary sztuka po sztuce (haczykiem) analizując wyłapane odchylenia marginesowe i uzupełniając nowości, bądź zalać resztę do bazy masowo na koniec.
-             </p>
+      <div key={item.tempId} className={`flex flex-col md:flex-row gap-6 p-5 border-2 rounded-3xl transition-all shadow-sm bg-white ${diffBg}`}>
+        <div className="flex-1 space-y-4">
+          <div className="flex items-center gap-3">
+             <Badge className={item.isNew ? 'bg-blue-600' : 'bg-slate-600'}>{item.sku}</Badge>
+             
+             {item.matchSource === 'name' && (
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                   Znaleziono po NAZWIE
+                </div>
+             )}
+
+             {item.isDuplicateInFile && (
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200 animate-pulse">
+                   <AlertTriangle className="w-3 h-3" /> Powtórzenie w pliku
+                </div>
+             )}
+
+             {item.isVirtualSku && (
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                   <AlertCircle className="w-3 h-3" /> Wirtualne SKU
+                </div>
+             )}
+             <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-auto">
+                <Database className="w-3 h-3" /> Status WF-Mag: <span className={item.isNew ? 'text-blue-600' : 'text-emerald-600'}>{statusText}</span>
+             </div>
+             <div className="flex gap-2">
+                <Button variant="ghost" size="icon" onClick={() => setStagingPayload(p => p.filter(i => i.tempId !== item.tempId))} className="rounded-full w-8 h-8 text-red-500 hover:bg-red-50">
+                   <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button 
+                   size="icon" 
+                   onClick={() => commitSingleItemToDatabase(item.tempId)} 
+                   className={`rounded-full w-8 h-8 text-white shadow-md transition-all ${item.isNew ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                >
+                   {item.isNew ? <Check className="w-5 h-5" /> : <RefreshCw className="w-4 h-4" />}
+                </Button>
+             </div>
           </div>
-          <div className="flex items-center gap-4 shrink-0">
-             <Button variant="outline" onClick={cancelStaging} className="border-red-200 text-red-600 hover:bg-red-50 h-14 px-6 font-bold rounded-xl">
-                <X className="w-5 h-5 mr-2" /> Odrzuć Całą Paczkę
-             </Button>
-             <Button onClick={commitAllStagingToDatabase} disabled={importing} className="bg-emerald-600 hover:bg-emerald-700 h-14 px-8 font-bold shadow-lg shadow-emerald-600/30 rounded-xl whitespace-nowrap">
-                {importing ? "Mielenie bazy..." : <><Check className="w-5 h-5 mr-2" /> Zatwierdź Pozostałe ({stagingPayload.length})</>}
-             </Button>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-muted-foreground/60 uppercase">Nazwa Produktu (B2B)</label>
+                <input 
+                  className="w-full text-lg font-bold text-slate-800 border-b-2 border-transparent focus:border-primary outline-none bg-transparent transition-all"
+                  value={item.name}
+                  onChange={(e) => handleUpdateStagingItem(item.tempId, 'name', e.target.value)}
+                />
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-muted-foreground/60 uppercase">Cena Netto</label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="number"
+                      className="w-full text-lg font-black text-primary outline-none bg-transparent"
+                      value={item.price}
+                      onChange={(e) => handleUpdateStagingItem(item.tempId, 'price', e.target.value)}
+                    />
+                    <span className="text-xs font-bold opacity-40">PLN</span>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-muted-foreground/60 uppercase">Stan</label>
+                  <div className="text-lg font-black text-slate-500">{item.stock} <span className="text-xs font-normal opacity-50">szt.</span></div>
+                </div>
+             </div>
           </div>
+
+           <div className="grid grid-cols-3 gap-4 pt-2 border-t border-dashed items-end">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none">Kategoria</span>
+                  {item.categoryLocked && (
+                    <Badge variant="outline" className="h-4 text-[8px] font-black border-slate-900 text-slate-900 px-1 py-0 rounded uppercase">Zablokowana</Badge>
+                  )}
+                  {item.isNewCategory && !item.categoryLocked && (
+                    <Badge variant="outline" className="h-4 text-[8px] font-black border-amber-500 text-amber-500 px-1 py-0 rounded uppercase animate-pulse">Propozycja</Badge>
+                  )}
+                </div>
+                {item.isNewCategory && !item.categoryLocked ? (
+                  <input 
+                    className="text-xs bg-amber-50 p-1.5 rounded-lg border border-amber-200 font-bold outline-none text-amber-900"
+                    value={item.xlsCategoryName}
+                    onChange={(e) => handleUpdateStagingItem(item.tempId, 'xlsCategoryName', e.target.value)}
+                  />
+                ) : (
+                  <select 
+                    className={`text-xs p-1.5 rounded-lg border-none font-semibold outline-none transition-all ${item.categoryLocked ? 'bg-slate-200/50 text-slate-400 cursor-not-allowed' : 'bg-slate-100/50 text-slate-900'}`}
+                    value={item.categoryId || ''}
+                    disabled={item.categoryLocked}
+                    onChange={(e) => {
+                      handleUpdateStagingItem(item.tempId, 'categoryId', e.target.value);
+                      handleUpdateStagingItem(item.tempId, 'isNewCategory', false);
+                      handleUpdateStagingItem(item.tempId, 'subcategoryId', '');
+                    }}
+                  >
+                    <option value="">Wybierz...</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">Podkategoria</span>
+                  {item.isNewSubcategory && !item.categoryLocked && (
+                    <Badge variant="outline" className="h-4 text-[8px] font-black border-amber-500 text-amber-500 px-1 py-0 rounded uppercase animate-pulse">Propozycja</Badge>
+                  )}
+                </div>
+                {item.isNewSubcategory && !item.categoryLocked ? (
+                   <input 
+                    className="text-xs bg-amber-50 p-1.5 rounded-lg border border-amber-200 font-bold outline-none text-amber-900"
+                    value={item.xlsSubcategoryName}
+                    onChange={(e) => handleUpdateStagingItem(item.tempId, 'xlsSubcategoryName', e.target.value)}
+                  />
+                ) : (
+                  <select 
+                    className={`text-xs p-1.5 rounded-lg border-none font-semibold outline-none transition-all ${item.categoryLocked ? 'bg-slate-200/50 text-slate-400 cursor-not-allowed' : 'bg-slate-100/50'}`}
+                    value={item.subcategoryId || ''}
+                    disabled={item.categoryLocked}
+                    onChange={(e) => {
+                      handleUpdateStagingItem(item.tempId, 'subcategoryId', e.target.value);
+                      handleUpdateStagingItem(item.tempId, 'isNewSubcategory', false);
+                    }}
+                  >
+                    <option value="">Brak</option>
+                    {getSubcategories(item.categoryId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Marka</span>
+                <input 
+                  className="text-xs bg-slate-100/50 p-1.5 rounded-lg border-none font-semibold outline-none"
+                  value={item.manufacturer || ''}
+                  onChange={(e) => handleUpdateStagingItem(item.tempId, 'manufacturer', e.target.value)}
+                  placeholder="Producent..."
+                />
+              </div>
+           </div>
         </div>
-
-        <Card className="shadow-sm border-orange-200 bg-white">
-          <CardContent className="p-0 overflow-x-auto max-h-[700px] overflow-y-auto">
-             <Table>
-               <TableHeader className="bg-orange-100/50 sticky top-0 z-20 backdrop-blur-sm border-b">
-                 <TableRow>
-                   <TableHead className="w-[80px]">SKU</TableHead>
-                   <TableHead>Nazwa Urządzenia & Metadane SEO</TableHead>
-                   <TableHead className="text-center w-[120px]">Status WF-Mag</TableHead>
-                   <TableHead className="text-right w-[160px]">Cena Detal</TableHead>
-                   <TableHead className="text-center w-[80px]">Stan</TableHead>
-                   <TableHead className="text-right w-[130px]">Magazynek Peryferyjny</TableHead>
-                 </TableRow>
-               </TableHeader>
-               <TableBody>
-                 {stagingPayload.map((item) => {
-                    let diffBg = "";
-                    if (item.priceDiff > 0) diffBg = "bg-green-100/50 border-emerald-300";
-                    else if (item.priceDiff < 0) diffBg = "bg-red-100/50 border-red-300";
-                    else if (item.isNew) diffBg = "bg-blue-50/50 border-blue-200";
-
-                    return (
-                       <TableRow key={item.sku} className={`transition-all ${diffBg ? `border-l-[6px] ${diffBg}` : 'border-l-[6px] border-l-transparent'} ${item.isNew ? 'bg-slate-50/50' : ''}`}>
-                          <TableCell className="font-bold font-mono text-xs">{item.sku}</TableCell>
-                          
-                          <TableCell className="max-w-[400px]">
-                            {item.isNew ? (
-                              <div className="flex flex-col gap-3 py-2">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tytuł Zwracany w Sklepie B2B</label>
-                                <input 
-                                  className="w-full px-3 py-2 border border-blue-200 rounded-lg text-sm bg-white font-semibold text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                                  value={item.name}
-                                  onChange={(e) => handleUpdateStagingItem(item.sku, 'name', e.target.value)}
-                                />
-                                
-                                <div className="grid grid-cols-2 gap-3 mt-1">
-                                  <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                       Kategoria 
-                                       {item.aiSuggested && <span className="ml-2 text-[10px] text-fuchsia-600 bg-fuchsia-100 px-1.5 py-0.5 rounded-full inline-flex items-center gap-1"><Sparkles className="w-3 h-3"/> Sugerowane przez NLP</span>}
-                                    </label>
-                                    <select 
-                                      value={item.categoryId}
-                                      onChange={(e) => handleUpdateStagingItem(item.sku, 'categoryId', e.target.value)}
-                                      className="w-full px-3 py-2 border rounded-lg text-xs bg-white text-muted-foreground focus:ring-2 focus:ring-blue-500 outline-none"
-                                    >
-                                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                  </div>
-                                  <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Producent</label>
-                                    <input 
-                                      className="w-full px-3 py-2 border rounded-lg text-xs bg-white text-muted-foreground focus:ring-2 focus:ring-blue-500 outline-none"
-                                      value={item.manufacturer || ''}
-                                      onChange={(e) => handleUpdateStagingItem(item.sku, 'manufacturer', e.target.value)}
-                                      placeholder="Z WF-Maga..."
-                                    />
-                                  </div>
-                                </div>
-
-                                <div className="flex flex-col gap-1.5 mt-1">
-                                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex justify-between">Ochrona SEO <span className="text-[10px] text-orange-500">Pole Opcjonalne</span></label>
-                                    <textarea 
-                                      className="w-full px-3 py-2 border rounded-lg text-xs bg-orange-50/50 text-orange-900 border-orange-200 focus:ring-2 focus:ring-orange-500 outline-none min-h-[60px]"
-                                      value={item.seoDescription || ''}
-                                      onChange={(e) => handleUpdateStagingItem(item.sku, 'seoDescription', e.target.value)}
-                                      placeholder="<h3>Wpisz tutaj HTML lub czysty tekst pozycjonujący. Nie zostanie nadpisany w przyszłości przez hurtownię.</h3>"
-                                    />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="font-semibold text-sm truncate">{item.name}</div>
-                            )}
-                          </TableCell>
-                          
-                          <TableCell className="text-center align-top pt-6">
-                             {item.isNew ? (
-                               <Badge className="bg-blue-600 text-xs shadow-sm shadow-blue-600/30">Nowy Indeks</Badge>
-                             ) : item.priceDiff !== 0 ? (
-                               <div className={`flex flex-col items-center justify-center p-2 rounded-lg border bg-white shadow-sm font-bold text-sm ${item.priceDiff > 0 ? 'text-emerald-700 border-emerald-200' : 'text-red-700 border-red-200'}`}>
-                                  <span className="flex items-center gap-1">
-                                    {item.priceDiff > 0 ? <ArrowUpRight className="w-4 h-4"/> : <ArrowDownRight className="w-4 h-4" />} 
-                                    {Math.abs(item.priceDiff).toFixed(2)} PLN
-                                  </span>
-                                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground mt-1 text-center">Różnica Cennika</span>
-                               </div>
-                             ) : (
-                               <Badge variant="outline" className="text-muted-foreground bg-white">Odświeżono</Badge>
-                             )}
-                          </TableCell>
-
-                          <TableCell className="text-right align-top pt-6">
-                             <div className="flex flex-col items-end gap-1 relative group">
-                               <div className="flex items-center">
-                                  <input 
-                                    type="number"
-                                    value={item.price}
-                                    onChange={(e) => handleUpdateStagingItem(item.sku, 'price', e.target.value)}
-                                    className="w-24 px-2 py-1.5 border rounded-lg bg-white text-right font-bold text-base focus:ring-2 focus:ring-orange-400 outline-none border-gray-300"
-                                  />
-                                  <span className="text-xs text-muted-foreground font-bold ml-1.5 pt-1">PLN</span>
-                               </div>
-                               {!item.isNew && item.oldPrice && (
-                                  <div className="text-[10px] text-muted-foreground pr-8">Wcześniej: <span className="line-through">{item.oldPrice.toFixed(2)} PLN</span></div>
-                               )}
-                             </div>
-                          </TableCell>
-                          
-                          <TableCell className="text-center font-mono font-bold text-base align-top pt-7">
-                             {item.stock} <span className="text-xs text-muted-foreground font-sans">szt</span>
-                          </TableCell>
-                          
-                          <TableCell className="text-right align-top pt-6">
-                             <div className="flex items-center justify-end gap-1.5">
-                               <Button variant="ghost" size="icon" onClick={() => handleRemoveFromStaging(item.sku)} className="w-10 h-10 border border-gray-200 bg-white text-gray-500 hover:text-red-700 hover:bg-red-50 hover:border-red-200 shadow-sm transition-all rounded-xl" title="Upuść ten rekord do kosza">
-                                 <Trash2 className="w-4 h-4" />
-                               </Button>
-                               
-                               <Button size="icon" onClick={() => commitSingleItemToDatabase(item.sku)} className="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/30 transition-all rounded-xl" title="Gotowe! Publikuj w Bazie Sklepu od zaraz.">
-                                 <Check className="w-5 h-5" />
-                               </Button>
-                             </div>
-                          </TableCell>
-                       </TableRow>
-                    );
-                 })}
-               </TableBody>
-             </Table>
-          </CardContent>
-        </Card>
       </div>
     );
-  }
+  };
 
-  // --- NORMALNY WIDOK BAZY PRODUKTÓW ---
+  if (!mounted) return null;
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-[1600px] mx-auto">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <PackageSearch className="h-8 w-8 text-primary" /> Baza Produktów (CMS)
-          </h2>
-          <p className="text-muted-foreground">
-            Zarządzaj katalogiem. Edytuj opisy techniczne z gwarancją zabezpieczenia przed narzutem synchronizacji z WF-Maga.
-          </p>
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 animate-in fade-in duration-700">
+      
+      {/* HEADER SECTION */}
+      <div className="max-w-[1600px] mx-auto px-6 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+           <div className="space-y-2">
+             <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
+               <ShoppingBag className="w-10 h-10 text-primary" /> Baza Produktów
+             </h1>
+             <p className="text-slate-500 font-medium max-w-xl">
+               Zarządzaj centralną bazą towarową. Zaawansowane filtrowanie, dynamiczny import z WF-Mag i ochrona opisów SEO.
+             </p>
+           </div>
+           
+           <div className="flex gap-3">
+             <input type="file" accept=".xls,.xlsx,.csv" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+             <Button 
+                onClick={handleWfMagImportClick}
+                disabled={importing}
+                className="h-12 px-6 rounded-2xl bg-white text-slate-900 border-2 border-slate-200 hover:bg-slate-50 hover:border-slate-300 font-bold shadow-sm transition-all flex gap-2"
+             >
+                <UploadCloud className="w-5 h-5 text-primary" />
+                {importing ? "Mielenie..." : "Importuj z WF-Mag"}
+             </Button>
+             <Button className="h-12 px-8 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all flex gap-2">
+                <Plus className="w-5 h-5 text-white" />
+                Dodaj Nowy
+             </Button>
+           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <input 
-            type="file" 
-            accept=".xls,.xlsx,.csv" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            className="hidden" 
-          />
-          <Button 
-            variant="secondary" 
-            className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md"
-            onClick={handleWfMagImportClick}
-            disabled={importing}
-          >
-            <UploadCloud className="h-4 w-4" /> 
-            {importing ? "Analiza..." : "Importuj Plik .XLS (WF-Mag)"}
-          </Button>
-          <Button className="gap-2 shadow-sm">
-            <Plus className="h-4 w-4" /> Nowy Ręczny Produkt
-          </Button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative items-start">
+          
+          {/* SIDEBAR FILTERS */}
+          <div className="lg:col-span-3 space-y-6 sticky top-8">
+             <Card className="border-none shadow-xl shadow-slate-200/50 rounded-[32px] overflow-hidden">
+               <CardHeader className="bg-slate-900 text-white pb-6 pt-8">
+                 <CardTitle className="text-lg flex items-center gap-2">
+                   <Filter className="w-5 h-5 text-primary" /> Przeglądaj Katalog
+                 </CardTitle>
+               </CardHeader>
+               <CardContent className="p-6 space-y-8">
+                 
+                 {/* Search */}
+                 <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Wyszukaj produkt</label>
+                    <div className="relative group">
+                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
+                       <input 
+                         type="text" 
+                         value={searchTerm}
+                         onChange={e => setSearchTerm(e.target.value)}
+                         placeholder="Model, Indeks, Nazwa..."
+                         className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-primary/20 text-sm font-semibold transition-all"
+                       />
+                    </div>
+                 </div>
+
+                 {/* Categories Hierarchy */}
+                 <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Hierarchia Kategorii</label>
+                    <div className="space-y-1">
+                       <button 
+                         onClick={() => { setSelectedCatId(null); setSelectedSubcatId(null); }}
+                         className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${!selectedCatId ? 'bg-primary text-white shadow-md shadow-primary/20' : 'text-slate-600 hover:bg-slate-100'}`}
+                       >
+                         <Layers className="w-4 h-4" /> Wszystkie Produkty
+                       </button>
+
+                       {categories.map(cat => (
+                         <div key={cat.id} className="space-y-1">
+                            <div className="flex items-center gap-1">
+                               <button 
+                                 onClick={() => {
+                                   setSelectedCatId(cat.id);
+                                   setSelectedSubcatId(null);
+                                   toggleCat(cat.id);
+                                 }}
+                                 className={`flex-1 flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${selectedCatId === cat.id && !selectedSubcatId ? 'bg-primary/10 text-primary' : 'text-slate-600 hover:bg-slate-100'}`}
+                               >
+                                 <span className="flex items-center gap-2">
+                                    <TagIcon className="w-3.5 h-3.5" /> {cat.name}
+                                 </span>
+                                 {cat.subcategories?.length > 0 && (
+                                   expandedCats.has(cat.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
+                                 )}
+                               </button>
+                            </div>
+
+                            {expandedCats.has(cat.id) && cat.subcategories?.length > 0 && (
+                              <div className="ml-6 space-y-1 border-l-2 border-slate-100 pl-2 py-1 animate-in slide-in-from-left duration-300">
+                                {cat.subcategories.map((sub: any) => (
+                                  <button
+                                    key={sub.id}
+                                    onClick={() => {
+                                      setSelectedCatId(cat.id);
+                                      setSelectedSubcatId(sub.id);
+                                    }}
+                                    className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${selectedSubcatId === sub.id ? 'text-primary bg-primary/5' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'}`}
+                                  >
+                                    {sub.name}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                         </div>
+                       ))}
+                    </div>
+                 </div>
+
+                 {/* Manufacturer */}
+                 <div className="space-y-3 pt-4 border-t">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Producent</label>
+                    <select 
+                      value={selectedManufacturer}
+                      onChange={e => setSelectedManufacturer(e.target.value)}
+                      className="w-full p-3 bg-slate-50 rounded-2xl border-none outline-none text-sm font-bold text-slate-600"
+                    >
+                      <option value="ALL">Wszyscy Producenci</option>
+                      {manufacturers.map(m => <option key={m as string} value={m as string}>{m as string}</option>)}
+                    </select>
+                 </div>
+               </CardContent>
+             </Card>
+
+             <Card className="border-none shadow-lg shadow-blue-100/50 rounded-[32px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+                <CardContent className="p-6 space-y-4">
+                   <div className="p-3 bg-white/20 rounded-2xl w-fit">
+                      <Sparkles className="w-6 h-6 text-yellow-300" />
+                   </div>
+                   <h3 className="font-black text-xl leading-tight">Inteligentna Klasyfikacja</h3>
+                   <p className="text-white/80 text-xs font-medium leading-relaxed">
+                     System automatycznie dopasowuje nowo zaimportowane produkty do Twojej struktury kategorii. 
+                   </p>
+                </CardContent>
+             </Card>
+          </div>
+
+          {/* MAIN CONTENT AREA */}
+          <div className="lg:col-span-9 space-y-10">
+            
+            {/* STAGING OVERLAY / TOP CARD */}
+            {stagingPayload.length > 0 && (
+              <div className="space-y-6 animate-in slide-in-from-top-4 duration-500 p-8 rounded-[40px] bg-orange-50/50 border-4 border-orange-200 shadow-2xl shadow-orange-200/50">
+                <div className="flex items-center justify-between mb-8">
+                   <div className="flex items-center gap-4">
+                     <div className="p-4 bg-orange-500 text-white rounded-[20px] shadow-lg shadow-orange-500/20">
+                        <ArrowUpRight className="w-8 h-8" />
+                     </div>
+                     <div>
+                       <h2 className="text-2xl font-black text-orange-900">Biurko Klasyfikacyjne</h2>
+                       <p className="text-orange-700/70 font-bold text-sm">Wykryto {stagingPayload.length} zmian oczekujących na zatwierdzenie.</p>
+                     </div>
+                   </div>
+                   <div className="flex gap-4 items-center">
+                       {importSummary && (
+                         <div className="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-xl text-xs font-black animate-in fade-in zoom-in duration-300">
+                           {importSummary}
+                         </div>
+                       )}
+                       <Button 
+                         variant="ghost" 
+                         onClick={() => { setStagingPayload([]); setImportSummary(null); }} 
+                         className="h-12 px-6 rounded-2xl text-red-600 hover:bg-red-50 hover:text-red-700 font-bold border-2 border-transparent hover:border-red-200 transition-all"
+                       >
+                         Wyczyść i wróć
+                       </Button>
+                       <Button onClick={commitAllStagingToDatabase} disabled={importing} className="h-12 px-8 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-black shadow-lg shadow-orange-600/30">
+                         {importing ? "Mielenie..." : "Zatwierdź Wszystko"}
+                       </Button>
+                    </div>
+                </div>
+
+                <div className="space-y-4 max-h-[1000px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-orange-200">
+                   {stagingPayload.map(renderStagingItem)}
+                </div>
+              </div>
+            )}
+
+            {/* PRODUCT LIST SECTION */}
+            <div className="space-y-6">
+               <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-2">
+                  <div className="flex items-center gap-4 text-slate-400 font-bold text-sm">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" /> Wyniki: <span className="text-slate-900">{filteredProducts.length}</span>
+                    </div>
+                    
+                    {/* Page Size Selector */}
+                    <div className="hidden sm:flex items-center gap-1.5 ml-4 bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                       {[10, 20, 50].map(size => (
+                         <button 
+                           key={size}
+                           onClick={() => setPageSize(size)}
+                           className={`px-3 py-1.5 rounded-lg text-[10px] font-black transition-all ${pageSize === size ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-50'}`}
+                         >
+                           {size}
+                         </button>
+                       ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                     {/* MINI PAGINATION FOR HEADER */}
+                     {totalPages > 1 && (
+                        <div className="flex items-center gap-2 mr-4 bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                           <Button 
+                             variant="ghost" 
+                             size="icon"
+                             disabled={currentPage === 1}
+                             onClick={() => setCurrentPage(prev => prev - 1)}
+                             className="w-8 h-8 rounded-lg disabled:opacity-20"
+                           >
+                             <ChevronLeft className="w-4 h-4" />
+                           </Button>
+                           <span className="text-[10px] font-black text-slate-600 px-1">
+                             {currentPage} / {totalPages}
+                           </span>
+                           <Button 
+                             variant="ghost" 
+                             size="icon"
+                             disabled={currentPage === totalPages}
+                             onClick={() => setCurrentPage(prev => prev + 1)}
+                             className="w-8 h-8 rounded-lg disabled:opacity-20"
+                           >
+                             <ChevronRight className="w-4 h-4" />
+                           </Button>
+                        </div>
+                     )}
+
+                     <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sortuj:</span>
+                        <select className="bg-white border-none text-[10px] font-black p-2 rounded-xl outline-none shadow-sm cursor-pointer hover:bg-slate-50">
+                           <option>Najnowsze</option>
+                           <option>Cena: Rosnąco</option>
+                           <option>Cena: Malejąco</option>
+                           <option>Stan: Najwięcej</option>
+                        </select>
+                     </div>
+                  </div>
+               </div>
+
+               {loading ? (
+                  <div className="py-40 flex flex-col items-center justify-center gap-4 text-slate-400">
+                    <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin shadow-lg"></div>
+                    <span className="font-bold tracking-widest uppercase text-xs">Synchronizacja bazy...</span>
+                  </div>
+               ) : filteredProducts.length === 0 ? (
+                  <div className="py-40 bg-white rounded-[40px] border border-dashed border-slate-200 flex flex-col items-center justify-center text-center px-12">
+                     <PackageSearch className="w-20 h-20 text-slate-200 mb-6" />
+                     <h3 className="text-xl font-black text-slate-900 mb-2">Brak produktów</h3>
+                     <p className="text-slate-500 font-medium max-w-sm">Zmień filtry lub zaimportuj nowe towary, aby zasilić bazę.</p>
+                  </div>
+               ) : (
+                  <div className="space-y-4">
+                     {paginatedProducts.map(p => (
+                       <div key={p.id} className="group relative flex flex-col md:flex-row items-center gap-6 p-6 bg-white rounded-[40px] hover:shadow-2xl hover:shadow-slate-200/80 transition-all duration-500 border border-slate-100 hover:border-primary/20">
+                          
+                          {/* Product Info */}
+                          <div className="flex-1 min-w-0 space-y-3">
+                             <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="font-black text-[10px] border-slate-200 text-slate-500">{p.sku}</Badge>
+                                <span className="text-[10px] font-bold text-slate-300 uppercase leading-none mt-1">|</span>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider ${p.stock > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                  {p.stock > 0 ? 'W Magazynie' : 'Wyprzedane'}
+                                </span>
+                             </div>
+                             
+                             <h3 className="text-xl font-black text-slate-800 group-hover:text-primary transition-colors leading-tight truncate">
+                               {p.name}
+                             </h3>
+
+                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                                <div className="flex items-center gap-2">
+                                   <div className="p-1.5 bg-slate-100 rounded-lg text-slate-500">
+                                      <TagIcon className="w-3 h-3" />
+                                   </div>
+                                   <div className="flex flex-col">
+                                      <span className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Kategoria</span>
+                                      <span className="text-xs font-black text-slate-600 leading-none">{getCatName(p.categoryId)}</span>
+                                   </div>
+                                </div>
+                                {p.subcategoryId && (
+                                  <div className="flex flex-col">
+                                     <span className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Podkategoria</span>
+                                     <span className="text-xs font-bold text-slate-400 leading-none bg-slate-50 px-2 py-0.5 rounded italic">
+                                       {getSubName(p.categoryId, p.subcategoryId)}
+                                     </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                   <div className="p-1.5 bg-slate-100 rounded-lg text-slate-500">
+                                      <HardDrive className="w-3 h-3" />
+                                   </div>
+                                   <div className="flex flex-col">
+                                      <span className="text-[9px] font-bold text-slate-400 uppercase leading-none mb-1">Producent</span>
+                                      <span className="text-xs font-black text-slate-600 leading-none">{p.manufacturer || "Inny"}</span>
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
+
+                          {/* Stats & Actions */}
+                          <div className="flex items-center gap-8 pl-8 md:border-l border-slate-100">
+                             <div className="flex flex-col items-end">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">Cena Netto</span>
+                                <div className="flex items-baseline gap-1">
+                                   <span className="text-3xl font-black text-slate-900">{Number(p.price).toFixed(2)}</span>
+                                   <span className="text-sm font-bold text-slate-400">PLN</span>
+                 <div className="text-[10px] font-bold text-slate-300 mt-1">Brutto: {(p.price * 1.23).toFixed(2)} PLN</div>
+                             </div>
+
+                             <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 duration-500">
+                                <Button 
+                                  size="icon" 
+                                  onClick={() => {
+                                    setEditingProduct({ ...p });
+                                    setIsEditOpen(true);
+                                  }}
+                                  className="w-12 h-12 rounded-[22px] bg-slate-900 hover:bg-primary text-white shadow-xl shadow-slate-900/10 hover:shadow-primary/30 transition-all"
+                                >
+                                   <Edit2 className="w-5 h-5" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  onClick={() => handleDeleteProduct(p.id)}
+                                  className="w-12 h-12 rounded-[22px] bg-red-50 border-2 border-red-100 text-red-600 hover:bg-red-600 hover:text-white shadow-xl shadow-red-100/50 hover:shadow-red-600/30 transition-all font-bold"
+                                >
+                                   <Trash2 className="w-5 h-5" />
+                                </Button>
+                             </div>
+                                {p.seoDescription && (
+                                  <div className="absolute -top-3 -right-3" title="Zawiera dedykowany opis SEO">
+                                     <div className="p-2 bg-blue-600 text-white rounded-xl shadow-lg animate-pulse">
+                                        <ShieldAlert className="w-4 h-4" />
+                                     </div>
+                                  </div>
+                                )}
+                             </div>
+                          </div>
+                       </div>
+                     ))}
+                  </div>
+               )}
+            </div>
+          </div>
         </div>
       </div>
 
-      <Card className="shadow-sm border-blue-100/50">
-        <CardHeader className="bg-muted/10 border-b pb-4">
-           {/* Moduł Opcji / Filtrowania SPA */}
-           <div className="flex flex-col md:flex-row gap-4 items-center w-full">
-             
-             <div className="flex bg-white dark:bg-gray-900 border rounded-xl overflow-hidden shadow-sm flex-1 items-center pl-3 w-full">
-               <Search className="w-5 h-5 text-muted-foreground shrink-0" />
-               <input 
-                 type="text" 
-                 value={searchTerm}
-                 onChange={e => setSearchTerm(e.target.value)}
-                 placeholder="Wyszukaj po Nazwie Urządzenia lub SKU..."
-                 className="flex-1 bg-transparent border-none py-2.5 px-3 outline-none text-sm focus:ring-0"
-               />
-             </div>
+      {/* EDIT MODAL */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl rounded-[32px] p-8">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black flex items-center gap-3">
+               <Edit2 className="w-6 h-6 text-primary" /> Edytuj Produkt
+            </DialogTitle>
+            <DialogDescription className="font-medium">
+               Modyfikacja danych produktu w centralnej bazie CMS. SKU: <span className="font-bold text-slate-800">{editingProduct?.sku}</span>
+            </DialogDescription>
+          </DialogHeader>
 
-             <div className="flex items-center gap-4 w-full md:w-auto">
-               <select 
-                 value={selectedCat} 
-                 onChange={e => setSelectedCat(e.target.value)}
-                 className="h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary w-full md:w-48"
-               >
-                 <option value="ALL">Wszystkie Kategorie</option>
-                 {categories.map(c => (
-                   <option key={c.id} value={c.id}>{c.name}</option>
-                 ))}
-               </select>
+          {editingProduct && (
+            <div className="grid grid-cols-2 gap-6 my-6">
+               <div className="col-span-2 space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Nazwa Urządzenia</label>
+                  <input 
+                    className="w-full p-3 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-800"
+                    value={editingProduct.name}
+                    onChange={e => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  />
+               </div>
 
-               <select 
-                 value={selectedManufacturer} 
-                 onChange={e => setSelectedManufacturer(e.target.value)}
-                 className="h-10 rounded-xl border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-primary w-full md:w-48"
-               >
-                 <option value="ALL">Każdy Producent</option>
-                 {manufacturers.map(m => (
-                   <option key={m as string} value={m as string}>{m as string}</option>
-                 ))}
-               </select>
-             </div>
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Cena Netto (PLN)</label>
+                  <input 
+                    type="number"
+                    className="w-full p-3 bg-slate-50 rounded-2xl border-none outline-none font-bold text-primary"
+                    value={editingProduct.price}
+                    onChange={e => setEditingProduct({ ...editingProduct, price: Number(e.target.value) })}
+                  />
+               </div>
 
-           </div>
-        </CardHeader>
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Stan Magazynowy</label>
+                  <input 
+                    type="number"
+                    className="w-full p-3 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-600"
+                    value={editingProduct.stock}
+                    onChange={e => setEditingProduct({ ...editingProduct, stock: Number(e.target.value) })}
+                  />
+               </div>
 
-        <CardContent className="p-0">
-          {loading ? (
-             <div className="py-24 text-center text-muted-foreground flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                Ładowanie struktury centrum produktowego...
-             </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="text-base text-muted-foreground text-center py-24 flex flex-col items-center">
-              <PackageSearch className="w-16 h-16 opacity-20 mb-4" />
-              Baza zadanego asortymentu jest pusta. Zaimportuj stany z magazynu WF-Mag lub zmień filtry!
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted/5">
-                  <TableRow>
-                    <TableHead className="w-[100px] py-4">Status / SKU</TableHead>
-                    <TableHead>Nazwa Urządzenia</TableHead>
-                    <TableHead>Kategoria / Producent</TableHead>
-                    <TableHead className="text-right">Baza</TableHead>
-                    <TableHead className="text-center">Stan Mag.</TableHead>
-                    <TableHead className="text-center">Blokada Opisu SEO</TableHead>
-                    <TableHead className="text-right">Akcje</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.map(p => (
-                    <TableRow key={p.id} className="hover:bg-muted/20 hover:shadow-sm transition-all group">
-                      <TableCell className="font-mono text-xs">
-                        <div className="flex flex-col gap-1">
-                           <span className="font-bold text-gray-800 dark:text-gray-200">{p.sku}</span>
-                           {p.stock > 0 ? (
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">Dostępny</Badge>
-                           ) : (
-                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Brak. Mag.</Badge>
-                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-semibold text-[15px]">{p.name}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <span className="text-sm font-medium">{getCategoryName(p.categoryId)}</span>
-                          <span className="text-xs text-muted-foreground">{p.manufacturer || "Brak Danych"}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                         <span className="font-bold text-lg text-primary">{Number(p.price).toFixed(2)}</span>
-                         <span className="text-xs text-muted-foreground ml-1">PLN</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={`font-mono font-medium ${p.stock > 10 ? 'text-emerald-600' : 'text-orange-600'}`}>
-                          {p.stock} szt.
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                         {p.seoDescription ? (
-                           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full">
-                             <ShieldAlert className="w-3.5 h-3.5" /> Chroniony (Custom)
-                           </div>
-                         ) : (
-                           <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground border px-2.5 py-1 rounded-full">
-                             Synchronizowany automatycznie
-                           </div>
-                         )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="outline" size="sm" className="h-8 gap-2 bg-slate-50 hover:bg-slate-100 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Edit2 className="w-3.5 h-3.5" /> Edytuj Akt
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Kategoria</label>
+                  <select 
+                    className="w-full p-3 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-600"
+                    value={editingProduct.categoryId}
+                    onChange={e => setEditingProduct({ ...editingProduct, categoryId: e.target.value, subcategoryId: '' })}
+                  >
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+               </div>
+
+               <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Podkategoria</label>
+                  <select 
+                    className="w-full p-3 bg-slate-50 rounded-2xl border-none outline-none font-bold text-slate-600"
+                    value={editingProduct.subcategoryId || ''}
+                    onChange={e => setEditingProduct({ ...editingProduct, subcategoryId: e.target.value })}
+                  >
+                    <option value="">Brak / Główna</option>
+                    {getSubcategories(editingProduct.categoryId).map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+               </div>
+
+               <div className="col-span-2 space-y-2">
+                  <label className="text-[10px] font-black uppercase text-slate-400">Opis SEO (Chroniony przed WF-Mag)</label>
+                  <textarea 
+                    className="w-full p-4 bg-blue-50/50 rounded-2xl border-none outline-none text-sm font-medium text-blue-900 min-h-[100px]"
+                    value={editingProduct.seoDescription || ''}
+                    onChange={e => setEditingProduct({ ...editingProduct, seoDescription: e.target.value })}
+                    placeholder="Wpisz treść HTML opisującą produkt..."
+                  />
+               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+
+          <DialogFooter className="gap-3">
+             <Button variant="ghost" onClick={() => setIsEditOpen(false)} className="rounded-2xl font-bold">Anuluj</Button>
+             <Button onClick={handleUpdateProduct} className="rounded-2xl bg-primary px-8 font-black shadow-lg shadow-primary/20 flex gap-2">
+                <Save className="w-4 h-4" /> Zapisz Zmiany
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

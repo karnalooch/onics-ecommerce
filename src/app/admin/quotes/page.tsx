@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -8,39 +8,53 @@ import { Badge } from "@/components/ui/badge"
 import { 
   FileText, Printer, Plus, Trash2, Search, 
   Tv, Smartphone, Video, Network, Activity, Home, Shield,
-  ChevronRight, Info
+  ChevronRight, Info, AlertTriangle, Check, X
 } from "lucide-react"
-import { initializeMockData } from "@/store/serverStore"
-
-const { categories: ALL_CATEGORIES, products: ALL_PRODUCTS, users: ALL_USERS } = initializeMockData();
-const BIZ_CLIENTS = ALL_USERS.filter((u: any) => u.roleType === "BIZ" && u.isApproved);
-
-const CATEGORY_ICONS: Record<string, any> = {
-  "c1": Tv,
-  "c2": Smartphone,
-  "c3": Video,
-  "c4": Network,
-  "c5": Activity,
-  "c6": Home,
-  "c7": Shield,
-};
+import * as Icons from "lucide-react";
 
 export default function QuotesGenerator() {
-  const [items, setItems] = useState<{productId: string, qty: number, discount: number}[]>([{ productId: "p2", qty: 1, discount: 0 }]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [items, setItems] = useState<{productId: string, qty: number, discount: number}[]>([]);
   const [clientInfo, setClientInfo] = useState({ name: "Firma Instalatorska XYZ", nip: "1234567890" });
-  const [selectedCategoryId, setSelectedCategoryId] = useState(ALL_CATEGORIES[0]?.id || "c3");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isClientDataCollapsed, setIsClientDataCollapsed] = useState(false);
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [cRes, pRes, uRes] = await Promise.all([
+          fetch("/api/categories"),
+          fetch("/api/products"),
+          fetch("/api/users")
+        ]);
+        const [cats, prods, users] = await Promise.all([cRes.json(), pRes.json(), uRes.json()]);
+        setCategories(cats);
+        setProducts(prods);
+        setClients(users.filter((u: any) => u.roleType === "BIZ"));
+        if (cats.length > 0) setSelectedCategoryId(cats[0].id);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
   const handleClientNameChange = (name: string) => {
     setClientInfo(prev => ({ ...prev, name }));
-    const client = BIZ_CLIENTS.find((u: any) => u.companyName === name);
+    const client = clients.find((u: any) => u.companyName === name);
     if (client) {
       setClientInfo(prev => ({ ...prev, nip: client.nip || "" }));
     }
   }
 
-  const addLineItem = (productId: string = "p2") => {
+  const addLineItem = (productId: string) => {
     setItems([...items, { productId, qty: 1, discount: 0 }]);
   }
 
@@ -54,7 +68,12 @@ export default function QuotesGenerator() {
     setItems(newItems);
   }
 
-  const getProduct = (id: string) => ALL_PRODUCTS.find(p => p.id === id) || ALL_PRODUCTS[0];
+  const getProduct = (id: string) => products.find(p => p.id === id) || products[0] || { name: "...", price: 0, sku: "" };
+
+  const getIcon = (name: string) => {
+    const IconComp = (Icons as any)[name] || Info;
+    return <IconComp className="h-5 w-5" />;
+  };
 
   const calculateTotal = () => {
     return items.reduce((sum, item) => {
@@ -131,7 +150,7 @@ export default function QuotesGenerator() {
                       className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:ring-1 focus:ring-primary transition-all"
                     />
                     <datalist id="clients-list">
-                      {BIZ_CLIENTS.map((c: any) => (
+                      {clients.map((c: any) => (
                         <option key={c.id} value={c.companyName} />
                       ))}
                     </datalist>
@@ -273,24 +292,92 @@ export default function QuotesGenerator() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {items.map((item, idx) => {
-                    const p = getProduct(item.productId);
-                    const priceAfterDiscount = p.price * (1 - item.discount / 100);
-                    const lineTotal = priceAfterDiscount * item.qty;
-                    return (
-                      <TableRow key={idx} className="border-b last:border-b-0 hover:bg-transparent">
-                        <TableCell className="font-medium text-xs">{idx + 1}</TableCell>
-                        <TableCell>
-                          <p className="font-bold text-xs">{p.name}</p>
-                          <p className="text-[10px] text-muted-foreground tracking-tight">{p.sku}</p>
-                        </TableCell>
-                        <TableCell className="text-right text-xs font-medium">{item.qty}</TableCell>
-                        <TableCell className="text-right text-xs">{p.price.toFixed(2)} zł</TableCell>
-                        <TableCell className="text-right text-xs text-destructive font-bold">{item.discount > 0 ? `-${item.discount}%` : '0%'}</TableCell>
-                        <TableCell className="text-right text-xs font-black">{lineTotal.toFixed(2)} zł</TableCell>
-                      </TableRow>
-                    )
-                  })}
+                  {(() => {
+                    let globalLp = 0;
+                    return categories.map(cat => {
+                      const itemsInCat = items.map(item => ({ ...item, product: getProduct(item.productId) }))
+                                             .filter(i => i.product.categoryId === cat.id);
+                      if (itemsInCat.length === 0) return null;
+
+                      return (
+                        <React.Fragment key={cat.id}>
+                          <TableRow className="bg-primary/5 hover:bg-primary/5 print:bg-primary/5 border-t-2 border-primary">
+                             <TableCell colSpan={6} className="py-2 px-4">
+                               <div className="flex items-center gap-2">
+                                  {getIcon(cat.iconName)}
+                                  <span className="font-black uppercase tracking-widest text-xs text-primary">{cat.name}</span>
+                               </div>
+                             </TableCell>
+                          </TableRow>
+                          
+                          {(cat.subcategories || []).map((sub: any) => {
+                             const itemsInSub = itemsInCat.filter(i => i.product.subcategoryId === sub.id);
+                             if (itemsInSub.length === 0) return null;
+                             return (
+                               <React.Fragment key={sub.id}>
+                                 <TableRow className="bg-muted/10 hover:bg-muted/10 border-b">
+                                    <TableCell colSpan={6} className="py-1 px-4">
+                                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                                        <ChevronRight className="w-3 h-3" /> {sub.name}
+                                      </span>
+                                    </TableCell>
+                                 </TableRow>
+                                 {itemsInSub.map((item, idx) => {
+                                   globalLp++;
+                                   const p = item.product;
+                                   const priceAfterDiscount = p.price * (1 - item.discount / 100);
+                                   const lineTotal = priceAfterDiscount * item.qty;
+                                   return (
+                                     <TableRow key={item.productId + idx} className="border-b last:border-b-0 hover:bg-transparent">
+                                       <TableCell className="font-medium text-[10px]">{globalLp}</TableCell>
+                                       <TableCell>
+                                         <p className="font-bold text-xs">{p.name}</p>
+                                         <p className="text-[9px] text-muted-foreground tracking-tight">{p.sku}</p>
+                                       </TableCell>
+                                       <TableCell className="text-right text-xs font-medium">{item.qty}</TableCell>
+                                       <TableCell className="text-right text-xs">{Number(p.price).toFixed(2)} zł</TableCell>
+                                       <TableCell className="text-right text-xs text-destructive font-bold">{item.discount > 0 ? `-${item.discount}%` : '0%'}</TableCell>
+                                       <TableCell className="text-right text-xs font-black">{lineTotal.toFixed(2)} zł</TableCell>
+                                     </TableRow>
+                                   )
+                                 })}
+                               </React.Fragment>
+                             )
+                          })}
+
+                          {/* Items in Main Cat WITHOUT subcat */}
+                          {itemsInCat.filter(i => !i.product.subcategoryId).length > 0 && (
+                             <>
+                               <TableRow className="bg-muted/5 hover:bg-muted/5 border-b italic">
+                                  <TableCell colSpan={6} className="py-1 px-4">
+                                    <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-tighter">Inne / Akcesoria</span>
+                                  </TableCell>
+                               </TableRow>
+                               {itemsInCat.filter(i => !i.product.subcategoryId).map((item, idx) => {
+                                 globalLp++;
+                                 const p = item.product;
+                                 const priceAfterDiscount = p.price * (1 - item.discount / 100);
+                                 const lineTotal = priceAfterDiscount * item.qty;
+                                 return (
+                                   <TableRow key={item.productId + idx} className="border-b last:border-b-0 hover:bg-transparent">
+                                     <TableCell className="font-medium text-[10px]">{globalLp}</TableCell>
+                                     <TableCell>
+                                       <p className="font-bold text-xs">{p.name}</p>
+                                       <p className="text-[9px] text-muted-foreground tracking-tight">{p.sku}</p>
+                                     </TableCell>
+                                     <TableCell className="text-right text-xs font-medium">{item.qty}</TableCell>
+                                     <TableCell className="text-right text-xs">{Number(p.price).toFixed(2)} zł</TableCell>
+                                     <TableCell className="text-right text-xs text-destructive font-bold">{item.discount > 0 ? `-${item.discount}%` : '0%'}</TableCell>
+                                     <TableCell className="text-right text-xs font-black">{lineTotal.toFixed(2)} zł</TableCell>
+                                   </TableRow>
+                                 )
+                               })}
+                             </>
+                          )}
+                        </React.Fragment>
+                      )
+                    })
+                  })()}
                 </TableBody>
               </Table>
               
@@ -347,63 +434,86 @@ export default function QuotesGenerator() {
                 </div>
              </div>
              
-             <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
-                <div className="space-y-1">
-                   {ALL_PRODUCTS
-                    .filter(p => p.categoryId === selectedCategoryId && (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase())))
-                    .map(product => (
-                      <div 
-                        key={product.id} 
-                        className="p-3 border rounded-lg hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all group flex flex-col gap-1"
-                        onClick={() => addLineItem(product.id)}
-                      >
-                         <div className="flex justify-between items-start">
-                            <h4 className="text-[13px] font-bold leading-tight group-hover:text-primary transition-colors">{product.name}</h4>
-                            <div className="p-1.5 bg-background rounded-md border opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Plus className="h-3 w-3 text-primary" />
-                            </div>
-                         </div>
-                         <div className="flex justify-between items-end mt-1">
-                            <span className="text-[10px] text-muted-foreground font-mono">{product.sku}</span>
-                            <span className="text-xs font-black">{product.price.toFixed(2)} zł</span>
-                         </div>
-                      </div>
-                    ))
-                   }
-                   {ALL_PRODUCTS.filter(p => p.categoryId === selectedCategoryId && (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()))).length === 0 && (
-                     <div className="p-8 text-center text-muted-foreground text-xs italic">
-                        Nie znaleziono produktów w tej kategorii.
-                     </div>
-                   )}
-                </div>
-             </div>
-          </div>
+              <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+                 {loading ? (
+                    <div className="p-8 text-center text-muted-foreground animate-pulse text-xs">Synchronizacja...</div>
+                 ) : (
+                   <div className="space-y-6">
+                      {categories.find(c => c.id === selectedCategoryId)?.subcategories?.map((sub: any) => (
+                        <div key={sub.id} className="space-y-2">
+                           <h4 className="text-[10px] font-black uppercase text-primary/60 px-2 tracking-widest flex items-center gap-2">
+                              <ChevronRight className="w-3 h-3" /> {sub.name}
+                           </h4>
+                           <div className="grid gap-1">
+                              {products
+                                .filter(p => p.categoryId === selectedCategoryId && p.subcategoryId === sub.id && (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase())))
+                                .map(product => (
+                                  <div 
+                                    key={product.id} 
+                                    className="p-3 border rounded-lg hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all group flex flex-col gap-1"
+                                    onClick={() => addLineItem(product.id)}
+                                  >
+                                     <div className="flex justify-between items-start">
+                                        <h4 className="text-[12px] font-bold leading-tight group-hover:text-primary transition-colors">{product.name}</h4>
+                                        <Plus className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 shrink-0" />
+                                     </div>
+                                     <div className="flex justify-between items-end">
+                                        <span className="text-[9px] text-muted-foreground font-mono">{product.sku}</span>
+                                        <span className="text-xs font-black">{product.price.toFixed(2)} zł</span>
+                                     </div>
+                                  </div>
+                                ))
+                              }
+                           </div>
+                        </div>
+                      ))}
 
-          {/* Vertical categories on the right edge */}
-          <div className="w-14 border-l bg-muted/20 flex flex-col py-4 gap-2 overflow-y-auto items-center">
-             {ALL_CATEGORIES.map(cat => {
-               const Icon = CATEGORY_ICONS[cat.id] || Info;
-               const isActive = selectedCategoryId === cat.id;
-               return (
-                 <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategoryId(cat.id)}
-                    className={`p-3 rounded-lg transition-all relative group ${isActive ? 'bg-primary text-white shadow-lg' : 'hover:bg-primary/10 text-muted-foreground hover:text-primary'}`}
-                    title={cat.name}
-                 >
-                    <Icon className="h-5 w-5" />
-                    {!isActive && (
-                      <div className="absolute right-full mr-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none mb-1">
-                        {cat.name}
+                      <div className="space-y-2 pt-2">
+                         <h4 className="text-[10px] font-black uppercase text-muted-foreground/60 px-2 tracking-widest">Inne / Nieskategoryzowane</h4>
+                         <div className="grid gap-1">
+                           {products
+                            .filter(p => p.categoryId === selectedCategoryId && !p.subcategoryId && (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase())))
+                            .map(product => (
+                              <div key={product.id} className="p-3 border rounded-lg hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all group flex flex-col gap-1" onClick={() => addLineItem(product.id)}>
+                                 <div className="flex justify-between items-start">
+                                    <h4 className="text-[12px] font-bold leading-tight group-hover:text-primary transition-colors">{product.name}</h4>
+                                    <Plus className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 shrink-0" />
+                                 </div>
+                                 <div className="flex justify-between items-end">
+                                    <span className="text-[9px] text-muted-foreground font-mono">{product.sku}</span>
+                                    <span className="text-xs font-black">{product.price.toFixed(2)} zł</span>
+                                 </div>
+                              </div>
+                            ))
+                           }
+                         </div>
                       </div>
-                    )}
-                    {isActive && (
-                      <div className="absolute -left-[2px] top-1/2 -translate-y-1/2 h-6 w-[2px] bg-primary rounded-full hidden" />
-                    )}
-                 </button>
-               )
-             })}
-          </div>
+                   </div>
+                 )}
+              </div>
+           </div>
+
+           {/* Vertical categories on the right edge */}
+           <div className="w-14 border-l bg-muted/20 flex flex-col py-4 gap-2 overflow-y-auto items-center">
+              {categories.map(cat => {
+                const isActive = selectedCategoryId === cat.id;
+                return (
+                  <button
+                     key={cat.id}
+                     onClick={() => setSelectedCategoryId(cat.id)}
+                     className={`p-3 rounded-lg transition-all relative group ${isActive ? 'bg-primary text-white shadow-lg' : 'hover:bg-primary/10 text-muted-foreground hover:text-primary'}`}
+                     title={cat.name}
+                  >
+                     {getIcon(cat.iconName)}
+                     {!isActive && (
+                       <div className="absolute right-full mr-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none mb-1">
+                         {cat.name}
+                       </div>
+                     )}
+                  </button>
+                )
+              })}
+           </div>
         </div>
       </div>
 

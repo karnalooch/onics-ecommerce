@@ -4,7 +4,6 @@ import './globals.css'
 import { Navbar } from '@/components/ui/navbar'
 import { SessionProvider } from '@/components/SessionProvider'
 import { ThemeProvider } from '@/components/theme-provider'
-import { HydrationZapper } from '@/components/HydrationZapper'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
@@ -21,7 +20,6 @@ export default function RootLayout({
   return (
     <html lang="pl" className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground flex flex-col" suppressHydrationWarning>
-        <HydrationZapper />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

@@ -51,7 +51,7 @@ export async function sendQuoteRequestEmail(data: QuoteNotification) {
             </thead>
             <tbody>${itemsHtml}</tbody>
           </table>
-          <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/admin" 
+          <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3001'}/admin" 
              style="display: inline-block; margin-top: 24px; padding: 12px 24px; background: #e63946; color: white; border-radius: 6px; text-decoration: none; font-weight: 600;">
             Przejdź do Panelu i Wyceń →
           </a>
@@ -83,7 +83,7 @@ export async function sendQuoteResponseEmail(clientEmail: string, quoteId: strin
             <p style="margin: 0;"><strong>Dodatkowy rabat:</strong> ${discount}%</p>
             <p style="margin: 8px 0 0;"><strong>Czas realizacji:</strong> ${deliveryDays} dni roboczych</p>
           </div>
-          <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/sklep/zapytania" 
+          <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3001'}/sklep/zapytania" 
              style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #0b1d3a; color: white; border-radius: 6px; text-decoration: none; font-weight: 600;">
             Przejdź do swojego konta →
           </a>
@@ -108,7 +108,7 @@ export async function sendApprovalEmail(clientEmail: string, companyName: string
         <div style="padding: 32px; background: white; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;">
           <h2 style="color: #0b1d3a;">Witaj w platformie B2B, ${companyName || "Instalatorze"}! ✅</h2>
           <p>Twoje konto pomyślnie przeszło weryfikację. Masz teraz dostęp do cenników instalatorskich oraz możliwość składania zapytań ofertowych.</p>
-          <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/sklep" 
+          <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3001'}/sklep" 
              style="display: inline-block; margin-top: 16px; padding: 12px 24px; background: #0b1d3a; color: white; border-radius: 6px; text-decoration: none; font-weight: 600;">
             Zaloguj się do platformy →
           </a>

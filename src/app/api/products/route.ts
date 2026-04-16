@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server';
 import { initializeMockData } from '@/store/serverStore';
+import fs from 'fs';
+import path from 'path';
 
 export const dynamic = 'force-dynamic';
+
+function logImport(msg: string) {
+  try {
+    const logPath = path.join(process.cwd(), 'import_debug.log');
+    const timestamp = new Date().toISOString();
+    fs.appendFileSync(logPath, `[${timestamp}] ${msg}\n`);
+  } catch (e) {}
+}
 
 export async function GET() {
   const { products } = initializeMockData();
@@ -15,25 +25,98 @@ export async function POST(req: Request) {
   // Symulacja importu z WF-Maga
   if (body.action === 'IMPORT_WFMAG') {
     const importedItems = body.items || [];
+    const { categories } = initializeMockData();
     let updatedCount = 0;
     
-    importedItems.forEach((im: any) => {
-      const existing = products.find((p: any) => p.sku === im.sku);
+    logImport(`--- START IMPORT (${importedItems.length} pozycji) ---`);
+
+    importedItems.forEach((im: any, index: number) => {
+      const imSku = String(im.sku || '').trim().toLowerCase();
+      
+      if (index === 0) {
+        logImport(`Wykryte pola w pierwszym produkcie: ${Object.keys(im).join(', ')}`);
+      }
+
+      if (!imSku) {
+        logImport(`Pominięto pozycję bez SKU (Wirtualne SKU nie dotarło?)`);
+        return;
+      }
+      
+      let existing = products.find((p: any) => 
+        String(p.sku || '').trim().toLowerCase() === imSku
+      );
+
+      if (!existing && im.name) {
+        const imNameMatch = String(im.name).trim().toLowerCase();
+        existing = products.find((p: any) => p.name.trim().toLowerCase() === imNameMatch);
+        if (existing) logImport(`Dopasowano po NAZWIE: "${im.name}"`);
+      }
+
+      logImport(`Przetwarzanie SKU: "${im.sku}" -> Dopasowano: ${existing ? 'TAK (' + existing.id + ')' : 'NIE'}`);
+      
+      // Obsługa propozycji kategoryzacji
+      let finalCategoryId = im.categoryId;
+      let finalSubcategoryId = im.subcategoryId;
+
+      // 1. Jeśli to nowa kategoria (PROPOZYCJA)
+      if (im.isNewCategory && im.xlsCategoryName) {
+        let cat = categories.find((c: any) => c.name.toLowerCase().trim() === im.xlsCategoryName.toLowerCase().trim());
+        if (!cat) {
+          cat = { 
+            id: `c_auto_${Math.random().toString(36).substr(2, 5)}`, 
+            name: im.xlsCategoryName.toUpperCase().trim(), 
+            iconName: "Layers", 
+            subcategories: [] 
+          };
+          categories.push(cat);
+          logImport(`Utworzono nową kategorię: ${cat.name}`);
+        }
+        finalCategoryId = cat.id;
+      }
+
+      // 2. Jeśli to nowa podkategoria (PROPOZYCJA)
+      if (im.isNewSubcategory && im.xlsSubcategoryName && finalCategoryId) {
+        let cat = categories.find((c: any) => c.id === finalCategoryId);
+        if (cat) {
+          let sub = cat.subcategories.find((s: any) => s.name.toLowerCase().trim() === im.xlsSubcategoryName.toLowerCase().trim());
+          if (!sub) {
+            sub = {
+              id: `s_auto_${Math.random().toString(36).substr(2, 5)}`,
+              name: im.xlsSubcategoryName.trim()
+            };
+            cat.subcategories.push(sub);
+            logImport(`Dodano nową podkategorię "${sub.name}" do kategorii ${cat.name}`);
+          }
+          finalSubcategoryId = sub.id;
+        }
+      }
+
       if (existing) {
-        // WF-Mag nadpisuje tylko cenę i stany magazynowe! Ochrona SEO.
         existing.price = im.price;
         existing.stock = im.stock;
+        existing.manufacturer = im.manufacturer || existing.manufacturer;
+
+        if (!existing.categoryId && finalCategoryId) {
+          existing.categoryId = finalCategoryId;
+          existing.subcategoryId = finalSubcategoryId;
+          logImport(`Przypisano kategoryzację do ${im.sku}: ${finalCategoryId} / ${finalSubcategoryId}`);
+        }
+        
         updatedCount++;
       } else {
-        // Nowy produkt
-        products.push({
-          id: `p${Date.now()}_${Math.random()}`,
+        const newProd = {
+          id: `p${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
           ...im,
-          seoDescription: "" // Nowe produkty z WF-Mag nie mają jeszcze opisu SEO
-        });
+          categoryId: finalCategoryId,
+          subcategoryId: finalSubcategoryId,
+          seoDescription: "" 
+        };
+        products.push(newProd);
+        logImport(`Dodano NOWY produkt: ${im.sku} w ${finalCategoryId} / ${finalSubcategoryId}`);
       }
     });
     
+    logImport(`--- KONIEC IMPORTU (Zaktualizowano: ${updatedCount}, Dodano: ${importedItems.length - updatedCount}) ---`);
     return NextResponse.json({ success: true, updatedCount, addedCount: importedItems.length - updatedCount });
   }
 
