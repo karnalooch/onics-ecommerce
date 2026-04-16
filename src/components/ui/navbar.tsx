@@ -1,13 +1,15 @@
 "use client"
-
 import Link from "next/link"
+
 import { usePathname } from "next/navigation"
-import { UserCircle, PackageSearch, ShoppingCart } from "lucide-react"
+import { UserCircle, PackageSearch, ShoppingCart, LogOut } from "lucide-react"
 import { useCartStore } from "@/store/cartStore"
 import { useEffect, useState } from "react"
 import { ModeToggle } from "@/components/ui/mode-toggle"
+import { useSession, signOut } from "next-auth/react"
 
 export function Navbar() {
+  const { data: session } = useSession()
   const pathname = usePathname()
   const totalItems = useCartStore((state) => state.getTotalItems())
   const [mounted, setMounted] = useState(false)
@@ -48,9 +50,18 @@ export function Navbar() {
               </span>
             )}
           </Link>
-          <Link href="/logowanie" className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
-            <UserCircle className="w-4 h-4" /> Strefa Instalatora
-          </Link>
+          {session?.user ? (
+            <button 
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="flex items-center gap-2 bg-rose-500/10 text-rose-600 px-4 py-2 rounded-md text-sm font-bold hover:bg-rose-500/20 transition-all border border-rose-200"
+            >
+              <LogOut className="w-4 h-4" /> Wyloguj
+            </button>
+          ) : (
+            <Link href="/logowanie" className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
+              <UserCircle className="w-4 h-4" /> Strefa Instalatora
+            </Link>
+          )}
         </div>
       </div>
     </header>

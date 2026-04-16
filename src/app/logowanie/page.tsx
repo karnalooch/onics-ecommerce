@@ -44,7 +44,7 @@ export default function LoginPage() {
       if (session?.user?.role === 'ADMIN') {
         window.location.href = "/admin";
       } else if (session?.user?.role === 'BIZ') {
-        window.location.href = "/oferty";
+        window.location.href = "/dashboard";
       } else {
         window.location.href = "/sklep";
       }

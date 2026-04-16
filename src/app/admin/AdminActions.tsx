@@ -10,10 +10,10 @@ export default function AdminActions({ actionType, userId, quoteId, currentStatu
   if (actionType === "approveUser") {
     const handleApprove = async () => {
       setLoading(true);
-      await fetch("/api/admin/users", {
+      await fetch("/api/users", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, isApproved: true })
+        body: JSON.stringify({ id: userId, isApproved: true })
       });
       router.refresh();
       setLoading(false);
@@ -26,6 +26,24 @@ export default function AdminActions({ actionType, userId, quoteId, currentStatu
     );
   }
 
+  if (actionType === "deleteUser") {
+    const handleDelete = async () => {
+      if (!confirm("Czy na pewno chcesz trwale usunąć tego instalatora?")) return;
+      setLoading(true);
+      await fetch(`/api/users?id=${userId}`, {
+        method: "DELETE",
+      });
+      router.refresh();
+      setLoading(false);
+    };
+
+    return (
+      <button onClick={handleDelete} disabled={loading} className="p-1 px-2 text-red-500 hover:bg-red-50 rounded transition-colors" title="Usuń zgłoszenie">
+        {loading ? "..." : "✕"}
+      </button>
+    );
+  }
+
   if (actionType === "processQuote") {
     const handleSendQuote = async () => {
       const deliveryDays = prompt("Czas realizacji w dniach roboczych (np. 5):");
@@ -34,11 +52,11 @@ export default function AdminActions({ actionType, userId, quoteId, currentStatu
       if (discount === null) return;
 
       setLoading(true);
-      await fetch("/api/admin/quotes", {
+      await fetch("/api/quotes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          quoteId,
+          id: quoteId,
           status: "QUOTED",
           deliveryTimeDays: parseInt(deliveryDays) || null,
           additionalDiscount: parseFloat(discount) || 0
@@ -52,10 +70,10 @@ export default function AdminActions({ actionType, userId, quoteId, currentStatu
     const handleReject = async () => {
       if (!confirm("Czy na pewno chcesz odrzucić to zapytanie?")) return;
       setLoading(true);
-      await fetch("/api/admin/quotes", {
+      await fetch("/api/quotes", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ quoteId, status: "REJECTED", deliveryTimeDays: null, additionalDiscount: 0 })
+        body: JSON.stringify({ id: quoteId, status: "REJECTED", deliveryTimeDays: null, additionalDiscount: 0 })
       });
       router.refresh();
       setLoading(false);

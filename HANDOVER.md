@@ -12,7 +12,10 @@
 2. **Backend / CMS**
    - Ścieżka `/celtronics-backend` zawiera ukrytą instancję **Strapi 5**, którą w Faza_8 spięto z PostgreSQL.
    - Posiadamy działający `api/quotes/route.ts` - RESTowy symulator SMTP (Nodemailer) wysyłający leade'y od klientów hurtowych prosto na firmowego maila.
-3. **Zarządzanie (Moduły zrealizowane DZIŚ - Phase 10)**
+   - **Nowy Generator Ofert B2B:** Całkowicie przearanżowano UI na układ 3-kolumnowy (Edytor/Koszyk - Podgląd PDF - Przeglądarka Produktów). Wprowadzono system kategorii pionowych na prawym marginesie, co pozwala na błyskawiczne dodawanie urządzeń jednym kliknięciem.
+   - **Dashboard Admina:** Dodano możliwość usuwania zgłoszeń oczekujących instalatorów oraz naprawiono ścieżki API dla akcji zatwierdzania.
+   - **Inteligentny Generator:** Wprowadzono listę podpowiedzi (Autocomplete) dla nazw firm w generatorze ofert. System teraz automatycznie uzupełnia NIP po znalezieniu klienta w bazie i pozwala na zwinięcie sekcji danych ("Zatwierdź"), zwiększając przestrzeń roboczą.
+   - **Serwis / RMA:** Dodano system ręcznego wprowadzania urządzeń do kolejki serwisowej bezpośrednio przez administratora (przypadek telefonu od klienta).
    - **Moduł Klienci (CRM):** Wdrożono zarządzanie portfolio klientów B2B/B2C z hard-blokadą logowania (`isBlocked`) sprzężoną z auth.js na poziomie Store'a.
    - **Zarządzanie Kategoriami:** Odwzorowano w pełni drzewiaste zarządzanie kategoriami z WF-Maga (z lewym menu wyboru). Wynik eksportowany jest prosto do API filtrowania.
    - **Centrum Zarządzania Produktami:** Całkowicie przebudowany komponent na architekturę "use client" ze wspomaganiem Filtrowania.
