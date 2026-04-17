@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { PDFDocument } from 'pdf-lib';
+const pdfParse = require('pdf-parse'); // pdf-parse typically uses require
 import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema } from './types';
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), 'src/store/catalogKnowledge.json');
@@ -222,146 +223,187 @@ export async function parsePDFWithAI(
   if (currentModelIndex === -1) currentModelIndex = 0;
 
   try {
-    const pdfDoc = await PDFDocument.load(buffer);
-    const pageCount = pdfDoc.getPageCount();
     const currentStore = await getKnowledge();
     const currentDate = new Date().toISOString().split('T')[0];
     let totalAddedCount = 0;
 
-    onProgress?.({ type: 'log', message: `Rozpoczęto analizę AI dla PDF: ${filename} (${pageCount} stron)` });
+    onProgress?.({ type: 'log', message: `Uruchamianie Silnika V2 dla: ${filename}` });
 
-    let batchSize = 2; 
+    // --- KROK 1: Lokalna Ekstrakcja Tekstu ---
+    let extractedData;
+    try {
+      extractedData = await pdfParse(buffer);
+    } catch (e) {
+      onProgress?.({ type: 'log', message: `Błąd lokalnej ekstrakcji: ${e}. Próba trybu wizyjnego...` });
+    }
 
-    for (let i = 0; i < pageCount; i += batchSize) {
-      const currentBatchStart = i;
-      const currentBatchEnd = Math.min(i + batchSize, pageCount);
-      const percent = Math.round((currentBatchStart / pageCount) * 100);
+    const fullText = extractedData?.text || "";
+    const pageCount = extractedData?.numpages || 1;
+    const isDigital = fullText.length > (pageCount * 50); // Heurystyka: dokument cyfrowy ma > 50 znaków na stronę
+
+    if (isDigital) {
+      onProgress?.({ type: 'log', message: `Wykryto dokument cyfrowy (${fullText.length} znaków). Rozpoczynam Path A (Tekst).` });
       
-      onProgress?.({ type: 'log', message: `Analizowanie zakresem stron ${currentBatchStart + 1}-${currentBatchEnd}...`, percent });
+      // Path A: Ekstrakcja z tekstu (Szybka, Stabilna, 0 błędów 503)
+      // Dzielimy na duże bloki po ok 15,000 znaków (~10-15 stron)
+      const chunkSize = 15000;
+      const chunks: string[] = [];
+      for (let i = 0; i < fullText.length; i += chunkSize) {
+        chunks.push(fullText.substring(i, i + chunkSize));
+      }
 
-      // Zwiększony throttle dla stabilności
-      if (i > 0) await new Promise(resolve => setTimeout(resolve, 6000));
+      for (let i = 0; i < chunks.length; i++) {
+        const percent = Math.round((i / chunks.length) * 100);
+        onProgress?.({ type: 'log', message: `Analiza bloku tekstowego ${i + 1}/${chunks.length}...`, percent });
 
-      let batchDone = false;
-      let batchRetries = 0;
+        let batchDone = false;
+        let batchRetries = 0;
 
-      while (!batchDone && batchRetries < 3) {
-        try {
-          const subDoc = await PDFDocument.create();
-          const pageIndexes = Array.from({length: currentBatchEnd - currentBatchStart}, (_, idx) => currentBatchStart + idx);
-          const copiedPages = await subDoc.copyPages(pdfDoc, pageIndexes);
-          copiedPages.forEach(p => subDoc.addPage(p));
-          
-          const pageBuffer = Buffer.from(await subDoc.save());
-          const base64Data = pageBuffer.toString('base64');
-          
-          const selectedModel = modelPool[currentModelIndex];
-          let url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+        while (!batchDone && batchRetries < 3) {
+          try {
+            const selectedModel = modelPool[currentModelIndex];
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
 
-          // Zoptymalizowany, krótki prompt (oszczędność tokenów)
-          const prompt = `EKSTRAKCJA B2B JSON: [{"model": "KOD", "specs": "OPIS", "price": NETTO_NUM}].
-          ZASADY:
-          1. Model: symbol techniczny (np. AQUA, SP-4001, GZ-1).
-          2. Specs: krótki opis funkcjonalny.
-          3. Price: liczba netto (np. 150.50), lub null.
-          4. Wyciągnij WSZYSTKO: Centrale, Czujki, Sygnalizatory, Kontaktrony, Akcesoria.
-          5. Pomiń kable oraz KONTAKT (maile, www).`;
+            const prompt = `Jesteś specjalistą od ekstrakcji danych technicznych B2B. 
+            Twoim zadaniem jest wyciągnięcie KAŻDEGO produktu z poniższego tekstu cennika. 
+            NIE POMIJAJ żadnej pozycji, nawet akcesoriów czy czujek.
 
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [
-                { text: prompt },
-                { inline_data: { mime_type: "application/pdf", data: base64Data } }
-              ]}],
-              generationConfig: {
-                response_mime_type: "application/json"
+            FORMAT JSON: [{"model": "KOD", "specs": "OPIS", "price": NETTO_NUM}]
+            ZASADY:
+            1. Model: symbol (np. SLIM-PIR-LUNA, SP-4001, AQUA).
+            2. Specs: krótki opis parametrów.
+            3. Price: cena netto (liczba) lub null.
+            4. Jeśli produkt ma warianty, wypisz każdy jako osobny obiekt.
+            
+            TEKST DO ANALIZY:
+            ${chunks[i]}`;
+
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { response_mime_type: "application/json" }
+              })
+            });
+
+            if (!response.ok) {
+              if ((response.status === 429 || response.status === 503) && modelPool.length > 1) {
+                currentModelIndex = (currentModelIndex + 1) % modelPool.length;
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                batchRetries++;
+                continue;
               }
-            })
-          });
+              throw new Error(`Status ${response.status}`);
+            }
 
-          if (!response.ok) {
-            // Obsługa limitów (429), niekompatybilności (400), braku modelu (404) lub błędów serwera (500, 503, 504)
-            if ((response.status === 429 || response.status === 400 || response.status === 404 || 
-                 response.status === 500 || response.status === 503 || response.status === 504) && modelPool.length > 1) {
-              const prevModel = selectedModel;
-              currentModelIndex = (currentModelIndex + 1) % modelPool.length;
-              const nextModel = modelPool[currentModelIndex];
-              
-              let reason = `Status ${response.status}`;
-              const backoff = (batchRetries + 1) * 2000;
-              let waitTime = backoff;
+            const data = await response.json();
+            const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+            const extracted = JSON.parse(textResponse.match(/\[\s*\{[\s\S]*\}\s*\]/)?.[0] || "[]");
+            
+            extracted.forEach((item: any) => {
+              if (item.model && item.specs) {
+                const modelKey = String(item.model).toUpperCase().trim();
+                const entry: KnowledgeEntry = {
+                  specs: String(item.specs),
+                  price: parsePrice(item.price),
+                  currency: 'PLN',
+                  source: filename,
+                  date: currentDate
+                };
+                if (KnowledgeEntrySchema.safeParse(entry).success) {
+                  mergeKnowledgeEntry(currentStore, modelKey, entry);
+                  totalAddedCount++;
+                  onProgress?.({ type: 'progress', message: `Znaleziono: ${modelKey}`, count: totalAddedCount });
+                }
+              }
+            });
+            batchDone = true;
+          } catch (err) {
+            batchRetries++;
+            if (batchRetries >= 3) break;
+            await new Promise(resolve => setTimeout(resolve, 3000));
+          }
+        }
+      }
+    } else {
+      // Path B: Fallback Wizyjny (Zoptymalizowany pod 503)
+      onProgress?.({ type: 'log', message: `Wykryto dokument skanowany. Uruchamiam Path B (OCR/Vision).` });
+      
+      const pdfDoc = await PDFDocument.load(buffer);
+      const visualPageCount = pdfDoc.getPageCount();
+      let batchSize = 2; 
 
+      for (let i = 0; i < visualPageCount; i += batchSize) {
+        const currentBatchStart = i;
+        const currentBatchEnd = Math.min(i + batchSize, visualPageCount);
+        const percent = Math.round((currentBatchStart / visualPageCount) * 100);
+        onProgress?.({ type: 'log', message: `Analiza wizyjna stron ${currentBatchStart + 1}-${currentBatchEnd}...`, percent });
+
+        if (i > 0) await new Promise(resolve => setTimeout(resolve, 6000));
+
+        let batchDone = false;
+        let batchRetries = 0;
+
+        while (!batchDone && batchRetries < 3) {
+          try {
+            const subDoc = await PDFDocument.create();
+            const pageIndexes = Array.from({length: currentBatchEnd - currentBatchStart}, (_, idx) => currentBatchStart + idx);
+            const copiedPages = await subDoc.copyPages(pdfDoc, pageIndexes);
+            copiedPages.forEach(p => subDoc.addPage(p));
+            const base64Data = (Buffer.from(await subDoc.save())).toString('base64');
+            
+            const selectedModel = modelPool[currentModelIndex];
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [
+                  { text: "EKSTRAKCJA B2B JSON: Wyciągnij KAŻDY produkt z obrazu. [{"model": "KOD", "specs": "OPIS", "price": NETTO_NUM}]" },
+                  { inline_data: { mime_type: "application/pdf", data: base64Data } }
+                ]}],
+                generationConfig: { response_mime_type: "application/json" }
+              })
+            });
+
+            if (!response.ok) {
               if (response.status === 503) {
-                reason = 'Serwer przeciążony (503)';
-                waitTime = 20000; // Agresywne 20s czekania na odblokowanie
-                batchSize = 1;    // Redukcja do 1 strony po błędzie 503
-              } else if (response.status === 429) {
-                reason = 'Limit RPM';
-              } else if (response.status === 400) {
-                reason = 'Niekompatybilny model';
-              } else if (response.status === 404) {
-                reason = 'Model niedostępny (404)';
-              } else if (response.status === 500) {
-                reason = 'Błąd wewnętrzny AI (500)';
-              } else if (response.status === 504) {
-                reason = 'Timeout bramy (504)';
+                batchSize = 1;
+                await new Promise(resolve => setTimeout(resolve, 20000));
               }
-              
-              onProgress?.({ type: 'log', message: `${reason} dla ${prevModel}. Przełączanie na ${nextModel} (czekam ${waitTime}ms)...` });
-              await new Promise(resolve => setTimeout(resolve, waitTime));
-              
-              if (currentModelIndex === 0) batchRetries++; 
+              currentModelIndex = (currentModelIndex + 1) % modelPool.length;
+              batchRetries++;
               continue;
             }
-            
-            batchRetries++;
-            onProgress?.({ type: 'error', message: `Błąd API ${selectedModel} (próba ${batchRetries}): Status ${response.status}` });
-            if (batchRetries >= 3) break; 
-            continue;
-          }
 
-          const data = await response.json();
-          if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            const textResponse = data.candidates[0].content.parts[0].text.trim();
-            const jsonMatch = textResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
+            const data = await response.json();
+            const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+            const extracted = JSON.parse(textResponse.match(/\[\s*\{[\s\S]*\}\s*\]/)?.[0] || "[]");
             
-            if (jsonMatch) {
-              try {
-                const extracted = JSON.parse(jsonMatch[0]);
-                let batchCount = 0;
-                extracted.forEach((item: any) => {
-                  if (item.model && item.specs) {
-                    const modelKey = String(item.model).toUpperCase().trim();
-                    const entry: KnowledgeEntry = {
-                      specs: String(item.specs),
-                      price: parsePrice(item.price),
-                      currency: 'PLN',
-                      source: filename,
-                      date: currentDate
-                    };
-                    
-                    const validation = KnowledgeEntrySchema.safeParse(entry);
-                    if (validation.success) {
-                      mergeKnowledgeEntry(currentStore, modelKey, validation.data);
-                      totalAddedCount++;
-                      batchCount++;
-                      onProgress?.({ type: 'progress', message: `Znaleziono: ${modelKey}`, count: totalAddedCount });
-                    }
-                  }
-                });
-                onProgress?.({ type: 'log', message: `Wyciągnięto ${batchCount} modeli z paczki ${i + 1}-${currentBatchEnd}.` });
-              } catch (parseErr) {
-                onProgress?.({ type: 'error', message: `Błąd struktury JSON w paczki ${i + 1}-${currentBatchEnd}. Pomijanie...` });
+            extracted.forEach((item: any) => {
+              if (item.model && item.specs) {
+                const modelKey = String(item.model).toUpperCase().trim();
+                const entry: KnowledgeEntry = {
+                  specs: String(item.specs),
+                  price: parsePrice(item.price),
+                  currency: 'PLN',
+                  source: filename,
+                  date: currentDate
+                };
+                if (KnowledgeEntrySchema.safeParse(entry).success) {
+                  mergeKnowledgeEntry(currentStore, modelKey, entry);
+                  totalAddedCount++;
+                  onProgress?.({ type: 'progress', message: `Znaleziono: ${modelKey}`, count: totalAddedCount });
+                }
               }
-            }
+            });
+            batchDone = true;
+          } catch (err) {
+            batchRetries++;
+            if (batchRetries >= 3) break;
           }
-          batchDone = true;
-        } catch (err) {
-          batchRetries++;
-          onProgress?.({ type: 'error', message: `Błąd paczki: ${err}` });
-          if (batchRetries >= 3) break;
         }
       }
     }
@@ -370,13 +412,14 @@ export async function parsePDFWithAI(
       currentStore.lastUpdated = new Date().toISOString();
       if (!currentStore.processedSources.includes(filename)) currentStore.processedSources.push(filename);
       await saveKnowledge(currentStore);
-      onProgress?.({ type: 'log', message: `Zapisano bazę wiedzy. Łącznie dodano ${totalAddedCount} modeli.` });
+      onProgress?.({ type: 'log', message: `Zakończono. Dodano ${totalAddedCount} modeli z pliku ${filename}.` });
     }
 
-    onProgress?.({ type: 'progress', message: `Zakończono analizę pliku ${filename}.`, percent: 100 });
+    onProgress?.({ type: 'progress', message: `Gotowe!`, percent: 100 });
     return totalAddedCount;
+
   } catch (err) {
-    onProgress?.({ type: 'error', message: `Krytyczny błąd PDF: ${err}` });
+    onProgress?.({ type: 'error', message: `Krytyczny błąd V2: ${err}` });
     throw err;
   }
 }
