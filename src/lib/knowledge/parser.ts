@@ -213,6 +213,7 @@ export async function parsePDFWithAI(
   buffer: Buffer, 
   filename: string, 
   apiKey: string, 
+  modelId: string, 
   availableModels: string[] = [], 
   onProgress?: ProgressCallback,
   concurrencyLimit: number = 1
