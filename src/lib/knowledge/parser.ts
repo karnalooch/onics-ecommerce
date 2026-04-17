@@ -2,23 +2,16 @@ import * as XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { PDFDocument } from 'pdf-lib';
+import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema } from './types';
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), 'src/store/catalogKnowledge.json');
 
-export interface KnowledgeEntry {
-  specs: string;
-  price: number | null;
-  currency: string;
-  source?: string;
-  date?: string;
-}
-
-export interface KnowledgeStore {
-  lastUpdated: string | null;
-  sources: string[];
-  processedSources: string[];
-  knowledge: Record<string, KnowledgeEntry>;
-}
+export type ProgressCallback = (update: { 
+  type: 'log' | 'progress' | 'error'; 
+  message: string; 
+  count?: number;
+  percent?: number;
+}) => void;
 
 export async function getKnowledge(): Promise<KnowledgeStore> {
   try {
@@ -39,65 +32,163 @@ export async function saveKnowledge(data: KnowledgeStore) {
   fs.writeFileSync(KNOWLEDGE_PATH, JSON.stringify(data, null, 2));
 }
 
-const MODEL_KEYWORDS = ['MODEL', 'SYMBOL', 'KOD', 'SKU', 'ARTYKUŁ', 'INDEKS', 'PRODUKT', 'NAZWA TOWARU', 'PRODUCT MODEL', 'SERIES'];
-const SPECS_KEYWORDS = ['OPIS', 'SPECYFIKACJA', 'PARAMETRY', 'CECHY', 'NAZWA', 'FUNKCJE', 'DESCRIPTION'];
+// --- HEURISTICS & UTILS ---
+
+const MODEL_KEYWORDS = ['MODEL', 'SYMBOL', 'KOD', 'SKU', 'ARTYKUŁ', 'INDEKS', 'PRODUKT', 'NAZWA TOWARU', 'PRODUCT MODEL', 'SERIES', 'NAZWA'];
+const SPECS_KEYWORDS = ['OPIS', 'SPECYFIKACJA', 'PARAMETRY', 'CECHY', 'FUNKCJE', 'DESCRIPTION', 'DANE TECHNICZNE'];
+const PRICE_KEYWORDS = ['NETTO', 'CENA', 'PRICE', 'WARTOŚĆ', 'NET', 'DETAL', 'HURT', 'CENA PL', 'PLN'];
 const NON_DEVICE_KEYWORDS = ['KABEL', 'PRZEWÓD', 'WTYK', 'ZŁĄCZE', 'UCHWYT', 'KOŁEK', 'ŚRUBA', 'RURA', 'KORYTO', 'PUSZKA', 'MODUŁ MONTAŻOWY', 'OSŁONA', 'OBEJM', 'WKRĘT'];
 
-export async function parseExcel(buffer: Buffer, filename: string): Promise<number> {
+function isLikelyProductCode(text: string): boolean {
+  if (!text || typeof text !== 'string') return false;
+  const t = text.trim();
+  if (t.length < 2 || t.length > 60) return false;
+  
+  // Produkty Pulsar i inne mogą mieć spacje, ale nie przecinki w symbolu
+  if (t.includes(',')) return false;
+  if (t.split(/\s+/).length > 6) return false; // Zwiększono limit słów (Część Pulsarów ma np. "AWO 000 Obudowa")
+
+  const upperCount = (t.match(/[A-Z0-9]/g) || []).length;
+  // Poluzowano regułę wielkich liter dla nietypowych symboli
+  if (t.length > 10 && upperCount / t.length < 0.2) return false;
+
+  return true;
+}
+
+function parsePrice(val: any): number | null {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'number') return val;
+  const clean = String(val).replace(',', '.').replace(/[^\d.]/g, '');
+  const num = parseFloat(clean);
+  return isNaN(num) ? null : num;
+}
+
+/**
+ * Inteligentne łączenie nowej wiedzy z istniejącą.
+ * Jeśli produkt już istnieje, uzupełniamy brakujące pola.
+ */
+function mergeKnowledgeEntry(current: KnowledgeStore, symbol: string, entry: KnowledgeEntry) {
+  const normSymbol = symbol.toUpperCase().replace(/\s+/g, '').trim();
+  const existing = current.knowledge[normSymbol];
+
+  if (!existing) {
+    current.knowledge[normSymbol] = entry;
+    return true;
+  }
+
+  // Jeśli istnieje, połącz dane:
+  // 1. Cena: weź nową, jeśli stara jest nullem
+  if (entry.price !== null && (existing.price === null || existing.price === undefined)) {
+    existing.price = entry.price;
+  }
+
+  // 2. Opis: zachowaj dłuższy/bogatszy opis
+  if (entry.specs.length > (existing.specs?.length || 0)) {
+    existing.specs = entry.specs;
+  }
+
+  // 3. Źródło: dodaj informację o nowym źródle (opcjonalnie)
+  if (entry.source !== existing.source) {
+    existing.source = `${existing.source}, ${entry.source}`;
+  }
+
+  return false;
+}
+
+// --- PARSERS ---
+
+export async function parseExcel(buffer: Buffer, filename: string, onProgress?: ProgressCallback): Promise<number> {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const currentStore = await getKnowledge();
   let totalAddedCount = 0;
   const currentDate = new Date().toISOString().split('T')[0];
+
+  onProgress?.({ type: 'log', message: `Rozpoczęto analizę arkusza: ${filename}` });
 
   for (const sheetName of workbook.SheetNames) {
     const worksheet = workbook.Sheets[sheetName];
     const rawRows: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
     if (rawRows.length === 0) continue;
 
+    onProgress?.({ type: 'log', message: `Przetwarzanie arkusza: ${sheetName} (${rawRows.length} wierszy)...` });
+
     let headerRowIndex = -1;
-    let columnMap: Record<string, number> = {};
+    let columnMap: { model: number; specs: number; price: number | null } = { model: 0, specs: 1, price: null };
 
     for (let i = 0; i < Math.min(rawRows.length, 100); i++) {
       const row = rawRows[i];
       if (!Array.isArray(row)) continue;
-      const foundMap: Record<string, number> = {};
+      
+      const foundMap: any = {};
       row.forEach((cell, cellIndex) => {
         if (!cell) return;
         const cellText = String(cell).toUpperCase().trim();
         if (MODEL_KEYWORDS.some(k => cellText === k || cellText.includes(k))) foundMap.model = cellIndex;
         else if (SPECS_KEYWORDS.some(k => cellText === k || cellText.includes(k))) foundMap.specs = cellIndex;
+        else if (PRICE_KEYWORDS.some(k => cellText === k || cellText.includes(k))) foundMap.price = cellIndex;
       });
-      if (foundMap.model !== undefined && foundMap.specs !== undefined) {
+
+      if (foundMap.model !== undefined) {
         headerRowIndex = i;
-        columnMap = foundMap;
-        console.log(`[Excel Parser] Found headers at row ${i} in sheet ${sheetName}:`, foundMap);
+        columnMap = { 
+          model: foundMap.model, 
+          specs: foundMap.specs !== undefined ? foundMap.specs : (foundMap.model + 1),
+          price: foundMap.price !== undefined ? foundMap.price : null
+        };
         break;
       }
     }
 
-    if (headerRowIndex === -1) {
-      columnMap = { model: 0, specs: 1 };
-      headerRowIndex = 0; 
-    }
+    if (headerRowIndex === -1) headerRowIndex = 0;
 
     for (let i = headerRowIndex + 1; i < rawRows.length; i++) {
       const row = rawRows[i];
-      if (!row || row.length < 2) continue;
-      const model = row[columnMap.model];
-      const specs = row[columnMap.specs];
-      if (model && specs) {
-        const modelText = String(model).trim();
-        const specsText = String(specs).trim();
-        // Poluzowano reguły dla Hikvision
-        if (modelText.length > 80 || modelText.split(' ').length > 6) continue;
-        if (specsText.length < 3) continue;
+      if (!row) continue;
+      
+      let candidateModel = row[columnMap.model];
+      let candidateSpecs = row[columnMap.specs];
+      let candidatePrice = columnMap.price !== null ? row[columnMap.price] : null;
+
+      if (!candidateModel) continue;
+      const modelText = String(candidateModel).trim();
+      if (!isLikelyProductCode(modelText)) continue;
+
+      let finalSpecs = String(candidateSpecs || '').trim();
+      let finalPrice = parsePrice(candidatePrice);
+
+      if (finalSpecs.length < 5) {
+        const nextRow = rawRows[i + 1];
+        if (nextRow) {
+            const nextSpecs = nextRow[columnMap.specs] || nextRow[columnMap.model];
+            if (nextSpecs && String(nextSpecs).length > 5 && !isLikelyProductCode(String(nextSpecs))) {
+                finalSpecs = String(nextSpecs).trim();
+                if (finalPrice === null && columnMap.price !== null) {
+                    finalPrice = parsePrice(nextRow[columnMap.price]);
+                }
+            }
+        }
+      }
+
+      if (finalSpecs.length >= 3) {
+        const specsUpper = finalSpecs.toUpperCase();
         const modelKey = modelText.toUpperCase();
-        const specsUpper = specsText.toUpperCase();
+        const actualSymbol = modelText.split(' ')[0].toUpperCase();
+
         if (!NON_DEVICE_KEYWORDS.some(k => modelKey.includes(k) || specsUpper.includes(k))) {
-          currentStore.knowledge[modelKey] = {
-            specs: specsText, price: null, currency: 'PLN', source: filename, date: currentDate
+          const entry: KnowledgeEntry = {
+            specs: finalSpecs,
+            price: finalPrice,
+            currency: 'PLN',
+            source: filename,
+            date: currentDate
           };
-          totalAddedCount++;
+
+          const validation = KnowledgeEntrySchema.safeParse(entry);
+          if (validation.success) {
+            mergeKnowledgeEntry(currentStore, actualSymbol, validation.data);
+            totalAddedCount++;
+            onProgress?.({ type: 'progress', message: `Przetworzono model: ${actualSymbol}`, count: totalAddedCount });
+          }
         }
       }
     }
@@ -111,7 +202,18 @@ export async function parseExcel(buffer: Buffer, filename: string): Promise<numb
   return totalAddedCount;
 }
 
-export async function parsePDFWithAI(buffer: Buffer, filename: string, apiKey: string, modelId?: string): Promise<number> {
+export async function parsePDFWithAI(
+  buffer: Buffer, 
+  filename: string, 
+  apiKey: string, 
+  modelId: string, 
+  availableModels: string[] = [], 
+  onProgress?: ProgressCallback
+): Promise<number> {
+  const modelPool = availableModels.length > 0 ? availableModels : [modelId];
+  let currentModelIndex = modelPool.indexOf(modelId);
+  if (currentModelIndex === -1) currentModelIndex = 0;
+
   try {
     const pdfDoc = await PDFDocument.load(buffer);
     const pageCount = pdfDoc.getPageCount();
@@ -119,25 +221,23 @@ export async function parsePDFWithAI(buffer: Buffer, filename: string, apiKey: s
     const currentDate = new Date().toISOString().split('T')[0];
     let totalAddedCount = 0;
 
-    const logPath = path.join(process.cwd(), 'public/debug-ropam.txt');
-    fs.appendFileSync(logPath, `\n\n=== BATCH PROCESSING: ${filename} (${new Date().toLocaleString()}) ===\n`);
+    onProgress?.({ type: 'log', message: `Rozpoczęto analizę AI dla PDF: ${filename} (${pageCount} stron)` });
 
-    const batchSize = 15;
-    console.log(`Starting PDF Processing in LARGE BATCHES (${batchSize} pages per AI call). Total: ${pageCount} pages.`);
+    const batchSize = 5; 
 
     for (let i = 0; i < pageCount; i += batchSize) {
       const currentBatchStart = i;
       const currentBatchEnd = Math.min(i + batchSize, pageCount);
-      console.log(`Processing Group: Pages ${currentBatchStart + 1} to ${currentBatchEnd}...`);
+      const percent = Math.round((currentBatchStart / pageCount) * 100);
       
-      // Delay only between batches (to stay well below 10 RPM)
-      if (i > 0) await new Promise(resolve => setTimeout(resolve, 10000));
+      onProgress?.({ type: 'log', message: `Analizowanie zakresem stron ${currentBatchStart + 1}-${currentBatchEnd}...`, percent });
+
+      if (i > 0) await new Promise(resolve => setTimeout(resolve, 3000));
 
       let batchDone = false;
-      let retries = 0;
-      const maxRetries = 2;
+      let batchRetries = 0;
 
-      while (!batchDone && retries <= maxRetries) {
+      while (!batchDone && batchRetries < 3) {
         try {
           const subDoc = await PDFDocument.create();
           const pageIndexes = Array.from({length: currentBatchEnd - currentBatchStart}, (_, idx) => currentBatchStart + idx);
@@ -147,97 +247,113 @@ export async function parsePDFWithAI(buffer: Buffer, filename: string, apiKey: s
           const pageBuffer = Buffer.from(await subDoc.save());
           const base64Data = pageBuffer.toString('base64');
           
-          const selectedModel = modelId || 'gemini-1.5-flash';
+          const selectedModel = modelPool[currentModelIndex];
           let url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
 
-          const prompt = `Jesteś ekspertem systemów zabezpieczeń (CCTV, Alarmy, B2B).
-          TWOJE ZADANIE: Przeanalizuj dostarczone kilka STRON katalogu technicznego i wyciągnij produkty.
-          Zwróć TYLKO czysty JSON jako tablicę obiektów: [{"model": "KOD_PRODUKTU", "specs": "DOKŁADNY OPIS"}]
-          Ignoruj ceny i nagłówki.`;
+          // Zoptymalizowany, krótki prompt (oszczędność tokenów)
+          const prompt = `EKSTRAKCJA B2B JSON: [{"model": "KOD", "specs": "OPIS", "price": NETTO_NUM}].
+          ZASADY:
+          1. Model: krótki symbol (AWO000).
+          2. Specs: połącz nazwę z kluczowymi parametrami.
+          3. Price: tylko liczba netto (np. 150.50), lub null.
+          4. Pomiń nagłówki i kable.`;
 
-          let response = await fetch(url, {
+          const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               contents: [{ parts: [
                 { text: prompt },
                 { inline_data: { mime_type: "application/pdf", data: base64Data } }
-              ]}]
+              ]}],
+              generationConfig: {
+                response_mime_type: "application/json"
+              }
             })
           });
 
-          if (response.status === 404 && selectedModel !== 'gemini-1.5-flash') {
-            console.log(`[Parser] Model ${selectedModel} returned 404. Falling back to gemini-1.5-flash.`);
-            url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-            response = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [
-                  { text: prompt },
-                  { inline_data: { mime_type: "application/pdf", data: base64Data } }
-                ]}]
-              })
-            });
-          }
-
-          if (response.status === 429) {
-            console.warn(`Rate Limit hit (429) on batch starting at ${i+1}. Waiting 30s...`);
-            fs.appendFileSync(logPath, `BATCH ${currentBatchStart + 1}-${currentBatchEnd} RATE LIMIT. Retry ${retries+1} in 30s.\n`);
-            await new Promise(resolve => setTimeout(resolve, 30000));
-            retries++;
-            continue;
-          }
-
           if (!response.ok) {
-            fs.appendFileSync(logPath, `BATCH ${currentBatchStart + 1}-${currentBatchEnd} ERROR: Status ${response.status}\n`);
-            batchDone = true;
+            // Obsługa limitów (429), niekompatybilności (400) lub braku modelu na danym endpoincie (404)
+            if ((response.status === 429 || response.status === 400 || response.status === 404) && modelPool.length > 1) {
+              const prevModel = selectedModel;
+              currentModelIndex = (currentModelIndex + 1) % modelPool.length;
+              const nextModel = modelPool[currentModelIndex];
+              
+              let reason = 'Błąd';
+              if (response.status === 429) reason = 'Limit RPM';
+              else if (response.status === 400) reason = 'Niekompatybilny model';
+              else if (response.status === 404) reason = 'Model niedostępny (404)';
+
+              const backoff = (batchRetries + 1) * 2000;
+              
+              onProgress?.({ type: 'log', message: `${reason} dla ${prevModel}. Przełączanie na ${nextModel} (czekam ${backoff}ms)...` });
+              await new Promise(resolve => setTimeout(resolve, backoff));
+              
+              if (currentModelIndex === 0) batchRetries++; 
+              continue;
+            }
+            
+            batchRetries++;
+            onProgress?.({ type: 'error', message: `Błąd API ${selectedModel} (próba ${batchRetries}): Status ${response.status}` });
+            if (batchRetries >= 3) break; 
             continue;
           }
 
+          const data = await response.json();
           if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            let textResponse = data.candidates[0].content.parts[0].text.trim();
-            fs.appendFileSync(logPath, `BATCH ${currentBatchStart + 1}-${currentBatchEnd} RAW:\n${textResponse}\n`);
+            const textResponse = data.candidates[0].content.parts[0].text.trim();
+            const jsonMatch = textResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
             
-            try {
-              const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-              const extracted = JSON.parse(jsonMatch ? jsonMatch[0] : textResponse);
-              
-              Object.entries(extracted).forEach(([model, specs]) => {
-                const modelKey = String(model).toUpperCase().trim();
-                if (modelKey && specs) {
-                  currentStore.knowledge[modelKey] = {
-                    specs: String(specs), price: null, currency: 'PLN', source: filename, date: currentDate
-                  };
-                  totalAddedCount++;
-                }
-              });
-            } catch (e) {
-              console.error(`Batch JSON parse error:`, e);
+            if (jsonMatch) {
+              try {
+                const extracted = JSON.parse(jsonMatch[0]);
+                let batchCount = 0;
+                extracted.forEach((item: any) => {
+                  if (item.model && item.specs) {
+                    const modelKey = String(item.model).toUpperCase().trim().split(' ')[0];
+                    const entry: KnowledgeEntry = {
+                      specs: String(item.specs),
+                      price: parsePrice(item.price),
+                      currency: 'PLN',
+                      source: filename,
+                      date: currentDate
+                    };
+                    
+                    const validation = KnowledgeEntrySchema.safeParse(entry);
+                    if (validation.success) {
+                      mergeKnowledgeEntry(currentStore, modelKey, validation.data);
+                      totalAddedCount++;
+                      batchCount++;
+                      onProgress?.({ type: 'progress', message: `Znaleziono: ${modelKey}`, count: totalAddedCount });
+                    }
+                  }
+                });
+                onProgress?.({ type: 'log', message: `Wyciągnięto ${batchCount} modeli z paczki ${i + 1}-${currentBatchEnd}.` });
+              } catch (parseErr) {
+                onProgress?.({ type: 'error', message: `Błąd struktury JSON w paczki ${i + 1}-${currentBatchEnd}. Pomijanie...` });
+              }
             }
           }
           batchDone = true;
         } catch (err) {
-          console.error(`Error processing batch:`, err);
-          batchDone = true;
+          batchRetries++;
+          onProgress?.({ type: 'error', message: `Błąd paczki: ${err}` });
+          if (batchRetries >= 3) break;
         }
       }
     }
 
     if (totalAddedCount > 0) {
       currentStore.lastUpdated = new Date().toISOString();
-      if (!currentStore.processedSources.includes(filename)) {
-        currentStore.processedSources.push(filename);
-      }
+      if (!currentStore.processedSources.includes(filename)) currentStore.processedSources.push(filename);
       await saveKnowledge(currentStore);
+      onProgress?.({ type: 'log', message: `Zapisano bazę wiedzy. Łącznie dodano ${totalAddedCount} modeli.` });
     }
 
-    console.log(`PDF Processing Finished: Saved ${totalAddedCount} models from ${filename}.`);
-    fs.appendFileSync(logPath, `=== END BATCH PROCESSING: Total models: ${totalAddedCount} ===\n`);
-
+    onProgress?.({ type: 'progress', message: `Zakończono analizę pliku ${filename}.`, percent: 100 });
     return totalAddedCount;
   } catch (err) {
-    console.error("PDF Global Processing Error:", err);
+    onProgress?.({ type: 'error', message: `Krytyczny błąd PDF: ${err}` });
     throw err;
   }
 }

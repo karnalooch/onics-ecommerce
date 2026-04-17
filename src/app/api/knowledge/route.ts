@@ -7,7 +7,7 @@ export async function GET() {
     
     // Konwertujemy mapę wiedzy na listę snippetów dla frontendu
     const snippets = Object.entries(store.knowledge).map(([model, data], index) => {
-      const isObject = typeof data !== 'string';
+      const isObject = data && typeof data === 'object';
       const source = isObject ? (data.source || "Baza Wiedzy") : "Baza Wiedzy";
       const date = isObject ? (data.date || store.lastUpdated?.split('T')[0]) : store.lastUpdated?.split('T')[0];
       
@@ -16,6 +16,8 @@ export async function GET() {
         source: source,
         model: model,
         specs: isObject ? data.specs : data,
+        price: isObject ? data.price : null,
+        currency: isObject ? (data.currency || 'PLN') : 'PLN',
         type: source.toLowerCase().endsWith('.pdf') ? ('pdf' as const) : ('xls' as const),
         date: date || new Date().toISOString().split('T')[0]
       };
@@ -29,5 +31,22 @@ export async function GET() {
   } catch (err) {
     console.error("GET Knowledge API Error:", err);
     return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  try {
+    const { saveKnowledge } = await import('@/lib/knowledge/parser');
+    const emptyStore = { 
+      lastUpdated: new Date().toISOString(), 
+      sources: [], 
+      processedSources: [], 
+      knowledge: {} 
+    };
+    await saveKnowledge(emptyStore);
+    return NextResponse.json({ success: true, message: "Baza wiedzy została wyczyszczona." });
+  } catch (err) {
+    console.error("DELETE Knowledge API Error:", err);
+    return NextResponse.json({ error: "Błąd podczas czyszczenia bazy" }, { status: 500 });
   }
 }

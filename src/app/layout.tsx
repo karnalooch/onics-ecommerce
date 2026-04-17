@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pl" className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
-      <body className="min-h-screen bg-background text-foreground flex flex-col" suppressHydrationWarning>
+      <body className="min-h-screen bg-background text-foreground flex flex-col" suppressHydrationWarning bis_skin_checked={undefined}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
