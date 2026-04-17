@@ -361,7 +361,7 @@ export async function parsePDFWithAI(
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 contents: [{ parts: [
-                  { text: "EKSTRAKCJA B2B JSON: Wyciągnij KAŻDY produkt z obrazu. [{"model": "KOD", "specs": "OPIS", "price": NETTO_NUM}]" },
+                  { text: 'EKSTRAKCJA B2B JSON: Wyciągnij KAŻDY produkt z obrazu. [{"model": "KOD", "specs": "OPIS", "price": NETTO_NUM}]' },
                   { inline_data: { mime_type: "application/pdf", data: base64Data } }
                 ]}],
                 generationConfig: { response_mime_type: "application/json" }
