@@ -1,10 +1,29 @@
 import { NextResponse } from 'next/server';
 import { getKnowledge } from '@/lib/knowledge/parser';
+import fs from 'fs';
+import path from 'path';
 
 export async function GET() {
   try {
     const store = await getKnowledge();
     
+    // Samonaprawa: Synchronizacja źródeł z systemem plików
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'catalogs');
+    if (fs.existsSync(uploadsDir)) {
+      const files = fs.readdirSync(uploadsDir);
+      let changed = false;
+      files.forEach(file => {
+        if (!store.sources.includes(file)) {
+          store.sources.push(file);
+          changed = true;
+        }
+      });
+      if (changed) {
+        const { saveKnowledge } = await import('@/lib/knowledge/parser');
+        await saveKnowledge(store);
+      }
+    }
+
     // Konwertujemy mapę wiedzy na listę snippetów dla frontendu
     const snippets = Object.entries(store.knowledge).map(([model, data], index) => {
       const isObject = data && typeof data === 'object';

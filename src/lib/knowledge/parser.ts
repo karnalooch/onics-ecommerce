@@ -44,12 +44,16 @@ function isLikelyProductCode(text: string): boolean {
   const t = text.trim();
   if (t.length < 2 || t.length > 60) return false;
   
+  // Ignoruj maile i adresy www (częste w stopkach katalogów)
+  if (t.includes('@') || t.toLowerCase().includes('www.') || t.toLowerCase().includes('http')) return false;
+
   // Produkty Pulsar i inne mogą mieć spacje, ale nie przecinki w symbolu
   if (t.includes(',')) return false;
-  if (t.split(/\s+/).length > 6) return false; // Zwiększono limit słów (Część Pulsarów ma np. "AWO 000 Obudowa")
+  if (t.split(/\s+/).length > 6) return false; 
 
   const upperCount = (t.match(/[A-Z0-9]/g) || []).length;
-  // Poluzowano regułę wielkich liter dla nietypowych symboli
+  // Bardzo krótkie symbole (jak K-1, S-1) akceptujemy zawsze jeśli mają cyfry/litery
+  if (t.length <= 4) return upperCount >= 1;
   if (t.length > 10 && upperCount / t.length < 0.2) return false;
 
   return true;
@@ -68,7 +72,7 @@ function parsePrice(val: any): number | null {
  * Jeśli produkt już istnieje, uzupełniamy brakujące pola.
  */
 function mergeKnowledgeEntry(current: KnowledgeStore, symbol: string, entry: KnowledgeEntry) {
-  const normSymbol = symbol.toUpperCase().replace(/\s+/g, '').trim();
+  const normSymbol = symbol.toUpperCase().trim().replace(/\s+/g, '-');
   const existing = current.knowledge[normSymbol];
 
   if (!existing) {
@@ -172,9 +176,12 @@ export async function parseExcel(buffer: Buffer, filename: string, onProgress?: 
       if (finalSpecs.length >= 3) {
         const specsUpper = finalSpecs.toUpperCase();
         const modelKey = modelText.toUpperCase();
-        const actualSymbol = modelText.split(' ')[0].toUpperCase();
+        const actualSymbol = modelText.toUpperCase();
 
-        if (!NON_DEVICE_KEYWORDS.some(k => modelKey.includes(k) || specsUpper.includes(k))) {
+        // Filtrujemy SŁOWA KLUCZOWE tylko w Symbolu (nie w opisie!)
+        const isNonDevice = NON_DEVICE_KEYWORDS.some(k => actualSymbol.includes(k));
+
+        if (!isNonDevice) {
           const entry: KnowledgeEntry = {
             specs: finalSpecs,
             price: finalPrice,
@@ -223,7 +230,7 @@ export async function parsePDFWithAI(
 
     onProgress?.({ type: 'log', message: `Rozpoczęto analizę AI dla PDF: ${filename} (${pageCount} stron)` });
 
-    const batchSize = 5; 
+    let batchSize = 2; 
 
     for (let i = 0; i < pageCount; i += batchSize) {
       const currentBatchStart = i;
@@ -232,7 +239,8 @@ export async function parsePDFWithAI(
       
       onProgress?.({ type: 'log', message: `Analizowanie zakresem stron ${currentBatchStart + 1}-${currentBatchEnd}...`, percent });
 
-      if (i > 0) await new Promise(resolve => setTimeout(resolve, 3000));
+      // Zwiększony throttle dla stabilności
+      if (i > 0) await new Promise(resolve => setTimeout(resolve, 6000));
 
       let batchDone = false;
       let batchRetries = 0;
@@ -253,10 +261,11 @@ export async function parsePDFWithAI(
           // Zoptymalizowany, krótki prompt (oszczędność tokenów)
           const prompt = `EKSTRAKCJA B2B JSON: [{"model": "KOD", "specs": "OPIS", "price": NETTO_NUM}].
           ZASADY:
-          1. Model: krótki symbol (AWO000).
-          2. Specs: połącz nazwę z kluczowymi parametrami.
-          3. Price: tylko liczba netto (np. 150.50), lub null.
-          4. Pomiń nagłówki i kable.`;
+          1. Model: symbol techniczny (np. AQUA, SP-4001, GZ-1).
+          2. Specs: krótki opis funkcjonalny.
+          3. Price: liczba netto (np. 150.50), lub null.
+          4. Wyciągnij WSZYSTKO: Centrale, Czujki, Sygnalizatory, Kontaktrony, Akcesoria.
+          5. Pomiń kable oraz KONTAKT (maile, www).`;
 
           const response = await fetch(url, {
             method: 'POST',
@@ -273,21 +282,35 @@ export async function parsePDFWithAI(
           });
 
           if (!response.ok) {
-            // Obsługa limitów (429), niekompatybilności (400) lub braku modelu na danym endpoincie (404)
-            if ((response.status === 429 || response.status === 400 || response.status === 404) && modelPool.length > 1) {
+            // Obsługa limitów (429), niekompatybilności (400), braku modelu (404) lub błędów serwera (500, 503, 504)
+            if ((response.status === 429 || response.status === 400 || response.status === 404 || 
+                 response.status === 500 || response.status === 503 || response.status === 504) && modelPool.length > 1) {
               const prevModel = selectedModel;
               currentModelIndex = (currentModelIndex + 1) % modelPool.length;
               const nextModel = modelPool[currentModelIndex];
               
-              let reason = 'Błąd';
-              if (response.status === 429) reason = 'Limit RPM';
-              else if (response.status === 400) reason = 'Niekompatybilny model';
-              else if (response.status === 404) reason = 'Model niedostępny (404)';
-
+              let reason = `Status ${response.status}`;
               const backoff = (batchRetries + 1) * 2000;
+              let waitTime = backoff;
+
+              if (response.status === 503) {
+                reason = 'Serwer przeciążony (503)';
+                waitTime = 20000; // Agresywne 20s czekania na odblokowanie
+                batchSize = 1;    // Redukcja do 1 strony po błędzie 503
+              } else if (response.status === 429) {
+                reason = 'Limit RPM';
+              } else if (response.status === 400) {
+                reason = 'Niekompatybilny model';
+              } else if (response.status === 404) {
+                reason = 'Model niedostępny (404)';
+              } else if (response.status === 500) {
+                reason = 'Błąd wewnętrzny AI (500)';
+              } else if (response.status === 504) {
+                reason = 'Timeout bramy (504)';
+              }
               
-              onProgress?.({ type: 'log', message: `${reason} dla ${prevModel}. Przełączanie na ${nextModel} (czekam ${backoff}ms)...` });
-              await new Promise(resolve => setTimeout(resolve, backoff));
+              onProgress?.({ type: 'log', message: `${reason} dla ${prevModel}. Przełączanie na ${nextModel} (czekam ${waitTime}ms)...` });
+              await new Promise(resolve => setTimeout(resolve, waitTime));
               
               if (currentModelIndex === 0) batchRetries++; 
               continue;
@@ -310,7 +333,7 @@ export async function parsePDFWithAI(
                 let batchCount = 0;
                 extracted.forEach((item: any) => {
                   if (item.model && item.specs) {
-                    const modelKey = String(item.model).toUpperCase().trim().split(' ')[0];
+                    const modelKey = String(item.model).toUpperCase().trim();
                     const entry: KnowledgeEntry = {
                       specs: String(item.specs),
                       price: parsePrice(item.price),

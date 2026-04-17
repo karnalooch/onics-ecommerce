@@ -66,6 +66,7 @@ export default function KnowledgePage() {
   const [progressPercent, setProgressPercent] = useState(0)
   const [foundCount, setFoundCount] = useState(0)
   const [isDone, setIsDone] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -193,11 +194,11 @@ export default function KnowledgePage() {
         setLogs(prev => [...prev.slice(-100), { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'progress' }])
       } else if (data.type === 'error') {
         setLogs(prev => [...prev, { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'error' }])
-        // We no longer set setIsTraining(false) here to let the user see the error in the console.
+        setIsMinimized(false) // Auto-restore on error
         eventSource.close()
       } else if (data.type === 'done') {
         setLogs(prev => [...prev, { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'done' }])
-        setIsTraining(false)
+        setIsMinimized(false) // Auto-restore on success
         setIsDone(true)
         setProgressPercent(100)
         eventSource.close()
@@ -206,8 +207,8 @@ export default function KnowledgePage() {
     }
 
     eventSource.onerror = () => {
-      setLogs(prev => [...prev.slice(-100), { time: new Date().toLocaleTimeString(), msg: "Błąd połączenia strumieniowego.", type: 'error' }])
-      setIsTraining(false)
+      setLogs(prev => [...prev.slice(-100), { time: new Date().toLocaleTimeString(), msg: "Krytyczny błąd połączenia (SSE). Sprawdź logi serwera lub spróbuj ponownie.", type: 'error' }])
+      setIsMinimized(false) // Auto-restore to show error
       eventSource.close()
     }
   }
@@ -233,7 +234,7 @@ export default function KnowledgePage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 max-w-6xl mx-auto pb-20 px-4">
+    <div className="flex flex-col gap-8 max-w-6xl mx-auto pb-20 px-4" suppressHydrationWarning>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h2 className="text-3xl font-bold tracking-tight text-primary flex items-center gap-3">
@@ -324,15 +325,28 @@ export default function KnowledgePage() {
         <div className="lg:col-span-8 space-y-6">
           <Card className="shadow-lg border-t-4 border-t-blue-500">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
-              <div>
+              <div className="flex items-center gap-4 w-full">
                 <CardTitle className="text-xl flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-yellow-500" />
                     Wyuczona Wiedza AI
                     <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">
                       {snippets.length} modeli
                     </Badge>
-                  </div>
+
+                    {/* MINI CONSOLE BADGE */}
+                    {(isTraining || isDone) && isMinimized && (
+                      <motion.div 
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        className="ml-4 flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-full text-[10px] font-bold cursor-pointer hover:bg-blue-700 shadow-md transition-all animate-pulse"
+                        onClick={() => setIsMinimized(false)}
+                      >
+                        <Brain className="h-3 w-3" />
+                        PRZETWARZANIE: {progressPercent}% (+{foundCount})
+                      </motion.div>
+                    )}
+                  </span>
                   {snippets.length > 0 && (
                     <Button 
                       variant="ghost" 
@@ -420,17 +434,41 @@ export default function KnowledgePage() {
       </div>
 
       {/* TRAINING MODAL */}
-      <Dialog open={!!trainingFile} onOpenChange={(open) => !open && setTrainingFile(null)}>
+      <Dialog open={!!trainingFile && !isMinimized} onOpenChange={(open) => {
+        if (!open) {
+          if (isTraining && !isDone) {
+            setIsMinimized(true);
+          } else {
+            setTrainingFile(null);
+            setIsMinimized(false);
+          }
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Brain className="h-6 w-6 text-blue-500" />
               Naucz AI z Katalogu
             </DialogTitle>
-            <DialogDescription>
-              Wprowadź jednorazowy klucz Gemini, aby system przeanalizował <strong>{trainingFile}</strong> i wyciągnął z niego dane techniczne.
-            </DialogDescription>
+            {isTraining && !isDone && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-muted-foreground mr-6" 
+                onClick={() => setIsMinimized(true)}
+                title="Minimalizuj do ikony"
+              >
+                <div className="w-4 h-0.5 bg-current" />
+              </Button>
+            )}
           </DialogHeader>
+            <DialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                Wprowadź jednorazowy klucz Gemini, aby system przeanalizował <strong>{trainingFile}</strong> i wyciągnął z niego dane techniczne.
+                {isDone && <span className="block mt-2 text-green-600 font-bold">Proces zakończony. Możesz zamknąć to okno.</span>}
+                {!isTraining && !isDone && logs.some(l => l.type === 'error') && <span className="block mt-2 text-red-600 font-bold">Wystąpił błąd. Przejrzyj logi poniżej zanim zamkniesz okno.</span>}
+              </div>
+            </DialogDescription>
           <div className="space-y-6 py-4">
             {!isTraining && !isDone && (
               <div className="space-y-4">
@@ -535,15 +573,17 @@ export default function KnowledgePage() {
                   </Button>
                 </>
               )}
-              {isDone && (
+              {(isDone || (!isTraining && logs.some(l => l.type === 'error'))) && (
                 <Button 
                   onClick={() => {
                     setTrainingFile(null)
                     setIsDone(false)
+                    setIsTraining(false)
+                    setLogs([])
                   }}
-                  className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
+                  className={`${isDone ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white w-full sm:w-auto`}
                 >
-                  Zamknij i zobacz wyniki
+                  {isDone ? 'Zamknij i zobacz wyniki' : 'Zamknij konsolę (Błąd)'}
                 </Button>
               )}
             </div>
