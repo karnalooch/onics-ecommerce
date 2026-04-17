@@ -2,7 +2,8 @@ import * as XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { PDFDocument } from 'pdf-lib';
-const pdfParse = require('pdf-parse'); // pdf-parse typically uses require
+const pdfLib = require('pdf-parse');
+const pdfParse = typeof pdfLib === 'function' ? pdfLib : (pdfLib.default || pdfLib.PDFParse);
 import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema } from './types';
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), 'src/store/catalogKnowledge.json');
