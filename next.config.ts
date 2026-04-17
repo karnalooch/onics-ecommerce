@@ -16,7 +16,6 @@ const nextConfig: NextConfig = {
   // experimental: {
   //   dangerouslyAllowLocalIP: true,
   // },
-  serverExternalPackages: ['pdf-parse'],
 };
 
 export default nextConfig;

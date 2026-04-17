@@ -2,8 +2,6 @@ import * as XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { PDFDocument } from 'pdf-lib';
-const pdfLib = require('pdf-parse');
-const pdfParse = typeof pdfLib === 'function' ? pdfLib : (pdfLib.default || pdfLib.PDFParse);
 import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema } from './types';
 
 const KNOWLEDGE_PATH = path.join(process.cwd(), 'src/store/catalogKnowledge.json');
@@ -230,9 +228,11 @@ export async function parsePDFWithAI(
 
     onProgress?.({ type: 'log', message: `Uruchamianie Silnika V2 dla: ${filename}` });
 
-    // --- KROK 1: Lokalna Ekstrakcja Tekstu ---
+    // --- KROK 1: Lokalna Ekstrakcja Tekstu (Dynamiczne ładowanie) ---
     let extractedData;
     try {
+      const pdf = require('pdf-parse/lib/pdf-parse.js');
+      const pdfParse = typeof pdf === 'function' ? pdf : (pdf.default || pdf.PDFParse);
       extractedData = await pdfParse(buffer);
     } catch (e) {
       onProgress?.({ type: 'log', message: `Błąd lokalnej ekstrakcji: ${e}. Próba trybu wizyjnego...` });
