@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-17T15:32:48.946Z",
+  "lastUpdated": "2026-04-17T15:37:42.412Z",
   "sources": [
     "Cennik detaliczny PL 2026.xlsx",
     "Cennik SSP_2023-11-22_4_BF.pdf",
@@ -10,6 +10,352 @@
     "Pulsar_Cennik_Detal_2023.pdf",
     "ROGER-cennik-PLN-2026.01.31-Rev.B.xlsx"
   ],
-  "processedSources": [],
-  "knowledge": {}
+  "processedSources": [
+    "Cennik SSP_2023-11-22_4_BF.pdf"
+  ],
+  "knowledge": {
+    "CSP-104": {
+      "specs": "Konwencjonalna centrala sygnalizacji pożarowej (4 linie dozorowe, bez wyświetlacza LCD)",
+      "price": 1048,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "CSP-108": {
+      "specs": "Konwencjonalna centrala sygnalizacji pożarowej (8 linii dozorowych, bez wyświetlacza LCD)",
+      "price": 1173,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "CSP-204": {
+      "specs": "Konwencjonalna centrala sygnalizacji pożarowej (4 linie dozorowe, wyświetlacz LCD)",
+      "price": 1136,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "CSP-208": {
+      "specs": "Konwencjonalna centrala sygnalizacji pożarowej (8 linii dozorowych, wyświetlacz LCD)",
+      "price": 1259,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "PSP-104": {
+      "specs": "Urządzenie zdalnej obsługi i sygnalizacji - panel wyniesiony (współpracuje z CSP-104)",
+      "price": 1004,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "PSP-108": {
+      "specs": "Urządzenie zdalnej obsługi i sygnalizacji - panel wyniesiony (współpracuje z CSP-108)",
+      "price": 1004,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "PSP-204": {
+      "specs": "Urządzenie zdalnej obsługi i sygnalizacji - panel wyniesiony (współpracuje z CSP-204)",
+      "price": 1080,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "PSP-208": {
+      "specs": "Urządzenie zdalnej obsługi i sygnalizacji - panel wyniesiony (współpracuje z CSP-208)",
+      "price": 1080,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "CSP-ETH": {
+      "specs": "Moduł komunikacji z panelem wirtualnym",
+      "price": 496,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "DCP-100": {
+      "specs": "Punktowa czujka ciepła klasy A1R",
+      "price": 88,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "DMP-100": {
+      "specs": "Punktowa wielodetektorowa czujka dymu i ciepła",
+      "price": 165,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "DRP-100": {
+      "specs": "Punktowa optyczna czujka dymu",
+      "price": 114,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-110/PL": {
+      "specs": "Konwencjonalny ręczny ostrzegacz pożarowy (wewnętrzny, oznakowanie krajowe)",
+      "price": 120,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-111/PL": {
+      "specs": "Konwencjonalny ręczny ostrzegacz pożarowy (zewnętrzny, oznakowanie krajowe)",
+      "price": 254,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-101/PL": {
+      "specs": "Konwencjonalny ręczny ostrzegacz pożarowy (zewnętrzny, oznakowanie krajowe)",
+      "price": 195,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "SPP-110": {
+      "specs": "Sygnalizator akustyczny pożarowy (czerwony, wewnętrzny - niska podstawa)",
+      "price": 123,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "SPP-110-W": {
+      "specs": "Sygnalizator akustyczny pożarowy (biały, wewnętrzny - niska podstawa)",
+      "price": 123,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "SPP-111": {
+      "specs": "Sygnalizator akustyczny pożarowy (czerwony, zewnętrzny - wysoka podstawa)",
+      "price": 132,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "SPP-111-W": {
+      "specs": "Sygnalizator akustyczny pożarowy (biały, zewnętrzny - wysoka podstawa)",
+      "price": 132,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "WZ-110": {
+      "specs": "Wskaźnik zadziałania",
+      "price": 45,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "DB-100": {
+      "specs": "Konwencjonalne gniazdo punktowych czujek pożarowych",
+      "price": 28,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "PDB-100": {
+      "specs": "Podstawa przemysłowa gniazda czujek serii 100 i 400",
+      "price": 16,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "OP-100": {
+      "specs": "Osłona przeciwpyłowa czujek serii 100 i 400 (10-pak)",
+      "price": 31,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "KO-100": {
+      "specs": "Komora optyczna do czujek serii 100 produkowanych do końca października 2022 (10-pak)",
+      "price": 62,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "KO-400": {
+      "specs": "Komora optyczna do czujek serii 100 produkowanych od listopada 2022 i czujek serii 400 (10-pak)",
+      "price": 62,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-BS": {
+      "specs": "Puszka montażowa natynkowa do ROP-110 i ROP-400",
+      "price": 33,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-BT": {
+      "specs": "Puszka montażowa natynkowa do ROP-110 i ROP-400 (10-pak)",
+      "price": 315,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-KEY": {
+      "specs": "Zapasowy kluczyk do ROP-100/101 (10-pak)",
+      "price": 76,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-KEY-U": {
+      "specs": "Zapasowy kluczyk do ROP-110/111 i ROP-400/401 (10-pak)",
+      "price": 76,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-FLAP": {
+      "specs": "Osłona zabezpieczająca do ROP-400/401 i ROP-110/111 (10-pak)",
+      "price": 110,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "CSP-AKU": {
+      "specs": "Zewnętrzny pojemnik akumulatorów",
+      "price": 215,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "CSP-FUSE": {
+      "specs": "Bezpiecznik topikowy 3,5 A do zabezpieczenia akumulatora (5-pak)",
+      "price": 41,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ACSP-402": {
+      "specs": "Centrala sygnalizacji pożarowej (obsługa urządzeń adresowalnych, 2 pętle)",
+      "price": 6490,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "APSP-402": {
+      "specs": "Urządzenie zdalnej obsługi i sygnalizacji - panel wyniesiony do centrali adresowalnej",
+      "price": 5060,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ACSP-ETH": {
+      "specs": "Ethernetowy moduł komunikacyjny (do centrali adresowalnej)",
+      "price": 650,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ACSP-RSI": {
+      "specs": "Moduł drukarki i izolacji galwanicznej magistrali RS-485",
+      "price": 550,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "DCP-400": {
+      "specs": "Adresowalna nadmiarowo-różniczkowa czujka ciepła",
+      "price": 187,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "DMP-400": {
+      "specs": "Adresowalna wielodetektorowa czujka dymu i ciepła",
+      "price": 319,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "DRP-400": {
+      "specs": "Adresowalna optyczna czujka dymu",
+      "price": 220,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-400/PL": {
+      "specs": "Adresowalny ręczny ostrzegacz pożarowy (wewnętrzny, oznakowanie krajowe)",
+      "price": 210,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "ROP-401/PL": {
+      "specs": "Adresowalny ręczny ostrzegacz pożarowy (zewnętrzny, oznakowanie krajowe)",
+      "price": 275,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "SPP-400": {
+      "specs": "Adresowalny sygnalizator akustyczny pożarowy (czerwony, wewnętrzny - niska podstawa)",
+      "price": 275,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "SPP-400-W": {
+      "specs": "Adresowalny sygnalizator akustyczny pożarowy (biały, wewnętrzny - niska podstawa)",
+      "price": 275,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "SPP-401": {
+      "specs": "Adresowalny sygnalizator akustyczny pożarowy (czerwony, zewnętrzny - wysoka podstawa)",
+      "price": 330,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "SPP-401-W": {
+      "specs": "Adresowalny sygnalizator akustyczny pożarowy (biały, zewnętrzny - wysoka podstawa)",
+      "price": 330,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "WZ-400": {
+      "specs": "Adresowalny wskaźnik zadziałania",
+      "price": 132,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "MIO-400": {
+      "specs": "Moduł wejść i wyjść konwencjonalnych (do centrali adresowalnej)",
+      "price": 484,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "MLB-400": {
+      "specs": "Moduł linii bocznej konwencjonalnej (do centrali adresowalnej)",
+      "price": 264,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    },
+    "DB-400": {
+      "specs": "Gniazdo czujek adresowalnych",
+      "price": 38,
+      "currency": "PLN",
+      "source": "Cennik SSP_2023-11-22_4_BF.pdf",
+      "date": "2026-04-17"
+    }
+  }
 }

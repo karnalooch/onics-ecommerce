@@ -8,6 +8,7 @@ export async function GET(req: Request) {
   const filename = searchParams.get('filename');
   const apiKey = searchParams.get('apiKey');
   const modelId = searchParams.get('modelId');
+  const concurrencyLevel = parseInt(searchParams.get('concurrency') || '1');
 
   if (!filename || !apiKey) {
     return new Response('Brak parametrów', { status: 400 });
@@ -56,7 +57,8 @@ export async function GET(req: Request) {
             apiKey, 
             modelId || 'gemini-1.5-flash', 
             modelPool, 
-            onProgress
+            onProgress,
+            concurrencyLevel
           );
           sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.' });
         } else {

@@ -213,9 +213,9 @@ export async function parsePDFWithAI(
   buffer: Buffer, 
   filename: string, 
   apiKey: string, 
-  modelId: string, 
   availableModels: string[] = [], 
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  concurrencyLimit: number = 1
 ): Promise<number> {
   const modelPool = availableModels.length > 0 ? availableModels : [modelId];
   let currentModelIndex = modelPool.indexOf(modelId);
@@ -246,17 +246,15 @@ export async function parsePDFWithAI(
       onProgress?.({ type: 'log', message: `Wykryto dokument cyfrowy (${fullText.length} znaków). Rozpoczynam Path A (Tekst).` });
       
       // Path A: Ekstrakcja z tekstu (Szybka, Stabilna, 0 błędów 503)
-      // Dzielimy na duże bloki po ok 15,000 znaków (~10-15 stron)
-      const chunkSize = 15000;
+      // Dzielimy na duże bloki po ok 30,000 znaków
+      const chunkSize = 30000;
       const chunks: string[] = [];
       for (let i = 0; i < fullText.length; i += chunkSize) {
         chunks.push(fullText.substring(i, i + chunkSize));
       }
 
-      for (let i = 0; i < chunks.length; i++) {
-        const percent = Math.round((i / chunks.length) * 100);
-        onProgress?.({ type: 'log', message: `Analiza bloku tekstowego ${i + 1}/${chunks.length}...`, percent });
-
+      // Funkcja pomocnicza do przetwarzania pojedynczego bloku
+      const processSingleChunk = async (chunk: string, i: number) => {
         let batchDone = false;
         let batchRetries = 0;
 
@@ -277,7 +275,7 @@ export async function parsePDFWithAI(
             4. Jeśli produkt ma warianty, wypisz każdy jako osobny obiekt.
             
             TEKST DO ANALIZY:
-            ${chunks[i]}`;
+            ${chunk}`;
 
             const response = await fetch(url, {
               method: 'POST',
@@ -326,6 +324,15 @@ export async function parsePDFWithAI(
             await new Promise(resolve => setTimeout(resolve, 3000));
           }
         }
+      };
+
+      // Przetwarzanie równoległe z limitem (Concurrency Limit)
+      onProgress?.({ type: 'log', message: `Tryb Turbo aktywny: Concurrency Level = ${concurrencyLimit}` });
+      
+      for (let i = 0; i < chunks.length; i += concurrencyLimit) {
+        const batch = chunks.slice(i, i + concurrencyLimit);
+        onProgress?.({ type: 'log', message: `Analiza równoległa bloków ${i + 1}-${Math.min(i + concurrencyLimit, chunks.length)}/${chunks.length}...`, percent: Math.round((i / chunks.length) * 100) });
+        await Promise.all(batch.map((chunk, index) => processSingleChunk(chunk, i + index)));
       }
     } else {
       // Path B: Fallback Wizyjny (Zoptymalizowany pod 503)

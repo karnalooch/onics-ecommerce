@@ -48,6 +48,7 @@ export default function KnowledgePage() {
   const [isUploading, setIsUploading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [isTraining, setIsTraining] = useState(false)
+  const [concurrency, setConcurrency] = useState(1)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle')
   
   // State for Training Modal
@@ -178,7 +179,8 @@ export default function KnowledgePage() {
       filename: trainingFile,
       apiKey: tempApiKey,
       modelId: validationResult?.recommended || '',
-      availableModels: (validationResult?.availableModels || []).join(',')
+      availableModels: (validationResult?.availableModels || []).join(','),
+      concurrency: concurrency.toString()
     })
 
     const eventSource = new EventSource(`/api/knowledge/train/stream?${params.toString()}`)
@@ -472,6 +474,30 @@ export default function KnowledgePage() {
           <div className="space-y-6 py-4">
             {!isTraining && !isDone && (
               <div className="space-y-4">
+                <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 rounded-xl border border-blue-100/50 dark:border-blue-800/20 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className={`h-4 w-4 ${concurrency > 1 ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                      <span className="text-sm font-bold">Turbo Mode</span>
+                    </div>
+                    <Badge variant={concurrency > 1 ? "default" : "secondary"} className="font-mono">
+                      {concurrency}x Speed
+                    </Badge>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="5" 
+                    step="1" 
+                    value={concurrency}
+                    onChange={(e) => setConcurrency(parseInt(e.target.value))}
+                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    {concurrency === 1 ? 'Standardowa analiza (najbezpieczniejsza).' : `Równoległe przetwarzanie ${concurrency} bloków tekstu jednocześnie.`}
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label className="text-xs uppercase font-bold text-muted-foreground">Klucz API Gemini (Flash v1.5)</Label>
                   <Input 
