@@ -40,6 +40,8 @@ export function WfMagUploadButton({ onParsed, disabled }: IWfMagUploadButtonProp
     };
 
     reader.readAsBinaryString(file);
+    // Reset input value to allow re-uploading the same file
+    e.target.value = '';
   };
 
   return (

@@ -3,7 +3,8 @@
 
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
-import { X, Check } from "lucide-react";
+import { X, Check, AlertTriangle, RefreshCw, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { memo } from "react";
 
 interface IStagingItemProps {
@@ -54,7 +55,18 @@ export const StagingItem = memo(function StagingItem({
              />
              <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="font-mono text-[9px] font-black text-slate-400 border-slate-200 uppercase">{item.sku}</Badge>
-                {item.isMissingSku && <Badge className="bg-red-500 text-[8px] font-black italic scale-90">GEN WR-SKU</Badge>}
+                {item.priceMismatch && <Badge className="bg-orange-500 text-[8px] font-black italic shadow-lg shadow-orange-500/20">CENNIK MISMATCH</Badge>}
+                {item.catalogSpecs && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => onUpdate(item.tempId, 'seoDescription', item.catalogSpecs)}
+                    className="h-6 px-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-100 gap-1 flex items-center"
+                  >
+                    <FileText className="w-3 h-3" />
+                    <span className="text-[8px] font-black uppercase">Sync Opis</span>
+                  </Button>
+                )}
              </div>
           </div>
         </div>
@@ -73,22 +85,45 @@ export const StagingItem = memo(function StagingItem({
 
         {/* Prices & Stocks */}
         <div className="lg:col-span-2 flex items-center justify-end gap-3 px-4">
-           <div className="flex flex-col items-end">
-              <input 
-                type="number"
-                value={item.price}
-                onChange={(e) => onUpdate(item.tempId, 'price', parseFloat(e.target.value))}
-                className="w-24 text-right font-black text-xl text-slate-800 outline-none bg-orange-50/50 rounded-lg pr-2"
-              />
+           <div className="flex flex-col items-end relative">
+              <div className="flex items-center gap-2">
+                 {item.priceMismatch && (
+                   <button 
+                     onClick={() => onUpdate(item.tempId, 'price', item.catalogPrice)}
+                     title={`Cena w cenniku: ${item.catalogPrice} PLN. Kliknij aby zsynchronizować.`}
+                     className="p-1.5 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-600 hover:text-white transition-all animate-pulse"
+                   >
+                     <RefreshCw className="w-3 h-3" />
+                   </button>
+                 )}
+                 <input 
+                   type="number"
+                   value={item.price}
+                   onChange={(e) => onUpdate(item.tempId, 'price', parseFloat(e.target.value))}
+                   className={`w-24 text-right font-black text-xl outline-none rounded-lg pr-2 transition-all ${
+                     item.priceMismatch ? 'bg-orange-600 text-white ring-4 ring-orange-500/20' : 'bg-orange-50/50 text-slate-800'
+                   }`}
+                 />
+              </div>
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">PLN Netto</span>
            </div>
            
-           <button 
-             onClick={() => onRemove(item.tempId, item.sku)}
-             className="w-10 h-10 rounded-2xl bg-white border-2 border-slate-100 text-slate-300 hover:text-red-500 hover:border-red-200 transition-all flex items-center justify-center"
-           >
-             <X className="w-5 h-5" />
-           </button>
+            <div className="flex items-center gap-2">
+               {isConfirmed && (
+                 <Button 
+                   onClick={() => onCommit(item.tempId)}
+                   className="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-500/20 animate-in zoom-in duration-300"
+                 >
+                   Zapisz
+                 </Button>
+               )}
+               <button 
+                 onClick={() => onRemove(item.tempId, item.sku)}
+                 className="w-10 h-10 rounded-2xl bg-white border-2 border-slate-100 text-slate-300 hover:text-red-500 hover:border-red-200 transition-all flex items-center justify-center"
+               >
+                 <X className="w-5 h-5" />
+               </button>
+            </div>
         </div>
       </div>
     </motion.div>

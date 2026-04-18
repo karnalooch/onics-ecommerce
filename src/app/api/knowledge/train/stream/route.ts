@@ -38,8 +38,15 @@ export async function GET(req: Request) {
       }, 30000);
 
       try {
+        const availableModelsRaw = searchParams.get('availableModels') || '';
+        const modelPool = availableModelsRaw ? availableModelsRaw.split(',') : [];
+
         if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-          const result = await parseExcel(buffer, filename, onProgress);
+          const result = await parseExcel(buffer, filename, onProgress, { 
+            apiKey, 
+            modelId: modelId || 'gemini-1.5-flash',
+            availableModels: modelPool
+          });
           
           const currentStore = await getKnowledge();
           if (!currentStore.processedSources.includes(filename)) {
@@ -48,16 +55,14 @@ export async function GET(req: Request) {
           }
           sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.', count: result.count, stats: result.stats });
         } else if (filename.toLowerCase().endsWith('.pdf')) {
-          const availableModelsRaw = searchParams.get('availableModels') || '';
-          const modelPool = availableModelsRaw ? availableModelsRaw.split(',') : [];
-                 const result = await parsePDFWithAI(
-              buffer, 
-              filename, 
-              apiKey, 
-              modelId || undefined,
-              [],
-              onProgress
-            );
+          const result = await parsePDFWithAI(
+            buffer, 
+            filename, 
+            apiKey, 
+            modelId || undefined,
+            modelPool,
+            onProgress
+          );
           sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.', count: result.count, stats: result.stats });
         } else {
           sendUpdate({ type: 'error', message: 'Nieobsługiwany format pliku.' });

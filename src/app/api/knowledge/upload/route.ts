@@ -26,7 +26,10 @@ export async function POST(req: Request) {
     // 2. Jeśli podano klucz - analizujemy plik i wyciągamy wiedzę
     if (transientApiKey && transientApiKey.trim() !== "") {
       if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-        const result = await parseExcel(buffer, filename);
+        const result = await parseExcel(buffer, filename, undefined, { 
+          apiKey: transientApiKey, 
+          modelId: 'gemini-1.5-flash' 
+        });
         addedCount = result.count;
         learned = true;
       } else if (filename.toLowerCase().endsWith('.pdf')) {

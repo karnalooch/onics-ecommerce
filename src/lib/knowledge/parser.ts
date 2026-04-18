@@ -162,14 +162,25 @@ function processExtractions(results: any[], currentStore: KnowledgeStore, filena
 
 // --- PARSERS ---
 
-export async function parseExcel(buffer: Buffer, filename: string, onProgress?: ProgressCallback): Promise<{ count: number, stats: any }> {
+export async function parseExcel(
+  buffer: Buffer, 
+  filename: string, 
+  onProgress?: ProgressCallback,
+  aiConfig?: { apiKey: string, modelId: string, availableModels?: string[] }
+): Promise<{ count: number, stats: any }> {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const currentStore = await getKnowledge();
   const sessionSet = new Set<string>();
   let totalAddedCount = 0;
   const currentDate = new Date().toISOString().split('T')[0];
+  
+  const toolkit = aiConfig?.apiKey ? new ToolkitParser({ 
+    apiKey: aiConfig.apiKey, 
+    modelId: aiConfig.modelId, 
+    availableModels: aiConfig.availableModels 
+  }) : null;
 
-  onProgress?.({ type: 'log', message: `Start XLS: ${filename}` });
+  onProgress?.({ type: 'log', message: `Start XLS: ${filename} ${toolkit ? '(Tryb AI)' : '(Tryb Lokalny)'}` });
 
   for (const sheetName of workbook.SheetNames) {
     const worksheet = workbook.Sheets[sheetName];
@@ -228,30 +239,75 @@ export async function parseExcel(buffer: Buffer, filename: string, onProgress?: 
     const totalLines = rawRows.length - (headerRowIndex + 1);
     const excelBatchSize = 50;
     
+    const batches = [];
     for (let i = headerRowIndex + 1; i < rawRows.length; i += excelBatchSize) {
-      const extractedItems: any[] = [];
+      const rowsToProcess = [];
       const batchEnd = Math.min(i + excelBatchSize, rawRows.length);
-      
       for (let j = i; j < batchEnd; j++) {
         const row = rawRows[j];
-        if (!row) continue;
-        
-        let modelText = String(row[columnMap.model] || '').trim();
-        if (!modelText || modelText.length < 3) continue;
-
-        let specsText = String(row[columnMap.specs] || 'Brak opisu').trim();
-        let priceVal = columnMap.price !== null ? row[columnMap.price] : null;
-
-        extractedItems.push({ model: modelText, specs: specsText, price: priceVal });
+        if (!row || row.length === 0) continue;
+        rowsToProcess.push(row);
       }
+      if (rowsToProcess.length > 0) batches.push(rowsToProcess);
+    }
 
-      const addedInBatch = processExtractions(extractedItems, currentStore, filename, currentDate, onProgress, totalAddedCount, sessionSet);
-      totalAddedCount += addedInBatch;
+    // Toolkit Pattern: parallel-batch-processing (Rate-limit safe)
+    const concurrentLimit = 3;
+    for (let i = 0; i < batches.length; i += concurrentLimit) {
+      const batchGroup = batches.slice(i, i + concurrentLimit);
+      
+      const results = await Promise.all(batchGroup.map(async (rowsToProcess) => {
+        if (toolkit) {
+          try {
+            // Toolkit Pattern: data-compression (Lite Payload)
+            // Filtrowanie "szumu" (puste wiersze lub tylko spacje)
+            const cleanedRows = rowsToProcess.filter((row: any[]) => 
+              row.some(cell => cell !== null && cell !== undefined && String(cell).trim().length > 0)
+            );
+
+            if (cleanedRows.length === 0) return { type: 'done', data: [] };
+
+            // Konwersja na ultra-kompaktowy format (CSV-style) zamiast JSON
+            const compactBatch = cleanedRows.map((row: any[]) => 
+              row.map(c => String(c || '').replace(/[|\n\r]/g, ' ')).join('|')
+            ).join('\n');
+
+            const aiResults = await toolkit.extractStructuredData(
+              `SYNTEZA B2B (LOW_TOKEN): Przeanalizuj wiersze (format: model|opis|cena|...). 
+              Stwórz 'specs' jako syntezę techniczną. Zwróć TABLICĘ JSON: [{"model": "KOD", "specs": "OPIS", "price": CENA}]. 
+              Bądź ultra-zwięzły. Jeśli wiersz nie jest produktem, zwróć pustą tablicę [].`,
+              compactBatch,
+              "text/plain",
+              onProgress
+            );
+            return { type: 'ai', data: aiResults };
+          } catch (err) {
+            onProgress?.({ type: 'log', message: `Błąd AI dla partii XLS, fallback do lokalnego: ${err}` });
+            return { type: 'local', data: rowsToProcess };
+          }
+        } else {
+          return { type: 'local', data: rowsToProcess };
+        }
+      }));
+
+      // Procesuj zebrane wyniki
+      results.forEach((res: any) => {
+        if (res.type === 'ai') {
+          totalAddedCount += processExtractions(res.data, currentStore, filename, currentDate, onProgress, totalAddedCount, sessionSet);
+        } else {
+          const localItems = res.data.map((row: any) => ({
+            model: String(row[columnMap.model] || '').trim(),
+            specs: String(row[columnMap.specs] || 'Brak opisu').trim(),
+            price: columnMap.price !== null ? row[columnMap.price] : null
+          }));
+          totalAddedCount += processExtractions(localItems, currentStore, filename, currentDate, onProgress, totalAddedCount, sessionSet);
+        }
+      });
 
       onProgress?.({ 
         type: 'log', 
-        message: `Przetworzono ${batchEnd - (headerRowIndex + 1)} z ${totalLines} wierszy`,
-        percent: Math.round(((batchEnd - (headerRowIndex + 1)) / totalLines) * 100)
+        message: `Przetworzono partię ${Math.min(i + concurrentLimit, batches.length)} z ${batches.length}`,
+        percent: Math.round((Math.min(i + concurrentLimit, batches.length) / batches.length) * 100)
       });
     }
   }
@@ -315,7 +371,7 @@ export async function parsePDFWithAI(
         
         const batchResults = await Promise.all(batch.map(chunk => 
           toolkit.extractStructuredData(
-            'EKSTRAKCJA B2B JSON: Wyciągnij listę produktów z tego fragmentu katalogu. Zwróć TABLICĘ JSON objektów: [{"model": "KOD/MODEL", "specs": "DOKŁADNY OPIS", "price": CENA_NETTO_NUM}]. Jeśli brak ceny, zwróć null dla pola price. Ważne: pole "model" musi zawierać krótki symbol produktu.',
+            'SYNTEZA B2B JSON: Wyciągnij listę produktów. Każdy "specs" musi być inteligentną fuzją parametrów (np. "Akumulator LFP 12.8V 46Ah, wymiary: 175x165x195mm, waga: 5.9kg"). Połącz WSZYSTKIE dostępne kolumny techniczne w jeden profesjonalny opis. Zwróć TABLICĘ JSON: [{"model": "KOD", "specs": "SYNTETYCZNY OPIS", "price": CENA}].',
             chunk,
             "text/plain",
             onProgress
@@ -346,25 +402,33 @@ export async function parsePDFWithAI(
       const pdfDoc = await PDFDocument.load(buffer);
       const visualPageCount = pdfDoc.getPageCount();
       const batchSize = 2;
+      const concurrentLimit = 2; // Dla wizyjnego limity są bardziej restrykcyjne
 
+      const pageBatches = [];
       for (let i = 0; i < visualPageCount; i += batchSize) {
-        const currentBatchStart = i;
-        const currentBatchEnd = Math.min(i + batchSize, visualPageCount);
+        pageBatches.push({ start: i, end: Math.min(i + batchSize, visualPageCount) });
+      }
+
+      for (let i = 0; i < pageBatches.length; i += concurrentLimit) {
+        const currentGroup = pageBatches.slice(i, i + concurrentLimit);
         
-        const subDoc = await PDFDocument.create();
-        const pageIndexes = Array.from({length: currentBatchEnd - currentBatchStart}, (_, idx) => currentBatchStart + idx);
-        const copiedPages = await subDoc.copyPages(pdfDoc, pageIndexes);
-        copiedPages.forEach(p => subDoc.addPage(p));
-        const subBuffer = Buffer.from(await subDoc.save());
+        const groupResults = await Promise.all(currentGroup.map(async (pBatch) => {
+          const subDoc = await PDFDocument.create();
+          const pageIndexes = Array.from({length: pBatch.end - pBatch.start}, (_, idx) => pBatch.start + idx);
+          const copiedPages = await subDoc.copyPages(pdfDoc, pageIndexes);
+          copiedPages.forEach(p => subDoc.addPage(p));
+          const subBuffer = Buffer.from(await subDoc.save());
 
-        const results = await toolkit.extractStructuredData(
-          'EKSTRAKCJA WIZYJNA B2B JSON: Wyciągnij KAŻDY produkt widoczny na obrazie. Zwróć tablicę objektów: [{"model": "KOD_PRODUKTU", "specs": "PARAMETRY_OPIS", "price": CENA_NETTO}]. Jeśli brak ceny, wpisz null.',
-          subBuffer,
-          "application/pdf",
-          onProgress
-        );
+          return await toolkit.extractStructuredData(
+            'WIZYJNA SYNTEZA B2B JSON: Wyciągnij KAŻDY produkt z obrazu. Stwórz "specs" jako profesjonalną syntezę wszystkich parametrów technicznych widocznych w tabeli (wymiary, waga, napięcie itp.). Zwróć tablicę: [{"model": "KOD", "specs": "SYNTETYCZNY OPIS TECHNICZNY", "price": CENA}].',
+            subBuffer,
+            "application/pdf",
+            onProgress
+          );
+        }));
 
-        const addedInBatch = processExtractions(results, currentStore, filename, currentDate, onProgress, totalAddedCount, sessionSet);
+        const flatResults = groupResults.flat();
+        const addedInBatch = processExtractions(flatResults, currentStore, filename, currentDate, onProgress, totalAddedCount, sessionSet);
         totalAddedCount += addedInBatch;
         
         if (addedInBatch > 0) {
@@ -375,8 +439,8 @@ export async function parsePDFWithAI(
 
         onProgress?.({ 
           type: 'log', 
-          message: `Strony ${currentBatchStart + 1}-${currentBatchEnd} zapisane (+${addedInBatch})`,
-          percent: Math.round((currentBatchEnd / visualPageCount) * 100)
+          message: `Przetworzono partię wizyjną ${Math.min(i + concurrentLimit, pageBatches.length)} z ${pageBatches.length}`,
+          percent: Math.round((Math.min(i + concurrentLimit, pageBatches.length) / pageBatches.length) * 100)
         });
       }
     }

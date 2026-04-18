@@ -1,8 +1,9 @@
 // src/app/admin/products/_components/ProductHeader.tsx
 "use client";
 
-import { ShoppingBag, UploadCloud, Plus } from "lucide-react";
+import { ShoppingBag, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WfMagUploadButton } from "./WfMagUploadButton";
 
 interface IProductHeaderProps {
   importing: boolean;
@@ -23,15 +24,7 @@ export function ProductHeader({ importing, onImportClick, onAddNew }: IProductHe
        </div>
        
        <div className="flex gap-4">
-         <Button 
-            onClick={onImportClick}
-            disabled={importing}
-            variant="outline"
-            className="h-14 px-6 rounded-2xl bg-white border-2 border-slate-200 hover:border-primary/30 font-bold shadow-sm transition-all gap-3"
-         >
-            <UploadCloud className="w-5 h-5 text-primary" />
-            {importing ? "Przetwarzanie..." : "Importuj WF-Mag"}
-         </Button>
+         <WfMagUploadButton onParsed={onImportClick} disabled={importing} />
          <Button 
             onClick={onAddNew}
             className="h-14 px-8 rounded-2xl bg-primary text-white font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 text-xs"

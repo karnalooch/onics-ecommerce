@@ -4,7 +4,7 @@
 import { memo, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowUpRight, Search, ChevronDown } from "lucide-react";
+import { ArrowUpRight, Search, ChevronDown, AlertTriangle, Trash2 } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { StagingItem } from "./StagingItem";
 
@@ -29,13 +29,22 @@ export const StagingDashboard = memo(function StagingDashboard({
   isItemConfirmed
 }: IStagingDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showConflictsOnly, setShowConflictsOnly] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
 
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return payload;
-    const q = searchQuery.toLowerCase();
-    return payload.filter(i => i.sku?.toLowerCase().includes(q) || i.name?.toLowerCase().includes(q));
-  }, [payload, searchQuery]);
+    let result = payload;
+    if (showConflictsOnly) {
+      result = result.filter(i => i.priceMismatch);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(i => i.sku?.toLowerCase().includes(q) || i.name?.toLowerCase().includes(q));
+    }
+    return result;
+  }, [payload, searchQuery, showConflictsOnly]);
+
+  const conflictsCount = useMemo(() => payload.filter(i => i.priceMismatch).length, [payload]);
 
   const allConfirmed = useMemo(() => payload.every(isItemConfirmed), [payload, isItemConfirmed]);
 
@@ -43,8 +52,20 @@ export const StagingDashboard = memo(function StagingDashboard({
     <div className="space-y-6 animate-in slide-in-from-top-4 duration-500 p-8 rounded-[40px] bg-orange-50/50 border-4 border-orange-200 shadow-2xl">
       <div className="flex items-center justify-between mb-8">
         <StagingHeader count={payload.length} confirmedCount={payload.filter(isItemConfirmed).length} />
-        <div className="flex-1 max-w-sm ml-8">
+        <div className="flex-1 max-w-sm ml-8 flex items-center gap-4">
           <StagingSearch value={searchQuery} onChange={setSearchQuery} />
+          {conflictsCount > 0 && (
+            <Button 
+              onClick={() => setShowConflictsOnly(!showConflictsOnly)}
+              variant={showConflictsOnly ? "destructive" : "outline"}
+              className={`h-12 px-4 rounded-2xl flex gap-2 font-black transition-all ${
+                showConflictsOnly ? 'bg-orange-600 border-none' : 'border-2 border-orange-200 text-orange-600'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-[10px] uppercase">Niezgodności ({conflictsCount})</span>
+            </Button>
+          )}
         </div>
         <StagingActions 
           onClear={onClear} 
@@ -87,7 +108,7 @@ function StagingHeader({ count, confirmedCount }: { count: number, confirmedCoun
         <span className="text-[10px] uppercase font-black tracking-widest mt-1">BUFOR</span>
       </div>
       <div>
-        <h2 className="text-2xl font-black text-orange-900 uppercase italic">Biurko <span className="text-orange-600 underline decoration-orange-300">Klasyfikacyjne</span></h2>
+        <h2 className="text-2xl font-black text-orange-900 uppercase italic">Klasyfikacja <span className="text-orange-600 underline decoration-orange-300">Bufora</span></h2>
         <p className="text-orange-700/70 font-bold text-[10px] uppercase tracking-widest mt-1">Gotowe do zapisu: {confirmedCount} / {count}</p>
       </div>
     </div>
@@ -118,8 +139,8 @@ function StagingActions({ onClear, onCommitAll, importing, disabled, summary, su
           {summary}
         </div>
       )}
-      <Button variant="ghost" onClick={onClear} className="h-12 px-6 rounded-2xl text-red-600 hover:bg-red-50 font-black uppercase text-[10px] tracking-widest">
-        Odrzuć import
+      <Button variant="ghost" onClick={onClear} className="h-12 px-6 rounded-2xl text-red-600 hover:bg-red-50 font-black uppercase text-[10px] tracking-widest flex gap-2">
+        <Trash2 className="w-4 h-4" /> Wyczyść Bufor
       </Button>
       <Button 
         onClick={onCommitAll} 

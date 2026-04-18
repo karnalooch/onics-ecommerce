@@ -23,15 +23,16 @@ interface KnowledgeContextType {
   progressPercent: number
   logs: LogEntry[]
   analysisStats: AnalysisStats | null
-  tempApiKey: string
-  isValidatingKey: boolean
-  validationResult: any | null
+  selectedModelId: string | null
+  isApproved: boolean
+  setSelectedModelId: (val: string | null) => void
+  setIsApproved: (val: boolean) => void
   setTempApiKey: (val: string) => void
   setValidationResult: (val: any | null) => void
   setIsValidatingKey: (val: boolean) => void
   setIsMinimized: (val: boolean) => void
   setTrainingFile: (file: string | null) => void
-  startTraining: (filename: string, apiKey: string, modelId: string, availableModels: string[]) => void
+  startTraining: (filename: string, apiKey: string, modelId: string, availableModels: any[]) => void
   stopTraining: () => void
   resetState: () => void
 }
@@ -51,6 +52,8 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
   const [tempApiKey, setTempApiKey] = useState("")
   const [isValidatingKey, setIsValidatingKey] = useState(false)
   const [validationResult, setValidationResult] = useState<any | null>(null)
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
+  const [isApproved, setIsApproved] = useState(false)
 
   // Persistence: Restore state from sessionStorage on mount
   useEffect(() => {
@@ -137,7 +140,9 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
       filename,
       apiKey,
       modelId,
-      availableModels: availableModels.join(',')
+      availableModels: Array.isArray(availableModels) 
+        ? availableModels.map(m => typeof m === 'string' ? m : m.id).join(',')
+        : ''
     })
 
     const eventSource = new EventSource(`/api/knowledge/train/stream?${params.toString()}`)
@@ -214,6 +219,10 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
       tempApiKey,
       isValidatingKey,
       validationResult,
+      selectedModelId,
+      isApproved,
+      setSelectedModelId,
+      setIsApproved,
       setTempApiKey,
       setValidationResult,
       setIsValidatingKey,

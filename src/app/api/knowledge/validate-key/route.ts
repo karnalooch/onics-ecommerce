@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { GEMINI_PRICING, findBestRecommendation, sortModelsByRecommendation } from '@/lib/knowledge/aiPricing';
 
 export async function POST(req: Request) {
   try {
-    const { apiKey } = await req.json();
+    const { apiKey, isPDF } = await req.json();
 
     if (!apiKey) {
       return NextResponse.json({ error: "Brak klucza API do walidacji" }, { status: 400 });
@@ -42,37 +43,31 @@ export async function POST(req: Request) {
     
     const modelNames = validModels.map((m: any) => m.name.replace('models/', ''));
 
-    // Priorytety dla Tier 1 (Najnowsze modele Flash na początku)
-    const priorityList = [
-      'gemini-3.1-flash',
-      'gemini-3.1-flash-lite',
-      'gemini-3.0-flash',
-      'gemini-3.0-flash-lite',
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-3.1-pro',
-      'gemini-3.0-pro',
-      'gemini-2.5-pro',
-      'gemini-2.0-pro',
-      'gemini-1.5-pro',
-      'gemini-1.5-flash',
-      'gemini-1.5-flash-8b'
-    ];
+    // Integrate Pricing & Recommendation Logic
+    const recommendedId = findBestRecommendation(modelNames, !!isPDF);
+    const cheapestId = findBestRecommendation(modelNames, false); // For the "Cheap" badge
+    
+    let modelsWithPricing = modelNames.map(id => {
+      const pricing = GEMINI_PRICING[id];
+      return {
+        id,
+        name: pricing?.name || id,
+        inputPrice: pricing?.inputPrice || 0.50,
+        outputPrice: pricing?.outputPrice || 1.50,
+        tier: pricing?.tier || 'Flash'
+      };
+    });
 
-    let recommended = modelNames.length > 0 ? modelNames[0] : 'gemini-1.5-flash'; 
-
-    for (const p of priorityList) {
-      if (modelNames.includes(p)) {
-        recommended = p;
-        break;
-      }
-    }
+    // Sort to bring recommended to the TOP
+    modelsWithPricing = sortModelsByRecommendation(modelsWithPricing, recommendedId);
 
     return NextResponse.json({
       success: true,
-      recommended,
-      availableModels: modelNames,
-      message: `Klucz zweryfikowany pomyślnie. Znaleziono ${modelNames.length} modeli. Rekomendowany: ${recommended}.`
+      recommended: recommendedId,
+      cheapestId: cheapestId,
+      availableModels: modelsWithPricing,
+      isPDFRecommend: !!isPDF,
+      message: `Klucz zweryfikowany. Wykryto ${modelNames.length} modeli. ${isPDF ? 'Dla plików PDF rekomendujemy optymalną wersję Flash/Pro.' : 'Sugerowany model ekonomiczny.'}`
     });
 
   } catch (err: any) {

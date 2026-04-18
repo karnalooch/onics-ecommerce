@@ -11,11 +11,13 @@ import {
   ShieldCheck, 
   Cog, 
   FileSpreadsheet,
-  XCircle
+  XCircle,
+  Trash2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -38,6 +40,10 @@ export function GlobalTrainingModal() {
     tempApiKey,
     isValidatingKey,
     validationResult,
+    selectedModelId,
+    isApproved,
+    setSelectedModelId,
+    setIsApproved,
     setTempApiKey,
     setValidationResult,
     setIsValidatingKey,
@@ -54,19 +60,22 @@ export function GlobalTrainingModal() {
     setIsValidatingKey(true)
     setValidationResult(null)
     try {
+      const isPDF = trainingFile?.toLowerCase().endsWith('.pdf')
       const res = await fetch('/api/knowledge/validate-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: tempApiKey })
+        body: JSON.stringify({ apiKey: tempApiKey, isPDF })
       })
       const data = await res.json()
       if (res.ok) {
         setValidationResult({
           success: true,
           recommended: data.recommended,
+          cheapestId: data.cheapestId,
           availableModels: data.availableModels || [],
           message: data.message
         })
+        setSelectedModelId(data.recommended)
       } else {
         setValidationResult({
           success: false,
@@ -88,11 +97,12 @@ export function GlobalTrainingModal() {
   }
 
   const handleStartAnalysis = () => {
-    if (!trainingFile || !tempApiKey || !validationResult?.success) return
+    if (!trainingFile || !tempApiKey || !selectedModelId || !validationResult?.success) return
+    setIsApproved(true)
     startTraining(
       trainingFile, 
       tempApiKey, 
-      validationResult.recommended, 
+      selectedModelId, 
       validationResult.availableModels
     )
   }
@@ -186,7 +196,17 @@ export function GlobalTrainingModal() {
                       }}
                       className="bg-white dark:bg-slate-900/50 h-12 rounded-xl border-slate-200 dark:border-slate-700 focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all px-4 shadow-sm"
                     />
-                    <div className="absolute right-1.5 top-1.5">
+                    <div className="absolute right-1.5 top-1.5 flex gap-1">
+                      {tempApiKey && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => { setTempApiKey(""); setValidationResult(null); }}
+                          className="h-9 w-9 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button 
                         variant="secondary" 
                         size="sm" 
@@ -204,19 +224,60 @@ export function GlobalTrainingModal() {
                     <motion.div 
                       initial={{ opacity: 0, height: 0, marginTop: 0 }}
                       animate={{ opacity: 1, height: "auto", marginTop: 12 }}
-                      className={`p-3.5 rounded-xl border text-xs font-medium shadow-sm flex gap-3 ${
+                      className="space-y-4"
+                    >
+                      <div className={`p-4 rounded-xl border text-xs font-medium shadow-sm flex gap-3 ${
                         validationResult.success 
                         ? "bg-green-50/80 border-green-200 text-green-800 dark:bg-green-950/30 dark:border-green-900/50 dark:text-green-400" 
                         : "bg-red-50/80 border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-900/50 dark:text-red-400"
-                      }`}
-                    >
-                      <div className="mt-0.5">
-                        {validationResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                      }`}>
+                        <div className="mt-0.5">
+                          {validationResult.success ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="font-bold text-[13px]">{validationResult.success ? "Połączenie Gwarantowane" : "Odrzucono Dostęp"}</p>
+                          <p className="opacity-90 leading-relaxed">{validationResult.message}</p>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <p className="font-bold text-[13px]">{validationResult.success ? "Połączenie Gwarantowane" : "Odrzucono Dostęp"}</p>
-                        <p className="opacity-90 leading-relaxed">{validationResult.message}</p>
-                      </div>
+
+                      {validationResult.success && (
+                        <div className="space-y-2">
+                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Wybierz Modela & Koszt</Label>
+                           <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
+                              {validationResult.availableModels.map((model: any) => (
+                                <div 
+                                  key={model.id}
+                                  onClick={() => setSelectedModelId(model.id)}
+                                  className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                    selectedModelId === model.id 
+                                    ? 'bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-500/10' 
+                                    : 'bg-white border-slate-100 hover:border-slate-200'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-center">
+                                     <div className="space-y-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-black text-[11px] tracking-tight text-slate-800">{model.name}</span>
+                                          {model.id === validationResult.recommended && (
+                                            <Badge className="bg-blue-600 text-[8px] h-4 font-black italic shadow-lg shadow-blue-500/20">REKOMENDOWANY</Badge>
+                                          )}
+                                          {model.id === validationResult.cheapestId && model.id !== validationResult.recommended && (
+                                            <Badge className="bg-emerald-500 text-[8px] h-4 font-black italic shadow-lg shadow-emerald-500/20">NAJTANSZY</Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Input: ${model.inputPrice} / Output: ${model.outputPrice} <span className="text-[8px] lowercase">(per 1M tokens)</span></p>
+                                     </div>
+                                     {selectedModelId === model.id && (
+                                       <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                          <CheckCircle2 className="w-3 h-3 text-white" />
+                                       </div>
+                                     )}
+                                  </div>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </div>
@@ -276,7 +337,7 @@ export function GlobalTrainingModal() {
                           Analizowanie Danych
                         </h2>
                         <p className="text-sm font-bold text-blue-600 dark:text-blue-400 tracking-widest uppercase">
-                          Proszę czekać... (Toolkit Engine V2)
+                          Analizuję za pomocą: <span className="text-slate-800 dark:text-white underline decoration-blue-500/50">{selectedModelId || analysisStats?.model || 'Gemini 1.5 Flash'}</span>
                         </p>
                       </motion.div>
 

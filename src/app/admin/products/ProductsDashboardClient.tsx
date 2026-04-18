@@ -7,13 +7,25 @@ import { ProductSidebar } from "./_components/ProductSidebar";
 import { ProductTable } from "./_components/ProductTable";
 import { StagingDashboard } from "./_components/StagingDashboard";
 import { WfMagUploadButton } from "./_components/WfMagUploadButton";
-import { importProductsAction, deleteProductAction, generateAiDescriptionAction, saveProductAction } from "./_actions";
+import { importProductsAction, deleteProductAction, generateAiDescriptionAction, saveProductAction, syncImportWithCatalogAction } from "./_actions";
 import { toast } from "sonner";
+import { useCatalogStore } from "@/store/catalogStore";
 
 export function ProductsDashboardClient({ initialProducts, categories }: { initialProducts: any[], categories: any[] }) {
   // 1. Data State
   const [products, setProducts] = useState(initialProducts);
   const [isPending, startTransition] = useTransition();
+
+  // 1.1 Global State (Zustand) - Persistent Buffer (Bufor)
+  const { 
+    stagingPayload, 
+    showStaging, 
+    setStagingPayload, 
+    setShowStaging, 
+    updateStagingItem, 
+    removeStagingItem, 
+    clearStaging 
+  } = useCatalogStore();
 
   // 2. Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,11 +34,6 @@ export function ProductsDashboardClient({ initialProducts, categories }: { initi
   const [selectedManufacturer, setSelectedManufacturer] = useState("ALL");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-
-  // 3. Staging State (Excel Import)
-  const [stagingPayload, setStagingPayload] = useState<any[]>([]);
-  const [showStaging, setShowStaging] = useState(false);
-  const [importSummary, setImportSummary] = useState<string | null>(null);
 
   // 4. UI State
   const [generatingId, setGeneratingId] = useState<string | null>(null);
@@ -53,20 +60,50 @@ export function ProductsDashboardClient({ initialProducts, categories }: { initi
 
   // Handlers - Import Logic
   const handleExcelParsed = (data: any[]) => {
-    const staging = data.map((row: any, idx: number) => ({
-      tempId: `staging_${idx}_${Date.now()}`,
-      sku: row.SKU || row.Kod || row.sku || `SKU-${Math.random().toString(36).substr(2, 5)}`,
-      name: row.Nazwa || row.name || "Brak nazwy",
-      price: parseFloat(row.Cena || row.price || 0),
-      stock: parseInt(row.Stan || row.stock || 0),
-      manufacturer: row.Producent || row.manufacturer || "",
-      categoryId: null,
-      subcategoryId: null,
-      xlsCategoryName: row.Kategoria || "",
-      xlsSubcategoryName: row.Podkategoria || ""
-    }));
-    setStagingPayload(staging);
-    setShowStaging(true);
+    const staging = data.map((row: any, idx: number) => {
+      // Robust field mapping for WF-Mag and other Excel variants
+      const findField = (synonyms: string[]) => {
+        const foundKey = Object.keys(row).find(k => {
+          const lowerK = k.toLowerCase().trim();
+          return synonyms.some(s => lowerK === s.toLowerCase() || lowerK.includes(s.toLowerCase()));
+        });
+        return foundKey ? row[foundKey] : undefined;
+      };
+
+      const rawName = findField(['Nazwa towaru', 'Nazwa', 'Produkt', 'Item Name', 'Name']);
+      const rawSku = findField(['Indeks katalogowy', 'Kod', 'SKU', 'Symbol', 'Indeks', 'Artykuł', 'Model']);
+      const rawPrice = findField(['Cena netto', 'Cena', 'Netto', 'Wartość', 'Price', 'Net']);
+      const rawStock = findField(['Stan', 'Ilość', 'Stock', 'Quantity', 'Magazyn']);
+      const rawMan = findField(['Producent', 'Manufacturer', 'Marka', 'Brand']);
+      const rawCat = findField(['Kategoria', 'Dział', 'Category', 'Wydział']);
+      const rawSub = findField(['Podkategoria', 'Subcategory', 'Podgrupa']);
+
+      return {
+        tempId: `staging_${idx}_${Date.now()}`,
+        sku: rawSku || `SKU-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+        name: rawName || "Brak nazwy",
+        price: typeof rawPrice === 'number' ? rawPrice : parseFloat(String(rawPrice || 0).replace(/[^\d.,]/g, '').replace(',', '.')),
+        stock: parseInt(String(rawStock || 0).replace(/[^\d]/g, '')),
+        manufacturer: rawMan || "",
+        categoryId: null,
+        subcategoryId: null,
+        xlsCategoryName: String(rawCat || ""),
+        xlsSubcategoryName: String(rawSub || "")
+      };
+    });
+
+    startTransition(async () => {
+      const res = await syncImportWithCatalogAction(staging);
+      if (res.success) {
+        setStagingPayload(res.data);
+        setShowStaging(true);
+        toast.info(res.message);
+      } else {
+        setStagingPayload(staging);
+        setShowStaging(true);
+        toast.warning("Import wczytany bez synchronizacji cenników.");
+      }
+    });
   };
 
   const isItemConfirmed = (item: any) => !!(item.categoryId && item.name && item.sku);
@@ -75,10 +112,22 @@ export function ProductsDashboardClient({ initialProducts, categories }: { initi
     startTransition(async () => {
        const res = await importProductsAction(stagingPayload);
        if (res.success) {
-         setImportSummary(res.message);
-         setStagingPayload([]);
+         clearStaging();
          toast.success(res.message);
        } else toast.error(res.error);
+    });
+  };
+
+  const handleCommitItem = (tempId: string) => {
+    const item = stagingPayload.find(i => i.tempId === tempId);
+    if (!item) return;
+
+    startTransition(async () => {
+      const res = await importProductsAction([item]);
+      if (res.success) {
+        removeStagingItem(tempId);
+        toast.success(`Produkt ${item.sku} został zatwierdzony i zapisany.`);
+      } else toast.error(res.error);
     });
   };
 
@@ -106,24 +155,20 @@ export function ProductsDashboardClient({ initialProducts, categories }: { initi
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-1000 max-w-[1600px] mx-auto pb-40">
        <ProductHeader 
           importing={isPending} 
-          onImportClick={() => {}} // Controlled by WfMagUploadButton below
+          onImportClick={handleExcelParsed}
           onAddNew={() => toast.info("Formularz dodawania w przygotowaniu (Phase 2.1)")}
        />
 
-       {/* Upload Trigger (hidden label logic handled here or in header) */}
-       <div className="flex justify-start mb-8">
-          <WfMagUploadButton onParsed={handleExcelParsed} disabled={isPending} />
-       </div>
 
        {showStaging && stagingPayload.length > 0 && (
          <StagingDashboard 
             payload={stagingPayload}
             importing={isPending}
-            onClear={() => { setStagingPayload([]); setShowStaging(false); }}
+            onClear={clearStaging}
             onCommitAll={handleCommitAll}
-            onUpdateItem={(tid, f, v) => setStagingPayload(prev => prev.map(i => i.tempId === tid ? { ...i, [f]: v } : i))}
-            onCommitItem={(tid) => toast.info("Commit individual item in development")}
-            onRemoveItem={(tid) => setStagingPayload(prev => prev.filter(i => i.tempId !== tid))}
+            onUpdateItem={updateStagingItem}
+            onCommitItem={handleCommitItem}
+            onRemoveItem={removeStagingItem}
             categories={categories}
             manufacturers={manufacturersList}
             isItemConfirmed={isItemConfirmed}

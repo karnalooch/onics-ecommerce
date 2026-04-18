@@ -17,6 +17,9 @@ const ProductSchema = z.object({
   categoryId: z.string().optional(),
   subcategoryId: z.string().optional(),
   seoDescription: z.string().optional(),
+  catalogPrice: z.number().optional(),
+  catalogSpecs: z.string().optional(),
+  priceMismatch: z.boolean().optional(),
 });
 
 export type ActionState = 
@@ -136,6 +139,38 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
     return { success: true, message: `Import zakończony. Zaktualizowano: ${updatedCount}, Dodano: ${addedCount}` };
   } catch (e) {
     return { success: false, error: "Błąd podczas masowego importu" };
+  }
+}
+
+/**
+ * Synchronizuje dane z importu z Bazą Wiedzy (Cennikami)
+ */
+export async function syncImportWithCatalogAction(items: any[]): Promise<ActionState> {
+  try {
+    const store = await getKnowledge();
+    
+    const enriched = items.map(item => {
+      const match = findBestKnowledgeMatch(item.name || '', item.sku, store);
+      
+      if (match) {
+        const catalogPrice = match.entry.price;
+        const catalogSpecs = match.entry.specs;
+        const wfMagPrice = Number(item.price || 0);
+
+        return {
+          ...item,
+          catalogPrice,
+          catalogSpecs,
+          priceMismatch: Math.abs(wfMagPrice - (catalogPrice || 0)) > 0.01
+        };
+      }
+
+      return { ...item, priceMismatch: false };
+    });
+
+    return { success: true, message: "Synchronizacja z katalogiem zakończona", data: enriched };
+  } catch (e) {
+    return { success: false, error: "Błąd podczas synchronizacji z katalogiem" };
   }
 }
 

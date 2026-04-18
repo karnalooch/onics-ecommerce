@@ -2,8 +2,9 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Search, Filter, Layers, Tag as TagIcon, ChevronDown, ChevronRight } from "lucide-react";
+import { Search, Filter, Layers, Tag as TagIcon, ChevronDown, ChevronRight, XCircle } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface IProductSidebarProps {
   categories: any[];
@@ -38,8 +39,23 @@ export function ProductSidebar({
     <div className="space-y-6 sticky top-8">
        <Card className="border-none shadow-2xl shadow-slate-200/50 rounded-[2.5rem] overflow-hidden bg-white/50 backdrop-blur-sm">
          <CardHeader className="bg-slate-900 text-white pb-6 pt-8">
-           <CardTitle className="text-lg flex items-center gap-3 font-black uppercase italic tracking-tight">
-             <Filter className="w-5 h-5 text-primary" /> Filtry <span className="text-primary">Katalogu</span>
+           <CardTitle className="text-lg flex items-center justify-between font-black uppercase italic tracking-tight w-full">
+             <span className="flex items-center gap-3">
+               <Filter className="w-5 h-5 text-primary" /> Filtry <span className="text-primary">Katalogu</span>
+             </span>
+             <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedCatId(null);
+                  setSelectedSubcatId(null);
+                  setSelectedManufacturer("ALL");
+                }}
+                className="h-7 px-3 rounded-full text-slate-500 hover:text-white hover:bg-white/10 text-[9px] font-black uppercase tracking-widest transition-all"
+              >
+                Wyczyść
+              </Button>
            </CardTitle>
          </CardHeader>
          <CardContent className="p-8 space-y-10">
