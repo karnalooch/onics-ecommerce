@@ -141,6 +141,21 @@ export default function AdminProductsPage() {
     }
   };
 
+  const handleAddNewProduct = () => {
+    setEditingProduct({
+      id: "",
+      sku: `NEW-${Date.now().toString(36).toUpperCase()}`,
+      name: "",
+      price: 0,
+      stock: 0,
+      manufacturer: "",
+      categoryId: categories[0]?.id || "",
+      subcategoryId: "",
+      seoDescription: ""
+    });
+    setIsEditOpen(true);
+  };
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleCat = (id: string) => {
@@ -170,14 +185,26 @@ export default function AdminProductsPage() {
       const json: any[] = XLSX.utils.sheet_to_json(worksheet);
 
       const suggestCategory = (prodName: string) => {
-        const nameL = prodName.toLowerCase();
+        const nameL = prodName.toLowerCase().trim();
         let foundCatId = categories[0]?.id;
         let foundSubId = undefined;
 
+        // Bardziej elastyczne dopasowanie (szukanie rdzenia słowa)
         for (const cat of categories) {
           if (cat.subcategories) {
             for (const sub of cat.subcategories) {
-              if (nameL.includes(sub.name.toLowerCase())) {
+              const subNameL = sub.name.toLowerCase().trim();
+              
+              // Sprawdzamy czy nazwa produktu zawiera nazwę subkategorii LUB na odwrót
+              // Dodatkowo sprawdzamy lp/lm (uproszczone: usuwamy końcówki 'e', 'y', 'i')
+              const subRoot = subNameL.replace(/[eyia]$/, '');
+              const prodWords = nameL.split(/[\s-]+/);
+              
+              const isMatch = prodWords.some(word => 
+                word.includes(subRoot) || subRoot.includes(word.replace(/[eyia]$/, ''))
+              );
+
+              if (isMatch || nameL.includes(subNameL) || subNameL.includes(nameL)) {
                 return { categoryId: cat.id, subcategoryId: sub.id };
               }
             }
@@ -470,10 +497,13 @@ export default function AdminProductsPage() {
                 <UploadCloud className="w-5 h-5 text-primary" />
                 {importing ? "Mielenie..." : "Importuj z WF-Mag"}
              </Button>
-             <Button className="h-12 px-8 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all flex gap-2">
+              <Button 
+                onClick={handleAddNewProduct}
+                className="h-12 px-8 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-all flex gap-2"
+              >
                 <Plus className="w-5 h-5 text-white" />
                 Dodaj Nowy
-             </Button>
+              </Button>
            </div>
         </div>
 
@@ -820,36 +850,36 @@ export default function AdminProductsPage() {
                                 <div className="flex items-baseline gap-1">
                                    <span className="text-3xl font-black text-slate-900">{Number(p.price).toFixed(2)}</span>
                                    <span className="text-sm font-bold text-slate-400">PLN</span>
-                 <div className="text-[10px] font-bold text-slate-300 mt-1">Brutto: {(p.price * 1.23).toFixed(2)} PLN</div>
+                                </div>
+                                <div className="text-[10px] font-bold text-slate-300 mt-1">Brutto: {(p.price * 1.23).toFixed(2)} PLN</div>
                              </div>
 
                              <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 duration-500">
-                                <Button 
-                                  size="icon" 
+                                <button 
                                   onClick={() => {
                                     setEditingProduct({ ...p });
                                     setIsEditOpen(true);
                                   }}
-                                  className="w-12 h-12 rounded-[22px] bg-slate-900 hover:bg-primary text-white shadow-xl shadow-slate-900/10 hover:shadow-primary/30 transition-all"
+                                  className="btn-action-blue w-11 h-11 !rounded-2xl"
+                                  title="Edytuj produkt"
                                 >
                                    <Edit2 className="w-5 h-5" />
-                                </Button>
-                                <Button 
-                                   size="icon" 
+                                </button>
+                                <button 
                                    disabled={generatingId === p.id}
                                    onClick={() => handleGenerateAIDescription(p.id)}
-                                   className={`w-12 h-12 rounded-[22px] ${generatingId === p.id ? 'bg-amber-100 text-amber-600 animate-pulse' : 'bg-blue-50 border-2 border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white shadow-xl shadow-blue-100/50 hover:shadow-blue-600/30'} transition-all font-bold`}
+                                   className={`btn-action-amber w-11 h-11 !rounded-2xl ${generatingId === p.id ? 'animate-pulse' : ''}`}
                                    title="Generuj opis SEO za pomocą AI"
                                  >
                                     {generatingId === p.id ? <Sparkles className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                                 </Button>
-                                <Button 
-                                  size="icon" 
+                                 </button>
+                                <button 
                                   onClick={() => handleDeleteProduct(p.id)}
-                                  className="w-12 h-12 rounded-[22px] bg-red-50 border-2 border-red-100 text-red-600 hover:bg-red-600 hover:text-white shadow-xl shadow-red-100/50 hover:shadow-red-600/30 transition-all font-bold"
+                                  className="btn-action-red w-11 h-11 !rounded-2xl"
+                                  title="Usuń produkt"
                                 >
                                    <Trash2 className="w-5 h-5" />
-                                </Button>
+                                </button>
                              </div>
                                 {p.seoDescription && (
                                   <div className="absolute -top-3 -right-3" title="Zawiera dedykowany opis SEO">
@@ -859,7 +889,6 @@ export default function AdminProductsPage() {
                                   </div>
                                 )}
                              </div>
-                          </div>
                        </div>
                      ))}
                   </div>

@@ -200,39 +200,33 @@ export default function AdminClientsPage() {
                     </TableCell>
                     <TableCell className="text-right px-6 py-5">
                       <div className="flex justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <Link href={`mailto:${user.email}`}>
-                          <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border bg-background hover:bg-muted hover:text-primary transition-all">
-                            <Mail className="w-4 h-4" />
-                          </Button>
+                        <Link href={`mailto:${user.email}`} className="btn-action-slate !p-1.5" title="Wyślij email">
+                           <Mail className="w-4 h-4" />
                         </Link>
                         
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
+                        <button 
                           onClick={() => openDiscountModal(user)}
-                          className="h-9 w-9 rounded-xl border-border bg-background text-primary hover:bg-primary/10 transition-all shadow-sm"
+                          className="btn-action-blue !p-1.5"
                           title="Warunki handlowe"
                         >
                           <Percent className="w-4 h-4" />
-                        </Button>
-
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
+                        </button>
+ 
+                        <button 
                           onClick={() => toggleBlock(user.id, user.isBlocked)}
-                          className={`h-9 w-9 rounded-xl border-border bg-background transition-all ${user.isBlocked ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                          className={`btn-action-amber !p-1.5 ${user.isBlocked ? 'bg-amber-100' : ''}`}
+                          title={user.isBlocked ? "Odblokuj" : "Zablokuj"}
                         >
                           <Ban className="w-4 h-4" />
-                        </Button>
-
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
+                        </button>
+ 
+                        <button 
                           onClick={() => deleteUser(user.id)}
-                          className="h-9 w-9 rounded-xl border-border bg-background text-muted-foreground hover:text-red-500 hover:border-red-200 transition-all"
+                          className="btn-action-red !p-1.5"
+                          title="Usuń konto"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </Button>
+                        </button>
                       </div>
                     </TableCell>
                   </TableRow>

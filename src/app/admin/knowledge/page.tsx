@@ -195,18 +195,21 @@ export default function KnowledgePage() {
                           </div>
                           <span className="text-xs font-medium truncate">{source}</span>
                         </div>
-                        <div className="flex items-center gap-1 opacity-100 lg:opacity-0 group-hover/item:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1.5 opacity-100 lg:opacity-0 group-hover/item:opacity-100 transition-all">
                           {/* Brain Button for Training */}
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className={`h-7 w-7 rounded-full ${isProcessed ? 'text-blue-500 bg-blue-50 hover:bg-blue-100' : 'text-muted-foreground hover:text-blue-500 hover:bg-blue-50'}`}
+                          <button 
+                            className={`btn-action-base ${isProcessed ? 'text-blue-600 bg-blue-100 border-blue-200' : 'btn-action-slate opacity-50 hover:opacity-100'} !p-1.5`}
                             title={isProcessed ? "Wiedza zaktualizowana" : "Naucz AI z tego pliku"}
                             onClick={() => setTrainingFile(source)}
                           >
                             <Brain className={`h-4 w-4 ${isProcessed ? 'animate-pulse' : ''}`} />
-                          </Button>
-                          <a href={`/uploads/catalogs/${source}`} download className="p-1.5 text-muted-foreground hover:text-blue-500 rounded-full hover:bg-blue-50">
+                          </button>
+                          <a 
+                            href={`/uploads/catalogs/${source}`} 
+                            download 
+                            className="btn-action-slate !p-1.5"
+                            title="Pobierz dokument"
+                          >
                             <Upload className="h-4 w-4 rotate-180" />
                           </a>
                         </div>
@@ -302,14 +305,13 @@ export default function KnowledgePage() {
                         <span className="text-[10px] text-muted-foreground font-mono">
                           {snippet.date}
                         </span>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="opacity-0 group-hover:opacity-100 h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-opacity"
+                        <button 
+                          className="btn-action-red !p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => handleDeleteSnippet(snippet.model)}
+                          title="Usuń z bazy wiedzy"
                         >
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   ))}

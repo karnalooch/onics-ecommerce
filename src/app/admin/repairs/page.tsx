@@ -138,7 +138,7 @@ export default function AdminRmaPage() {
                     )}
                     <button 
                       onClick={() => handleDelete(r.id)} 
-                      className="p-1 px-2 text-muted-foreground/30 hover:text-destructive transition-colors"
+                      className="btn-action-red"
                       title="Usuń zgłoszenie"
                     >
                       <Trash2 className="h-4 w-4" />

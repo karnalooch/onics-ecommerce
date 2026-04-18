@@ -121,6 +121,33 @@
   }
 }
 
+@layer components {
+  /* Premium Action Buttons (Pill/Bubble style) */
+  .btn-action-base {
+    @apply p-2 rounded-lg transition-all border shadow-sm flex items-center justify-center;
+  }
+  
+  .btn-action-blue {
+    @apply btn-action-base text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-100;
+  }
+  
+  .btn-action-red {
+    @apply btn-action-base text-red-600 bg-red-50 hover:bg-red-100 border-red-100;
+  }
+  
+  .btn-action-emerald {
+    @apply btn-action-base text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-100;
+  }
+  
+  .btn-action-amber {
+    @apply btn-action-base text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-100;
+  }
+  
+  .btn-action-slate {
+    @apply btn-action-base text-slate-600 bg-slate-100 hover:bg-slate-200 border-slate-200;
+  }
+}
+
 /* Custom Premium Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;

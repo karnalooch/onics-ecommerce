@@ -34,16 +34,28 @@ export async function PUT(req: Request) {
   
   const idx = categories.findIndex((c: any) => c.id === body.id);
   if (idx !== -1) {
-    // Jeśli podkategorie przychodzą jako stringi, zamień je na obiekty z ID
-    if (body.subcategories && body.subcategories.length > 0 && typeof body.subcategories[0] === 'string') {
-        body.subcategories = body.subcategories.map((name: string) => ({
-            id: `s${Math.random().toString(36).substr(2, 9)}`,
-            name
-        }));
+    // Sanitizacja podkategorii - upewniamy się, że zawsze są obiektami z ID
+    if (body.subcategories && Array.isArray(body.subcategories)) {
+        body.subcategories = body.subcategories.map((sub: any) => {
+            if (typeof sub === 'string') {
+                return {
+                    id: `s${Math.random().toString(36).substr(2, 9)}`,
+                    name: sub.trim()
+                };
+            }
+            return {
+                id: sub.id || `s${Math.random().toString(36).substr(2, 9)}`,
+                name: sub.name?.trim() || "Bez nazwy"
+            };
+        });
     }
 
-    categories[idx] = { ...categories[idx], ...body };
-    return NextResponse.json(categories[idx]);
+    // Aktualizacja w miejscu (reference update)
+    const updatedCategory = { ...categories[idx], ...body };
+    categories[idx] = updatedCategory;
+    
+    console.log(`[API] Zaktualizowano kategorię ${body.id}. Liczba subkategorii: ${updatedCategory.subcategories?.length}`);
+    return NextResponse.json(updatedCategory);
   }
   return NextResponse.json({error: "Not Found"}, {status: 404});
 }

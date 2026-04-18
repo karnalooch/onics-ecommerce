@@ -34,6 +34,9 @@ export default function AdminCategoriesPage() {
   const [newCatName, setNewCatName] = useState("");
   const [newSubcatName, setNewSubcatName] = useState("");
 
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
   const loadCategories = async () => {
     try {
       const res = await fetch("/api/categories", { cache: "no-store" });
@@ -83,17 +86,32 @@ export default function AdminCategoriesPage() {
     loadCategories();
   };
 
+  const [updatingSub, setUpdatingSub] = useState(false);
+
   const handleAddSubcategory = async () => {
-    if (!activeCat || !newSubcatName.trim()) return;
-    const newSub = { id: `s${Date.now()}`, name: newSubcatName };
-    const updatedSubcategories = [...(activeCat.subcategories || []), newSub];
-    await fetch("/api/categories", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: activeCat.id, subcategories: updatedSubcategories })
-    });
-    setNewSubcatName("");
-    loadCategories();
+    if (!activeCat || !newSubcatName.trim() || updatingSub) return;
+    
+    setUpdatingSub(true);
+    try {
+      const newSub = { id: `s${Date.now()}`, name: newSubcatName.trim() };
+      const updatedSubcategories = [...(activeCat.subcategories || []), newSub];
+      
+      const res = await fetch("/api/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: activeCat.id, subcategories: updatedSubcategories })
+      });
+
+      if (!res.ok) throw new Error("Failed to update");
+
+      setNewSubcatName("");
+      await loadCategories();
+    } catch (err) {
+      console.error(err);
+      alert("Błąd podczas dodawania podkategorii.");
+    } finally {
+      setUpdatingSub(false);
+    }
   };
 
   const handleDeleteSubcategory = async (subId: string) => {
@@ -106,6 +124,42 @@ export default function AdminCategoriesPage() {
       body: JSON.stringify({ id: activeCat.id, subcategories: updatedSubcategories })
     });
     loadCategories();
+  };
+
+  const handleRenameCategory = async (id: string, newName: string) => {
+    if (!newName || newName.trim() === "") return;
+    
+    await fetch("/api/categories", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, name: newName.trim().toUpperCase() })
+    });
+    setRenamingId(null);
+    loadCategories();
+  };
+
+  const handleRenameSubcategory = async (subId: string, newName: string) => {
+    if (!activeCat || !newName || newName.trim() === "") {
+        setRenamingId(null);
+        return;
+    }
+
+    const updatedSubcategories = activeCat.subcategories.map((s: any) => 
+      s.id === subId ? { ...s, name: newName.trim() } : s
+    );
+
+    await fetch("/api/categories", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: activeCat.id, subcategories: updatedSubcategories })
+    });
+    setRenamingId(null);
+    loadCategories();
+  };
+
+  const startRename = (id: string, currentName: string) => {
+    setRenamingId(id);
+    setRenameValue(currentName);
   };
 
   const getIcon = (name: string) => {
@@ -140,18 +194,57 @@ export default function AdminCategoriesPage() {
                   categories.map(cat => (
                     <div 
                       key={cat.id} 
-                      onClick={() => setActiveCat(cat)}
-                      className={`flex items-center justify-between p-4 cursor-pointer border-b last:border-0 transition-colors ${
+                      onClick={() => {
+                        if (renamingId !== cat.id) setActiveCat(cat);
+                      }}
+                      className={`group flex items-center justify-between p-4 cursor-pointer border-b last:border-0 transition-all ${
                         activeCat?.id === cat.id ? 'bg-primary/5 border-l-4 border-l-primary' : 'hover:bg-muted/50 border-l-4 border-l-transparent'
                       }`}
                     >
-                      <div className="flex items-center gap-3 font-semibold text-sm">
+                      <div className="flex items-center gap-3 font-semibold text-sm flex-1">
                         <div className={`${activeCat?.id === cat.id ? 'text-primary' : 'text-muted-foreground'}`}>
                           {getIcon(cat.iconName)}
                         </div>
-                        {cat.name}
+                        {renamingId === cat.id ? (
+                          <input
+                            autoFocus
+                            className="bg-background border rounded px-2 py-1 w-full focus:ring-1 focus:ring-primary outline-none"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() => handleRenameCategory(cat.id, renameValue)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameCategory(cat.id, renameValue);
+                              if (e.key === 'Escape') setRenamingId(null);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <span className="truncate">{cat.name}</span>
+                        )}
                       </div>
-                      <ChevronRight className={`w-4 h-4 transition-transform ${activeCat?.id === cat.id ? 'text-primary translate-x-1' : 'text-muted-foreground opacity-50'}`} />
+
+                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                            <button 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                startRename(cat.id, cat.name); 
+                              }}
+                              className="btn-action-blue"
+                              title="Edytuj nazwę"
+                            >
+                               <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }}
+                              className="btn-action-red"
+                              title="Usuń kategorię"
+                            >
+                               <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="w-6 flex justify-center text-muted-foreground/50">
+                               <ChevronRight className={`w-4 h-4 transition-transform ${activeCat?.id === cat.id ? 'text-primary translate-x-1' : ''}`} />
+                            </div>
+                         </div>
                     </div>
                   ))
                 )}
@@ -200,9 +293,6 @@ export default function AdminCategoriesPage() {
                       </CardDescription>
                     </div>
                   </div>
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteCategory(activeCat.id)} className="h-8">
-                    <Trash2 className="w-4 h-4 mr-2" /> Usuń Główny Dział
-                  </Button>
                 </CardHeader>
                 <CardContent className="pt-6">
                   
@@ -237,31 +327,63 @@ export default function AdminCategoriesPage() {
                       </div>
                     )}
                     {activeCat.subcategories?.map((sub: any) => (
-                      <div key={sub.id} className="group flex items-center justify-between p-3 rounded-lg border bg-card hover:border-blue-300 hover:shadow-sm transition-all">
-                         <span className="font-medium text-sm truncate pr-2">{sub.name}</span>
-                         <button 
-                           onClick={() => handleDeleteSubcategory(sub.id)}
-                           className="text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 transition-all p-1"
-                         >
-                           <Trash2 className="w-4 h-4" />
-                         </button>
+                      <div key={sub.id} className="group flex items-center justify-between p-3 rounded-lg border bg-card hover:border-blue-300 hover:shadow-sm transition-all h-[54px]">
+                         <div className="flex-1 mr-4">
+                            {renamingId === sub.id ? (
+                              <input
+                                autoFocus
+                                className="bg-background border rounded px-2 py-1 w-full focus:ring-1 focus:ring-primary outline-none text-sm"
+                                value={renameValue}
+                                onChange={(e) => setRenameValue(e.target.value)}
+                                onBlur={() => handleRenameSubcategory(sub.id, renameValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleRenameSubcategory(sub.id, renameValue);
+                                  if (e.key === 'Escape') setRenamingId(null);
+                                }}
+                              />
+                            ) : (
+                              <span className="font-medium text-sm truncate block">{sub.name}</span>
+                            )}
+                         </div>
+                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                               onClick={() => startRename(sub.id, sub.name)}
+                               className="btn-action-blue"
+                               title="Edytuj nazwę"
+                            >
+                               <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                               onClick={() => handleDeleteSubcategory(sub.id)}
+                               className="btn-action-red"
+                               title="Usuń podkategorię"
+                            >
+                               <Trash2 className="w-4 h-4" />
+                            </button>
+                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex gap-3 items-center max-w-sm pt-4 border-t">
-                    <input 
-                      type="text" 
-                      value={newSubcatName}
-                      onChange={e => setNewSubcatName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleAddSubcategory()}
-                      placeholder="Nazwa nowej podkategorii..." 
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
-                    <Button onClick={handleAddSubcategory} className="gap-2 h-10" disabled={!newSubcatName.trim()}>
-                      <Plus className="w-4 h-4" /> Dodaj Gałąź
-                    </Button>
-                  </div>
+                    <div className="flex gap-3 items-center max-w-sm pt-4 border-t">
+                      <input 
+                        type="text" 
+                        value={newSubcatName}
+                        disabled={updatingSub}
+                        onChange={e => setNewSubcatName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleAddSubcategory()}
+                        placeholder={updatingSub ? "Zapisywanie..." : "Nazwa nowej podkategorii..."} 
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                      />
+                      <Button onClick={handleAddSubcategory} className="gap-2 h-10" disabled={!newSubcatName.trim() || updatingSub}>
+                        {updatingSub ? (
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Plus className="w-4 h-4" />
+                        )}
+                        {updatingSub ? "Dodawanie..." : "Dodaj Gałąź"}
+                      </Button>
+                    </div>
 
                 </CardContent>
               </Card>

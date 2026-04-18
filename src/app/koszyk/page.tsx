@@ -135,7 +135,11 @@ export default function CartPage() {
                   </div>
 
                   <div className="col-span-1 flex justify-end">
-                    <button onClick={() => removeItem(item.id)} className="text-gray-400 hover:text-red-500 transition-colors p-2">
+                    <button 
+                      onClick={() => removeItem(item.id)} 
+                      className="btn-action-red !p-1.5 opacity-40 hover:opacity-100 transition-opacity"
+                      title="Usuń z koszyka"
+                    >
                       <Trash2 className="w-5 h-5" />
                     </button>
                   </div>

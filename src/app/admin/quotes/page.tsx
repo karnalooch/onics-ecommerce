@@ -205,12 +205,13 @@ export default function QuotesGenerator() {
                   const p = getProduct(item.productId);
                   return (
                     <div key={idx} className="p-3 hover:bg-muted/50 transition-colors group relative">
-                       <button 
-                        onClick={() => removeLineItem(idx)} 
-                        className="absolute right-2 top-2 p-1 text-muted-foreground/30 hover:text-destructive transition-colors"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                        <button 
+                         onClick={() => removeLineItem(idx)} 
+                         className="absolute right-2 top-2 p-1.5 btn-action-red !border-none !shadow-none opacity-20 hover:opacity-100 transition-opacity"
+                         title="Usuń pozycję"
+                       >
+                         <Trash2 className="h-3 w-3" />
+                       </button>
                       <div className="pr-6">
                         <p className="text-xs font-bold leading-tight line-clamp-1">{p.name}</p>
                         <p className="text-[10px] text-muted-foreground mb-2">{p.sku}</p>
