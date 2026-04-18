@@ -3,7 +3,8 @@
 import { signIn } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldAlert, KeyRound, Loader2 } from "lucide-react";
+import { ShieldAlert, KeyRound, Loader2, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,12 +31,11 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError("Błąd: Nieprawidłowy e-mail lub hasło (sprawdź literówki).");
+        setError("Autoryzacja odrzucona. Sprawdź poprawność danych konta.");
         setLoading(false);
         return;
       }
 
-      // Bezpieczne odczekanie 1 sekundy by NextAuth zsynchronizował Sesję
       await new Promise(r => setTimeout(r, 1000));
       
       const sessionRes = await fetch('/api/auth/session', { cache: 'no-store' });
@@ -50,92 +50,123 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error(err);
-      setError("Wystąpił problem techniczny podczas logowania.");
+      setError("Awaria węzła autoryzacyjnego KSeF. Spróbuj ponownie.");
       setLoading(false);
     }
   };
 
-  if (!mounted) return null; // Zabezpieczenie przed błędem wtyczek przeglądarki (omija SSR całkowicie)
+  if (!mounted) return null;
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] w-full items-center justify-center bg-muted/30 px-4 py-8 relative overflow-hidden">
-      {/* Decorative background blurs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-50" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl opacity-50" />
-
-      <div className="relative w-full max-w-md bg-card border shadow-xl rounded-2xl overflow-hidden p-8 animate-in slide-in-from-bottom-6 duration-500">
-        <div className="flex flex-col items-center mb-8 text-center">
-          <div className="bg-primary/10 p-3 rounded-full mb-4">
-            <ShieldAlert className="w-8 h-8 text-primary" />
+    <div className="flex min-h-screen w-full bg-background">
+      {/* Left Panel: High-Tech Secure Vault (Brand Side) */}
+      <div className="hidden lg:flex w-1/2 relative bg-slate-900 overflow-hidden items-center justify-center">
+        <img 
+          src="/auth_split_banner_1776462089456.png" 
+          alt="Secure Data Center" 
+          className="absolute inset-0 w-full h-full object-cover opacity-60"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+        
+        <div className="relative z-10 text-white max-w-lg px-12 text-center">
+          <div className="bg-primary/20 backdrop-blur-md p-4 w-fit rounded-2xl mx-auto mb-8 border border-white/10">
+            <ShieldAlert className="w-12 h-12 text-primary" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight">Konto Instalatora / B2B</h2>
-          <p className="text-muted-foreground mt-2 text-sm">Zaloguj się, aby uzyskać dostęp do hurtowych cenników wynegocjowanych dla Twojego NIP-u.</p>
-        </div>
-
-        {error && (
-          <div className="bg-destructive/15 text-destructive text-sm p-4 rounded-md mb-6 border border-destructive/20 font-medium">
-            {error}
-          </div>
-        )}
-
-        <form className="space-y-5" onSubmit={(e) => handleSubmit(e)}>
-          <div className="space-y-2">
-            <label htmlFor="login-email" className="text-sm font-semibold text-card-foreground">Adres e-mail</label>
-            <input 
-              id="login-email" 
-              type="email" 
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              required 
-              placeholder="adres@twojafirma.pl" 
-              className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="login-password" className="text-sm font-semibold text-card-foreground">Hasło autoryzacyjne</label>
-            <input 
-              id="login-password" 
-              type="password" 
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              required 
-              placeholder="••••••••" 
-              className="w-full flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            />
-          </div>
-
-          <button 
-            type="button" 
-            onClick={(e) => handleSubmit(e)}
-            disabled={loading}
-            className="w-full inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-8 py-2 mt-2"
-          >
-            {loading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <KeyRound className="mr-2 h-4 w-4" />
-            )}
-            {loading ? "Weryfikacja tożsamości..." : "Zaloguj się do systemu"}
-          </button>
-        </form>
-
-        <div className="mt-8 text-center text-sm border-t pt-6">
-          <div className="mb-4 text-left bg-primary/5 p-4 rounded-lg text-xs space-y-1">
-            <strong className="text-primary block mb-2 font-bold text-sm">Gotowi Klienci (Demo):</strong>
-            <p className="flex justify-between"><span>Admin:</span> <code className="font-bold">admin@celtronics.pl</code></p>
-            <p className="flex justify-between"><span>Instalator B2B:</span> <code className="font-bold">instalator@celtronics.pl</code></p>
-            <p className="flex justify-between"><span>Detal:</span> <code className="font-bold">detal@celtronics.pl</code></p>
-            <div className="text-center mt-2 border-t pt-2 border-primary/10">
-              Hasło dla każdego: <strong className="text-base text-primary">test</strong>
-            </div>
-          </div>
-          <p className="text-muted-foreground">
-            Brak przydzielonego konta KSeF?&nbsp;
-            <a href="/rejestracja" className="text-primary font-semibold hover:underline">
-              Zarejestruj nową firmę
-            </a>
+          <h1 className="text-4xl font-extrabold tracking-tight mb-4">Autoryzacja B2B</h1>
+          <p className="text-lg text-slate-300 font-medium leading-relaxed">
+            Dostęp do hurtowego cennika instalatorskiego oraz certyfikowanych systemów bezpieczeństwa. 
+            Moduł zintegrowany asynchronicznie z KSeF.
           </p>
+        </div>
+      </div>
+
+      {/* Right Panel: Clean Corporate Auth Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
+        <Link 
+          href="/" 
+          className="absolute top-8 left-8 flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Powrót 
+        </Link>
+        
+        <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="mb-10">
+            <h2 className="text-3xl font-extrabold tracking-tight text-foreground mb-2">Panel Partnera</h2>
+            <p className="text-muted-foreground font-medium">Wprowadź poświadczenia dostępowe poniżej.</p>
+          </div>
+
+          {error && (
+            <div className="bg-destructive/10 text-destructive text-sm p-4 rounded-xl border border-destructive/20 font-bold mb-6 flex items-center gap-3">
+              <ShieldAlert className="w-5 h-5 shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-6" onSubmit={(e) => handleSubmit(e)}>
+            <div className="space-y-2">
+              <label htmlFor="login-email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Konto (E-mail)</label>
+              <input 
+                id="login-email" 
+                type="email" 
+                value={email} 
+                onChange={e => setEmail(e.target.value)} 
+                required 
+                placeholder="nazwa@twojafirma.pl" 
+                className="w-full flex h-14 rounded-xl border border-border bg-card/50 px-4 py-2 text-base font-medium ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent transition-all"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="login-password" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Hasło Szyfrowane</label>
+              <input 
+                id="login-password" 
+                type="password" 
+                value={password} 
+                onChange={e => setPassword(e.target.value)} 
+                required 
+                placeholder="••••••••••••" 
+                className="w-full flex h-14 rounded-xl border border-border bg-card/50 px-4 py-2 text-base font-medium ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent transition-all"
+              />
+            </div>
+
+            <button 
+              type="button" 
+              onClick={(e) => handleSubmit(e)}
+              disabled={loading}
+              className="w-full inline-flex items-center justify-center rounded-xl text-base font-bold transition-all bg-primary text-primary-foreground hover:bg-primary/90 h-14 shadow-[0_0_30px_-5px_rgba(37,99,235,0.3)] hover:shadow-[0_0_40px_-5px_rgba(37,99,235,0.5)] disabled:opacity-50 mt-4"
+            >
+              {loading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <KeyRound className="mr-2 h-5 w-5" />
+              )}
+              {loading ? "Autoryzacja węzła..." : "Zaloguj do Panelu"}
+            </button>
+          </form>
+
+          <div className="mt-12 pt-8 border-t border-border">
+            <div className="bg-muted/30 p-5 rounded-2xl border border-border space-y-3">
+              <p className="text-xs font-black uppercase tracking-widest text-primary mb-4">Węzeł Weryfikacyjny (Środowisko Demo):</p>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="block text-muted-foreground text-xs mb-1">Dostęp Admina</span>
+                  <code className="font-bold text-foreground bg-background px-2 py-1 rounded">admin@celtronics.pl</code>
+                </div>
+                <div>
+                  <span className="block text-muted-foreground text-xs mb-1">Konto B2B</span>
+                  <code className="font-bold text-foreground bg-background px-2 py-1 rounded">instalator@celtronics.pl</code>
+                </div>
+              </div>
+              <div className="mt-4 text-center bg-background py-2 rounded-lg border border-border/50">
+                <span className="text-xs text-muted-foreground">Hasło główne:</span> <strong className="text-primary font-black ml-2 text-sm italic">test</strong>
+              </div>
+            </div>
+            
+            <p className="text-center text-sm text-muted-foreground mt-8 font-medium">
+              Nie posiadasz aktywnego certyfikatu KSeF? <br />
+              <a href="/rejestracja" className="text-primary font-bold hover:underline decoration-2 underline-offset-4 transition-all">Rozpocznij proces weryfikacyjny</a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

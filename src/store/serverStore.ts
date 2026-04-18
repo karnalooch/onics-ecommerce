@@ -4,11 +4,15 @@
 export function initializeMockData() {
   if (!(global as any).mockUsersStore) {
     (global as any).mockUsersStore = [
-      { id: "1", email: "admin@celtronics.pl", username: "Admin", companyName: "Administrator Systemu", roleType: "ADMIN", isApproved: true, isBlocked: false, nip: null, jwt: "mock-jwt-admin", address: "ul. Główna 1, Siedlce", phone: "+48 111 222 333", createdAt: new Date(Date.now() - 30 * 86400000).toISOString() },
-      { id: "2", email: "instalator@celtronics.pl", username: "Instalator", companyName: "Instalator B2B (Tier A)", roleType: "BIZ", isApproved: true, isBlocked: false, nip: "1234567890", jwt: "mock-jwt-biz", address: "ul. Instalatorska 44, Warszawa", phone: "+48 999 888 777", createdAt: new Date(Date.now() - 15 * 86400000).toISOString() },
-      { id: "3", email: "detal@celtronics.pl", username: "Detal", companyName: "Klient Detaliczny", roleType: "RETAIL", isApproved: true, isBlocked: false, nip: null, jwt: "mock-jwt-retail", address: "ul. Kwiatowa 2, Lublin", phone: "+48 444 555 666", createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-      { id: "4", email: "nowy@przyklad.pl", username: "Konrad", companyName: "Januszex Sp. z o.o.", roleType: "BIZ", isApproved: false, isBlocked: false, nip: "0987654321", jwt: "mock-jwt-new", address: "ul. Zamkowa 1, Kraków", phone: "+48 333 222 111", createdAt: new Date().toISOString() }
+      { id: "1", email: "admin@celtronics.pl", username: "Admin", companyName: "Administrator Systemu", roleType: "ADMIN", isApproved: true, isBlocked: false, nip: null, jwt: "mock-jwt-admin", address: "ul. Główna 1, Siedlce", phone: "+48 111 222 333", createdAt: new Date(Date.now() - 30 * 86400000).toISOString(), discount: 0, tierName: "FULL ACCESS" },
+      { id: "2", email: "instalator@celtronics.pl", username: "Instalator", companyName: "Instalator B2B (Tier A)", roleType: "BIZ", isApproved: true, isBlocked: false, nip: "1234567890", jwt: "mock-jwt-biz", address: "ul. Instalatorska 44, Warszawa", phone: "+48 999 888 777", createdAt: new Date(Date.now() - 15 * 86400000).toISOString(), discount: 15, tierName: "PARTNER SILVER" },
+      { id: "3", email: "detal@celtronics.pl", username: "Detal", companyName: "Klient Detaliczny", roleType: "RETAIL", isApproved: true, isBlocked: false, nip: null, jwt: "mock-jwt-retail", address: "ul. Kwiatowa 2, Lublin", phone: "+48 444 555 666", createdAt: new Date(Date.now() - 2 * 86400000).toISOString(), discount: 0, tierName: "SKLEP DETAL" },
+      { id: "4", email: "nowy@przyklad.pl", username: "Konrad", companyName: "Januszex Sp. z o.o.", roleType: "BIZ", isApproved: false, isBlocked: false, nip: "0987654321", jwt: "mock-jwt-new", address: "ul. Zamkowa 1, Kraków", phone: "+48 333 222 111", createdAt: new Date().toISOString(), discount: 5, tierName: "OCZEKUJĄCY" }
     ];
+  }
+
+  if (!(global as any).mockSolarStore) {
+    (global as any).mockSolarStore = null;
   }
 
   if (!(global as any).mockCategoriesStore) {

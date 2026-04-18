@@ -22,8 +22,9 @@ export async function POST(req: Request) {
     // Filtrujemy modele wspierające generowanie treści (szersze dopasowanie)
     const validModels = models.filter((m: any) => {
       const name = m.name.toLowerCase();
-      // Wspieramy tylko najnowsze modele Gemini (>= 2.0)
-      const isModernGemini = name.includes('gemini-2.0') || 
+      // Wspieramy najnowsze modele Gemini (w tym szerokodostępne 1.5)
+      const isModernGemini = name.includes('gemini-1.5') ||
+                             name.includes('gemini-2.0') || 
                              name.includes('gemini-2.5') || 
                              name.includes('gemini-3.') || 
                              name.includes('gemini-3.0') ||
@@ -52,10 +53,13 @@ export async function POST(req: Request) {
       'gemini-3.1-pro',
       'gemini-3.0-pro',
       'gemini-2.5-pro',
-      'gemini-2.0-pro'
+      'gemini-2.0-pro',
+      'gemini-1.5-pro',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-8b'
     ];
 
-    let recommended = 'gemini-3.0-flash'; 
+    let recommended = modelNames.length > 0 ? modelNames[0] : 'gemini-1.5-flash'; 
 
     for (const p of priorityList) {
       if (modelNames.includes(p)) {

@@ -23,6 +23,8 @@ export default function QuotesGenerator() {
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isClientDataCollapsed, setIsClientDataCollapsed] = useState(false);
+  const [refNumber, setRefNumber] = useState("");
+  const [quoteDate, setQuoteDate] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -32,11 +34,24 @@ export default function QuotesGenerator() {
           fetch("/api/products"),
           fetch("/api/users")
         ]);
-        const [cats, prods, users] = await Promise.all([cRes.json(), pRes.json(), uRes.json()]);
+
+        if (!cRes.ok || !pRes.ok || !uRes.ok) {
+          throw new Error("Jeden z serwerów API zwrócił błąd. Sprawdź logi serwera.");
+        }
+
+        const [cats, prods, users] = await Promise.all([
+          cRes.json().catch(() => []),
+          pRes.json().catch(() => []), 
+          uRes.json().catch(() => [])
+        ]);
         setCategories(cats);
         setProducts(prods);
         setClients(users.filter((u: any) => u.roleType === "BIZ"));
         if (cats.length > 0) setSelectedCategoryId(cats[0].id);
+
+        // Zapobieganie hydration mismatch
+        setRefNumber(`OFF/${new Date().getFullYear()}/${Math.floor(Math.random() * 9000) + 1000}`);
+        setQuoteDate(new Date().toLocaleDateString("pl-PL"));
       } catch (e) {
         console.error(e);
       } finally {
@@ -251,14 +266,14 @@ export default function QuotesGenerator() {
                      <span className="text-xl font-bold tracking-tighter brightness-0">CELTRONICS</span>
                    </div>
                   <h1 className="text-3xl font-black uppercase text-primary tracking-tighter">Oferta Handlowa</h1>
-                  <p className="text-xs font-medium text-muted-foreground mt-1">Nr ref: OFF/{new Date().getFullYear()}/{Math.floor(Math.random()*9000)+1000}</p>
+                  <p className="text-xs font-medium text-muted-foreground mt-1">Nr ref: {refNumber || "Generowanie..."}</p>
                 </div>
                 <div className="text-right text-[10px] text-muted-foreground">
                   <p className="font-bold text-foreground text-sm">Celtronics S.C.</p>
                   <p>NIP: 123-456-78-90</p>
                   <p>ul. Niklowa 22, 08-110 Siedlce</p>
                   <p>e-mail: biuro@celtronics.pl</p>
-                  <p className="mt-2 font-medium">Data: {new Date().toLocaleDateString()}</p>
+                  <p className="mt-2 font-medium">Data: {quoteDate || "—"}</p>
                 </div>
               </div>
               <div className="mt-10 grid grid-cols-2 gap-8">

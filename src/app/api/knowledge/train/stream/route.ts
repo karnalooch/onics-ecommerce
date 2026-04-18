@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { parseExcel, parsePDFWithAI, getKnowledge, saveKnowledge, ProgressCallback } from '@/lib/knowledge/parser';
+import { parseExcel, parsePDFWithAI, getKnowledge, saveKnowledge } from '@/lib/knowledge/parser';
+import { ProgressCallback } from '@/lib/knowledge/types';
 import fs from 'fs';
 import path from 'path';
 
@@ -8,7 +9,6 @@ export async function GET(req: Request) {
   const filename = searchParams.get('filename');
   const apiKey = searchParams.get('apiKey');
   const modelId = searchParams.get('modelId');
-  const concurrencyLevel = parseInt(searchParams.get('concurrency') || '1');
 
   if (!filename || !apiKey) {
     return new Response('Brak parametrów', { status: 400 });
@@ -28,39 +28,37 @@ export async function GET(req: Request) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
-      const onProgress: ProgressCallback = (update) => {
+      const onProgress: ProgressCallback = (update: { type: 'log' | 'progress' | 'error'; message: string; count?: number; percent?: number; }) => {
         sendUpdate({ ...update, timestamp: new Date().toLocaleTimeString() });
       };
 
       onProgress({ type: 'log', message: 'Utrzymywanie połączenia aktywne...' });
       const heartbeat = setInterval(() => {
-        sendUpdate({ type: 'log', message: 'Analizowanie... (proszę czekać)', timestamp: new Date().toLocaleTimeString() });
-      }, 15000);
+        sendUpdate({ type: 'log', message: 'Silnik pracuje... (oczekiwanie na AI)', timestamp: new Date().toLocaleTimeString() });
+      }, 30000);
 
       try {
         if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-          await parseExcel(buffer, filename, onProgress);
+          const result = await parseExcel(buffer, filename, onProgress);
           
           const currentStore = await getKnowledge();
           if (!currentStore.processedSources.includes(filename)) {
             currentStore.processedSources.push(filename);
             await saveKnowledge(currentStore);
           }
-          sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.' });
+          sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.', count: result.count, stats: result.stats });
         } else if (filename.toLowerCase().endsWith('.pdf')) {
           const availableModelsRaw = searchParams.get('availableModels') || '';
           const modelPool = availableModelsRaw ? availableModelsRaw.split(',') : [];
-          
-          await parsePDFWithAI(
-            buffer, 
-            filename, 
-            apiKey, 
-            modelId || 'gemini-1.5-flash', 
-            modelPool, 
-            onProgress,
-            concurrencyLevel
-          );
-          sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.' });
+                 const result = await parsePDFWithAI(
+              buffer, 
+              filename, 
+              apiKey, 
+              modelId || undefined,
+              [],
+              onProgress
+            );
+          sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.', count: result.count, stats: result.stats });
         } else {
           sendUpdate({ type: 'error', message: 'Nieobsługiwany format pliku.' });
         }

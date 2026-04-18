@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@/auth';
 import { initializeMockData } from '@/store/serverStore';
+import { authorizeAPI } from '@/lib/authUtils';
 import fs from 'fs';
 import path from 'path';
 
@@ -14,11 +16,36 @@ function logImport(msg: string) {
 }
 
 export async function GET() {
+  const session = await auth();
   const { products } = initializeMockData();
-  return NextResponse.json(products);
+  
+  // Sprawdź rolę użytkownika
+  const role = (session?.user as any)?.role;
+  const isAuthorized = role === "ADMIN" || role === "BIZ";
+
+  if (!isAuthorized) {
+    // Ukrywamy ceny przed detalistami i gośćmi
+    const safeProducts = products.map((p: any) => ({
+      ...p,
+      price: null, // Klient musi się zalogować
+      priceHidden: true
+    }));
+    return NextResponse.json(safeProducts);
+  }
+
+  // Dla B2B/Admin zwracamy pełne dane z flagą widoczności
+  const fullProducts = products.map((p: any) => ({
+    ...p,
+    priceHidden: false
+  }));
+
+  return NextResponse.json(fullProducts);
 }
 
 export async function POST(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) return authCheck.response;
+
   const body = await req.json();
   const { products } = initializeMockData();
   
@@ -132,6 +159,9 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) return authCheck.response;
+
   const body = await req.json();
   const { products } = initializeMockData();
   
@@ -144,6 +174,9 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) return authCheck.response;
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   const { products } = initializeMockData();

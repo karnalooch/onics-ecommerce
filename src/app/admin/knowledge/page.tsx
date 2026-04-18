@@ -9,26 +9,15 @@ import {
   FileSpreadsheet, 
   Search, 
   Trash2, 
-  AlertCircle, 
-  CheckCircle2, 
   RefreshCcw,
   BookOpen,
-  Zap
+  Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { useKnowledge } from "@/lib/knowledge/KnowledgeContext"
 
 interface KnowledgeSnippet {
   id: string
@@ -42,32 +31,17 @@ interface KnowledgeSnippet {
 }
 
 export default function KnowledgePage() {
+  const { 
+    isDone,
+    setTrainingFile,
+  } = useKnowledge()
+
   const [snippets, setSnippets] = useState<KnowledgeSnippet[]>([])
   const [sources, setSources] = useState<string[]>([])
   const [processedSources, setProcessedSources] = useState<string[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [isTraining, setIsTraining] = useState(false)
-  const [concurrency, setConcurrency] = useState(1)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  
-  // State for Training Modal
-  const [trainingFile, setTrainingFile] = useState<string | null>(null)
-  const [tempApiKey, setTempApiKey] = useState("")
-  const [isValidatingKey, setIsValidatingKey] = useState(false)
-  const [validationResult, setValidationResult] = useState<{
-    success: boolean,
-    recommended: string,
-    availableModels: string[],
-    message: string
-  } | null>(null)
-  
-  // Console & Progress State
-  const [logs, setLogs] = useState<{time: string, msg: string, type: 'log' | 'progress' | 'error' | 'done'}[]>([])
-  const [progressPercent, setProgressPercent] = useState(0)
-  const [foundCount, setFoundCount] = useState(0)
-  const [isDone, setIsDone] = useState(false)
-  const [isMinimized, setIsMinimized] = useState(false)
 
   const fetchData = async () => {
     try {
@@ -86,6 +60,13 @@ export default function KnowledgePage() {
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Refresh snippets when analysis is done globally
+  useEffect(() => {
+    if (isDone) {
+      fetchData()
+    }
+  }, [isDone])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -127,91 +108,6 @@ export default function KnowledgePage() {
       }
     } catch (e) {
       alert("Wystąpił błąd połączenia")
-    }
-  }
-
-  const handleValidateKey = async () => {
-    if (!tempApiKey) return
-    setIsValidatingKey(true)
-    setValidationResult(null)
-    try {
-      const res = await fetch('/api/knowledge/validate-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: tempApiKey })
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setValidationResult({
-          success: true,
-          recommended: data.recommended,
-          availableModels: data.availableModels || [],
-          message: data.message
-        })
-      } else {
-        setValidationResult({
-          success: false,
-          recommended: "",
-          message: data.error || "Błąd walidacji"
-        })
-      }
-    } catch (e) {
-      setValidationResult({
-        success: false,
-        recommended: "",
-        message: "Wystąpił błąd połączenia z serwerem walidacji"
-      })
-    } finally {
-      setIsValidatingKey(false)
-    }
-  }
-
-  const handleTrainAI = () => {
-    if (!trainingFile || !tempApiKey) return
-    
-    setIsTraining(true)
-    setLogs([{ time: new Date().toLocaleTimeString(), msg: "Inicjalizacja połączenia...", type: 'log' }])
-    setProgressPercent(0)
-    setFoundCount(0)
-    setIsDone(false)
-
-    const params = new URLSearchParams({
-      filename: trainingFile,
-      apiKey: tempApiKey,
-      modelId: validationResult?.recommended || '',
-      availableModels: (validationResult?.availableModels || []).join(','),
-      concurrency: concurrency.toString()
-    })
-
-    const eventSource = new EventSource(`/api/knowledge/train/stream?${params.toString()}`)
-
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      
-      if (data.type === 'log') {
-        setLogs(prev => [...prev.slice(-100), { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'log' }])
-        if (data.percent !== undefined) setProgressPercent(data.percent)
-      } else if (data.type === 'progress') {
-        setFoundCount(data.count || 0)
-        setLogs(prev => [...prev.slice(-100), { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'progress' }])
-      } else if (data.type === 'error') {
-        setLogs(prev => [...prev, { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'error' }])
-        setIsMinimized(false) // Auto-restore on error
-        eventSource.close()
-      } else if (data.type === 'done') {
-        setLogs(prev => [...prev, { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'done' }])
-        setIsMinimized(false) // Auto-restore on success
-        setIsDone(true)
-        setProgressPercent(100)
-        eventSource.close()
-        fetchData() 
-      }
-    }
-
-    eventSource.onerror = () => {
-      setLogs(prev => [...prev.slice(-100), { time: new Date().toLocaleTimeString(), msg: "Krytyczny błąd połączenia (SSE). Sprawdź logi serwera lub spróbuj ponownie.", type: 'error' }])
-      setIsMinimized(false) // Auto-restore to show error
-      eventSource.close()
     }
   }
 
@@ -325,43 +221,37 @@ export default function KnowledgePage() {
 
         {/* MAIN: Knowledge Board */}
         <div className="lg:col-span-8 space-y-6">
-          <Card className="shadow-lg border-t-4 border-t-blue-500">
-            <CardHeader className="flex flex-row items-center justify-between pb-4">
-              <div className="flex items-center gap-4 w-full">
-                <CardTitle className="text-xl flex items-center justify-between w-full">
-                  <span className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-yellow-500" />
-                    Wyuczona Wiedza AI
-                    <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">
+          <Card className="shadow-lg border-t-4 border-t-blue-500 overflow-hidden">
+            <CardHeader className="pb-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-yellow-500/10 rounded-lg">
+                      <Zap className="h-4 w-4 text-yellow-500" />
+                    </div>
+                    <CardTitle className="text-xl font-black tracking-tight">Wyuczona Wiedza AI</CardTitle>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none px-2 py-0.5 text-[10px] font-bold">
                       {snippets.length} modeli
                     </Badge>
+                  </div>
+                  <CardDescription className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    Techniczna inteligencja wyciągnięta z Twoich katalogów
+                  </CardDescription>
+                </div>
 
-                    {/* MINI CONSOLE BADGE */}
-                    {(isTraining || isDone) && isMinimized && (
-                      <motion.div 
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="ml-4 flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-full text-[10px] font-bold cursor-pointer hover:bg-blue-700 shadow-md transition-all animate-pulse"
-                        onClick={() => setIsMinimized(false)}
-                      >
-                        <Brain className="h-3 w-3" />
-                        PRZETWARZANIE: {progressPercent}% (+{foundCount})
-                      </motion.div>
-                    )}
-                  </span>
+                <div className="flex items-center gap-3">
                   {snippets.length > 0 && (
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       onClick={handleClearAllKnowledge}
-                      className="text-muted-foreground hover:text-red-500 hover:bg-red-50 text-[10px] h-8 gap-2"
+                      className="text-muted-foreground hover:text-red-500 hover:bg-red-50 text-[10px] font-bold h-9 px-3 gap-2 rounded-xl transition-colors border border-transparent hover:border-red-100"
                     >
-                      <Trash2 className="h-3 w-3" />
-                      Wyczyść wszystko
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Wyczyść wszystko</span>
                     </Button>
                   )}
-                </CardTitle>
-                <CardDescription>Techniczna inteligencja wyciągnięta z Twoich katalogów</CardDescription>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -434,188 +324,6 @@ export default function KnowledgePage() {
           </Card>
         </div>
       </div>
-
-      {/* TRAINING MODAL */}
-      <Dialog open={!!trainingFile && !isMinimized} onOpenChange={(open) => {
-        if (!open) {
-          if (isTraining && !isDone) {
-            setIsMinimized(true);
-          } else {
-            setTrainingFile(null);
-            setIsMinimized(false);
-          }
-        }
-      }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <Brain className="h-6 w-6 text-blue-500" />
-              Naucz AI z Katalogu
-            </DialogTitle>
-            {isTraining && !isDone && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-muted-foreground mr-6" 
-                onClick={() => setIsMinimized(true)}
-                title="Minimalizuj do ikony"
-              >
-                <div className="w-4 h-0.5 bg-current" />
-              </Button>
-            )}
-          </DialogHeader>
-            <DialogDescription asChild>
-              <div className="text-sm text-muted-foreground">
-                Wprowadź jednorazowy klucz Gemini, aby system przeanalizował <strong>{trainingFile}</strong> i wyciągnął z niego dane techniczne.
-                {isDone && <span className="block mt-2 text-green-600 font-bold">Proces zakończony. Możesz zamknąć to okno.</span>}
-                {!isTraining && !isDone && logs.some(l => l.type === 'error') && <span className="block mt-2 text-red-600 font-bold">Wystąpił błąd. Przejrzyj logi poniżej zanim zamkniesz okno.</span>}
-              </div>
-            </DialogDescription>
-          <div className="space-y-6 py-4">
-            {!isTraining && !isDone && (
-              <div className="space-y-4">
-                <div className="p-4 bg-blue-50/30 dark:bg-blue-900/10 rounded-xl border border-blue-100/50 dark:border-blue-800/20 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className={`h-4 w-4 ${concurrency > 1 ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
-                      <span className="text-sm font-bold">Turbo Mode</span>
-                    </div>
-                    <Badge variant={concurrency > 1 ? "default" : "secondary"} className="font-mono">
-                      {concurrency}x Speed
-                    </Badge>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="5" 
-                    step="1" 
-                    value={concurrency}
-                    onChange={(e) => setConcurrency(parseInt(e.target.value))}
-                    className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  <p className="text-[10px] text-muted-foreground leading-tight">
-                    {concurrency === 1 ? 'Standardowa analiza (najbezpieczniejsza).' : `Równoległe przetwarzanie ${concurrency} bloków tekstu jednocześnie.`}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase font-bold text-muted-foreground">Klucz API Gemini (Flash v1.5)</Label>
-                  <Input 
-                    type="password"
-                    placeholder="Wklej klucz tutaj..."
-                    value={tempApiKey}
-                    onChange={(e) => {
-                      setTempApiKey(e.target.value)
-                      setValidationResult(null)
-                    }}
-                    className="bg-muted/30"
-                  />
-                  <div className="flex gap-2 mt-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-8 text-[11px] border-blue-200 text-blue-600 hover:bg-blue-50"
-                      onClick={handleValidateKey}
-                      disabled={!tempApiKey || isValidatingKey}
-                    >
-                      {isValidatingKey ? <RefreshCcw className="h-3 w-3 animate-spin mr-2" /> : <RefreshCcw className="h-3 w-3 mr-2" />}
-                      Diagnozuj Klucz i Model
-                    </Button>
-                  </div>
-
-                  {validationResult && (
-                    <div className={`mt-3 p-3 rounded-lg border text-[11px] ${
-                      validationResult.success 
-                      ? "bg-green-50 border-green-100 text-green-700" 
-                      : "bg-red-50 border-red-100 text-red-700"
-                    }`}>
-                      <div className="flex items-center gap-2 mb-1">
-                        {validationResult.success ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                        <span className="font-bold">{validationResult.success ? "Klucz Zweryfikowany" : "Problem z kluczem"}</span>
-                      </div>
-                      <p>{validationResult.message}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {(isTraining || isDone) && (
-              <div className="space-y-4">
-                {/* Dashboard Stats */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100 text-center">
-                    <p className="text-[10px] uppercase font-bold text-blue-500 mb-1">Postęp</p>
-                    <p className="text-2xl font-black text-blue-700">{progressPercent}%</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-green-50/50 border border-green-100 text-center">
-                    <p className="text-[10px] uppercase font-bold text-green-500 mb-1">DODANO</p>
-                    <p className="text-2xl font-black text-green-700">+{foundCount}</p>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                  <motion.div 
-                    className="h-full bg-blue-500"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-
-                {/* Console View */}
-                <div className="bg-slate-950 rounded-lg p-3 font-mono text-[10px] space-y-1 h-48 overflow-y-auto border border-slate-800 shadow-inner">
-                  {logs.map((log, idx) => (
-                    <div key={idx} className="flex gap-2">
-                      <span className="text-slate-500">[{log.time}]</span>
-                      <span className={
-                        log.type === 'error' ? 'text-red-400' : 
-                        log.type === 'progress' ? 'text-green-400' : 
-                        log.type === 'done' ? 'text-blue-400 font-bold' : 
-                        'text-slate-300'
-                      }>
-                        {log.type === 'progress' ? '◆ ' : '○ '}
-                        {log.msg}
-                      </span>
-                    </div>
-                  ))}
-                  <div id="console-bottom"></div>
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-3">
-            <div className="flex gap-2 w-full justify-end">
-              {!isTraining && !isDone && (
-                <>
-                  <Button variant="ghost" onClick={() => setTrainingFile(null)}>Anuluj</Button>
-                  <Button 
-                    disabled={!tempApiKey} 
-                    onClick={handleTrainAI}
-                    className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                  >
-                    <Zap className="h-4 w-4" />
-                    Uruchom trening wiedzy
-                  </Button>
-                </>
-              )}
-              {(isDone || (!isTraining && logs.some(l => l.type === 'error'))) && (
-                <Button 
-                  onClick={() => {
-                    setTrainingFile(null)
-                    setIsDone(false)
-                    setIsTraining(false)
-                    setLogs([])
-                  }}
-                  className={`${isDone ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white w-full sm:w-auto`}
-                >
-                  {isDone ? 'Zamknij i zobacz wyniki' : 'Zamknij konsolę (Błąd)'}
-                </Button>
-              )}
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

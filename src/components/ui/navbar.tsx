@@ -20,32 +20,34 @@ export function Navbar() {
   }, [])
 
   const isActive = (path: string) => {
-    return pathname === path ? "text-primary font-semibold" : "text-muted-foreground hover:text-primary transition-colors"
+    return pathname === path 
+      ? "text-primary font-bold bg-primary/5 px-3 py-1.5 rounded-md" 
+      : "text-muted-foreground hover:text-foreground font-medium hover:bg-muted/50 px-3 py-1.5 rounded-md transition-all"
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-16 items-center px-4 justify-between" suppressHydrationWarning bis_skin_checked={undefined}>
-        <Link href="/" className="flex items-center gap-2">
-          <img src="/assets/logo.svg" alt="Celtronics" className="h-10 w-auto" />
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto flex h-16 items-center px-4 md:px-8 justify-between">
+        <Link href="/" className="flex items-center gap-2 group transition-transform hover:scale-105">
+           <img src="/assets/logo.svg" alt="Celtronics" className="h-8 w-auto" />
         </Link>
-        <nav className="hidden md:flex gap-6 items-center flex-1 ml-10">
+        <nav className="hidden md:flex gap-2 items-center flex-1 ml-10">
           <Link href="/produkty" className={`flex items-center gap-2 text-sm ${isActive('/produkty')}`}>
             <PackageSearch className="w-4 h-4" /> B2C Katalog (ISR)
           </Link>
           <Link href="/oferty" className={`text-sm ${isActive('/oferty')}`}>
-            Panel B2B (Oferty Netto)
+            Panel B2B
           </Link>
           <Link href="/polityka-prywatnosci" className={`text-sm ${isActive('/polityka-prywatnosci')}`}>
             O Firmie / KSeF
           </Link>
         </nav>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <ModeToggle />
-          <Link href="/koszyk" className="relative flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors">
-            <ShoppingCart className="w-5 h-5" />
+          <Link href="/koszyk" className="relative flex items-center justify-center w-9 h-9 rounded-md border border-border/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-all">
+            <ShoppingCart className="w-4 h-4" />
             {mounted && totalItems > 0 && (
-              <span className="absolute -top-2 -right-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground shadow-sm">
                 {totalItems}
               </span>
             )}
@@ -53,13 +55,13 @@ export function Navbar() {
           {session?.user ? (
             <button 
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-2 bg-rose-500/10 text-rose-600 px-4 py-2 rounded-md text-sm font-bold hover:bg-rose-500/20 transition-all border border-rose-200"
+              className="flex items-center gap-2 border border-border/50 text-blue-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600/5 transition-all ml-2"
             >
               <LogOut className="w-4 h-4" /> Wyloguj
             </button>
           ) : (
-            <Link href="/logowanie" className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
-              <UserCircle className="w-4 h-4" /> Strefa Instalatora
+            <Link href="/logowanie" className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-md text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm ml-2">
+              <UserCircle className="w-4 h-4" /> Panel B2B
             </Link>
           )}
         </div>

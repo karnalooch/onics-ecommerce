@@ -26,10 +26,12 @@ export async function POST(req: Request) {
     // 2. Jeśli podano klucz - analizujemy plik i wyciągamy wiedzę
     if (transientApiKey && transientApiKey.trim() !== "") {
       if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-        addedCount = await parseExcel(buffer, filename);
+        const result = await parseExcel(buffer, filename);
+        addedCount = result.count;
         learned = true;
       } else if (filename.toLowerCase().endsWith('.pdf')) {
-        addedCount = await parsePDFWithAI(buffer, filename, transientApiKey);
+        const result = await parsePDFWithAI(buffer, filename, transientApiKey);
+        addedCount = result.count;
         learned = true;
       }
     }

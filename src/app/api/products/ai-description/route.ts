@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { initializeMockData } from '@/store/serverStore';
 import { getKnowledge } from '@/lib/knowledge/parser';
+import { findBestKnowledgeMatch } from '@/lib/knowledge/matcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,22 +46,10 @@ export async function POST(req: Request) {
     // --- KROK 1: PRZESZUKIWANIE LOKALNEJ BAZY WIEDZY ---
     try {
       const localStore = await getKnowledge();
-      const nameUpper = product.name.toUpperCase();
-      const skuUpper = (product.sku || "").toUpperCase();
+      const match = findBestKnowledgeMatch(product.name, product.sku, localStore);
 
-      // Szukamy najdłuższego dopasowania symbolu z bazy wiedzy w nazwie/SKU
-      let bestMatchKey = "";
-      Object.keys(localStore.knowledge).forEach(key => {
-        const k = key.toUpperCase();
-        if (k.length > 3 && (nameUpper.includes(k) || skuUpper.includes(k))) {
-          if (k.length > bestMatchKey.length) {
-            bestMatchKey = key;
-          }
-        }
-      });
-
-      if (bestMatchKey) {
-        technicalContext = localStore.knowledge[bestMatchKey].specs;
+      if (match) {
+        technicalContext = match.entry.specs;
         console.log(`[AI Generator] Wykryto dane katalogowe dla ${product.name}: ${technicalContext}`);
       }
     } catch (e) {
@@ -74,7 +63,12 @@ export async function POST(req: Request) {
         
         let prompt = `Jesteś ekspertem technicznym B2B w branży systemów zabezpieczeń (CCTV, Alarmy, Sieci). 
         Przygotuj profesjonalny opis produktu w języku polskim (maksymalnie 3 zdania).
-        Skup się na korzyściach technicznych dla profesjonalnego instalatora.`;
+        Skup się na korzyściach technicznych dla profesjonalnego instalatora.
+
+        PRZYKŁADY STYLU:
+        - "Centrala INTEGRA-64 to fundament profesjonalnych systemów alarmowych, oferujący wsparcie dla 64 stref i pełną zgodność z Grade 3."
+        - "Kamera Hikvision serii ColorVu zapewnia kolorowy obraz 24/7, eliminując martwe punkty dzięki analityce AcuSense."
+        `;
 
         if (technicalContext) {
           prompt += `\n\nWAŻNE: Wykorzystaj poniższą specyfikację techniczną z katalogu dystrybutora jako jedyne źródło parametrów:

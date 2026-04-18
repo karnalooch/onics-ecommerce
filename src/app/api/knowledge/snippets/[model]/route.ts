@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getKnowledge, saveKnowledge } from '@/lib/knowledge/parser';
+import { authorizeAPI } from '@/lib/authUtils';
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { model: string } }
+  { params }: { params: Promise<{ model: string }> }
 ) {
   try {
-    const { model } = params;
+    const authCheck = await authorizeAPI(["ADMIN"]);
+    if (!authCheck.authorized) return authCheck.response;
+
+    const { model } = await params;
     const decodedModel = decodeURIComponent(model).toUpperCase();
     const store = await getKnowledge();
     

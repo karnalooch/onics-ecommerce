@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { 
   FolderTree, Folder, Plus, Trash2, Edit2, ChevronRight, 
   Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Wrench, Home, Activity, Speaker, Mic,
-  Search
+  Search, X
 } from "lucide-react";
 import * as Icons from "lucide-react";
 

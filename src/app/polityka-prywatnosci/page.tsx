@@ -1,42 +1,109 @@
 import { FC } from 'react';
+import { ShieldCheck, Receipt, Cookie, Scale, MapPin } from 'lucide-react';
 
-// Statyczna strona wizytówkowa / prywatności oparta na statycznym renderowaniu (SSG)
 const PrivacyPolicy: FC = () => {
   return (
-    <div className="container mx-auto px-4 py-16 max-w-4xl">
-      <h1 className="text-4xl font-bold mb-8 border-b pb-4">Polityka Prywatności i Informacje Prawne</h1>
+    <div className="container mx-auto px-6 py-16 max-w-6xl min-h-screen">
+      <div className="mb-16">
+        <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tighter">Centrum Prawne</h1>
+        <p className="text-xl text-muted-foreground font-medium max-w-2xl">Zasady współpracy, polityka prywatności oraz zgodność z systemem KSeF platformy handlowej Celtronics B2B.</p>
+      </div>
       
-      <section className="mb-10 bg-card p-8 rounded-lg border shadow-sm">
-        <h2 className="text-xl font-bold mt-8 mb-4">1. Administrator Danych Osobowych</h2>
-        <p className="text-muted-foreground mb-4">
-          Administratorem Twoich danych osobowych jest <strong>Celtronics S.C.</strong> z siedzibą w Siedlcach (ul. Niklowa 22, 08-110 Siedlce). Posiadamy także autoryzowany salon sprzedaży przy ul. Kilińskiego 39D. W sprawach związanych z RODO oraz KSeF zachęcamy do kontaktu pod adresem email: biuro@celtronics.pl lub telefonicznie: +48 123 456 789.
-        </p>
-        <p className="text-muted-foreground">
-          System wymusza weryfikację kont za pomocą Numeru Identyfikacji Podatkowej (NIP) dla prawidłowego wystawiania F-VAT.
-        </p>
-      </section>
+      <div className="flex flex-col lg:flex-row gap-12 relative">
+        {/* Sticky Sidebar Navigation */}
+        <aside className="lg:w-1/4 shrink-0">
+          <div className="sticky top-28 bg-card border border-border p-6 rounded-2xl shadow-sm">
+            <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground mb-6">Spis Treści</h3>
+            <nav className="flex flex-col gap-4">
+              <a href="#rodo" className="flex items-center gap-3 text-sm font-medium hover:text-primary transition-colors text-foreground">
+                <ShieldCheck className="w-4 h-4 text-primary" /> 1. Administrator i RODO
+              </a>
+              <a href="#ceny" className="flex items-center gap-3 text-sm font-medium hover:text-primary transition-colors text-muted-foreground">
+                <Receipt className="w-4 h-4 text-primary" /> 2. Polityka Cenowa (KSeF)
+              </a>
+              <a href="#cookies" className="flex items-center gap-3 text-sm font-medium hover:text-primary transition-colors text-muted-foreground">
+                <Cookie className="w-4 h-4 text-primary" /> 3. Polityka Cookies
+              </a>
+              <a href="#prawne" className="flex items-center gap-3 text-sm font-medium hover:text-primary transition-colors text-muted-foreground">
+                <Scale className="w-4 h-4 text-primary" /> 4. Prawa Autorskie
+              </a>
+            </nav>
+          </div>
+        </aside>
 
-      <section className="mb-10">
-        <h2 className="text-2xl font-semibold mb-4 text-primary">2. Polityka Cenowa B2B / B2C (VAT, KSeF)</h2>
-        <p className="text-muted-foreground leading-relaxed mb-4">
-          Wszystkie <strong>ceny detaliczne B2C</strong> widniejące w ogólnodostępnym katalogu uwzględniają podatek VAT (są to kwoty brutto). 
-          Osoby dokonujące zakupów za pośrednictwem systemu B2C nie są zobligowane do podawania numeru NIP (chyba że zażądają wystawienia FV).
-        </p>
-        <p className="text-muted-foreground leading-relaxed">
-          W panelach <strong>Partnerów B2B</strong> (zabezpieczonych hasłem) wyświetlane ceny są zawsze wartościami <strong>netto</strong>.
-          Podczas rejestracji system rygorystycznie weryfikuje podany nr NIP za pomocą bazy VIES/GUS z naciskiem 
-          na integrację asynchroniczną z modułem Krajowego Systemu e-Faktur (KSeF).
-        </p>
-      </section>
+        {/* Content Area */}
+        <main className="lg:w-3/4 flex flex-col gap-8">
+          
+          <section id="rodo" className="bg-card border border-border p-8 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group scroll-mt-28">
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <ShieldCheck className="w-32 h-32 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 tracking-tight relative z-10">
+              <span className="bg-primary/10 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+              Administrator Danych Osobowych
+            </h2>
+            <div className="space-y-4 text-muted-foreground relative z-10">
+              <p className="leading-relaxed">
+                Administratorem Twoich danych osobowych jest <strong>Celtronics S.C.</strong> z siedzibą główną. Przetwarzamy Twoje dane wyłącznie w celu realizacji zamówień, procesów reklamacyjnych (RMA) oraz celów podatkowych.
+              </p>
+              <div className="bg-muted/50 p-4 rounded-xl flex items-start gap-4 border border-border/50">
+                <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-bold text-foreground">Adres siedziby:</p>
+                  <p>ul. Niklowa 22, 08-110 Siedlce</p>
+                  <p className="mt-2">Email: <a href="mailto:biuro@celtronics.pl" className="text-primary hover:underline">biuro@celtronics.pl</a> | Tel: +48 123 456 789</p>
+                </div>
+              </div>
+              <p className="leading-relaxed text-sm">
+                System wymaga weryfikacji NIP w celu utworzenia zaufanego profilu B2B. Powierzone dane są chronione szyfrowaniem SSL i nie są udostępniane podmiotom trzecim w celach marketingowych.
+              </p>
+            </div>
+          </section>
 
-      <section className="mb-10">
-        <h2 className="text-2xl font-semibold mb-4 text-primary">3. Polityka Cookies</h2>
-        <p className="text-muted-foreground leading-relaxed">
-          Witryna wykorzystuje pliki sesyjne w procesowaniu zabezpieczeń CSRF (Cross-Site Request Forgery) związanych z autoryzacją kont instalatorskich przez NextAuth.
-          Serwis korzysta z platformy Stripe do obsługi płatności, która implementuje technologię webhooks (nasłuchiwanie poprawności transakcji Przelewy24 / BLIK).
-        </p>
-      </section>
+          <section id="ceny" className="bg-card border border-border p-8 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group scroll-mt-28">
+             <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Receipt className="w-32 h-32 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 tracking-tight relative z-10">
+              <span className="bg-primary/10 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+              Polityka Cenowa B2B i KSeF
+            </h2>
+            <div className="space-y-4 text-muted-foreground relative z-10">
+              <p className="leading-relaxed">
+                W ogólnodostępnym katalogu <strong>B2C</strong> wszystkie widoczne ceny uwzględniają podatek VAT (kwoty brutto). Zakupy w tej strefie nie wymagają posiadania zautoryzowanego konta firmowego.
+              </p>
+              <div className="border-l-4 border-primary pl-4 py-1 my-6 bg-primary/5 rounded-r-xl">
+                <p className="font-semibold text-foreground">Strefa Partnerów B2B (Kwoty Netto)</p>
+                <p className="text-sm mt-2">W panelu instalatora, ceny wyliczane są <strong>netto</strong> i uwzględniają zindywidualizowane poziomy rabatowe (Tiery A/B/C).</p>
+              </div>
+              <p className="leading-relaxed">
+                Podczas rejestracji konta B2B, nasz system automatycznie łączy się z bazą VIES/GUS. Jest to rygorystyczny wymóg przygotowany pod asynchroniczną integrację z systemem <strong>Krajowego Systemu e-Faktur (KSeF)</strong>.
+              </p>
+            </div>
+          </section>
 
+          <section id="cookies" className="bg-card border border-border p-8 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group scroll-mt-28">
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Cookie className="w-32 h-32 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-6 flex items-center gap-3 tracking-tight relative z-10">
+              <span className="bg-primary/10 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
+              Polityka Cookies i Zabezpieczenia
+            </h2>
+            <div className="space-y-4 text-muted-foreground relative z-10">
+              <p className="leading-relaxed">
+                Witryna Celtronics.pl korzysta z absolutnie minimalnej ilości plików cookies. Ograniczamy się wyłącznie do plików <strong>niezbędnych technicznie</strong>.
+              </p>
+              <ul className="list-disc pl-5 space-y-2 text-sm mt-4">
+                <li><strong className="text-foreground">Sesyjne Tokeny Autoryzacyjne:</strong> Wymagane przez bibliotekę NextAuth do zapobiegania atakom typu CSRF.</li>
+                <li><strong className="text-foreground">Cache UI:</strong> Przechowywanie informacji o wybranym motywie (Jasny/Ciemny) w celu uniknięcia migotania ekranu (tzw. FOUC).</li>
+                <li><strong className="text-foreground">Integracje Płatnicze:</strong> Ciasteczka wymagane przez operatora Stripe dla bezpieczeństwa transakcji (ochrona webhooks i Przelewy24).</li>
+              </ul>
+            </div>
+          </section>
+
+        </main>
+      </div>
     </div>
   );
 };

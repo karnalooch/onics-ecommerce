@@ -64,6 +64,51 @@
     --input: 213 40% 25%;
     --ring: 184 100% 50%;
   }
+
+  /* --- TIME-BASED THEMES (SOLAR) --- */
+  /* The User explicitly requested: entire portal based on White and Gray, with Blue additions. */
+
+  /* Morning & Day are now unified into the ultra-clean White/Gray/Blue theme */
+  .theme-morning, .theme-day {
+    --background: 0 0% 100%; /* Pure White */
+    --foreground: 222 47% 11%; /* Dark Gray/Slate Text */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 221.2 83.2% 53.3%; /* Sharp Blue (bg-blue-600) like the screenshot */
+    --primary-foreground: 210 40% 98%; /* White text on blue buttons */
+    --secondary: 210 40% 96.1%; /* Very light gray */
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%; /* Light Gray backgrounds */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Medium Gray text */
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --border: 214.3 31.8% 91.4%; /* Light gray borders */
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%; /* Blue ring */
+  }
+
+  /* Evening/Dark: Dark Grays with the same matching Blue accents. */
+  .theme-evening, .dark {
+    --background: 222 47% 7%; /* Extremely dark gray/slate */
+    --foreground: 210 40% 98%; /* White text */
+    --card: 222 47% 11%; /* Slightly lighter dark gray */
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 221.2 83.2% 53.3%; /* The EXACT SAME Blue from the picture */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%; /* Dark gray */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%; /* Dark gray */
+    --muted-foreground: 215 20.2% 65.1%; /* Light gray text */
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%; /* Dark gray borders */
+    --input: 217.2 32.6% 17.5%;
+    --ring: 221.2 83.2% 53.3%; /* Blue ring */
+  }
 }
 
 @layer base {
@@ -71,6 +116,20 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-1000;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Custom Premium Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/20 rounded-full border-4 border-transparent bg-clip-content hover:bg-muted-foreground/40 transition-colors;
 }

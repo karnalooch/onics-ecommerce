@@ -22,7 +22,8 @@ export async function POST(req: Request) {
 
     // 1. Uruchamiamy proces nauki
     if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-      addedCount = await parseExcel(buffer, filename);
+      const result = await parseExcel(buffer, filename);
+      addedCount = result.count;
       
       // 2. Oznaczamy plik jako „przetworzony” (tylko dla Excela, PDF robi to w tle)
       const currentStore = await getKnowledge();

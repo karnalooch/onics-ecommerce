@@ -23,6 +23,13 @@ export interface ExtractionResult {
   price: number | null;
 }
 
+export type ProgressCallback = (update: { 
+  type: 'log' | 'progress' | 'error'; 
+  message: string; 
+  count?: number;
+  percent?: number;
+}) => void;
+
 export interface ParsingStrategy {
   name: string;
   execute(data: any): Promise<ExtractionResult[]>;

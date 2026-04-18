@@ -30,7 +30,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               jwt: mockUser.jwt,
               role: mockUser.roleType,
               isApproved: mockUser.isApproved,
-              nip: mockUser.nip
+              nip: mockUser.nip,
+              discount: mockUser.discount,
+              tierName: mockUser.tierName
            } as any;
         }
 
@@ -64,7 +66,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               jwt: data.jwt,
               role: data.user.roleType || 'BIZ',
               isApproved: data.user.isApproved ?? false,
-              nip: data.user.nip || null
+              nip: data.user.nip || null,
+              discount: data.user.discount || 0,
+              tierName: data.user.tierName || 'PARTNER'
             } as any;
           }
 
@@ -84,6 +88,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.isApproved = (user as any).isApproved;
         token.nip = (user as any).nip;
+        token.discount = (user as any).discount;
+        token.tierName = (user as any).tierName;
       }
       return token
     },
@@ -94,6 +100,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         (session.user as any).id = token.id;
         (session.user as any).isApproved = token.isApproved;
         (session.user as any).nip = token.nip;
+        (session.user as any).discount = token.discount;
+        (session.user as any).tierName = token.tierName;
       }
       return session
     }

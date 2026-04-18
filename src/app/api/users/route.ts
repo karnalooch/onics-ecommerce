@@ -1,14 +1,21 @@
 import { NextResponse } from 'next/server';
 import { initializeMockData } from '@/store/serverStore';
+import { authorizeAPI } from '@/lib/authUtils';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) return authCheck.response;
+
   const { users } = initializeMockData();
   return NextResponse.json(users);
 }
 
 export async function PUT(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) return authCheck.response;
+
   const body = await req.json();
   const { users } = initializeMockData();
   
@@ -22,6 +29,9 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) return authCheck.response;
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   const { users } = initializeMockData();
