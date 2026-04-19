@@ -1,162 +1,77 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* src/app/globals.css */
+@import "tailwindcss";
+
+@theme {
+  /* --- CELTRONICS V12: ATMOSPHERE ENGINE (OKLCH) --- */
+  
+  /* Solar Mode (Light) - Ethereal & High-Definition */
+  --color-background: oklch(99% 0.005 250); 
+  --color-foreground: oklch(12% 0.02 240); 
+  
+  /* Brand Prestige */
+  --color-primary: oklch(62% 0.25 250); 
+  --color-primary-foreground: oklch(100% 0 0);
+  
+  /* System Surfaces */
+  --color-secondary: oklch(96% 0.008 240);
+  --color-muted: oklch(97% 0.005 240);
+  --color-border: oklch(92% 0.01 240);
+
+  /* --- GEOMETRY & PHYSICS --- */
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+  --radius-dashboard: 1.5rem;
+
+  /* Cinema Physics (Prestige Timing) */
+  --duration-cinema: 1200ms;
+  --ease-cinema: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 213 72% 16%; /* Primary #0B2545 */
-
-    --card: 0 0% 100%;
-    --card-foreground: 213 72% 16%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 213 72% 16%;
-
-    --primary: 213 72% 16%; /* Deep Navy */
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 215 66% 22%; /* Medium Blue */
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 213 25% 45%;
-
-    --accent: 217 91% 60%; /* Techno Blue */
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 217 91% 60%; /* Accent blue ring */
-
-    --radius: 0.5rem;
-  }
-
   .dark {
-    --background: 210 41% 7%; /* #0A1118 */
-    --foreground: 210 40% 98%;
-
-    --card: 213 72% 12%; 
-    --card-foreground: 210 40% 98%;
-
-    --popover: 213 72% 12%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 184 100% 50%; /* Neon Cyan #00F0FF */
-    --primary-foreground: 213 72% 16%; 
-
-    --secondary: 213 72% 16%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 213 30% 20%;
-    --muted-foreground: 210 40% 80%;
-
-    --accent: 217 91% 60%; 
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 213 40% 25%;
-    --input: 213 40% 25%;
-    --ring: 184 100% 50%;
-  }
-
-  /* --- TIME-BASED THEMES (SOLAR) --- */
-  /* The User explicitly requested: entire portal based on White and Gray, with Blue additions. */
-
-  /* Morning & Day are now unified into the ultra-clean White/Gray/Blue theme */
-  .theme-morning, .theme-day {
-    --background: 0 0% 100%; /* Pure White */
-    --foreground: 222 47% 11%; /* Dark Gray/Slate Text */
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 221.2 83.2% 53.3%; /* Sharp Blue (bg-blue-600) like the screenshot */
-    --primary-foreground: 210 40% 98%; /* White text on blue buttons */
-    --secondary: 210 40% 96.1%; /* Very light gray */
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%; /* Light Gray backgrounds */
-    --muted-foreground: 215.4 16.3% 46.9%; /* Medium Gray text */
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --border: 214.3 31.8% 91.4%; /* Light gray borders */
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%; /* Blue ring */
-  }
-
-  /* Evening/Dark: Dark Grays with the same matching Blue accents. */
-  .theme-evening, .dark {
-    --background: 222 47% 7%; /* Extremely dark gray/slate */
-    --foreground: 210 40% 98%; /* White text */
-    --card: 222 47% 11%; /* Slightly lighter dark gray */
-    --card-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 221.2 83.2% 53.3%; /* The EXACT SAME Blue from the picture */
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%; /* Dark gray */
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%; /* Dark gray */
-    --muted-foreground: 215 20.2% 65.1%; /* Light gray text */
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%; /* Dark gray borders */
-    --input: 217.2 32.6% 17.5%;
-    --ring: 221.2 83.2% 53.3%; /* Blue ring */
+    /* Obsidian Mode (Dark) - Deep Velocity & Vantablack */
+    --color-background: oklch(8% 0.02 240); 
+    --color-foreground: oklch(98% 0.005 240);
+    
+    --color-secondary: oklch(14% 0.03 240);
+    --color-muted: oklch(12% 0.02 240);
+    --color-border: oklch(18% 0.03 240);
+    --color-card: oklch(10% 0.02 240);
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
+/* --- GLASSMORPHISM ENGINE (ZENTAK) --- */
+@layer utilities {
+  .glass-card {
+    @apply bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-white/10 shadow-ks-md;
   }
-  body {
-    @apply bg-background text-foreground transition-colors duration-1000;
-    font-feature-settings: "rlig" 1, "calt" 1;
+  
+  .glass-modal {
+    @apply bg-white/60 dark:bg-slate-950/60 backdrop-blur-3xl border-white/30 shadow-ks-lg;
+  }
+
+  /* Custom Premium Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
   }
 }
 
-@layer components {
-  /* Premium Action Buttons (Pill/Bubble style) */
-  .btn-action-base {
-    @apply p-2 rounded-lg transition-all border shadow-sm flex items-center justify-center;
+/* --- PRINT OPTIMIZATION (V12 LEGACY SYNC) --- */
+@media print {
+  body * { visibility: hidden; }
+  .staging-container, .staging-container * { visibility: visible; }
+  .staging-container {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+    background: white !important;
   }
-  
-  .btn-action-blue {
-    @apply btn-action-base text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-100;
-  }
-  
-  .btn-action-red {
-    @apply btn-action-base text-red-600 bg-red-50 hover:bg-red-100 border-red-100;
-  }
-  
-  .btn-action-emerald {
-    @apply btn-action-base text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-100;
-  }
-  
-  .btn-action-amber {
-    @apply btn-action-base text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-100;
-  }
-  
-  .btn-action-slate {
-    @apply btn-action-base text-slate-600 bg-slate-100 hover:bg-slate-200 border-slate-200;
-  }
-}
-
-/* Custom Premium Scrollbar */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/20 rounded-full border-4 border-transparent bg-clip-content hover:bg-muted-foreground/40 transition-colors;
 }

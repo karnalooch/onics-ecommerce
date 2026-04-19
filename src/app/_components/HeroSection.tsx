@@ -3,51 +3,89 @@
 
 import Link from "next/link";
 import { Lock, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+
+import { PartnersCarousel } from "./PartnersCarousel";
 
 export function HeroSection() {
   return (
-    <section className="relative w-full overflow-hidden bg-white">
-      {/* Dynamic Background Elements */}
-      <div className="absolute inset-0 bg-grid-slate-100/50 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.1))]" />
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
+    <section className="relative w-full min-h-screen lg:h-screen overflow-hidden bg-[#FDFCFB] dark:bg-[#050505] flex flex-col group" suppressHydrationWarning>
+      {/* V12 NEURAL MESH BACKGROUND */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 right-0 w-[60%] h-[60%] bg-primary/5 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-primary/10 blur-[100px] rounded-full" />
+        <div className="absolute inset-0 bg-grid-slate-900/[0.02] dark:bg-grid-white/[0.02]" />
+      </div>
       
-      <div className="container relative mx-auto px-6 pt-32 pb-40 md:pt-48 md:pb-60 text-center max-w-6xl">
-        <div className="mx-auto flex max-w-fit items-center justify-center space-x-3 overflow-hidden rounded-[2rem] border-2 border-primary/20 bg-primary/5 px-8 py-3 backdrop-blur-md mb-12 shadow-xl shadow-primary/5 transition-all hover:bg-primary/10 hover:scale-105">
-          <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_10px_rgba(37,99,235,0.8)]" />
-          <p className="text-xs font-black uppercase tracking-[0.3em] text-primary italic">System Dystrybucji B2B 2.1</p>
-        </div>
+      <div className="relative flex-1 flex flex-col lg:flex-row items-center justify-between gap-12 px-8 lg:px-24 z-10 py-20 lg:py-0">
         
-        <h1 className="text-6xl md:text-8xl font-black tracking-[calc(-0.04em)] mb-10 text-slate-900 leading-[0.9]">
-          Zaufane Dostawy <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-br from-primary via-blue-600 to-indigo-700 italic">
-            Technologii SSWiN i CCTV
-          </span>
-        </h1>
-        
-        <p className="max-w-2xl mx-auto text-xl md:text-2xl text-slate-500 mb-16 font-bold leading-relaxed">
-          Profesjonalna platforma dla instalatorów i integratorów. 
-          Gwarancja dostępności, automatyzacja KSeF i ukryte poziomy cenowe B2B.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row justify-center items-center gap-6">
-          <Link 
-            href="/logowanie" 
-            className="w-full sm:w-auto inline-flex justify-center items-center gap-4 bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:bg-primary transition-all shadow-2xl shadow-slate-900/20 hover:-translate-y-1 active:scale-95"
+        {/* LEFT HUB: BRAND & HERITAGE */}
+        <div className="flex-1 w-full text-center lg:text-left space-y-8">
+          <motion.div 
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center justify-center lg:justify-start space-x-4 glass-card px-8 py-3 w-fit mx-auto lg:mx-0 shadow-ks-md"
           >
-            <Lock className="w-5 h-5" /> Zaloguj do Terminala
-          </Link>
-          <Link 
-            href="/sklep" 
-            className="w-full sm:w-auto inline-flex justify-center items-center gap-4 bg-white border-2 border-slate-100 text-slate-900 px-10 py-5 rounded-[2rem] font-black uppercase tracking-widest text-xs hover:border-primary/30 transition-all shadow-xl shadow-slate-200/50 hover:-translate-y-1 active:scale-95 group"
+            <div className="relative">
+              <div className="w-2.5 h-2.5 rounded-full bg-primary animate-ping absolute inset-0" />
+              <div className="w-2.5 h-2.5 rounded-full bg-primary relative z-10 shadow-[0_0_15px_oklch(var(--color-primary))]" />
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary italic">Protocol: V12 Neural Command Dashboard</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-6"
           >
-            Otwarty Katalog Detal <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-          </Link>
+            <div className="flex items-center justify-center lg:justify-start gap-4">
+              <div className="h-[2px] w-12 bg-primary" />
+              <span className="text-[10px] font-black uppercase tracking-[0.6em] text-primary italic">Est. 1993 • Siedlce Headquarters</span>
+            </div>
+            
+            <h1 className="text-6xl md:text-8xl lg:text-[10rem] font-black tracking-tighter uppercase italic leading-[0.8] text-slate-900 dark:text-white transition-colors duration-500">
+              Wszystko dla <br/>
+              <span className="text-primary relative inline-block">
+                Twojego
+                <div className="absolute -bottom-4 left-0 w-full h-8 bg-primary/10 -skew-x-12 -z-10" />
+              </span> <br className="hidden xl:block"/> 
+              Bezpieczeństwa
+            </h1>
+          </motion.div>
         </div>
 
-        {/* Dynamic Scroll Indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce opacity-20">
-           <div className="w-1 h-12 bg-slate-900 rounded-full" />
+        {/* RIGHT HUB: MISSION & CTAs */}
+        <div className="w-full lg:w-[35%] space-y-12">
+          <motion.p 
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-center lg:text-left text-xs md:text-sm font-bold uppercase tracking-[0.2em] text-slate-400 leading-loose"
+          >
+            Ponad <span className="text-slate-900 dark:text-white underline decoration-primary decoration-4 underline-offset-4">30 lat doświadczenia</span> w projektowaniu i wdrażaniu zaawansowanych systemów zabezpieczeń, CCTV oraz automatyki. Profesjonalny montaż i serwis 24/7.
+          </motion.p>
+          
+          <div className="flex flex-col sm:flex-row justify-center lg:justify-start items-center gap-6">
+            <Link 
+              href="/logowanie" 
+              className="w-full h-20 px-12 glass-card bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-2xl flex items-center justify-center gap-6 font-black uppercase tracking-[0.4em] text-[10px] hover:bg-primary dark:hover:bg-primary transition-all shadow-ks-lg hover:-translate-y-2 active:scale-95 group"
+            >
+              <Lock className="w-5 h-5 group-hover:scale-110 transition-transform" /> Autoryzacja Terminala
+            </Link>
+            <Link 
+              href="/sklep" 
+              className="w-full h-20 px-10 glass-card rounded-2xl flex items-center justify-center gap-6 font-black uppercase tracking-[0.4em] text-[10px] text-slate-400 hover:text-primary transition-all hover:-translate-y-2 active:scale-95 group"
+            >
+              Katalog Publiczny <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+            </Link>
+          </div>
         </div>
+      </div>
+
+      {/* EMBEDDED PANORAMIC CAROUSEL (First Viewport) */}
+      <div className="relative z-10 w-full mb-12 transform scale-90 lg:scale-100 origin-bottom">
+         <PartnersCarousel />
       </div>
     </section>
   );

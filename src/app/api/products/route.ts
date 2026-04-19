@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { initializeMockData } from '@/store/serverStore';
 import { authorizeAPI } from '@/lib/authUtils';
+import { getKnowledge } from '@/lib/knowledge/parser';
 import fs from 'fs';
 import path from 'path';
 
@@ -19,22 +20,69 @@ export async function GET() {
   const session = await auth();
   const { products } = initializeMockData();
   
+  // V27: UNIFIED HYBRID FUSION (Physical + Virtual)
+  let unifiedDevices: any[] = [];
+  try {
+    const store = await getKnowledge();
+    const knowledgeKeys = Object.keys(store.knowledge);
+    const existingSkus = new Set(products.map((p: any) => String(p.sku || '').trim().toLowerCase()));
+
+    // Create Virtual Products from the Knowledge Hub
+    const virtualDevices = knowledgeKeys
+      .filter(key => !existingSkus.has(key.trim().toLowerCase()))
+      .map(key => {
+        const entry = store.knowledge[key];
+        return {
+          id: `virtual_${key}`,
+          sku: key,
+          name: entry.model || key,
+          manufacturer: entry.manufacturer || "NIEZNANY",
+          price: 0,
+          catalogPrice: entry.price || 0,
+          stock: 0,
+          isVirtual: true,
+          seoDescription: entry.specs || "",
+          catalogSpecs: entry.specs || ""
+        };
+      });
+
+    // Enrich existing Physical Products with Knowledge Hub data
+    const enrichedProducts = products.map((p: any) => {
+        const entry = store.knowledge[p.sku];
+        if (entry) {
+            return {
+                ...p,
+                manufacturer: p.manufacturer && p.manufacturer !== "NIEZNANY" ? p.manufacturer : (entry.manufacturer || "NIEZNANY"),
+                catalogSpecs: entry.specs || "",
+                catalogPrice: entry.price || 0,
+                isIqSynced: true
+            };
+        }
+        return p;
+    });
+
+    unifiedDevices = [...enrichedProducts, ...virtualDevices];
+  } catch (e) {
+    unifiedDevices = [...products];
+  }
+
   // Sprawdź rolę użytkownika
   const role = (session?.user as any)?.role;
   const isAuthorized = role === "ADMIN" || role === "BIZ";
 
   if (!isAuthorized) {
     // Ukrywamy ceny przed detalistami i gośćmi
-    const safeProducts = products.map((p: any) => ({
+    const safeProducts = unifiedDevices.map((p: any) => ({
       ...p,
-      price: null, // Klient musi się zalogować
+      price: null,
+      catalogPrice: null,
       priceHidden: true
     }));
     return NextResponse.json(safeProducts);
   }
 
   // Dla B2B/Admin zwracamy pełne dane z flagą widoczności
-  const fullProducts = products.map((p: any) => ({
+  const fullProducts = unifiedDevices.map((p: any) => ({
     ...p,
     priceHidden: false
   }));

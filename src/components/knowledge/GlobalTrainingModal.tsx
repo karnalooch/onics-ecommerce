@@ -12,7 +12,8 @@ import {
   Cog, 
   FileSpreadsheet,
   XCircle,
-  Trash2
+  Trash2,
+  Download
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -97,15 +98,21 @@ export function GlobalTrainingModal() {
   }
 
   const handleStartAnalysis = () => {
-    if (!trainingFile || !tempApiKey || !selectedModelId || !validationResult?.success) return
+    if (!trainingFile) return
     setIsApproved(true)
     startTraining(
       trainingFile, 
-      tempApiKey, 
-      selectedModelId, 
-      validationResult.availableModels
+      tempApiKey || "", 
+      selectedModelId || 'internal-v9', 
+      validationResult?.availableModels || []
     )
   }
+
+  const handleExportDB = () => {
+    window.location.href = '/api/knowledge/export';
+  }
+
+  const isExcel = trainingFile?.toLowerCase().endsWith('.xlsx') || trainingFile?.toLowerCase().endsWith('.xls')
 
   return (
     <Dialog open={!!trainingFile && !isMinimized} onOpenChange={(open) => {
@@ -158,7 +165,7 @@ export function GlobalTrainingModal() {
                   <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/30">
                     <Brain className="h-6 w-6" />
                   </div>
-                  Inteligentna Analiza
+                  Universal Hub
                 </DialogTitle>
                 <DialogDescription className="text-sm text-slate-500 dark:text-slate-400 font-medium">
                   Przygotowanie ekstrakcji danych technicznych z pliku:
@@ -172,23 +179,42 @@ export function GlobalTrainingModal() {
           <div className="px-6 py-5 space-y-6">
             {!isTraining && !isDone && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <div className="p-3 bg-blue-500/10 rounded-xl">
-                    {trainingFile?.toLowerCase().endsWith('.pdf') ? <FileText className="h-6 w-6 text-blue-500" /> : <FileSpreadsheet className="h-6 w-6 text-emerald-500" />}
+                
+                {/* Status: Internal vs External */}
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 flex items-start gap-4">
+                  <div className="p-2 bg-emerald-500 text-white rounded-lg shadow-lg shadow-emerald-500/20">
+                    <ShieldCheck className="h-5 w-5" />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-lg">{trainingFile}</h3>
-                    <p className="text-xs text-muted-foreground">Katalog gotowy do ekstrakcji wiedzy</p>
+                  <div className="space-y-1">
+                    <h4 className="text-[11px] font-black uppercase text-emerald-700 dark:text-emerald-400 tracking-wider">Universal Hub V9 Active</h4>
+                    <p className="text-[10px] text-emerald-600/80 dark:text-emerald-500/80 font-medium leading-relaxed">
+                      {isExcel 
+                        ? "Wykryto arkusz kalkulacyjny. Użyję lokalnej inteligencji V9 do darmowej ekstrakcji modeli i parametrów."
+                        : "Wykryto plik PDF. Silnik V9 spróbuje wyciągnąć dane, ale zalecany jest klucz Gemini dla pełnej precyzji."}
+                    </p>
                   </div>
                 </div>
 
-                {/* API Key Section */}
+                <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="p-3 bg-blue-500/10 rounded-xl">
+                    {isExcel ? <FileSpreadsheet className="h-6 w-6 text-emerald-500" /> : <FileText className="h-6 w-6 text-blue-500" />}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg">{trainingFile}</h3>
+                    <p className="text-xs text-muted-foreground">Gotowy do zasilenia bazy wiedzy</p>
+                  </div>
+                </div>
+
+                {/* API Key Section - Now Optional */}
                 <div className="space-y-3 p-1">
-                  <Label className="text-[11px] uppercase tracking-widest font-black text-slate-500 dark:text-slate-400 ml-1">Klucz Autoryzacyjny Gemini</Label>
+                  <div className="flex justify-between items-center px-1">
+                    <Label className="text-[11px] uppercase tracking-widest font-black text-slate-500 dark:text-slate-400">Klucz AI Gemini (Opcjonalny)</Label>
+                    {!isExcel && <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[8px] font-black uppercase tracking-tighter">Zalecany dla PDF</Badge>}
+                  </div>
                   <div className="relative group">
                     <Input 
                       type="password"
-                      placeholder="Wklej token API (np. AIzaSy...)"
+                      placeholder="Wklej token API (zostaw puste dla silnika V9)"
                       value={tempApiKey}
                       onChange={(e) => {
                         setTempApiKey(e.target.value)
@@ -215,7 +241,7 @@ export function GlobalTrainingModal() {
                         disabled={!tempApiKey || isValidatingKey}
                       >
                         {isValidatingKey ? <RefreshCcw className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
-                        Sprawdź
+                        Skanuj
                       </Button>
                     </div>
                   </div>
@@ -242,7 +268,7 @@ export function GlobalTrainingModal() {
 
                       {validationResult.success && (
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Wybierz Modela & Koszt</Label>
+                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Premium AI: Wybierz Modela</Label>
                            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
                               {validationResult.availableModels.map((model: any) => (
                                 <div 
@@ -261,11 +287,8 @@ export function GlobalTrainingModal() {
                                           {model.id === validationResult.recommended && (
                                             <Badge className="bg-blue-600 text-[8px] h-4 font-black italic shadow-lg shadow-blue-500/20">REKOMENDOWANY</Badge>
                                           )}
-                                          {model.id === validationResult.cheapestId && model.id !== validationResult.recommended && (
-                                            <Badge className="bg-emerald-500 text-[8px] h-4 font-black italic shadow-lg shadow-emerald-500/20">NAJTANSZY</Badge>
-                                          )}
                                         </div>
-                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Input: ${model.inputPrice} / Output: ${model.outputPrice} <span className="text-[8px] lowercase">(per 1M tokens)</span></p>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">Input: ${model.inputPrice} / Output: ${model.outputPrice}</p>
                                      </div>
                                      {selectedModelId === model.id && (
                                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -286,16 +309,18 @@ export function GlobalTrainingModal() {
                   <Button 
                     variant="outline" 
                     className="flex-1 h-12 rounded-xl font-bold border-slate-200 dark:border-slate-800"
-                    onClick={() => setTrainingFile(null)}
+                    onClick={handleExportDB}
+                    title="Pobierz całą bazę wiedzy jako plik Excel"
                   >
-                    Anuluj
+                    <Download className="h-4 w-4 mr-2" />
+                    Baza (XLSX)
                   </Button>
                   <Button 
                     className="flex-2 h-12 rounded-xl font-black uppercase tracking-tight px-8 bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/20"
-                    disabled={!validationResult?.success}
+                    disabled={!trainingFile}
                     onClick={handleStartAnalysis}
                   >
-                    Inteligentna Analiza
+                    Start Analizy V9
                   </Button>
                 </div>
               </div>

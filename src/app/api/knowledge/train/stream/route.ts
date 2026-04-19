@@ -4,14 +4,15 @@ import { ProgressCallback } from '@/lib/knowledge/types';
 import fs from 'fs';
 import path from 'path';
 
+// GET: Strumień postępu uczenia AI (Server-Sent Events)
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const filename = searchParams.get('filename');
   const apiKey = searchParams.get('apiKey');
   const modelId = searchParams.get('modelId');
 
-  if (!filename || !apiKey) {
-    return new Response('Brak parametrów', { status: 400 });
+  if (!filename) {
+    return new Response('Brak parametru filename', { status: 400 });
   }
 
   const filePath = path.join(process.cwd(), 'public/uploads/catalogs', filename);
@@ -24,8 +25,19 @@ export async function GET(req: Request) {
 
   const stream = new ReadableStream({
     async start(controller) {
+      let isClosed = false;
+      const cancelSignal = { aborted: false };
+
       const sendUpdate = (data: any) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        if (isClosed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        } catch (e: any) {
+          // Toolkit Pattern: silent-connection-close
+          // Jeśli błąd to "Controller is already closed", ignorujemy go milcząco (to standard przy anulowaniu)
+          if (e.message?.includes('closed') || e.code === 'ERR_INVALID_STATE') return;
+          console.error("SSE Send Error:", e);
+        }
       };
 
       const onProgress: ProgressCallback = (update: { type: 'log' | 'progress' | 'error'; message: string; count?: number; percent?: number; }) => {
@@ -45,7 +57,8 @@ export async function GET(req: Request) {
           const result = await parseExcel(buffer, filename, onProgress, { 
             apiKey, 
             modelId: modelId || 'gemini-1.5-flash',
-            availableModels: modelPool
+            availableModels: modelPool,
+            signal: cancelSignal
           });
           
           const currentStore = await getKnowledge();
@@ -53,26 +66,50 @@ export async function GET(req: Request) {
             currentStore.processedSources.push(filename);
             await saveKnowledge(currentStore);
           }
-          sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.', count: result.count, stats: result.stats });
+          sendUpdate({ 
+            type: 'done', 
+            message: 'Uczenie zakończone sukcesem.', 
+            count: result.count, 
+            stats: result.stats,
+            knowledge: result.sessionKnowledge 
+          });
         } else if (filename.toLowerCase().endsWith('.pdf')) {
           const result = await parsePDFWithAI(
             buffer, 
             filename, 
             apiKey, 
-            modelId || undefined,
+            modelId || 'gemini-1.5-flash',
             modelPool,
-            onProgress
+            onProgress,
+            cancelSignal
           );
-          sendUpdate({ type: 'done', message: 'Uczenie zakończone sukcesem.', count: result.count, stats: result.stats });
+          sendUpdate({ 
+            type: 'done', 
+            message: 'Uczenie zakończone sukcesem.', 
+            count: result.count, 
+            stats: result.stats,
+            knowledge: result.sessionKnowledge 
+          });
         } else {
           sendUpdate({ type: 'error', message: 'Nieobsługiwany format pliku.' });
         }
       } catch (err: any) {
-        sendUpdate({ type: 'error', message: `Błąd: ${err.message}` });
+        if (err.message === 'PROCES_PRZERWANY') {
+          console.log(`[AI-SIGNAL] Proces ${filename} przerwany przez użytkownika.`);
+        } else {
+          sendUpdate({ type: 'error', message: `Błąd: ${err.message}` });
+        }
       } finally {
         clearInterval(heartbeat);
-        controller.close();
+        isClosed = true;
+        cancelSignal.aborted = true;
+        try {
+          controller.close();
+        } catch (e) {}
       }
+    },
+    cancel() {
+      // Wykryto rozłączenie klienta (np. zamknięcie zakładki)
     }
   });
 

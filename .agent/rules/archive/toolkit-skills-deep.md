@@ -1,0 +1,105 @@
+# AI Toolkit — Deep Skills (99)
+
+Detailed instructions and technical specifications for all specialized skills. Reference these for precise execution guidance.
+
+- **a11y-validate**: Validate code against accessibility standards: WCAG 2.1 Level AA, EN 301 549, and the European Accessibility Act (EAA / Directive EU 2019/882). Covers semantics, text alternatives, keyboard/focus, color/contrast, forms, media, ARIA, motion, mobile, and EAA documentation requirements. Framework-aware (React/Next/Nuxt/Astro/Gatsby/SvelteKit/Remix/Angular/Vue/React Native/Flutter/static HTML).
+- **agent-creator**: Creates new specialized agents with frontmatter, tool selection, and delegation guidance
+- **catalog-intelligence**: Extract technology data from complex distributor catalogs (XLSX, PDF) using deterministic V9 Battle-Hardened parsing. Features: "Letter Mandate" model filtering, EAN/Scientific notation protection, and Smart Specs Multi-Tier header merging. Operates locally without mandatory API keys.
+- **analyze**: Analyze code quality, complexity, and patterns
+- **api-patterns**: Loaded when user asks about REST API design or GraphQL patterns
+- **app-builder**: Loaded when user asks to scaffold or build a full-stack app
+- **architecture-audit**: Explore codebase organically for architectural friction, discover shallow modules, and propose module-deepening refactors as GitHub issue RFCs using parallel sub-agent interface designs. Use when user wants to improve architecture, find shallow modules, deepen modules, or reduce coupling.
+- **architecture-decision**: Loaded when user asks about architecture decisions or architecture note writing
+- **biz-scan**: Scan codebase for business opportunities and KPIs
+- **brand-voice**: Loaded when writing documentation, content, README, or user-facing text. Prevents generic LLM rhetoric and enforces direct, technical voice.
+- **briefing**: Generate executive daily briefing across all agents
+- **build**: Build the project with auto-detected toolchain
+- **chaos**: Inject controlled faults for resilience testing
+- **ci**: Detect and run CI pipeline with status reporting
+- **ci-cd-patterns**: Loaded when user asks about CI/CD pipelines or deployment automation
+- **clean-code**: Loaded when user asks about clean code, naming, or code quality
+- **command-creator**: Creates new Claude Code slash commands with frontmatter, workflow guidance, and validation
+- **commit**: Create Conventional Commits with pre-commit validation
+- **content-moderation-patterns**: Loaded when user builds content moderation, safety filters, or policy enforcement with Claude. Covers pre-filter vs LLM-classify, category design, confidence thresholds, and human-in-the-loop.
+- **council**: 4-perspective decision evaluation for architecture choices. Use when user wants multi-angle analysis, needs to decide between alternatives, or mentions 'council', 'evaluate decision', 'pros cons'.
+- **csharp-patterns**: Loaded when user asks about C# or .NET development patterns
+- **cve-scan**: Scan project dependencies for known CVEs using native audit tools (npm, pip, composer, cargo, go, bundler, dart)
+- **database-patterns**: Loaded when user asks about database schema or query optimization
+- **debug**: Debug errors and trace root causes systematically
+- **debugging-tactics**: Loaded when user is debugging an issue or needs root cause analysis
+- **deploy**: Deploy with pre-flight checks and health verification
+- **design-an-interface**: Generate multiple radically different interface designs using parallel sub-agents, then compare on simplicity, depth, and correctness. Based on 'Design It Twice' from Ousterhout. Use when user wants to design an API, explore interface options, compare module shapes, or mentions 'design it twice'.
+- **design-engineering**: Loaded when user asks about UI animations or CSS design craft
+- **docker-devops**: Loaded when user asks about Docker, containers, or DevOps patterns
+- **docs**: Generate and update README, API docs, and architecture notes
+- **documentation-standards**: Loaded when creating or updating KB documents, architecture notes, SOPs, or any file in kb/ directory
+- **ecommerce-patterns**: Loaded when user asks about e-commerce or shopping cart features
+- **evaluate**: Evaluate skill quality and RAG retrieval accuracy
+- **evolve**: Evolve agent definitions via meta-architect
+- **explain**: Explain code, architecture, or concepts with diagrams
+- **explore**: Explore codebase structure, stack, and architecture
+- **fix**: Auto-fix lint errors, type issues, and simple bugs
+- **flutter-patterns**: Loaded when user asks about Flutter or Dart development patterns
+- **git-mastery**: Loaded when user asks about advanced Git workflows or history rewriting
+- **grill-me**: Stress-test a plan or design through relentless Socratic questioning, walking down each decision branch until reaching shared understanding. Use when user wants to stress-test a plan, get grilled, validate assumptions, or mentions 'grill me'.
+- **health**: Report service and infrastructure health status
+- **hipaa-validate**: Validate code against HIPAA policy: PHI exposure, missing audit logging, unencrypted transmission/storage, access control gaps, temp file exposure, and missing BAA references
+- **hive-mind**: Loaded when orchestrating multi-agent swarms or consensus workflows
+- **hook-creator**: Creates new Claude Code hooks with guided workflow, strict conventions, and validation
+- **index**: Index codebase into the knowledge base
+- **instinct-review**: Review and manage learned instincts from past sessions
+- **introspect**: Agent self-debugging and recovery. Use when stuck in loops, making repeated errors, or quality degrades. Triggers: introspect, self-debug, stuck, loop, why failing.
+- **java-patterns**: Loaded when user asks about Java development patterns
+- **json-mode-patterns**: Loaded when user needs structured JSON output from Claude. Covers tool-use-as-JSON-mode, schema design, parsing, partial recovery, and validation.
+- **kotlin-patterns**: Loaded when user asks about Kotlin development patterns
+- **lint**: Lint code with auto-detected tools and fix suggestions
+- **mcp-builder**: Build production-grade MCP (Model Context Protocol) servers from scratch using the 4-phase methodology: research, implement, test, evaluate. Use when creating new MCP integrations for external APIs, databases, or internal services.
+- **mcp-patterns**: Loaded when user asks about MCP servers or tool protocol design
+- **mem-search**: Search past coding sessions using natural language. Finds relevant observations, decisions, and context from previous work.
+- **migrate**: Run database migrations with backup verification
+- **migration-patterns**: Loaded when user asks about database migrations or zero-downtime deploys
+- **model-routing-patterns**: Loaded when user builds multi-model pipelines (Haiku/Sonnet/Opus). Covers cost-optimized routing, escalation, sub-agent delegation, and fallback chains.
+- **night-watch**: Run autonomous maintenance and dependency updates
+- **observability-patterns**: Loaded when user asks about logging, metrics, or tracing patterns
+- **onboard**: Generate project onboarding materials
+- **orchestrate**: Coordinate multiple specialized agents in parallel
+- **panic**: Emergency stabilization via system-governor agent
+- **performance-profiling**: Loaded when user asks about performance profiling or optimization
+- **persona**: Switch engineering persona at runtime: backend-lead, frontend-lead, devops-eng, junior-dev
+- **plan**: Plan implementation with tasks and success criteria
+- **plan-writing**: Loaded when user asks to write an implementation plan or pre-mortem
+- **plugin-creator**: Creates experimental opt-in plugin packs with manifests, conventions, and optional module scaffolding for Claude and Codex runtimes
+- **pr**: Create pull requests with pre-flight validation
+- **prd-to-issues**: Break a PRD into independently-grabbable GitHub issues using vertical slices with HITL/AFK tagging and dependency ordering. Use when user wants to convert a PRD to issues, create tickets, or break down a PRD into work items.
+- **prd-to-plan**: Convert a PRD into a phased implementation plan using tracer-bullet vertical slices. Use when user wants to break down a PRD, create an implementation plan, plan phases from a PRD, or mentions tracer bullets.
+- **predict**: Predict regressions and impact before changes land
+- **prompt-caching-patterns**: Loaded when user builds with Anthropic API and needs to cut cost or latency via prompt caching. Covers TTL, cache breakpoints, stacking, invalidation, and measuring hit rate.
+- **qa-session**: Interactive QA session where user reports bugs conversationally and agent files GitHub issues with domain language. Explores codebase in background for context. Use when user wants to report bugs, do QA, file issues conversationally, or mentions QA session.
+- **rag-patterns**: Loaded when user asks about RAG systems, embeddings, or vector search
+- **refactor**: Refactor code for quality and maintainability
+- **refactor-plan**: Create a detailed refactor plan with tiny commits via user interview, then file as a GitHub issue RFC. Use when user wants to plan a refactor, create a refactoring RFC, or break a refactor into safe incremental steps.
+- **repeat**: Run a prompt or slash command on a recurring interval until task complete or limits reached. Use when user wants to set up a recurring task, poll for status, or run something repeatedly on an interval.
+- **research-mastery**: Loaded when user asks to research, verify, or synthesize information
+- **review**: Review code for quality, security, and correctness
+- **rollback**: Roll back a deployment safely with verification
+- **ruby-patterns**: Loaded when user asks about Ruby development patterns
+- **rust-patterns**: Loaded when user asks about Rust development patterns
+- **search**: Search the knowledge base with semantic and hybrid modes
+- **security-patterns**: Loaded when user asks about security, OWASP, or auth patterns
+- **seo-validate**: Validate code against SEO best practices: W3C semantics, meta/OG tags, Schema.org, hreflang, Core Web Vitals (LCP/INP/CLS), resource hints, GEO, SPA/SSG/CSR crawlability, technical SEO, accessibility-for-SEO. Supports React/Next/Nuxt/Astro/Gatsby/SvelteKit/Remix/Angular/Vue/static HTML.
+- **skill-audit**: Scan skills and agents for security risks: dangerous patterns, secrets, excessive permissions
+- **skill-creator**: Create new skills from templates with guided workflow
+- **<ctrl42>-task**: (DEPRECATED: Use subagent-development)
+- **subagent-development**: Execute implementation plans using fresh subagents per task with two-stage review: spec compliance first, then code quality. Use when executing plans with independent tasks.
+- **swarm**: Execute tasks via Map-Reduce, Consensus, or Relay swarms
+- **swift-patterns**: Loaded when user asks about Swift or iOS development patterns
+- **tdd**: Test-driven development with red-green-refactor loop and vertical slices. Use when user wants TDD, test-first development, red-green-refactor, or building features with tests driving the implementation.
+- **teams**: Launch pre-configured Agent Teams for common workflows
+- **test**: Run tests with coverage analysis and reporting
+- **testing-patterns**: Loaded when user asks about testing strategy, fixtures, or mocking
+- **triage-issue**: Triage a bug by deeply exploring the codebase for root cause, then create a GitHub issue with a TDD-based fix plan. Mostly hands-off — minimal user interaction. Use when user reports a bug, wants to investigate an issue, mentions triage, or wants a fix plan.
+- **typescript-patterns**: Loaded when user asks about TypeScript patterns or type safety
+- **ubiquitous-language**: Extract a DDD-style ubiquitous language glossary from the conversation, flagging ambiguities and proposing canonical terms. Saves to UBIQUITOUS_LANGUAGE.md. Use when user wants to define domain terms, build a glossary, harden terminology, or mentions DDD or domain model.
+- **verification-before-completion**: Loaded when agent is about to claim work is complete, fixed, or passing — requires running verification commands and confirming output before making any success claims. Evidence before assertions, always.
+- **workflow**: Start and manage autonomous agent workflows
+- **write-a-prd**: Create a Product Requirements Document through interactive interview, codebase exploration, and deep module design. Use when user wants to write a PRD, create product requirements, or plan a new feature from scratch.

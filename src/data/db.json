@@ -1,0 +1,233 @@
+{
+  "users": [
+    {
+      "id": "u_admin",
+      "email": "admin@celtronics.pl",
+      "username": "admin",
+      "companyName": "Celtronics Admin",
+      "roleType": "ADMIN",
+      "isApproved": true,
+      "isBlocked": false,
+      "nip": "1234567890",
+      "discount": 10,
+      "tierName": "GOLD",
+      "jwt": "mock-jwt-admin"
+    }
+  ],
+  "categories": [
+    {
+      "id": "c_auto_a3b5x",
+      "name": "INFRASTRUKTURA IT",
+      "iconName": "Layers",
+      "subcategories": [
+        {
+          "id": "s_auto_ykz9x",
+          "name": "Switche PoE"
+        },
+        {
+          "id": "s_auto_n2kyz",
+          "name": "Okablowanie"
+        },
+        {
+          "id": "s_auto_giun7",
+          "name": "Szafy RACK"
+        }
+      ]
+    },
+    {
+      "id": "c_auto_guw5p",
+      "name": "ZASILANIE",
+      "iconName": "Layers",
+      "subcategories": [
+        {
+          "id": "s_auto_3zwv7",
+          "name": "Akumulatory"
+        },
+        {
+          "id": "s_auto_ovwmt",
+          "name": "Zasilacze Impulsowe"
+        },
+        {
+          "id": "s_auto_x5n36",
+          "name": "Zasilacze Buforowe"
+        }
+      ]
+    },
+    {
+      "id": "c_auto_eob4p",
+      "name": "SSWIN",
+      "iconName": "Layers",
+      "subcategories": [
+        {
+          "id": "s_auto_inost",
+          "name": "Sygnalizatory"
+        },
+        {
+          "id": "s_auto_v7c72",
+          "name": "Manipulatory"
+        },
+        {
+          "id": "s_auto_soadf",
+          "name": "Centrale Alarmowe"
+        },
+        {
+          "id": "s_auto_jul91",
+          "name": "Czujki Obwodowe"
+        },
+        {
+          "id": "s_auto_f01nt",
+          "name": "Czujki Ruchu"
+        },
+        {
+          "id": "s_auto_ibsdh",
+          "name": "Moduły i Ekspandery"
+        }
+      ]
+    },
+    {
+      "id": "c_auto_5uhjn",
+      "name": "KONTROLA DOSTĘPU",
+      "iconName": "Layers",
+      "subcategories": [
+        {
+          "id": "s_auto_jjnne",
+          "name": "Zamki i Blokady"
+        },
+        {
+          "id": "s_auto_crtsb",
+          "name": "Karty i Breloki"
+        },
+        {
+          "id": "s_auto_gznd7",
+          "name": "Czytniki i Kontrolery"
+        }
+      ]
+    },
+    {
+      "id": "c_auto_34on5",
+      "name": "CCTV",
+      "iconName": "Layers",
+      "subcategories": [
+        {
+          "id": "s_auto_ufghn",
+          "name": "Akcesoria CCTV"
+        },
+        {
+          "id": "s_auto_07rtr",
+          "name": "Kamery Analogowe"
+        },
+        {
+          "id": "s_auto_35dhm",
+          "name": "Rejestratory NVR"
+        },
+        {
+          "id": "s_auto_x8598",
+          "name": "Kamery IP"
+        },
+        {
+          "id": "s_auto_fa6z8",
+          "name": "Rejestratory DVR"
+        }
+      ]
+    },
+    {
+      "id": "c_auto_rmkid",
+      "name": "SYSTEMY PRZYWOŁANIA",
+      "iconName": "Layers",
+      "subcategories": [
+        {
+          "id": "s_auto_5efgo",
+          "name": "Odbiorniki"
+        },
+        {
+          "id": "s_auto_jnm0i",
+          "name": "Przyciski i Nadajniki"
+        }
+      ]
+    },
+    {
+      "id": "c_auto_3hdcd",
+      "name": "WIDEODOMOFONY",
+      "iconName": "Layers",
+      "subcategories": [
+        {
+          "id": "s_auto_qzp4x",
+          "name": "Monitory"
+        }
+      ]
+    }
+  ],
+  "manufacturers": [
+    {
+      "id": "m_auto_th95x",
+      "name": "Nieznany"
+    },
+    {
+      "id": "m_auto_06suy",
+      "name": "Atte"
+    },
+    {
+      "id": "m_auto_3y2po",
+      "name": "BCS"
+    },
+    {
+      "id": "m_auto_g3so3",
+      "name": "Camsat"
+    },
+    {
+      "id": "m_auto_ai98b",
+      "name": "Dahua"
+    },
+    {
+      "id": "m_auto_kn5f6",
+      "name": "Elfon"
+    },
+    {
+      "id": "m_auto_butgk",
+      "name": "Ewimar"
+    },
+    {
+      "id": "m_auto_fett5",
+      "name": "GDE/SCOT"
+    },
+    {
+      "id": "m_auto_vffs3",
+      "name": "Gorke"
+    },
+    {
+      "id": "m_auto_b99vf",
+      "name": "Hanwha Vision"
+    },
+    {
+      "id": "m_auto_k277h",
+      "name": "Hikvision"
+    },
+    {
+      "id": "m_auto_yyyyd",
+      "name": "Merawex"
+    },
+    {
+      "id": "m_auto_dwxnj",
+      "name": "Pulsar"
+    },
+    {
+      "id": "m_auto_pxrhz",
+      "name": "Ropam"
+    },
+    {
+      "id": "m_auto_v29eo",
+      "name": "Vidos"
+    },
+    {
+      "id": "m_auto_5vhgq",
+      "name": "Edimax"
+    },
+    {
+      "id": "m_auto_pu7s2",
+      "name": "AG Neovo"
+    }
+  ],
+  "products": [],
+  "orders": [],
+  "repairs": []
+}

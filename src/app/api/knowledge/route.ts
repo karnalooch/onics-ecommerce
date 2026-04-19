@@ -1,51 +1,36 @@
 import { NextResponse } from 'next/server';
-import { getKnowledge } from '@/lib/knowledge/parser';
-import fs from 'fs';
-import path from 'path';
+import { initializeMockData, saveMockData } from '@/store/serverStore';
 
 export async function GET() {
   try {
-    const store = await getKnowledge();
+    const { products, categories, manufacturers } = initializeMockData();
     
-    // Samonaprawa: Synchronizacja źródeł z systemem plików
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'catalogs');
-    if (fs.existsSync(uploadsDir)) {
-      const files = fs.readdirSync(uploadsDir);
-      let changed = false;
-      files.forEach(file => {
-        if (!store.sources.includes(file)) {
-          store.sources.push(file);
-          changed = true;
-        }
-      });
-      if (changed) {
-        const { saveKnowledge } = await import('@/lib/knowledge/parser');
-        await saveKnowledge(store);
-      }
-    }
+    // Filter virtual products (The "Knowledge Hub" view)
+    const virtualProducts = products.filter((p: any) => p.isVirtual);
 
-    // Konwertujemy mapę wiedzy na listę snippetów dla frontendu
-    const snippets = Object.entries(store.knowledge).map(([model, data], index) => {
-      const isObject = data && typeof data === 'object';
-      const source = isObject ? (data.source || "Baza Wiedzy") : "Baza Wiedzy";
-      const date = isObject ? (data.date || store.lastUpdated?.split('T')[0]) : store.lastUpdated?.split('T')[0];
-      
+    // Map virtual products to the snippets format used by the Knowledge UI
+    const snippets = virtualProducts.map((p: any, index: number) => {
       return {
-        id: `s-${index}`,
-        source: source,
-        model: model,
-        specs: isObject ? data.specs : data,
-        price: isObject ? data.price : null,
-        currency: isObject ? (data.currency || 'PLN') : 'PLN',
-        type: source.toLowerCase().endsWith('.pdf') ? ('pdf' as const) : ('xls' as const),
-        date: date || new Date().toISOString().split('T')[0]
+        id: p.id || `s-${index}`,
+        source: "Baza produktów",
+        model: p.sku,
+        name: p.name,
+        specs: p.specs || "",
+        price: p.price || 0,
+        type: 'xls' as const,
+        date: p.lastUpdated || new Date().toISOString().split('T')[0]
       };
     });
 
     return NextResponse.json({
-      sources: store.sources,
-      processedSources: store.processedSources,
-      snippets: snippets
+      sources: [], // Legacy sources handling shifted to actions
+      processedSources: [],
+      snippets: snippets.slice(0, 500), // Limit results for UI performance
+      totalKnowledge: virtualProducts.length,
+      registry: {
+        categories,
+        manufacturers
+      }
     });
   } catch (err) {
     console.error("GET Knowledge API Error:", err);
@@ -55,15 +40,14 @@ export async function GET() {
 
 export async function DELETE() {
   try {
-    const { saveKnowledge } = await import('@/lib/knowledge/parser');
-    const emptyStore = { 
-      lastUpdated: new Date().toISOString(), 
-      sources: [], 
-      processedSources: [], 
-      knowledge: {} 
-    };
-    await saveKnowledge(emptyStore);
-    return NextResponse.json({ success: true, message: "Baza wiedzy została wyczyszczona." });
+    const db = initializeMockData();
+    
+    // SURGICAL WIPE: Remove only virtual items
+    db.products = db.products.filter((p: any) => !p.isVirtual);
+    
+    saveMockData();
+    
+    return NextResponse.json({ success: true, message: "Baza wiedzy (Modele Wirtualne) została wyczyszczona." });
   } catch (err) {
     console.error("DELETE Knowledge API Error:", err);
     return NextResponse.json({ error: "Błąd podczas czyszczenia bazy" }, { status: 500 });

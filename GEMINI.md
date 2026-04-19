@@ -39,3 +39,10 @@ It incorporates the core modules of the SoftSpark AI Toolkit.
 1. Static analysis (lint/typecheck).
 2. Functional verification (run command/check output).
 3. User approval for UI changes.
+
+## Data Extraction Excellence (V9)
+- **Engine Priority**: Always prefer the local Universal Catalog Parsing V9 engine over one-off AI prompts for distributor price lists.
+- **Rules of Integrity**: 
+  - **Letter Mandate**: All models must contain at least one character (A-Z).
+  - **Hardened Pricing**: No scientific notation or EAN codes allowed in the Price column.
+  - **Specs Merging**: Aggregate all technical columns between Model and Price for rich descriptions.

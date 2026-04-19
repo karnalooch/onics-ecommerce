@@ -1,0 +1,21 @@
+{
+  "lastUpdated": "2026-04-18T21:06:53.687Z",
+  "sources": [
+    "Cennik detaliczny PL 2026.xlsx",
+    "Cennik SSP_2023-11-22_4_BF.pdf",
+    "Cennik SSWiN 2026-02-16.xlsx",
+    "Cennik SSWiN_2026-02-16_BF.pdf",
+    "Cennik_detaliczny_EMU_IQ_2023.xlsx",
+    "cennik_ropam-elektronik_20260302.pdf",
+    "EMU_RAPORT_TOP_FINAL.xlsx",
+    "Hikvision Poland 2026 Q1 Price List Channel (MSRP) 202601.xlsx",
+    "mkj_pelny_raport_enriched.xlsx",
+    "mkj_tests",
+    "Pulsar_Cennik_Detal_2023.pdf",
+    "ROGER-cennik-PLN-2026.01.31-Rev.B.xlsx",
+    "universal_live",
+    "universal_mass_test"
+  ],
+  "processedSources": [],
+  "knowledge": {}
+}

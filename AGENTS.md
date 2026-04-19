@@ -393,6 +393,7 @@ Shared AI development toolkit with specialized agents, Codex-compatible skills, 
 ## Available Skills
 
 - **a11y-validate**: Validate code against accessibility standards (WCAG, EAA).
+- **catalog-intelligence**: Extract technology data from complex distributor catalogs (XLSX, PDF) using deterministic V9 Battle-Hardened parsing. Features: "Letter Mandate" model filtering, EAN/Scientific notation protection, and Smart Specs Multi-Tier header merging. Operates locally without mandatory API keys.
 - **analyze**: Analyze code quality, complexity, and patterns.
 - **architecture-audit**: Explore codebase for architectural friction.
 - **build**: Build the project with auto-detected toolchain.

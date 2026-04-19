@@ -23,31 +23,32 @@ export async function POST(req: Request) {
     let addedCount = 0;
     let learned = false;
 
-    // 2. Jeśli podano klucz - analizujemy plik i wyciągamy wiedzę
-    if (transientApiKey && transientApiKey.trim() !== "") {
-      if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-        const result = await parseExcel(buffer, filename, undefined, { 
-          apiKey: transientApiKey, 
-          modelId: 'gemini-1.5-flash' 
-        });
-        addedCount = result.count;
-        learned = true;
-      } else if (filename.toLowerCase().endsWith('.pdf')) {
-        const result = await parsePDFWithAI(buffer, filename, transientApiKey);
-        addedCount = result.count;
-        learned = true;
-      }
+    // 2. Analizujemy plik i wyciągamy wiedzę (V7 Heuristics)
+    if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
+      const result = await parseExcel(buffer, filename, undefined, { 
+        apiKey: transientApiKey || undefined, 
+        modelId: 'gemini-1.5-flash' 
+      });
+      addedCount = result.count;
+      learned = addedCount > 0;
+    } else if (filename.toLowerCase().endsWith('.pdf') && transientApiKey) {
+      const result = await parsePDFWithAI(buffer, filename, transientApiKey);
+      addedCount = result.count;
+      learned = true;
     }
 
     // 3. Aktualizujemy listę wgranych plików w metadanych
     const currentStore = await getKnowledge();
-    const existingFile = currentStore.sources.find(s => s === filename);
     
     if (!currentStore.sources.includes(filename)) {
       currentStore.sources.push(filename);
     }
     
-    // Dodatkowe metadane o plikach (opcjonalnie do rozbudowy)
+    // Jeśli udało się coś wyciągnąć, oznaczamy jako przetworzony
+    if (learned && !currentStore.processedSources.includes(filename)) {
+      currentStore.processedSources.push(filename);
+    }
+    
     currentStore.lastUpdated = new Date().toISOString();
     await saveKnowledge(currentStore);
 
@@ -56,8 +57,8 @@ export async function POST(req: Request) {
       count: addedCount,
       learned: learned,
       message: learned 
-        ? `Plik ${filename} zapisany i pomyślnie przetworzony (${addedCount} modeli).`
-        : `Plik ${filename} został zapisany w archiwum (brak klucza AI - nie wyciągnięto wiedzy).`
+        ? `Plik ${filename} przetworzony pomyślnie (${addedCount} modeli).`
+        : `Plik ${filename} zapisany w archiwum (analiza zostanie wykonana w kroku uczenia).`
     });
   } catch (err: any) {
     console.error("Upload error:", err);

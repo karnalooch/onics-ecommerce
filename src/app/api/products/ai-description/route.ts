@@ -7,24 +7,24 @@ export const dynamic = 'force-dynamic';
 
 const AI_DB: Record<string, string[]> = {
   "integra": [
-    "Zaawansowana centrala alarmowa SATEL INTEGRA to wszechstronne rozwiązanie łączące system sygnalizacji włamania, kontrolę dostępu i automatykę domową.",
-    "Oferuje skalowalną architekturę pozwalającą na obsługę wielu stref i wyjść, dostosowaną do wymagań konkretnego obiektu.",
-    "Spełnia rygorystyczne normy bezpieczeństwa EN-50131 Grade 2 lub 3, zapewniając niezawodną ochronę profesjonalnych systemów zabezpieczeń."
+    "Centrala alarmowa SATEL INTEGRA obsługująca do 256 wejść i wyjść programowalnych.",
+    "Zintegrowana kontrola dostępu i automatyka obiektowa w jednym systemie.",
+    "Zgodność z normą EN-50131 Grade 3 dla profesjonalnych instalacji zabezpieczeń."
   ],
   "hikvision": [
-    "Profesjonalna kamera IP marki Hikvision oferuje najwyższą jakość obrazu w rozdzielczości do 4K, idealną do precyzyjnego monitoringu wizyjnego.",
-    "Wyposażona w technologię WDR oraz zaawansowane doświetlacze IR, gwarantuje doskonałą widoczność nawet w skrajnie trudnych warunkach oświetleniowych.",
-    "Dzięki inteligentnej analityce obrazu AI skutecznie eliminuje fałszywe alarmy i umożliwia błyskawiczne przeszukiwanie nagrań."
+    "Kamera IP Hikvision z przetwornikiem CMOS i rozdzielczością do 8MP (4K).",
+    "Obiektyw o stałej ogniskowej, wsparcie kodeka H.265+ i cyfrowa redukcja szumów WDR.",
+    "Wbudowany promiennik IR, zasilanie przez PoE (802.3af), klasa szczelności IP67."
   ],
   "ubiquiti": [
-    "Przełącznik sieciowy Ubiquiti UniFi to fundament nowoczesnej sieci, oferujący gigabitową przepustowość i zaawansowane zarządzanie z poziomu chmury.",
-    "Zintegrowane porty PoE+ umożliwiają bezpośrednie zasilanie kamer i punktów dostępowych, upraszczając infrastrukturę kablową w każdej instalacji.",
-    "Intuicyjny interfejs UniFi Controller pozwala na błyskawiczną konfigurację VLAN-ów i pełny monitoring ruchu sieciowego v czasie rzeczywistym."
+    "Przełącznik sieciowy Ubiquiti UniFi Gigabit z zarządzaniem w warstwie 2 i 3.",
+    "Obsługa standardu PoE+ (802.3at) na portach RJ45 dla zasilania punktów dostępowych.",
+    "Konfiguracja i monitoring przez oprogramowanie UniFi Network Controller."
   ],
   "default": [
-    "Wysokiej jakości komponent instalacyjny zaprojektowany z myślą o profesjonalnych systemach zabezpieczeń i telekomunikacji.",
-    "Gwarantuje pełną kompatybilność z najnowszymi standardami branżowymi oraz wysoką odporność na czynniki zewnętrzne.",
-    "Idealne rozwiązanie dla instalatorów poszukujących balansu między zaawansowanymi parametrami a łatwością montażu."
+    "Komponent systemu zabezpieczeń pracujący w standardzie cyfrowym.",
+    "Parametry zgodne ze specyfikacją techniczną producenta.",
+    "Przeznaczony do integracji w profesjonalnych instalacjach niskoprądowych."
   ]
 };
 
@@ -61,21 +61,18 @@ export async function POST(req: Request) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
         
-        let prompt = `Jesteś ekspertem technicznym B2B w branży systemów zabezpieczeń (CCTV, Alarmy, Sieci). 
-        Przygotuj profesjonalny opis produktu w języku polskim (maksymalnie 3 zdania).
-        Skup się na korzyściach technicznych dla profesjonalnego instalatora.
-
-        PRZYKŁADY STYLU:
-        - "Centrala INTEGRA-64 to fundament profesjonalnych systemów alarmowych, oferujący wsparcie dla 64 stref i pełną zgodność z Grade 3."
-        - "Kamera Hikvision serii ColorVu zapewnia kolorowy obraz 24/7, eliminując martwe punkty dzięki analityce AcuSense."
+        let prompt = `Jesteś Ekspertem Technicznym B2B. Przygotuj surowy opis produktu (max 3 zdania).
+        STRICT RULE: Zero marketingu, zero "bełkotu" typu "niezawodny", "idealny", "zapewnia".
+        STYL: Wyłącznie fakty techniczne, parametry, standardy. 
+        JĘZYK: Polski.
         `;
 
         if (technicalContext) {
-          prompt += `\n\nWAŻNE: Wykorzystaj poniższą specyfikację techniczną z katalogu dystrybutora jako jedyne źródło parametrów:
+          prompt += `\n\nŹRÓDŁO DANYCH (Skoncentruj się na tym):
           "${technicalContext}"`;
           source = "Catalog Hub + AI";
         } else {
-          source = "Gemini AI (General)";
+          source = "Gemini AI (General Technical)";
         }
 
         prompt += `\n\nProdukt: ${product.name}
@@ -89,7 +86,7 @@ export async function POST(req: Request) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 300 }
+            generationConfig: { temperature: 0.1, maxOutputTokens: 300 }
           })
         });
 

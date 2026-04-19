@@ -6,6 +6,9 @@ export const KnowledgeEntrySchema = z.object({
   currency: z.string().default('PLN'),
   source: z.string().optional(),
   date: z.string().optional(),
+  manufacturer: z.string().optional(),
+  category: z.string().optional(),
+  subcategory: z.string().optional(),
 });
 
 export type KnowledgeEntry = z.infer<typeof KnowledgeEntrySchema>;
@@ -21,6 +24,9 @@ export interface ExtractionResult {
   model: string;
   specs: string;
   price: number | null;
+  manufacturer?: string;
+  category?: string;
+  subcategory?: string;
 }
 
 export type ProgressCallback = (update: { 
@@ -33,4 +39,11 @@ export type ProgressCallback = (update: {
 export interface ParsingStrategy {
   name: string;
   execute(data: any): Promise<ExtractionResult[]>;
+}
+
+export interface ParserOptions {
+  apiKey: string;
+  modelId?: string;
+  availableModels?: string[];
+  signal?: { aborted: boolean };
 }

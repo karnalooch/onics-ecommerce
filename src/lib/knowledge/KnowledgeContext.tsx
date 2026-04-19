@@ -23,6 +23,7 @@ interface KnowledgeContextType {
   progressPercent: number
   logs: LogEntry[]
   analysisStats: AnalysisStats | null
+  sessionResults: Record<string, any> | null
   selectedModelId: string | null
   isApproved: boolean
   setSelectedModelId: (val: string | null) => void
@@ -48,12 +49,17 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
   const [progressPercent, setProgressPercent] = useState(0)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [analysisStats, setAnalysisStats] = useState<AnalysisStats | null>(null)
+  const [sessionResults, setSessionResults] = useState<Record<string, any> | null>(null)
   const [activeEventSource, setActiveEventSource] = useState<EventSource | null>(null)
   const [tempApiKey, setTempApiKey] = useState("")
   const [isValidatingKey, setIsValidatingKey] = useState(false)
   const [validationResult, setValidationResult] = useState<any | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [isApproved, setIsApproved] = useState(false)
+
+  // Toolkit Pattern: synchronous-connection-guards
+  const eventSourceRef = React.useRef<EventSource | null>(null)
+  const isConnectingRef = React.useRef(false)
 
   // Persistence: Restore state from sessionStorage on mount
   useEffect(() => {
@@ -95,16 +101,18 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
   }, [isTraining, isDone, trainingFile, foundCount, progressPercent, logs, analysisStats, tempApiKey, validationResult, isMinimized])
 
   const stopTraining = useCallback(() => {
-    if (activeEventSource) {
-      activeEventSource.close()
-      setActiveEventSource(null)
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
     }
+    setActiveEventSource(null)
+    isConnectingRef.current = false
     setLogs(prev => [...prev.slice(-100), { time: new Date().toLocaleTimeString(), msg: "Przerwano operację przez użytkownika.", type: 'error' }])
     setIsTraining(false)
     setIsDone(false)
     setIsMinimized(false)
     setProgressPercent(0)
-  }, [activeEventSource])
+  }, [])
 
   const resetState = useCallback(() => {
     setIsTraining(false)
@@ -123,29 +131,38 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [activeEventSource])
 
-  const startTraining = useCallback((filename: string, apiKey: string, modelId: string, availableModels: string[]) => {
-    // Only reset detailed counts if starting a COMPLETELY new session manually
+  const startTraining = useCallback((filename: string, apiKey?: string, modelId?: string, availableModels?: string[]) => {
+    // Force reset if starting a new session
     if (!isTraining) {
       setIsTraining(true)
       setIsDone(false)
       setIsMinimized(false)
       setTrainingFile(filename)
-      setLogs([{ time: new Date().toLocaleTimeString(), msg: "Inicjalizacja połączenia...", type: 'log' }])
+      setLogs([{ time: new Date().toLocaleTimeString(), msg: "Inicjalizacja silnika...", type: 'log' }])
       setProgressPercent(0)
       setFoundCount(0)
       setAnalysisStats(null)
+      setSessionResults(null)
     }
+
+    if (eventSourceRef.current || isConnectingRef.current) {
+      console.log("[SSE-GUARD] Zapobieganie powielaniu połączenia.");
+      return;
+    }
+
+    isConnectingRef.current = true;
 
     const params = new URLSearchParams({
       filename,
-      apiKey,
-      modelId,
+      apiKey: apiKey || '',
+      modelId: modelId || 'internal-v7',
       availableModels: Array.isArray(availableModels) 
-        ? availableModels.map(m => typeof m === 'string' ? m : m.id).join(',')
+        ? availableModels.map(m => typeof m === 'string' ? m : (m as any).id).join(',')
         : ''
     })
 
     const eventSource = new EventSource(`/api/knowledge/train/stream?${params.toString()}`)
+    eventSourceRef.current = eventSource;
     setActiveEventSource(eventSource)
 
     eventSource.onmessage = (event) => {
@@ -166,8 +183,10 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
         if (data.count !== undefined) setFoundCount(data.count)
         if (data.stats) setAnalysisStats(data.stats)
         setLogs(prev => [...prev, { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'done' }])
+        if (data.knowledge) setSessionResults(data.knowledge)
         setIsMinimized(false)
         setIsDone(true)
+        setIsTraining(false)
         setProgressPercent(100)
         eventSource.close()
         setActiveEventSource(null)
@@ -175,27 +194,28 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
     }
 
     eventSource.onerror = () => {
-      setLogs(prev => [...prev.slice(-100), { time: new Date().toLocaleTimeString(), msg: "Błąd połączenia (SSE). Próba ponownego połączenia...", type: 'error' }])
+      setLogs(prev => [...prev.slice(-100), { time: new Date().toLocaleTimeString(), msg: "Problemy z siecią... Czekam na stabilne połączenie.", type: 'log' }])
       eventSource.close()
+      eventSourceRef.current = null;
       setActiveEventSource(null)
-      
-      // Auto-reconnect after 3 seconds if still training
-      setTimeout(() => {
-        if (isTraining && !isDone) {
-          // Note: Logic here is simple, in real app we'd use a better backoff
-        }
-      }, 3000)
+      isConnectingRef.current = false;
     }
   }, [isTraining, isDone])
 
   // Automatic Re-attachment Logic
   useEffect(() => {
-    if (isTraining && !isDone && !activeEventSource && trainingFile && tempApiKey) {
+    // Sprawdzamy refa zamiast stanu, aby uniknąć wyścigów przy odświeżaniu
+    if (isTraining && !isDone && !eventSourceRef.current && !isConnectingRef.current && trainingFile && tempApiKey) {
       const modelId = validationResult?.recommended || ''
       const avModels = validationResult?.availableModels || []
-      startTraining(trainingFile, tempApiKey, modelId, avModels)
+      
+      // Mały timeout, aby dać Reactowi czas na ustabilizowanie stanów
+      const timer = setTimeout(() => {
+        startTraining(trainingFile, tempApiKey, modelId, avModels)
+      }, 1000)
+      return () => clearTimeout(timer)
     }
-  }, [isTraining, isDone, activeEventSource, trainingFile, tempApiKey, validationResult, startTraining])
+  }, [isTraining, isDone, trainingFile, tempApiKey, validationResult, startTraining])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -216,6 +236,7 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
       progressPercent,
       logs,
       analysisStats,
+      sessionResults,
       tempApiKey,
       isValidatingKey,
       validationResult,
@@ -226,6 +247,7 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
       setTempApiKey,
       setValidationResult,
       setIsValidatingKey,
+      setSessionResults,
       setIsMinimized,
       setTrainingFile,
       startTraining,

@@ -97,7 +97,7 @@ export class ToolkitParser {
         });
 
         if (!response.ok) {
-          // Toolkit Pattern: resilient-error-handling
+          // Toolkit Pattern: resilient-error-handling (V4)
           if (response.status === 404 || response.status === 400) {
             onProgress?.({ type: 'log', message: `Model ${selectedModel} niedostępny (Błąd ${response.status}). Szukam alternatywy...` });
             this.switchToNextModel(models);
@@ -108,9 +108,24 @@ export class ToolkitParser {
           if (response.status === 429) {
             onProgress?.({ type: 'log', message: `Limit Rate-Limit (429) dla ${selectedModel}. Czekam i przełączam...` });
             this.switchToNextModel(models);
-            await new Promise(r => setTimeout(r, 2000 * (retries + 1)));
+            const waitTime = 2000 * (retries + 1);
+            await new Promise(r => setTimeout(r, waitTime));
             retries++;
             continue;
+          }
+
+          // NOWY: Obsługa 503 i innych błędów serwerowych (Exponential Backoff)
+          if (response.status >= 500 && response.status <= 504) {
+            const waitTime = Math.pow(2, retries + 1) * 1000;
+            onProgress?.({ type: 'log', message: `Serwer AI przeciążony (${response.status}). Ponawiam próbę za ${waitTime/1000}s... (Próba ${retries + 1}/${maxRetries})` });
+            await new Promise(r => setTimeout(r, waitTime));
+            retries++;
+            // Przy 503 nie przełączamy modelu od razu, dajemy mu szansę „odsapnąć”
+            continue;
+          }
+          
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(`Błąd autoryzacji (401/403). Sprawdź klucz API.`);
           }
 
           throw new Error(`AI Gateway error: ${response.status}`);
@@ -125,24 +140,77 @@ export class ToolkitParser {
         this.stats.type = mimeType.includes('pdf') || mimeType.includes('image') ? 'vision' : 'text';
         
         try {
-          // Toolkit Pattern: json-mode-resilient-parsing (V3)
-          const cleanJson = (text: string) => {
-            // 1. Usuń bloki markdown ```json ... ```
-            let cleaned = text.replace(/```json\s?([\s\S]*?)\s?```/g, '$1');
-            // 2. Jeśli nadal nie jest czystym JSON, szukaj pierwszej [ lub {
-            const firstBracket = cleaned.search(/[\[\{]/);
-            const lastBracket = cleaned.lastIndexOf(cleaned.startsWith('[') || cleaned.includes('[') ? ']' : '}');
-            if (firstBracket !== -1 && lastBracket !== -1) {
-              cleaned = cleaned.substring(firstBracket, lastBracket + 1);
+          // Toolkit Pattern: json-mode-resilient-multi-block-extraction (V4)
+          const extractAllJsonBlocks = (text: string): any[] => {
+            const blocks: any[] = [];
+            let depth = 0;
+            let start = -1;
+            let inString = false;
+            let escape = false;
+
+            for (let i = 0; i < text.length; i++) {
+              const char = text[i];
+              // Handle strings to avoid counting brackets inside them
+              if (escape) { escape = false; continue; }
+              if (char === '\\') { escape = true; continue; }
+              if (char === '"') { inString = !inString; continue; }
+              if (inString) continue;
+
+              if (char === '[' || char === '{') {
+                if (depth === 0) start = i;
+                depth++;
+              } else if (char === ']' || char === '}') {
+                depth--;
+                if (depth === 0 && start !== -1) {
+                  const chunk = text.substring(start, i + 1);
+                  try {
+                    const parsed = JSON.parse(chunk);
+                    if (Array.isArray(parsed)) blocks.push(...parsed);
+                    else blocks.push(parsed);
+                  } catch (e) {
+                    // TOOLKIT PATTERN: boundary-repair-attempt
+                    // If it failed but it's the end of string, it might be truncated
+                    if (i === text.length - 1) {
+                      try {
+                        let inner = chunk.trim();
+                        if (inner.endsWith(',')) inner = inner.slice(0, -1);
+                        const repaired = inner + (inner.startsWith('[') ? ']' : '}');
+                        const parsedR = JSON.parse(repaired);
+                        if (Array.isArray(parsedR)) blocks.push(...parsedR);
+                        else blocks.push(parsedR);
+                      } catch(re) {}
+                    }
+                  }
+                  start = -1;
+                }
+              }
             }
-            return cleaned.trim();
+
+            // Fallback for simple single-block cases that might have been missed
+            if (blocks.length === 0) {
+              const first = text.search(/[\[\{]/);
+              let last = Math.max(text.lastIndexOf(']'), text.lastIndexOf('}'));
+              if (first !== -1 && last > first) {
+                try {
+                  const cleaned = text.substring(first, last + 1);
+                  const parsed = JSON.parse(cleaned);
+                  return Array.isArray(parsed) ? parsed : [parsed];
+                } catch (e) {
+                   // Extreme fallback: regex attempt
+                   const match = text.match(/\[[\s\S]*\]/);
+                   if (match) return JSON.parse(match[0]);
+                }
+              }
+            }
+            return blocks;
           };
 
-          const candidates = cleanJson(textResponse);
-          const parsed = JSON.parse(candidates);
+          const parsed = extractAllJsonBlocks(textResponse);
+          if (parsed.length === 0 && textResponse.trim().length > 10) {
+            throw new Error(`Nie udało się wyekstrahować ważnych danych z odpowiedzi AI: ${textResponse.substring(0, 50)}...`);
+          }
           
-          // Zawsze zwracaj tablicę, nawet jeśli AI zwróciło pojedynczy obiekt
-          return Array.isArray(parsed) ? parsed : [parsed];
+          return parsed;
 
         } catch (parseErr) {
           onProgress?.({ type: 'log', message: "Błąd formatu JSON od AI. Próba głębokiej naprawy..." });

@@ -32,7 +32,7 @@ export default function RootLayout({
           <TimeThemeProvider>
             <SessionProvider>
               <Navbar />
-              <main className="flex-1">
+              <main className="flex-1" suppressHydrationWarning>
                 {children}
               </main>
               <footer className="border-t py-12 bg-muted/20">

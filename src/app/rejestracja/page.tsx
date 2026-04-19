@@ -2,35 +2,28 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { OnboardingWizardV12 } from "./_components/OnboardingWizardV12";
+import { Database, ShieldCheck, Zap } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [isB2B, setIsB2B] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [nip, setNip] = useState("");
-  const [companyName, setCompanyName] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRegister = async (data: any) => {
     setError("");
-    if (!nip || !companyName) {
-      setError("Zgodnie z wymogami KSeF, podanie NIP-u i nazwy firmy jest obowiązkowe.");
-      return;
-    }
     setLoading(true);
     try {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, nip, companyName }),
+        body: JSON.stringify(data),
       });
-      const data = await res.json();
+      const result = await res.json();
       if (!res.ok) {
-        setError(data.error || "Błąd rejestracji");
+        setError(result.error || "Błąd rejestracji");
       } else {
         setSuccess(true);
         setTimeout(() => router.push("/logowanie"), 4000);
@@ -43,60 +36,68 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="auth-page">
-        <div className="auth-card" style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🏢</div>
-          <h2 style={{ marginBottom: '1rem' }}>Rejestracja pomyślna!</h2>
-          <div className="alert-box info">
-            Twoje konto firmowe zostało zarejestrowane.<br />
-            Oczekuj na zatwierdzenie przez Administratora — otrzymasz pełny dostęp po weryfikacji NIP w bazie GUS / KSeF.
-          </div>
+      <div className="relative min-h-screen flex items-center justify-center p-8 bg-[#FDFCFB] dark:bg-[#050505] overflow-hidden">
+        {/* SUCCESS BACKGROUND */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-emerald-500/10 blur-[150px] rounded-full animate-pulse" />
         </div>
+
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="glass-modal p-16 rounded-[4rem] text-center max-w-xl relative z-10"
+        >
+          <div className="p-8 bg-emerald-100/50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-full w-fit mx-auto mb-8 shadow-xl shadow-emerald-500/10">
+             <ShieldCheck className="w-16 h-16" />
+          </div>
+          <h2 className="text-5xl font-black italic tracking-tighter uppercase mb-6">Witamy w <span className="text-emerald-600 block italic">Siedzi Celtronics</span></h2>
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-slate-400 leading-loose">
+            Wniosek o przystąpienie został zarejestrowany. System KSeF / GUS teraz analizuje Twoją tożsamość B2B. <br/>
+            <span className="text-emerald-500 mt-4 block">Przekierowanie do Centrum Dowodzenia...</span>
+          </p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="auth-page">
-      <div className="auth-card">
-        <div className="auth-logo">
-          <img src="/assets/logo.png" alt="CEL-TRONICS" />
+    <div className="relative min-h-screen flex flex-col items-center justify-center py-20 px-4 bg-[#FDFCFB] dark:bg-[#050505] overflow-hidden">
+      {/* V12 BACKGROUND ORCHESTRATION */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[10%] -right-[10%] w-[30%] h-[30%] bg-blue-500/5 blur-[100px] rounded-full animate-pulse" />
+      </div>
+
+      <div className="relative z-10 w-full flex flex-col items-center gap-16">
+        {/* BRANDING DOCK */}
+        <div className="flex flex-col items-center gap-6">
+           <div className="p-6 glass-card rounded-[2.5rem] shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500">
+              <Database className="w-10 h-10 text-primary" />
+           </div>
+           <div className="text-center">
+              <h1 className="text-6xl font-black italic tracking-tighter uppercase leading-none">Onboarding <span className="text-primary italic">Zunifikowany</span></h1>
+              <p className="text-[10px] font-black uppercase tracking-[0.6em] text-slate-400 mt-4">Protocol: B2B Register V12.0.4</p>
+           </div>
         </div>
-        <h2>Utwórz konto firmowe</h2>
 
-        <div className="alert-box info">
-          Obowiązkowa weryfikacja (Przygotowanie do procedur KSeF).<br/>
-          Konto wymaga podania numeru NIP i nazwy firmy.
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="px-8 py-4 bg-red-500/10 text-red-600 border border-red-500/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-4"
+          >
+             <Zap className="w-4 h-4 fill-red-600" />
+             {error}
+          </motion.div>
+        )}
+
+        <OnboardingWizardV12 onSubmit={handleRegister} loading={loading} />
+
+        <div className="mt-8 flex items-center gap-8 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">
+           <span>Zabezpieczenie SSL / KSeF</span>
+           <div className="w-1 h-1 bg-slate-300 rounded-full" />
+           <a href="/logowanie" className="text-primary hover:underline underline-offset-8 decoration-2 cursor-pointer transition-all">Posiadam Klucz Dostępowy</a>
         </div>
-
-        {error && <div className="alert-box error">{error}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-field">
-            <label htmlFor="reg-email">E-mail</label>
-            <input id="reg-email" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="jan@firma.pl" />
-          </div>
-          <div className="form-field">
-            <label htmlFor="reg-password">Hasło</label>
-            <input id="reg-password" type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="Min. 8 znaków" />
-          </div>
-          <div className="form-field">
-            <label htmlFor="reg-nip">NIP Firmy *</label>
-            <input id="reg-nip" type="text" value={nip} onChange={e => setNip(e.target.value)} required placeholder="Np. 1234567890" maxLength={10} />
-          </div>
-          <div className="form-field">
-            <label htmlFor="reg-company">Nazwa Firmy *</label>
-            <input id="reg-company" type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} required placeholder="Np. Firma Instalacyjna Sp. z o.o." />
-          </div>
-
-          <button type="submit" className="btn btn-primary auth-submit" disabled={loading}>
-            {loading ? "Tworzenie konta..." : "Zarejestruj się →"}
-          </button>
-        </form>
-
-        <p className="auth-footer">
-          Masz już konto? <a href="/logowanie">Zaloguj się</a>
-        </p>
       </div>
     </div>
   );

@@ -1,76 +1,94 @@
 // src/app/_components/FeatureBento.tsx
 "use client";
 
-import { ShieldCheck, Signal, Server, HardHat } from "lucide-react";
+import { ShieldCheck, Video, Settings, Building2, HardHat, ShieldAlert, Cpu, Workflow } from "lucide-react";
+import { motion } from "framer-motion";
+
+const features = [
+  {
+    title: "SSWiN & Alarmy",
+    desc: "Projektowanie i montaż systemów sygnalizacji włamania. Autoryzowany dystrybutor Satel, DSC i Siemens. Bezpieczeństwo bez kompromisów.",
+    icon: ShieldAlert,
+    wide: true,
+    badge: "Grade 3 Standard"
+  },
+  {
+    title: "Monitoring CCTV",
+    desc: "Cyfrowe systemy nadzoru wideo IP. Precyzyjna analityka obrazu i zdalny dostęp 24/7.",
+    icon: Video,
+    wide: false,
+    badge: "VCA AI"
+  },
+  {
+    title: "Serwis 24/7",
+    desc: "Własny, całodobowy serwis techniczny w Siedlcach. Błyskawiczna reakcja i wsparcie.",
+    icon: Settings,
+    wide: false,
+    badge: "Live Support"
+  },
+  {
+    title: "Automatyka & PPOŻ",
+    desc: "Systemy przeciwpożarowe Polon oraz inteligentna automatyka bram Came i Nice.",
+    icon: Building2,
+    wide: true,
+    badge: "Industrial"
+  }
+];
 
 export function FeatureBento() {
   return (
-    <section className="bg-slate-50/50 py-32 border-t border-slate-100 relative overflow-hidden">
-      {/* Decorative Blur */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[150px] rounded-full pointer-events-none" />
-
-      <div className="container mx-auto px-6 max-w-7xl relative z-10">
-        <header className="mb-20 text-center md:text-left">
-          <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 uppercase italic mb-6">
-            Infrastruktura <span className="text-primary italic">Zakupowa</span>
-          </h2>
-          <p className="text-slate-500 text-lg font-bold max-w-2xl uppercase tracking-tight">
-            Zaprojektowana by minimalizować czas obsługi zamówień i maksymalizować marżę Twojej firmy instalacyjnej.
-          </p>
+    <section className="bg-[#FDFCFB] dark:bg-[#050505] py-24 relative overflow-hidden transition-colors duration-1000">
+      {/* V12 AMBIENT GLOW */}
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 blur-[180px] rounded-full pointer-events-none" />
+      
+      <div className="container mx-auto px-6 max-w-[2000px] relative z-10">
+        <header className="mb-16 flex flex-col lg:flex-row items-end justify-between gap-8 text-right lg:text-left">
+           <div className="space-y-4">
+              <div className="flex items-center justify-center lg:justify-start gap-4 animate-in slide-in-from-left-4 duration-700">
+                <div className="h-[2px] w-12 bg-primary" />
+                <span className="text-[10px] font-black uppercase tracking-[0.6em] text-primary italic">Operational Infrastructure</span>
+              </div>
+              <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 dark:text-white uppercase italic leading-[0.85]">
+                Technologie <br className="hidden md:block" />
+                <span className="text-primary italic">Bezpieczeństwa</span>
+              </h2>
+           </div>
+           <p className="text-slate-400 text-[10px] font-black max-w-xl uppercase tracking-[0.2em] leading-loose italic">
+             Kompleksowe rozwiązania dla biznesu i domu. Od projektowania po serwis 24/7 – zapewniamy pełną ochronę Twojego mienia od 1993 roku. [Panoramic Center]
+           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <BentoMain />
-          <BentoSmall icon={ShieldCheck} title="Certyfikacja Tech" desc="Urządzenia Grade 2 i Grade 3. Gotowe do inwestycji deweloperskich." />
-          <BentoSmall icon={Signal} title="Status Live" desc="Aktualizowane w czasie rzeczywistym stany magazynowe i dostępność." />
-          <BentoWide />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {features.map((f, i) => (
+            <BentoCard key={i} icon={f.icon} title={f.title} desc={f.desc} badge={f.badge} />
+          ))}
         </div>
       </div>
     </section>
   );
 }
 
-function BentoMain() {
+function BentoCard({ icon: Icon, title, desc, badge }: any) {
   return (
-    <div className="md:col-span-2 bg-white border-2 border-slate-100 rounded-[3rem] p-12 flex flex-col md:flex-row gap-10 items-center shadow-2xl shadow-slate-200/30 group hover:border-primary/20 transition-all duration-500">
-      <div className="bg-primary/10 p-6 rounded-[2rem] shrink-0 group-hover:scale-110 transition-transform">
-        <Server className="w-12 h-12 text-primary" />
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="glass-card p-10 flex flex-col text-center lg:text-left group hover:bg-slate-900 dark:hover:bg-white transition-all duration-500"
+    >
+      <div className="relative mb-8 flex justify-center lg:justify-start">
+        <div className="p-5 bg-primary/5 rounded-xl group-hover:bg-primary transition-all duration-500 relative z-10">
+           <Icon className="w-8 h-8 text-primary group-hover:text-white transition-colors" />
+        </div>
       </div>
-      <div className="text-center md:text-left">
-        <h3 className="text-2xl font-black mb-4 uppercase italic tracking-tighter">Automatyzacja KSeF</h3>
-        <p className="text-slate-500 font-bold text-sm leading-relaxed uppercase tracking-tight">
-          Platforma bezszwowo współpracuje z polskim systemem KSeF. Poprawna weryfikacja NIP gwarantuje natychmiastowe wystawianie faktur kosztowych i brak opóźnień.
-        </p>
+      
+      <div className="mb-4">
+        <span className="text-[7px] font-black uppercase tracking-[0.4em] px-3 py-1 bg-primary/10 text-primary rounded-full group-hover:bg-white/20 group-hover:text-white dark:group-hover:text-slate-900">{badge}</span>
       </div>
-    </div>
-  );
-}
-
-function BentoSmall({ icon: Icon, title, desc }: any) {
-  return (
-    <div className="bg-white border-2 border-slate-100 rounded-[3rem] p-10 flex flex-col justify-center items-center text-center shadow-xl shadow-slate-200/20 hover:border-primary/20 transition-all group">
-      <div className="bg-primary/5 p-5 rounded-2xl mb-8 group-hover:bg-primary group-hover:text-white transition-all">
-        <Icon className="w-8 h-8 text-primary group-hover:text-white transition-colors" />
-      </div>
-      <h3 className="text-xl font-black mb-4 uppercase italic tracking-tighter">{title}</h3>
-      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{desc}</p>
-    </div>
-  );
-}
-
-function BentoWide() {
-  return (
-    <div className="md:col-span-2 bg-slate-900 border-none rounded-[3rem] p-12 flex flex-col md:flex-row gap-12 items-center shadow-2xl shadow-slate-900/20 relative overflow-hidden">
-      <div className="absolute inset-0 bg-primary/5 opacity-50" />
-      <div className="flex-1 text-center md:text-left relative z-10">
-        <h3 className="text-3xl font-black text-white mb-4 uppercase italic tracking-tight">Łańcuch Dostaw Premium</h3>
-        <p className="text-white/50 font-bold text-sm leading-relaxed uppercase tracking-tight">
-          Logistyka oparta o najszybszych kurierów. Autoryzowani partnerzy B2B dysponują priorytetowym traktowaniem RMA oraz dedykowanym opiekunem handlowym.
-        </p>
-      </div>
-      <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl shrink-0 z-10">
-        <HardHat className="w-16 h-16 text-primary" />
-      </div>
-    </div>
+      
+      <h3 className="text-xl font-black mb-4 uppercase italic tracking-tighter leading-none text-slate-900 dark:text-white group-hover:text-white dark:group-hover:text-slate-950 transition-colors">{title}</h3>
+      
+      <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em] leading-relaxed italic group-hover:text-slate-300 dark:group-hover:text-slate-500 transition-colors">{desc}</p>
+    </motion.div>
   );
 }
