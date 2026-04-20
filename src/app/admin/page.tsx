@@ -26,11 +26,11 @@ export default async function AdminDashboard() {
     // redirect("/");
   }
 
-  const { users, orders, repairs } = initializeMockData();
+  const { users, orders, repairs, products } = initializeMockData();
   
   const unapprovedUsers = users.filter((u: any) => u.roleType === "BIZ" && !u.isApproved);
   const registeredUsers = users.filter((u: any) => u.roleType === "BIZ" && u.isApproved);
-  const totalProducts = 455; // Można zasymulować lub później podpiąć Strapi
+  const totalProducts = products.length;
   const pendingQuotes = orders.filter((o: any) => o.status === "INQUIRY" || o.orderType === "INQUIRY");
   const pendingRepairs = repairs.filter((r: any) => r.status !== "DONE");
 

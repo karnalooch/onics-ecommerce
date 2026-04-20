@@ -37,47 +37,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
            } as any;
         }
 
-        try {
-          // Autoryzacja przez instancję Strapi CMS
-          const res = await fetch("http://127.0.0.1:1337/api/auth/local", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              identifier: credentials.email,
-              password: credentials.password
-            })
-          });
-
-          const data = await res.json();
-
-          if (!res.ok) {
-            console.error("Błąd autoryzacji Strapi:", data?.error?.message);
-            return null;
-          }
-
-          // Transformacja zwrotu ze Strapi do postaci sesji NextAuth
-          if (data.user && data.jwt) {
-            return {
-              id: data.user.id.toString(),
-              email: data.user.email,
-              name: data.user.companyName || data.user.username,
-              // Strapi Custom Fields
-              jwt: data.jwt,
-              role: data.user.roleType || 'BIZ',
-              isApproved: data.user.isApproved ?? false,
-              nip: data.user.nip || null,
-              discount: data.user.discount || 0,
-              tierName: data.user.tierName || 'PARTNER'
-            } as any;
-          }
-
-          return null;
-        } catch (error) {
-          console.error("Błąd połączenia krytycznego w NextAuth API:", error);
-          return null;
-        }
+        return null;
       }
     })
   ],

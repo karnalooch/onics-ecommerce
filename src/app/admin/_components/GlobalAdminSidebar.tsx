@@ -1,36 +1,48 @@
 "use client";
 
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { 
   Package, 
-  ShieldCheck, 
-  LayoutGrid, 
-  Brain, 
-  Search, 
-  Database, 
-  LayoutDashboard,
-  FileSpreadsheet,
   Users,
+  FileSpreadsheet,
   FileText,
   Wrench,
   LogOut,
-  PackageSearch
+  LayoutDashboard,
+  Search,
+  Database,
+  Menu,
+  Tag,
+  X,
+  ChevronDown,
+  MoreHorizontal,
+  Activity
 } from "lucide-react";
 
 export function GlobalAdminSidebar() {
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsMoreOpen(false);
+  }, [pathname]);
 
   const navItems = [
-    { name: "Dashboard", path: "/admin", icon: LayoutDashboard },
-    { name: "Zarządzaj Zamówieniami", path: "/admin/orders", icon: FileSpreadsheet },
-    { name: "Klienci", path: "/admin/clients", icon: Users },
-    { name: "Katalog & Wiedza", path: "/admin/catalog", icon: PackageSearch }, // Using Package as a proxy for now
-    { name: "Generator Ofert", path: "/admin/quotes", icon: FileText },
-    { name: "Generator Cenników", path: "/admin/price-lists", icon: FileSpreadsheet },
-    { name: "Serwis / RMA", path: "/admin/repairs", icon: Wrench },
+    { name: "Dashboard", path: "/admin", icon: LayoutDashboard, priority: 10 },
+    { name: "Katalog", path: "/admin/catalog", icon: Package, priority: 9 },
+    { name: "Klienci", path: "/admin/clients", icon: Users, priority: 8 },
+    { name: "Cenniki", path: "/admin/price-lists", icon: Tag, priority: 7 },
+    { name: "Zamówienia", path: "/admin/orders", icon: FileSpreadsheet, priority: 6 },
+    { name: "Ofertowania", path: "/admin/quotes", icon: FileText, priority: 5 },
+    { name: "RMA/Serwis", path: "/admin/repairs", icon: Wrench, priority: 4 },
   ];
+
+  const primaryItems = navItems.filter(item => item.priority >= 7);
+  const secondaryItems = navItems.filter(item => item.priority < 7);
 
   const isActive = (path: string) => {
     if (path === "/admin" && pathname !== "/admin") return false;
@@ -38,108 +50,150 @@ export function GlobalAdminSidebar() {
   };
 
   return (
-    <motion.aside 
-      initial={{ x: -100, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed left-6 top-1/2 -translate-y-1/2 z-[60] hidden xl:flex flex-col gap-8"
-    >
-      {/* BRANDING HUB */}
-      <div className="glass-card p-6 rounded-3xl flex flex-col items-center gap-2">
-         <div className="relative p-4 bg-slate-900 text-white dark:bg-white dark:text-slate-950 rounded-2xl shadow-ks-md">
-            <Database className="w-6 h-6" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse border-2 border-slate-900" />
-         </div>
-         <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-400 mt-2">V12 Core</span>
-      </div>
+    <>
+      {/* COMMAND GLASS TOP BAR */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] h-14 bg-white/40 backdrop-blur-3xl border-b border-white/20 flex items-center justify-between px-6 shadow-2xl select-none font-mono">
+        <div className="flex items-center h-full">
+          
+          {/* BRANDING (GLASS) */}
+          <Link href="/" className="flex items-center gap-4 pr-10 border-r border-black/[0.05] h-full hover:bg-white/40 transition-all group">
+            <div className="w-8 h-8 bg-slate-950 text-white flex items-center justify-center rounded-none shrink-0 shadow-2xl group-hover:scale-110 transition-transform">
+               <Database className="w-4 h-4" />
+            </div>
+            <div className="flex flex-col leading-none">
+               <span className="text-[11px] font-black uppercase tracking-[0.3em] italic text-slate-950">
+                  CELTRONICS <span className="text-slate-400 NOT-italic">_V4</span>
+               </span>
+               <div className="flex items-center gap-2 mt-1">
+                  <div className="w-1.5 h-1.5 bg-slate-950 rounded-full animate-ping" />
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Logic_Link_Ok</span>
+               </div>
+            </div>
+          </Link>
 
-      {/* NAVIGATION PILL */}
-      <div className="p-3 bg-white/30 dark:bg-slate-900/40 backdrop-blur-3xl rounded-3xl border border-white/20 dark:border-slate-800/50 shadow-ks-lg flex flex-col gap-4">
-        
-        <GlobalSidebarItem 
-           href="/admin" 
-           icon={<LayoutDashboard className="w-5 h-5" />} 
-           label="System Dashboard" 
-           active={isActive("/admin")}
-        />
+          {/* DESKTOP NAV (FLOATING GLASS) */}
+          <div className="hidden lg:flex items-center h-full">
+            {primaryItems.map((item) => (
+              <Link 
+                key={item.path}
+                href={item.path}
+                className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-snap ease-snap border-b-4 ${
+                  isActive(item.path) 
+                    ? 'border-slate-950 text-slate-950 bg-white/60' 
+                    : 'border-transparent text-slate-400 hover:text-slate-950 hover:bg-white/20'
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span>{item.name}</span>
+              </Link>
+            ))}
 
-        <GlobalSidebarItem 
-           href="/admin/catalog" 
-           icon={<Package className="w-5 h-5" />} 
-           label="Katalog Hub" 
-           active={isActive("/admin/catalog")}
-        />
+            <div className="relative h-full flex xl:hidden group">
+               <button 
+                  onClick={() => setIsMoreOpen(!isMoreOpen)}
+                  className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all ${isMoreOpen ? 'text-slate-950 bg-white/60' : 'text-slate-400 hover:text-slate-950 hover:bg-white/20'}`}
+               >
+                  <MoreHorizontal className="w-4 h-4" />
+                  <span>Tools</span>
+               </button>
 
-        <GlobalSidebarItem 
-           href="/admin/clients" 
-           icon={<Users className="w-5 h-5" />} 
-           label="Centrum Klienta" 
-           active={isActive("/admin/clients")}
-        />
+               {isMoreOpen && (
+                  <div className="absolute top-[105%] left-0 w-64 bg-white/60 backdrop-blur-3xl border border-white/20 shadow-3xl py-2 animate-in fade-in slide-in-from-top-2">
+                     {secondaryItems.map((item) => (
+                        <Link 
+                           key={item.path}
+                           href={item.path}
+                           className={`flex items-center gap-4 px-6 py-4 text-[11px] font-black uppercase tracking-widest transition-all ${
+                              isActive(item.path) 
+                              ? 'bg-slate-950 text-white' 
+                              : 'text-slate-500 hover:text-slate-950 hover:bg-white/40'
+                           }`}
+                        >
+                           <item.icon className="w-4 h-4" />
+                           {item.name}
+                        </Link>
+                     ))}
+                  </div>
+               )}
+            </div>
 
-        <GlobalSidebarItem 
-           href="/admin/orders" 
-           icon={<FileSpreadsheet className="w-5 h-5" />} 
-           label="Rejestr Zamówień" 
-           active={isActive("/admin/orders")}
-        />
+            <div className="hidden xl:flex items-center h-full">
+               {secondaryItems.map((item) => (
+                  <Link 
+                     key={item.path}
+                     href={item.path}
+                     className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-snap ease-snap border-b-4 ${
+                        isActive(item.path) 
+                        ? 'border-slate-950 text-slate-950 bg-white/60' 
+                        : 'border-transparent text-slate-400 hover:text-slate-950 hover:bg-white/20'
+                     }`}
+                  >
+                     <item.icon className="w-4 h-4" />
+                     <span>{item.name}</span>
+                  </Link>
+               ))}
+            </div>
+          </div>
+        </div>
 
-        <div className="h-[1px] w-8 bg-slate-200 dark:bg-slate-800 mx-auto my-1" />
+        {/* UTILITIES HUB */}
+        <div className="flex items-center h-full">
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+            className="h-full px-8 text-slate-400 hover:text-slate-950 transition-all flex items-center gap-4 group border-l border-black/[0.05] active:bg-white/40"
+          >
+            <Search className="w-5 h-5" />
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1 bg-slate-950 text-white rounded-none shadow-xl group-hover:scale-105 transition-transform">
+               <span className="text-[9px] font-black uppercase tracking-widest">Command_Log</span>
+               <span className="text-[9px] font-black opacity-30">·</span>
+               <span className="text-[9px] font-black text-slate-400 animate-pulse">LIVE</span>
+            </div>
+          </button>
 
-        <GlobalSidebarItem 
-           href="/admin/repairs" 
-           icon={<Wrench className="w-5 h-5" />} 
-           label="Serwis / RMA" 
-           active={isActive("/admin/repairs")}
-        />
-
-        <button 
-          className="w-14 h-14 rounded-2xl flex items-center justify-center text-slate-500 hover:text-primary hover:bg-primary/10 transition-all group"
-          onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-          aria-label="Open Command Palette"
-        >
-          <Search className="w-5 h-5 group-hover:scale-110 transition-transform" />
-        </button>
-      </div>
-
-      {/* STATUS & LOGOUT DOCK */}
-      <div className="glass-card px-4 py-8 rounded-3xl flex flex-col items-center gap-6">
-         <div className="relative flex items-center justify-center">
-            <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping absolute" />
-            <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] relative z-10" />
-         </div>
-
-         <Link 
+          <Link 
             href="/" 
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all"
-            aria-label="Wyjdź do Sklepu"
-         >
-            <LogOut className="w-5 h-5" />
-         </Link>
-      </div>
-    </motion.aside>
-  );
-}
+            className="h-full px-8 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-950 hover:bg-white/40 transition-all border-l border-black/[0.05]"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline italic px-2 bg-slate-50 border border-slate-100">LOGOUT</span>
+          </Link>
 
-function GlobalSidebarItem({ href, icon, label, active }: any) {
-  return (
-    <Link 
-      href={href}
-      className={`relative w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-500 group ${
-         active 
-           ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950 shadow-ks-md' 
-           : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-      }`}
-    >
-       <div className="relative z-10">
-          {icon}
-       </div>
-       
-       {/* Tooltip */}
-       <div className="absolute left-20 px-4 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all pointer-events-none whitespace-nowrap shadow-ks-lg">
-        {label}
-        <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 border-8 border-transparent border-right-slate-900 h-0 w-0" />
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="lg:hidden h-full px-6 text-slate-400 hover:text-slate-950 transition-colors border-l border-black/[0.05]"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </nav>
+
+      {/* MOBILE GLASS OVERLAY */}
+      <div 
+        className={`fixed inset-0 z-[90] bg-white/80 backdrop-blur-3xl lg:hidden transition-all duration-700 ${
+          isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
+        }`}
+      >
+        <div className="flex flex-col p-8 pt-32 space-y-4 font-mono">
+          <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em] mb-6 pl-6 border-l-4 border-slate-400 italic">Command_Matrix</div>
+          {navItems.map((item) => (
+            <Link 
+              key={item.path}
+              href={item.path}
+              className={`flex items-center justify-between p-6 border transition-all active:scale-[0.98] ${
+                isActive(item.path) 
+                  ? 'bg-slate-950 border-slate-950 text-white shadow-2xl scale-[1.05]' 
+                  : 'bg-white/40 border-white/20 text-slate-500 hover:text-slate-950'
+              }`}
+            >
+              <div className="flex items-center gap-5">
+                 <item.icon className="w-6 h-6" />
+                 <span className="text-[12px] uppercase tracking-[0.3em] font-black">{item.name}</span>
+              </div>
+              <ChevronDown className="-rotate-90 w-5 h-5 opacity-20" />
+            </Link>
+          ))}
+        </div>
       </div>
-    </Link>
+    </>
   );
 }

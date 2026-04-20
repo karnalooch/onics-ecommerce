@@ -46,3 +46,11 @@ It incorporates the core modules of the SoftSpark AI Toolkit.
   - **Letter Mandate**: All models must contain at least one character (A-Z).
   - **Hardened Pricing**: No scientific notation or EAN codes allowed in the Price column.
   - **Specs Merging**: Aggregate all technical columns between Model and Price for rich descriptions.
+
+## Elite Engineering Standard (Satel/DHL Hybrid)
+
+- **Utility over Decoration**: Purge all blur, gradients, and decorative layered depth. Use clean white work zones on light gray backgrounds (`bg-background`).
+- **Iconic Navigation (DHL Pattern)**: Standardize on a horizontal top bar with iconic modular caps. Save vertical space.
+- **Data Density**: 14px compact font. Use inline table headers for filtering instead of sidebars. Ensure zero horizontal scroll on 1366x768.
+- **Physical Interaction**: Native physics mandate. All interactive elements must react via `active-press` (scale-97) and `active-inset` (inset shadow).
+- **OKLCH Palette**: Mandatory use of perceived-brightness whites, Dark Slate texts, and Technical Blue/Yellow accents.

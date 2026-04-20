@@ -29,7 +29,7 @@ export async function POST(req: Request) {
           name: item.name,
           metadata: {
             sku: item.sku || 'UNKNOWN',
-            strapiId: item.id
+            id: item.id
           }
         },
       },

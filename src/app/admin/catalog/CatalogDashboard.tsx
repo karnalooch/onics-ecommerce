@@ -1,50 +1,61 @@
 "use client";
 
 import { useCatalogStore } from "@/store/catalogStore";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductsDashboardClient } from "../products/ProductsDashboardClient";
 import { CategoriesDashboardClient } from "../categories/CategoriesDashboardClient";
 import { KnowledgeDashboardClient } from "./KnowledgeDashboardClient";
+import { Database, Activity, LayoutGrid, Brain } from "lucide-react";
 
 export function CatalogDashboard({ products, categories, manufacturers }: any) {
   const { stagingPayload } = useCatalogStore();
   const pendingCount = stagingPayload.length;
 
   return (
-    <div className="space-y-16" suppressHydrationWarning>
+    <div className="space-y-4" suppressHydrationWarning>
       <Tabs defaultValue="crt" className="w-full">
-        <header className="flex flex-col lg:flex-row items-center justify-between gap-12 text-center lg:text-left">
-          <div className="space-y-4">
-            <div className="flex items-center justify-center lg:justify-start gap-4 mb-2">
-              <div className="h-[2px] w-12 bg-primary" />
-              <span className="text-[10px] font-black uppercase tracking-[0.6em] text-primary italic">Universal Synchronization Engine</span>
-            </div>
-            <h1 className="text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter uppercase italic leading-[0.85] animate-in fade-in slide-in-from-bottom-4 duration-1000">
-              Sync <span className="text-primary block lg:inline relative">
-                Hub
-                <div className="absolute -bottom-2 left-0 w-full h-4 bg-primary/10 -skew-x-12 -z-10" />
-              </span>
-            </h1>
-            <p className="text-xs md:text-sm font-bold uppercase tracking-widest text-slate-400 max-w-2xl leading-loose">
-              Modularna architektura danych, inteligentne mapowanie IQ oraz <span className="text-slate-900 dark:text-white underline decoration-primary decoration-2 underline-offset-4">Zunifikowany Rejestr Towarowy</span>. [System Ready V12.0]
-            </p>
-          </div>
-
-          <div className="flex items-center gap-6 animate-in fade-in slide-in-from-right-4 duration-1000">
-            <div className="p-8 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl rounded-[3rem] border border-white dark:border-slate-800 shadow-2xl flex items-center gap-6 group hover:scale-105 transition-all duration-500">
-               <div className="relative">
-                 <div className="w-4 h-4 rounded-full bg-emerald-500 animate-ping absolute inset-0" />
-                 <div className="w-4 h-4 rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.8)] relative z-10" />
+        <header className="flex items-center justify-between bg-white border border-border p-2 rounded shadow-sm mb-4">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 border-r border-border pr-6">
+               <div className="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center">
+                  <Database className="w-4 h-4" />
                </div>
                <div className="flex flex-col">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">Status: Operational</span>
-                  <span className="text-xl font-black italic tracking-tighter">Hub Autostrada Aktywna</span>
+                  <h1 className="text-xs font-black uppercase tracking-tight">Katalog Hybrydowy</h1>
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-60">Status: Terminal Active</span>
                </div>
             </div>
+
+            <TabsList className="bg-secondary/20 p-1 h-8">
+              <TabsTrigger value="crt" className="text-[10px] uppercase font-bold px-4 h-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <LayoutGrid className="w-3 h-3 mr-2" /> Centralny Rejestr
+              </TabsTrigger>
+              <TabsTrigger value="verify" className="text-[10px] uppercase font-bold px-4 h-6 data-[state=active]:bg-white data-[state=active]:shadow-sm relative">
+                <Activity className="w-3 h-3 mr-2" /> Weryfikacja
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-[8px] flex items-center justify-center rounded-full border border-white">
+                    {pendingCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="structure" className="text-[10px] uppercase font-bold px-4 h-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <Database className="w-3 h-3 mr-2" /> Struktura
+              </TabsTrigger>
+              <TabsTrigger value="intelligence" className="text-[10px] uppercase font-bold px-4 h-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <Brain className="w-3 h-3 mr-2" /> AI Intelligence
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground pr-4 border-l border-border pl-6">
+             <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Sync Node: Siedlce Cloud</span>
+             </div>
           </div>
         </header>
 
-        <div className="animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <div className="animate-in fade-in duration-500">
           <TabsContent value="crt" className="mt-0 outline-none">
             <ProductsDashboardClient 
               initialProducts={products} 

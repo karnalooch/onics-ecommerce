@@ -2,76 +2,108 @@
 @import "tailwindcss";
 
 @theme {
-  /* --- CELTRONICS V12: ATMOSPHERE ENGINE (OKLCH) --- */
+  /* --- CELTRONICS ELITE ENGINEERING STANDARD (SATEL/DHL HYBRID) --- */
   
-  /* Solar Mode (Light) - Ethereal & High-Definition */
-  --color-background: oklch(99% 0.005 250); 
-  --color-foreground: oklch(12% 0.02 240); 
+  /* Primary Foundation (Flat & Functional) */
+  --color-background: oklch(98% 0.005 250); /* Ultra Light Gray (Satel Base) */
+  --color-foreground: oklch(20% 0.02 250);  /* Deep Slate (Typography) */
   
-  /* Brand Prestige */
-  --color-primary: oklch(62% 0.25 250); 
+  /* Work Panels (Flat Identity) */
+  --color-card: oklch(100% 0 0);           /* Pure White Work Zone */
+  --color-card-foreground: oklch(20% 0.02 250);
+  
+  /* Secondary & Muted */
+  --color-secondary: oklch(96% 0.01 250);
+  --color-muted: oklch(97% 0.01 250);
+  --color-muted-foreground: oklch(50% 0.02 250);
+  --color-border: oklch(92% 0.01 250);
+
+  /* INTERACTION: TECHNICAL BLUE (CTA MANDATE) */
+  --color-primary: oklch(60% 0.18 250);     /* Engineering Blue (High Contrast) */
   --color-primary-foreground: oklch(100% 0 0);
   
-  /* System Surfaces */
-  --color-secondary: oklch(96% 0.008 240);
-  --color-muted: oklch(97% 0.005 240);
-  --color-border: oklch(92% 0.01 240);
+  /* ACTION ACCENTS */
+  --color-action-yellow: oklch(85% 0.15 90);   /* DHL Style Action Yellow */
+  --color-action-blue: oklch(70% 0.15 250);    /* Satel Style Detail Blue */
+  
+  /* STATUS ROLES (Satel Pattern) */
+  --color-status-success: oklch(60% 0.12 150);
+  --color-status-warning: oklch(75% 0.15 70);
+  --color-status-error: oklch(60% 0.15 20);
 
-  /* --- GEOMETRY & PHYSICS --- */
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.25rem;
-  --radius-dashboard: 1.5rem;
-
-  /* Cinema Physics (Prestige Timing) */
-  --duration-cinema: 1200ms;
-  --ease-cinema: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* GEOMETRY: DENSE UI SCALING (1.125 - 1.200) */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-pill: 9999px; /* For Satel-style Pill Buttons */
+  
+  /* Motion: Technical Snap */
+  --transition-duration-snap: 150ms;
+  --transition-timing-function-snap: cubic-bezier(0, 0, 0.2, 1);
 }
 
 @layer base {
-  .dark {
-    /* Obsidian Mode (Dark) - Deep Velocity & Vantablack */
-    --color-background: oklch(8% 0.02 240); 
-    --color-foreground: oklch(98% 0.005 240);
-    
-    --color-secondary: oklch(14% 0.03 240);
-    --color-muted: oklch(12% 0.02 240);
-    --color-border: oklch(18% 0.03 240);
-    --color-card: oklch(10% 0.02 240);
+  html {
+    font-size: 14px; /* Core Mandate: High Density */
+    @apply selection:bg-primary/20;
   }
-}
 
-/* --- GLASSMORPHISM ENGINE (ZENTAK) --- */
-@layer utilities {
-  .glass-card {
-    @apply bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-white/10 shadow-ks-md;
+  body {
+    @apply bg-background text-foreground antialiased;
+    line-height: 1.4;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Input Technical Reset (DHL Style) */
+  input, textarea, select {
+    @apply bg-slate-50 border-none rounded-sm transition-all;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
   }
   
-  .glass-modal {
-    @apply bg-white/60 dark:bg-slate-950/60 backdrop-blur-3xl border-white/30 shadow-ks-lg;
-  }
-
-  /* Custom Premium Scrollbar */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+  input:focus {
+    @apply bg-white ring-2 ring-primary/20;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
   }
 }
 
-/* --- PRINT OPTIMIZATION (V12 LEGACY SYNC) --- */
-@media print {
-  body * { visibility: hidden; }
-  .staging-container, .staging-container * { visibility: visible; }
-  .staging-container {
-    position: absolute;
-    left: 0; top: 0;
-    width: 100%;
-    background: white !important;
+@layer utilities {
+  /* PHYSICAL INTERACTION ENGINE */
+  .active-press {
+    @apply transition-transform active:scale-[0.97];
   }
+  
+  .active-inset {
+    @apply transition-all active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)];
+  }
+
+  /* SATEL-STYLE FLAT CARD */
+  .satel-card {
+    @apply bg-card border border-slate-100 shadow-sm transition-all hover:shadow-md;
+  }
+
+  /* DHL-STYLE ICON CAP */
+  .icon-cap {
+    @apply flex items-center justify-center rounded-full border-2 transition-all;
+  }
+
+  /* NO-BLUR MANDATE */
+  .no-blur {
+    backdrop-filter: none !important;
+    filter: none !important;
+  }
+
+  /* TABLE: HOVER-EXPAND (Priority+ Table Logic) */
+  .expandable-col {
+    @apply w-12 overflow-hidden whitespace-nowrap transition-all duration-300 hover:w-64;
+  }
+
+  /* ACTION PILL */
+  .pill-action {
+    @apply px-4 py-1.5 rounded-pill text-[10px] font-black uppercase tracking-widest transition-all;
+  }
+}
+
+/* Print Rules */
+@media print {
+  .no-print { display: none !important; }
 }

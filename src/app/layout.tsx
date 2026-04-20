@@ -1,17 +1,17 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
-import { Navbar } from '@/components/ui/navbar'
+import { IconicNav } from '@/components/ui/IconicNav'
 import { SessionProvider } from '@/components/SessionProvider'
 import { ThemeProvider } from '@/components/theme-provider'
-import { TimeThemeProvider } from '@/components/ThemeProvider/TimeThemeProvider'
 import { Toaster } from 'sonner'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 export const metadata: Metadata = {
-  title: 'CEL-TRONICS - E-commerce B2B',
-  description: 'Profesjonalne systemy alarmowe (SWN), CCTV. Platforma zakupowa B2B / B2C.',
+  title: 'CEL-TRONICS B2B - ELITE ENGINEERING STANDARD',
+  description: 'Profesjonalny system operacyjny sektora Security. Platforma B2B Celtronics.',
 }
 
 export default function RootLayout({
@@ -21,39 +21,41 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pl" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased min-h-screen bg-background text-foreground flex flex-col`} suppressHydrationWarning>
+      <body className={`${inter.variable} ${jetbrains.variable} font-sans antialiased min-h-screen bg-background text-foreground flex flex-col`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
+          defaultTheme="light"
+          forcedTheme="light"
+          enableSystem={false}
         >
-          <Toaster position="top-center" richColors />
-          <TimeThemeProvider>
-            <SessionProvider>
-              <Navbar />
-              <main className="flex-1" suppressHydrationWarning>
-                {children}
-              </main>
-              <footer className="border-t py-12 bg-muted/20">
-                <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-start gap-8 text-sm text-muted-foreground">
-                  <div className="flex flex-col gap-2">
-                    <span className="font-bold text-foreground text-base">Celtronics S.C.</span>
-                    <p>ul. Niklowa 22<br/>08-110 Siedlce<br/>Salon: ul. Kilińskiego 39D</p>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <span className="font-bold text-foreground text-base">Kontakt Serwis / B2B</span>
-                    <p>📞 +48 123 456 789<br/>📧 biuro@celtronics.pl</p>
-                  </div>
-                  <div className="flex flex-col gap-2 md:items-end">
-                    <p className="mb-2">&copy; 2026 CEL-TRONICS. Gwarancja integracji KSeF.</p>
-                    <a href="/polityka-prywatnosci" className="hover:text-primary transition-colors">Dział Prawny / Regulamin</a>
-                    <a href="/rejestracja" className="hover:text-primary transition-colors">Rejestracja dla Instalatorów</a>
+          <Toaster position="top-right" richColors />
+          <SessionProvider>
+            {/* STICKY HEADER (Elite Top Bar Mandate) */}
+            <header className="sticky top-0 z-[100] bg-white border-b border-slate-100 shadow-sm no-print">
+               <IconicNav />
+            </header>
+
+            <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 lg:px-8 py-6" suppressHydrationWarning>
+              {children}
+            </main>
+
+            <footer className="bg-white border-t py-8 mt-auto no-print">
+              <div className="max-w-[1920px] mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-6 text-[11px] text-muted-foreground uppercase tracking-widest font-black">
+                <div className="flex items-center gap-8">
+                  <span className="text-slate-900">P.U.H. "CEL-TRONICS" S.C.</span>
+                  <span>MSWiA L-0123/26</span>
+                  <span>PISA Certyfikacja</span>
+                </div>
+                <div className="flex items-center gap-8">
+                  <span>© 2026 Technologia Inżynieryjna</span>
+                  <div className="flex gap-4">
+                     <a href="#" className="hover:text-primary transition-colors">Regulamin</a>
+                     <a href="#" className="hover:text-primary transition-colors">RODO</a>
                   </div>
                 </div>
-              </footer>
-            </SessionProvider>
-          </TimeThemeProvider>
+              </div>
+            </footer>
+          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

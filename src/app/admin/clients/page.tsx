@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Mail, Ban, CheckCircle, Trash2, Search, Eye, Percent } from "lucide-react";
+import { Mail, Ban, CheckCircle, Trash2, Search, Eye, Percent, Database, Building2, ChevronRight, MoreHorizontal, User as UserIcon, FileText } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { 
@@ -117,173 +116,194 @@ export default function AdminClientsPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 max-w-7xl mx-auto">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-4xl font-extrabold tracking-tight uppercase italic">Audyt <span className="text-primary tracking-tighter">Klientów B2B</span></h2>
-        <p className="text-muted-foreground font-medium">
-          Zarządzanie uprawnieniami, warunkami handlowymi i weryfikacja tożsamości w systemie KSeF.
-        </p>
+    <div className="flex flex-col gap-6 animate-in fade-in duration-500 pb-20 font-mono">
+      
+      {/* 1. TECHNICAL AUDIT HEADER */}
+      <header className="flat-panel p-6 bg-slate-950 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+         <div className="space-y-1">
+            <div className="flex items-center gap-3">
+               <Database className="w-5 h-5 text-primary" />
+               <h2 className="text-2xl font-black uppercase tracking-tighter italic leading-none">
+                  Ewidencja <span className="text-primary NOT-italic">Partnerów B2B</span>
+               </h2>
+               <div className="px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-xs">
+                  <span className="text-[8px] font-black uppercase text-primary tracking-widest italic">Core v2.1</span>
+               </div>
+            </div>
+            <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-bold">Zarządzanie strukturą hierarchiczną, kredytem i dostępami</p>
+         </div>
+
+         <div className="flex items-center gap-4 bg-white/5 p-2 border border-white/10 rounded-sm">
+            <div className="flex flex-col items-end">
+               <span className="text-[9px] font-black uppercase text-slate-500">Aktywne Konta</span>
+               <span className="text-xl font-bold text-white tracking-tighter tabular-nums">{users.filter(u => !u.isBlocked).length}</span>
+            </div>
+            <div className="h-8 w-[1px] bg-white/10 mx-2" />
+            <div className="flex flex-col items-end">
+               <span className="text-[9px] font-black uppercase text-slate-500">Zablokowane</span>
+               <span className="text-xl font-bold text-status-error tracking-tighter tabular-nums">{users.filter(u => u.isBlocked).length}</span>
+            </div>
+         </div>
+      </header>
+
+      {/* 2. COMMAND & CONTROL BAR */}
+      <div className="flat-panel p-3 flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
+         <div className="w-full md:w-96 relative flex items-center">
+            <Search className="absolute left-3 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="SEARCH BY NIP / EMAIL / COMPANY..."
+              className="w-full bg-slate-50 border border-border text-[11px] font-black uppercase tracking-widest py-2.5 pl-10 pr-4 outline-none focus:border-primary focus:bg-white transition-all"
+            />
+         </div>
+         
+         <div className="flex items-center gap-3">
+            <button className="h-9 px-4 border border-border text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center gap-2">
+               <FileText className="w-3.5 h-3.5 opacity-40" /> Raport Portfela
+            </button>
+            <button className="h-9 px-6 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-primary transition-all flex items-center gap-2">
+               Dodaj Podmiot
+            </button>
+         </div>
       </div>
 
-      <div className="flex bg-card border border-border shadow-sm rounded-2xl overflow-hidden max-w-md items-center pl-4 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-        <Search className="w-5 h-5 text-muted-foreground shrink-0" />
-        <input 
-          type="text" 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Szukaj po e-mailu, NIP lub firmie..."
-          className="flex-1 bg-transparent border-none py-4 px-3 outline-none text-sm font-bold focus:ring-0"
-        />
-      </div>
+      {/* 3. HI-DENSITY DATA GRID */}
+      <div className="flex flex-col overflow-hidden">
+        {/* Table Headers */}
+        <div className="grid grid-cols-12 gap-4 px-6 py-2 bg-slate-100 border-y border-border text-[9px] font-black uppercase tracking-widest text-slate-500 tabular-nums">
+           <div className="col-span-1">TAG</div>
+           <div className="col-span-3">PODMIOT / IDENTYFIKATOR</div>
+           <div className="col-span-3">KONTAKT / KSeF ID</div>
+           <div className="col-span-2">MATRYCA RABATOWA</div>
+           <div className="col-span-1">STATUS</div>
+           <div className="col-span-2 text-right">OPERACJE</div>
+        </div>
 
-      <div className="border border-border rounded-[2rem] bg-card shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-20 text-center text-muted-foreground font-black uppercase tracking-widest animate-pulse">Inwentaryzacja portfela...</div>
+          <div className="p-20 text-center text-slate-400 font-black uppercase tracking-[0.3em] animate-pulse">Analiza bazy danych...</div>
         ) : (
-          <Table>
-            <TableHeader className="bg-muted/50 border-b border-border">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest text-muted-foreground px-6">Typ</TableHead>
-                <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest text-muted-foreground">Podmiot / ID</TableHead>
-                <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest text-muted-foreground">Email / KSeF</TableHead>
-                <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest text-muted-foreground">Data Rej.</TableHead>
-                <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest text-muted-foreground">Status</TableHead>
-                <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest text-muted-foreground">Warunki</TableHead>
-                <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest text-muted-foreground text-right px-6">Akcje</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-20 text-muted-foreground font-bold italic">
-                    Baza danych nie zwróciła dopasowań.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredUsers.map(user => (
-                  <TableRow key={user.id} className="hover:bg-primary/5 transition-colors group">
-                    <TableCell className="px-6 py-5">
-                       {user.roleType === 'ADMIN' && <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">ADMIN</Badge>}
-                       {user.roleType === 'BIZ' && <Badge variant="outline" className="border-primary/20 text-primary bg-primary/5">PARTNER B2B</Badge>}
-                       {user.roleType === 'RETAIL' && <Badge variant="outline" className="text-muted-foreground">DETAL B2C</Badge>}
-                    </TableCell>
-                    <TableCell className="py-5">
-                      <div className="font-extrabold text-foreground tracking-tight">{user.companyName || user.username || "Brak Nazwy"}</div>
-                      <div className="text-[10px] font-black text-muted-foreground mt-0.5 tracking-widest uppercase">{user.nip ? `NIP: ${user.nip}` : "Osoba Fizyczna"}</div>
-                    </TableCell>
-                    <TableCell className="py-5 font-bold text-sm text-foreground">
-                      {user.email}
-                    </TableCell>
-                    <TableCell className="py-5 text-xs font-bold text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString("pl-PL")}
-                    </TableCell>
-                    <TableCell className="py-5">
-                       {user.isBlocked ? (
-                         <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] font-black uppercase tracking-widest opacity-50">
-                           <Ban className="w-3.5 h-3.5" /> BLOKADA
-                         </div>
-                       ) : (
-                         <div className="flex items-center gap-1.5 text-primary text-[10px] font-black uppercase tracking-widest animate-pulse">
-                           <CheckCircle className="w-3.5 h-3.5" /> AKTYWNY
-                         </div>
-                       )}
-                    </TableCell>
-                    <TableCell className="py-5">
-                       <div className="flex flex-col gap-1">
-                          <Badge className="bg-primary text-primary-foreground border-transparent h-6 px-2 text-[11px] uppercase font-black tracking-tighter">
-                            -{user.discount || 0}%
-                          </Badge>
-                          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
-                            {user.tierName || "BASIC"}
-                          </span>
-                       </div>
-                    </TableCell>
-                    <TableCell className="text-right px-6 py-5">
-                      <div className="flex justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <Link href={`mailto:${user.email}`} className="btn-action-slate !p-1.5" title="Wyślij email">
-                           <Mail className="w-4 h-4" />
-                        </Link>
-                        
-                        <button 
-                          onClick={() => openDiscountModal(user)}
-                          className="btn-action-blue !p-1.5"
-                          title="Warunki handlowe"
-                        >
-                          <Percent className="w-4 h-4" />
-                        </button>
- 
-                        <button 
-                          onClick={() => toggleBlock(user.id, user.isBlocked)}
-                          className={`btn-action-amber !p-1.5 ${user.isBlocked ? 'bg-amber-100' : ''}`}
-                          title={user.isBlocked ? "Odblokuj" : "Zablokuj"}
-                        >
-                          <Ban className="w-4 h-4" />
-                        </button>
- 
-                        <button 
-                          onClick={() => deleteUser(user.id)}
-                          className="btn-action-red !p-1.5"
-                          title="Usuń konto"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <div className="flex flex-col">
+            {filteredUsers.length === 0 ? (
+              <div className="py-20 text-center text-slate-400 italic text-xs uppercase tracking-widest font-black">Brak dopasowań w rejestrze.</div>
+            ) : (
+              filteredUsers.map(user => (
+                <div 
+                   key={user.id} 
+                   className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-100 hover:bg-slate-50 transition-all group items-center active:scale-[0.995] active:shadow-inner"
+                >
+                  {/* Tag/Type */}
+                  <div className="col-span-1">
+                     {user.roleType === 'ADMIN' && <span className="px-1.5 py-0.5 bg-slate-900 text-white text-[8px] font-black uppercase">SYS</span>}
+                     {user.roleType === 'BIZ' && <span className="px-1.5 py-0.5 bg-primary/20 text-primary border border-primary/30 text-[8px] font-black uppercase">B2B</span>}
+                     {user.roleType === 'RETAIL' && <span className="px-1.5 py-0.5 bg-slate-100 text-slate-400 border border-slate-200 text-[8px] font-black uppercase">B2C</span>}
+                  </div>
+
+                  {/* Company/ID */}
+                  <div className="col-span-3 flex flex-col min-w-0">
+                     <span className="text-[11px] font-black text-slate-900 truncate uppercase tracking-tighter uppercase">{user.companyName || user.username || "BRAK NAZWY"}</span>
+                     <span className="text-[8px] font-bold text-slate-400 tracking-widest uppercase">{user.nip ? `NIP: ${user.nip}` : "Osoba Fizyczna"}</span>
+                  </div>
+
+                  {/* Email */}
+                  <div className="col-span-3 truncate">
+                     <span className="text-[10px] font-black text-slate-600 lowercase tracking-tight">{user.email}</span>
+                  </div>
+
+                  {/* Pricing Matrix */}
+                  <div className="col-span-2 flex items-center gap-3">
+                     <div className="flex flex-col items-start leading-none gap-0.5">
+                        <span className="text-[11px] font-black text-slate-900 tracking-tighter">-{user.discount || 0}%</span>
+                        <span className="text-[7px] font-black text-primary uppercase tracking-[0.2em] italic">{user.tierName || "BASIC_HUB"}</span>
+                     </div>
+                  </div>
+
+                  {/* Status */}
+                  <div className="col-span-1">
+                     {user.isBlocked ? (
+                       <span className="px-1.5 py-0.5 bg-status-error/10 text-status-error text-[8px] font-black uppercase border border-status-error/20">BLOCK</span>
+                     ) : (
+                       <span className="px-1.5 py-0.5 bg-status-success/10 text-status-success text-[8px] font-black uppercase border border-status-success/20 animate-pulse">ACTIVE</span>
+                     )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <button 
+                        onClick={() => openDiscountModal(user)}
+                        className="w-8 h-8 flex items-center justify-center bg-white border border-border text-slate-400 hover:text-primary hover:border-primary transition-all active:scale-90"
+                        title="Dostosuj Warunki"
+                     >
+                        <Percent className="w-4 h-4" />
+                     </button>
+                     <button 
+                        onClick={() => toggleBlock(user.id, user.isBlocked)}
+                        className={`w-8 h-8 flex items-center justify-center bg-white border border-border transition-all active:scale-90 ${user.isBlocked ? 'text-status-success' : 'text-status-warning hover:text-status-error'}`}
+                        title={user.isBlocked ? "Odblokuj" : "Zablokuj"}
+                     >
+                        <Ban className="w-4 h-4" />
+                     </button>
+                     <button 
+                        onClick={() => deleteUser(user.id)}
+                        className="w-8 h-8 flex items-center justify-center bg-white border border-border text-slate-400 hover:text-status-error hover:bg-status-error/5 transition-all active:scale-90"
+                        title="Usuń Trwale"
+                     >
+                        <Trash2 className="w-4 h-4" />
+                     </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         )}
       </div>
 
-      {/* Corporate Discount Modal */}
+      {/* Corporate Discount Modal (V4 MISSION CONTROL) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[440px] rounded-[2rem] border-border shadow-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-foreground">
-              Warunki <span className="text-primary tracking-tight">Handlowe</span>
-            </DialogTitle>
-            <DialogDescription className="font-medium text-muted-foreground text-sm mt-2">
-              Modyfikacja uprawnień i poziomów rabatowych dla portfela B2B. <br/>
-              Podmiot: <strong className="text-foreground tracking-tight">{selectedUser?.companyName || selectedUser?.email}</strong>
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-8 py-6">
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="discount" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rabat B2B (%)</Label>
-              <Input
-                id="discount"
-                type="number"
-                min="0"
-                max="100"
-                value={tempDiscount}
-                onChange={(e) => setTempDiscount(e.target.value)}
-                className="rounded-2xl border-border focus:ring-primary h-14 text-xl font-black text-primary bg-muted/20"
-              />
-            </div>
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="tier" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Poziom Partnerstwa (Tier)</Label>
-              <Input
-                id="tier"
-                value={tempTier}
-                onChange={(e) => setTempTier(e.target.value)}
-                placeholder="PRO, VIP, PARTNER"
-                className="rounded-2xl border-border focus:ring-primary h-14 font-extrabold text-foreground uppercase tracking-tight bg-muted/20"
-              />
-            </div>
+        <DialogContent className="sm:max-w-[400px] border-none bg-slate-950 p-0 shadow-3xl overflow-hidden font-mono">
+          <div className="p-6 bg-slate-900 border-b border-white/5 flex items-center gap-4">
+             <div className="w-10 h-10 bg-primary flex items-center justify-center rounded-sm">
+                <Percent className="w-5 h-5 text-slate-950" />
+             </div>
+             <div>
+                <h2 className="text-lg font-black uppercase tracking-tighter italic text-white leading-none">Matryca Handlowa</h2>
+                <span className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Korekta uprawnień i stawek</span>
+             </div>
           </div>
           
-          <DialogFooter className="sm:justify-start">
-            <Button 
+          <div className="p-8 space-y-8">
+             <div className="flex flex-col gap-3">
+               <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1 italic">Poziom Rabatowy (%)</Label>
+               <input
+                 type="number"
+                 min="0"
+                 max="100"
+                 value={tempDiscount}
+                 onChange={(e) => setTempDiscount(e.target.value)}
+                 className="w-full bg-white/5 border border-white/10 rounded-sm py-4 px-6 text-3xl font-black text-primary outline-none focus:border-primary transition-all"
+               />
+             </div>
+             <div className="flex flex-col gap-3">
+               <Label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1 italic">Status Klasyfikacyjny (TIER)</Label>
+               <input
+                 value={tempTier}
+                 onChange={(e) => setTempTier(e.target.value)}
+                 placeholder="PRO, VIP, PARTNER"
+                 className="w-full bg-white/5 border border-white/10 rounded-sm py-4 px-6 text-base font-black text-white uppercase tracking-widest outline-none focus:border-primary transition-all"
+               />
+             </div>
+          </div>
+          
+          <div className="p-4 bg-slate-900/50 flex justify-end">
+            <button 
               onClick={handleSaveDiscount} 
               disabled={saving}
-              className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest transition-all shadow-[0_0_30px_-5px_rgba(37,99,235,0.4)] hover:shadow-[0_0_40px_-5px_rgba(37,99,235,0.6)]"
+              className="w-full h-12 bg-primary text-slate-950 font-black uppercase tracking-widest text-[11px] hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary/20"
             >
-              {saving ? "Prorokowanie zmian..." : "Zapisz Nowe Warunki"}
-            </Button>
-          </DialogFooter>
+              {saving ? "PROPAGACJA DANYCH..." : "AUTORYZUJ ZMIANY"}
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

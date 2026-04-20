@@ -8,28 +8,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Brak wymaganych danych autoryzacyjnych lub parametrów NIP/Firma." }, { status: 400 });
     }
 
-    // Proxy do Strapi 5
-    const strapiRes = await fetch("http://127.0.0.1:1337/api/auth/local/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: email,
-        email,
-        password,
-        nip,
-        companyName,
-      }),
-    });
+    const { initializeMockData, saveMockData } = await import("@/store/serverStore");
+    const { users } = initializeMockData();
 
-    const data = await strapiRes.json();
-    
-    if (!strapiRes.ok) {
-      return NextResponse.json({ error: data?.error?.message || "Odmowa po stronie serwera CMS." }, { status: 400 });
+    // Sprawdzamy czy użytkownik już istnieje
+    if (users.some((u: any) => u.email === email)) {
+      return NextResponse.json({ error: "Użytkownik o tym adresie email już istnieje." }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, user: data.user });
+    const newUser = {
+      id: `u_${Date.now()}`,
+      username: email,
+      email,
+      nip,
+      companyName,
+      roleType: "BIZ",
+      isApproved: false, // Wymaga zatwierdzenia przez admina
+      isBlocked: false,
+      createdAt: new Date().toISOString(),
+      jwt: `mock-jwt-${Date.now()}`
+    };
+
+    (global as any).mockUsersStore.push(newUser);
+    saveMockData();
+
+    return NextResponse.json({ success: true, user: newUser });
   } catch (error) {
-    console.error("Błąd rejestracji Proxy", error);
-    return NextResponse.json({ error: "Wystąpił błąd krytyczny sieci proxy." }, { status: 500 });
+    console.error("Błąd rejestracji JSON:", error);
+    return NextResponse.json({ error: "Wystąpił błąd podczas zapisu w bazie danych." }, { status: 500 });
   }
 }

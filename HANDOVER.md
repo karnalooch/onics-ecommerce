@@ -9,27 +9,17 @@
    - Przeorganizowano autoryzację `NextAuth` w architekturze Bez-Prismy (z wymuszeniem KSeF/NIP dla kont B2B).
    - Koszyk zbudowany na globalnym E-Store `Zustand` z w pełni oprogramowaną funkcją Checkout API dla operatora `Stripe` (/api/checkout).
    - B2B Dashboard: Wyizolowana trasa `/(b2b)/oferty` która ignoruje transakcje detaliczne w zamian narzucając okno "Zapytania Ofertowego".
-2. **Backend / CMS**
-   - Ścieżka `/celtronics-backend` zawiera ukrytą instancję **Strapi 5**, którą w Faza_8 spięto z PostgreSQL.
-   - Posiadamy działający `api/quotes/route.ts` - RESTowy symulator SMTP (Nodemailer) wysyłający leade'y od klientów hurtowych prosto na firmowego maila.
-   - **Nowy Generator Ofert B2B:** Całkowicie przearanżowano UI na układ 3-kolumnowy (Edytor/Koszyk - Podgląd PDF - Przeglądarka Produktów). Wprowadzono system kategorii pionowych na prawym marginesie, co pozwala na błyskawiczne dodawanie urządzeń jednym kliknięciem.
-   - **Dashboard Admina:** Dodano możliwość usuwania zgłoszeń oczekujących instalatorów oraz naprawiono ścieżki API dla akcji zatwierdzania.
-   - **Inteligentny Generator:** Wprowadzono listę podpowiedzi (Autocomplete) dla nazw firm w generatorze ofert. System teraz automatycznie uzupełnia NIP po znalezieniu klienta w bazie i pozwala na zwinięcie sekcji danych ("Zatwierdź"), zwiększając przestrzeń roboczą.
-   - **Serwis / RMA:** Dodano system ręcznego wprowadzania urządzeń do kolejki serwisowej bezpośrednio przez administratora (przypadek telefonu od klienta).
-   - **Moduł Klienci (CRM):** Wdrożono zarządzanie portfolio klientów B2B/B2C z hard-blokadą logowania (`isBlocked`) sprzężoną z auth.js na poziomie Store'a.
-   - **Zarządzanie Kategoriami:** Odwzorowano w pełni drzewiaste zarządzanie kategoriami z WF-Maga (z lewym menu wyboru). Wynik eksportowany jest prosto do API filtrowania.
-   - **Centrum Zarządzania Produktami:** Całkowicie przebudowany komponent na architekturę "use client" ze wspomaganiem Filtrowania.
-   - **Import WF-Mag Staging (Poczekalnia):** Wdrożony system ładowania prawdziwych arkuszy .XLS lokalnie (SheetJS). Zamiast surowego zapisu do bazy stawia on system "Poczekalni" i koloruje margines zysków/strat (Diffing cen). Wspiera tzw. Akceptację Pojedynczą (Per-item Commit) oraz nowości korzystają ze zintegrowanego modelu AI przypisywania do kategorii na podstawie Słów Kluczowych!
+2. **Architektura Wszystko-w-Jednym (Unified)**
+   - Wszystkie dane (produkty, użytkownicy, zamówienia) są przechowywane w pliku `src/data/db.json`.
+   - Usunięto zależność od Strapi oraz bazy PostgreSQL (folder `celtronics-backend` został skasowany).
+   - Projekt jest teraz w 100% przenośną aplikacją Next.js.
 
-## Procedura Odpalenia na Nowej Maszynie (Domowej PC)
-Aby odpalić projekt i rozpocząć pracę tam gdzie ją skończyliśmy:
+## Procedura Odpalenia (PC Domowy / Praca)
 
-1. **Zignoruj śmieci systemowe:** Jeśli przenosisz folder pendrivem – na domowym PC KONIECZNIE usuń stare foldery `node_modules` i `.next` w głównym katalogu `Cloude` oraz w backendzie. Różne komputery mogą mieć inną strukturę systemu/binarną!
-2. **Czysta Re-Instalacja z Package.json:** 
-   - Wykonaj `npm install --legacy-peer-deps` na głównym katalogu Front-endu.
-   - Wykonaj `npm install` w `/celtronics-backend` dla zaplecza CMS (jeśli trzeba).
-3. **Zabezpieczenie Środowiska (Klucze):** Nie zapomnij przekopiować na pendrive plików `.env` (domyślnie są ukryte!). Potrzebujesz odtworzyć Stripe KEYS, NEXTAUTH_SECRET oraz tokeny od serwera SMTP (z endpointu quotes), inaczej funkcje serwerowe zaczną wyrzucać errory bezpieczeństwa 500!
-4. **Usługi Węzła (Node):** Wykonaj podwójny start:
-   - Terminal 1: `npm run dev` na froncie.
-   - Terminal 2: `npm run develop` w /celtronics-backend.
-   - Uruchom też aplikację Docker Desktop, jeśli instalacja bazy dla Strapi będzie tego wymagać o poranku.
+1. **Instalacja:**
+   - `npm install --legacy-peer-deps` w głównym katalogu.
+2. **Klucze:**
+   - Upewnij się, że masz plik `.env` z kluczami Stripe, NextAuth Secret i SMTP (skopiuj go z pendrive'a).
+3. **Start:**
+   - Otwórz terminal i wpisz: `npm run dev`
+   - Aplikacja działa pod adresem: [http://localhost:3001](http://localhost:3001)

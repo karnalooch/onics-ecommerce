@@ -48,11 +48,10 @@ export async function POST(req: Request) {
         const plNip = session.metadata?.pl_nip || session.customer_details?.tax_ids?.[0]?.value;
         
         if (!plNip && event.type === 'checkout.session.completed') {
-           console.warn('Transakcja zakończona, jednak brak NIP (pl_nip). Transakcja B2C lub błąd walidacji po stronie logowania.');
-           // Tutaj obsługa fallback dla klienta detalicznego / ISR revalidation call
+           console.warn('Brak NIP (pl_nip). Transakcja B2C.');
         } else {
            console.log(`Płatność zatwierdzona dla firmy z NIP: ${plNip}`);
-           // Poniżej można użyć funkcji proxy komunikującej się z Strapi 5 (Backend)
+           // Tutaj można dodać logikę aktualizacji db.json o status zamówienia
         }
         break;
       

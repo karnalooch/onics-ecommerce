@@ -3,7 +3,16 @@
 import { signIn } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldAlert, KeyRound, Loader2, ArrowLeft } from "lucide-react";
+import { 
+  ShieldAlert, 
+  KeyRound, 
+  Loader2, 
+  ArrowLeft, 
+  Fingerprint, 
+  ShieldCheck,
+  Activity,
+  Terminal
+} from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -31,12 +40,12 @@ export default function LoginPage() {
       });
 
       if (res?.error) {
-        setError("Autoryzacja odrzucona. Sprawdź poprawność danych konta.");
+        setError("AUTORYZACJA_ODRZUCONA: Błędne dane uwierzytelniające.");
         setLoading(false);
         return;
       }
 
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 800));
       
       const sessionRes = await fetch('/api/auth/session', { cache: 'no-store' });
       const session = await sessionRes.json();
@@ -50,7 +59,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error(err);
-      setError("Awaria węzła autoryzacyjnego KSeF. Spróbuj ponownie.");
+      setError("NODE_FAILURE: Awaria węzła autoryzacyjnego. Spróbuj ponownie.");
       setLoading(false);
     }
   };
@@ -58,115 +67,147 @@ export default function LoginPage() {
   if (!mounted) return null;
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      {/* Left Panel: High-Tech Secure Vault (Brand Side) */}
-      <div className="hidden lg:flex w-1/2 relative bg-slate-900 overflow-hidden items-center justify-center">
-        <img 
-          src="/auth_split_banner_1776462089456.png" 
-          alt="Secure Data Center" 
-          className="absolute inset-0 w-full h-full object-cover opacity-60"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+    <div className="flex h-screen w-full bg-slate-50 font-mono overflow-hidden select-none">
+      
+      {/* 1. TECHNICAL BRAND PANEL (DHL/SATEL LEFT COLUMN) */}
+      <div className="hidden lg:flex w-2/5 bg-slate-950 relative items-center justify-center border-r-2 border-slate-900 overflow-hidden">
         
-        <div className="relative z-10 text-white max-w-lg px-12 text-center">
-          <div className="bg-primary/20 backdrop-blur-md p-4 w-fit rounded-2xl mx-auto mb-8 border border-white/10">
-            <ShieldAlert className="w-12 h-12 text-primary" />
-          </div>
-          <h1 className="text-4xl font-extrabold tracking-tight mb-4">Autoryzacja B2B</h1>
-          <p className="text-lg text-slate-300 font-medium leading-relaxed">
-            Dostęp do hurtowego cennika instalatorskiego oraz certyfikowanych systemów bezpieczeństwa. 
-            Moduł zintegrowany asynchronicznie z KSeF.
-          </p>
+        {/* Engineering Background Pattern (No Image needed) */}
+        <div className="absolute inset-0 opacity-[0.05]" style={{ 
+            backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+            backgroundSize: '20px 20px'
+        }} />
+        
+        <div className="relative z-10 w-full px-16 space-y-12">
+           <div className="flex flex-col gap-4">
+              <div className="w-16 h-16 bg-primary text-slate-950 flex items-center justify-center rounded-none shadow-3xl shadow-primary/20 animate-in zoom-in duration-700">
+                 <ShieldAlert className="w-10 h-10" />
+              </div>
+              <div className="space-y-1">
+                 <h1 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">Authentication</h1>
+                 <p className="text-[10px] font-black uppercase text-primary tracking-[0.4em] italic">Elite_Engineering_Core</p>
+              </div>
+           </div>
+
+           <div className="space-y-6">
+              {[
+                { i: <Fingerprint className="w-4 h-4" />, t: "Secure Link v4.2 ESTABLISHED" },
+                { i: <Activity className="w-4 h-4" />, t: "Mainframe Heartbeat: OPTIMAL" },
+                { i: <Terminal className="w-4 h-4" />, t: "B2B Protocol_Activated" }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-4 text-slate-500 opacity-60">
+                   <div className="w-8 h-8 rounded-full border border-slate-800 flex items-center justify-center">
+                      {item.i}
+                   </div>
+                   <span className="text-[10px] font-bold uppercase tracking-widest leading-none">{item.t}</span>
+                </div>
+              ))}
+           </div>
+
+           <div className="pt-10 border-t border-white/5 opacity-30">
+              <p className="text-[11px] text-slate-400 font-medium leading-relaxed italic">
+                Platforma zastrzeżona wyłącznie dla autoryzowanych instalatorów i partnerów technicznych Celtronics S.C.
+              </p>
+           </div>
         </div>
       </div>
 
-      {/* Right Panel: Clean Corporate Auth Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 relative">
+      {/* 2. OPERATIONAL WORKSPACE (WHITE FORM AREA) */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-white relative">
+        
         <Link 
           href="/" 
-          className="absolute top-8 left-8 flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute top-10 right-10 flex items-center gap-3 text-[10px] font-black text-slate-400 hover:text-slate-950 uppercase tracking-[0.2em] transition-all active:scale-95"
         >
-          <ArrowLeft className="w-4 h-4" /> Powrót 
+          <ArrowLeft className="w-4 h-4" /> Powrót do Strony Głównej
         </Link>
         
-        <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div className="mb-10">
-            <h2 className="text-3xl font-extrabold tracking-tight text-foreground mb-2">Panel Partnera</h2>
-            <p className="text-muted-foreground font-medium">Wprowadź poświadczenia dostępowe poniżej.</p>
+        <div className="w-full max-w-sm space-y-10 animate-in fade-in slide-in-from-right-10 duration-700">
+          <div className="space-y-2 border-l-4 border-slate-950 pl-6">
+            <h2 className="text-2xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">Partner Access</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Procedura autoryzacji systemowej</p>
           </div>
 
           {error && (
-            <div className="bg-destructive/10 text-destructive text-sm p-4 rounded-xl border border-destructive/20 font-bold mb-6 flex items-center gap-3">
+            <div className="bg-status-error/10 text-status-error text-[10px] p-4 font-black uppercase tracking-widest border border-status-error/20 animate-in shake duration-500 flex items-center gap-4">
               <ShieldAlert className="w-5 h-5 shrink-0" />
               {error}
             </div>
           )}
 
           <form className="space-y-6" onSubmit={(e) => handleSubmit(e)}>
-            <div className="space-y-2">
-              <label htmlFor="login-email" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Konto (E-mail)</label>
-              <input 
-                id="login-email" 
-                type="email" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                required 
-                placeholder="nazwa@twojafirma.pl" 
-                className="w-full flex h-14 rounded-xl border border-border bg-card/50 px-4 py-2 text-base font-medium ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent transition-all"
-              />
+            <div className="space-y-2 group">
+              <label htmlFor="login-email" className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Konto_Ident_E-mail</label>
+              <div className="relative">
+                 <input 
+                   id="login-email" 
+                   type="email" 
+                   value={email} 
+                   onChange={e => setEmail(e.target.value)} 
+                   required 
+                   placeholder="IDENT@FIRMA.PL" 
+                   className="w-full h-12 bg-slate-50 border-2 border-slate-100 px-4 text-[11px] font-bold text-slate-950 uppercase tracking-widest outline-none focus:border-primary focus:bg-white transition-all active:shadow-inner"
+                 />
+              </div>
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="login-password" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Hasło Szyfrowane</label>
-              <input 
-                id="login-password" 
-                type="password" 
-                value={password} 
-                onChange={e => setPassword(e.target.value)} 
-                required 
-                placeholder="••••••••••••" 
-                className="w-full flex h-14 rounded-xl border border-border bg-card/50 px-4 py-2 text-base font-medium ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent transition-all"
-              />
+            <div className="space-y-2 group">
+              <label htmlFor="login-password" className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Klucz_Kodowany</label>
+              <div className="relative">
+                 <input 
+                   id="login-password" 
+                   type="password" 
+                   value={password} 
+                   onChange={e => setPassword(e.target.value)} 
+                   required 
+                   placeholder="••••••••••••" 
+                   className="w-full h-12 bg-slate-50 border-2 border-slate-100 px-4 text-[11px] font-bold text-slate-950 uppercase tracking-widest outline-none focus:border-primary focus:bg-white transition-all active:shadow-inner"
+                 />
+              </div>
             </div>
 
             <button 
-              type="button" 
-              onClick={(e) => handleSubmit(e)}
+              type="submit" 
               disabled={loading}
-              className="w-full inline-flex items-center justify-center rounded-xl text-base font-bold transition-all bg-primary text-primary-foreground hover:bg-primary/90 h-14 shadow-[0_0_30px_-5px_rgba(37,99,235,0.3)] hover:shadow-[0_0_40px_-5px_rgba(37,99,235,0.5)] disabled:opacity-50 mt-4"
+              className="w-full h-14 bg-slate-950 text-white text-[11px] font-black uppercase tracking-[0.3em] italic flex items-center justify-center gap-4 hover:bg-primary hover:text-slate-950 transition-all active-press active-inset shadow-xl shadow-slate-950/20 disabled:opacity-50 mt-4 group"
             >
               {loading ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
-                <KeyRound className="mr-2 h-5 w-5" />
+                <KeyRound className="h-5 w-5 group-hover:rotate-12 transition-transform" />
               )}
-              {loading ? "Autoryzacja węzła..." : "Zaloguj do Panelu"}
+              {loading ? "WERYFIKACJA..." : "AUTORYZUJ DOSTĘP"}
             </button>
           </form>
 
-          <div className="mt-12 pt-8 border-t border-border">
-            <div className="bg-muted/30 p-5 rounded-2xl border border-border space-y-3">
-              <p className="text-xs font-black uppercase tracking-widest text-primary mb-4">Węzeł Weryfikacyjny (Środowisko Demo):</p>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="block text-muted-foreground text-xs mb-1">Dostęp Admina</span>
-                  <code className="font-bold text-foreground bg-background px-2 py-1 rounded">admin@celtronics.pl</code>
+          {/* DENSE TECHNICAL MOCK DATA (ONLY FOR DEMO) */}
+          <div className="pt-8 border-t border-slate-100">
+             <div className="bg-slate-50 p-4 space-y-4">
+                <div className="flex items-center gap-3">
+                   <ShieldCheck className="w-4 h-4 text-status-success" />
+                   <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">Tryb Weryfikacji: Środowisko Testowe</span>
                 </div>
-                <div>
-                  <span className="block text-muted-foreground text-xs mb-1">Konto B2B</span>
-                  <code className="font-bold text-foreground bg-background px-2 py-1 rounded">instalator@celtronics.pl</code>
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="flex flex-col gap-1">
+                      <span className="text-[8px] font-bold text-slate-400 uppercase">Login Admin</span>
+                      <code className="text-[10px] font-black text-slate-600">admin@celtronics.pl</code>
+                   </div>
+                   <div className="flex flex-col gap-1 items-end text-right">
+                      <span className="text-[8px] font-bold text-slate-400 uppercase">Hasło Universal</span>
+                      <code className="text-[10px] font-black text-primary">test</code>
+                   </div>
                 </div>
-              </div>
-              <div className="mt-4 text-center bg-background py-2 rounded-lg border border-border/50">
-                <span className="text-xs text-muted-foreground">Hasło główne:</span> <strong className="text-primary font-black ml-2 text-sm italic">test</strong>
-              </div>
-            </div>
-            
-            <p className="text-center text-sm text-muted-foreground mt-8 font-medium">
-              Nie posiadasz aktywnego certyfikatu KSeF? <br />
-              <a href="/rejestracja" className="text-primary font-bold hover:underline decoration-2 underline-offset-4 transition-all">Rozpocznij proces weryfikacyjny</a>
-            </p>
+             </div>
           </div>
+
+          <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+            Brak certyfikatu? <Link href="/rejestracja" className="text-primary hover:underline decoration-2 underline-offset-4">Wniosek o Rejestrację B2B</Link>
+          </p>
+        </div>
+
+        {/* Operational Watermark */}
+        <div className="absolute bottom-10 right-10 text-[60px] font-black text-slate-50 select-none pointer-events-none -z-10 tracking-tighter">
+           CRT_SECURE
         </div>
       </div>
     </div>

@@ -24,7 +24,7 @@ export default async function AdminRmaPage() {
 
   return (
     <div className="container mx-auto py-10 px-4">
-      <RepairsDashboardClient initialRepairs={formattedRepairs} />
+      <RepairsDashboardClient initialData={formattedRepairs} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
-// src/app/admin/products/_components/ProductSidebar.tsx
 "use client";
 
-import { Search, Filter, Layers, Tag as TagIcon, ChevronDown, ChevronRight, Package, Library, LayoutDashboard } from "lucide-react";
+import { Search, Filter, Tag as TagIcon, ChevronDown, ChevronRight, Package, Library, LayoutDashboard, Database } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -38,19 +37,17 @@ export function ProductSidebar({
   };
 
   return (
-    <div className="space-y-4 sticky top-12 animate-in slide-in-from-left-8 duration-1000">
+    <div className="space-y-2 sticky top-14 animate-in slide-in-from-left-2 duration-500">
        {/* MASTER SEARCH BENTO */}
-       <div className="p-8 bg-white/40 dark:bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] border border-white dark:border-slate-800 shadow-2xl space-y-8 transition-all hover:bg-white/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20">
-                <Filter className="w-5 h-5" />
+       <div className="technical-panel p-3 space-y-3 bg-white">
+          <div className="flex items-center justify-between border-b border-border pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-primary text-white rounded-sm flex items-center justify-center">
+                <Filter className="w-3.5 h-3.5" />
               </div>
-              <h3 className="text-xl font-black uppercase italic tracking-tighter">Filtry <span className="text-primary italic">IQ</span></h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest">Filtrowanie <span className="text-primary italic">IQ</span></h3>
             </div>
-            <Button 
-                variant="ghost" 
-                size="sm" 
+            <button 
                 onClick={() => {
                   setSearchTerm("");
                   setSelectedCatId(null);
@@ -58,68 +55,68 @@ export function ProductSidebar({
                   setSelectedManufacturer("ALL");
                   setShowOnlyInStock(false);
                 }}
-                className="h-10 px-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-900 hover:text-white text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+                className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground hover:text-red-600 transition-all"
               >
                 Reset
-              </Button>
+              </button>
           </div>
 
           <div className="relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-all duration-300" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 group-focus-within:text-primary transition-all" />
             <input 
               type="text" 
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)} 
-              placeholder="Szukaj modelu..."
-              className="w-full h-16 pl-14 pr-6 bg-white/40 dark:bg-slate-800/40 rounded-[1.5rem] border-2 border-slate-100 dark:border-slate-700 outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 font-black text-xs uppercase tracking-widest transition-all dark:text-white placeholder:text-slate-300 text-slate-700 dark:text-slate-100"
+              placeholder="Model / SKU..."
+              className="w-full h-8 pl-9 pr-3 bg-secondary/20 rounded-xs border border-border outline-none focus:border-primary focus:bg-white text-[11px] font-bold uppercase tracking-tight transition-all placeholder:text-muted-foreground/30"
             />
           </div>
        </div>
 
-       {/* STOCK STATUS BENTO */}
-       <div className="p-2 bg-white/30 dark:bg-slate-950/30 backdrop-blur-2xl rounded-[2rem] border border-white/20 dark:border-slate-800/50 shadow-xl grid grid-cols-2 gap-2">
+       {/* STOCK STATUS TOGGLE */}
+       <div className="technical-panel p-1 bg-secondary/10 grid grid-cols-2 gap-1">
           <button 
             onClick={() => setShowOnlyInStock(false)}
-            className={`flex items-center justify-center gap-3 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all ${!showOnlyInStock ? 'bg-slate-900 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            className={`flex items-center justify-center gap-2 py-1.5 rounded-xs text-[9px] font-black uppercase tracking-wider transition-all ${!showOnlyInStock ? 'bg-white border border-border shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <Library className="w-4 h-4" /> Globalna
+            <Library className="w-3.5 h-3.5" /> Całość
           </button>
           <button 
             onClick={() => setShowOnlyInStock(true)}
-            className={`flex items-center justify-center gap-3 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all ${showOnlyInStock ? 'bg-orange-600 text-white shadow-xl scale-[1.02]' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+            className={`flex items-center justify-center gap-2 py-1.5 rounded-xs text-[9px] font-black uppercase tracking-wider transition-all ${showOnlyInStock ? 'bg-white border border-border shadow-sm text-orange-600' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <Package className="w-4 h-4" /> Magazyn
+            <Package className="w-3.5 h-3.5" /> Magazyn
           </button>
        </div>
 
-       {/* CATEGORIES BENTO */}
-       <div className="p-6 bg-white/40 dark:bg-slate-900/60 backdrop-blur-3xl rounded-[3rem] border border-white dark:border-slate-800 shadow-2xl space-y-6">
-          <div className="flex flex-col gap-1 ml-2">
-            <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 tracking-[0.3em] italic underline decoration-primary decoration-4 underline-offset-8">Wątki Katalogowe</label>
-          </div>
-          <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+       {/* CATEGORIES NAVIGATION */}
+       <div className="technical-panel p-3 space-y-3 bg-white max-h-[calc(100vh-16rem)] flex flex-col">
+          <label className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-[0.2em] border-b border-border pb-2 flex items-center gap-2">
+            <Database className="w-3 h-3" /> Wątki Katalogowe
+          </label>
+          <div className="space-y-1 overflow-y-auto pr-1 horizontal-scroll-hide">
             <button 
               onClick={() => { setSelectedCatId(null); setSelectedSubcatId(null); }}
-              className={`w-full flex items-center gap-4 px-6 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all ${!selectedCatId ? 'bg-primary text-white shadow-2xl scale-[1.02]' : 'text-slate-700 dark:text-slate-300 hover:bg-primary/5'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xs text-[10px] font-black uppercase tracking-tighter transition-all ${!selectedCatId ? 'bg-primary/10 text-primary border border-primary/20' : 'text-muted-foreground hover:bg-secondary/30'}`}
             >
-              <LayoutDashboard className="w-4 h-4" /> Repozytorium All
+              <LayoutDashboard className="w-3.5 h-3.5" /> Wszystkie
             </button>
             {categories.map(cat => (
-              <div key={cat.id} className="space-y-1">
+              <div key={cat.id} className="space-y-0.5 mt-1">
                  <button 
                    onClick={() => { setSelectedCatId(cat.id); setSelectedSubcatId(null); toggleCat(cat.id); }} 
-                   className={`w-full flex items-center justify-between px-6 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${selectedCatId === cat.id && !selectedSubcatId ? 'bg-primary/10 text-primary border border-primary/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100/50 dark:hover:bg-slate-800/50'}`}
+                   className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xs text-[9px] font-black uppercase tracking-tight transition-all ${selectedCatId === cat.id && !selectedSubcatId ? 'bg-secondary text-foreground' : 'text-muted-foreground/70 hover:bg-secondary/30 hover:text-foreground'}`}
                  >
-                   <span className="flex items-center gap-3 truncate"><TagIcon className="w-4 h-4" /> {cat.name}</span>
-                   {cat.subcategories?.length > 0 && (expandedCats.has(cat.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+                   <span className="flex items-center gap-2 truncate"><TagIcon className="w-3 h-3 opacity-40 text-primary" /> {cat.name}</span>
+                   {cat.subcategories?.length > 0 && (expandedCats.has(cat.id) ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />)}
                  </button>
                  {expandedCats.has(cat.id) && cat.subcategories?.length > 0 && (
-                   <div className="ml-10 space-y-1 border-l-4 border-primary/10 pl-4 py-2 animate-in slide-in-from-left-4 duration-500">
+                   <div className="ml-5 space-y-0.5 border-l border-border pl-2 py-1 animate-in slide-in-from-left-2 duration-300">
                      {cat.subcategories.map((sub: any) => (
                        <button 
                          key={sub.id} 
                          onClick={() => { setSelectedCatId(cat.id); setSelectedSubcatId(sub.id); }} 
-                         className={`w-full text-left px-4 py-3 rounded-xl text-[9px] font-black transition-all uppercase tracking-[0.1em] ${selectedSubcatId === sub.id ? 'text-primary bg-primary/5' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white hover:translate-x-1'}`}
+                         className={`w-full text-left px-2 py-1.5 rounded-xs text-[9px] font-bold transition-all uppercase tracking-tight ${selectedSubcatId === sub.id ? 'text-primary bg-primary/5' : 'text-muted-foreground/50 hover:text-foreground'}`}
                        >
                          {sub.name}
                        </button>
@@ -131,19 +128,21 @@ export function ProductSidebar({
           </div>
        </div>
 
-       {/* BRANDING BENTO */}
-       <div className="p-8 bg-slate-900 text-white rounded-[3rem] shadow-2xl space-y-4 group">
-          <label className="text-[10px] font-black uppercase text-slate-500 tracking-[0.3em] transition-colors group-hover:text-primary">Ecosystem Marek</label>
+       {/* BRANDING SELECTOR */}
+       <div className="technical-panel p-3 space-y-2 bg-slate-900 text-white shadow-lg shadow-black/10">
+          <label className="text-[9px] font-black uppercase text-slate-500 tracking-[0.2em] flex items-center gap-2">
+            <Package className="w-3 h-3" /> Producent
+          </label>
           <div className="relative">
             <select 
               value={selectedManufacturer} 
               onChange={e => setSelectedManufacturer(e.target.value)} 
-              className="w-full h-14 px-6 bg-slate-800 rounded-2xl border-none outline-none font-black text-[10px] uppercase tracking-widest text-slate-100 appearance-none cursor-pointer focus:ring-2 focus:ring-primary transition-all"
+              className="w-full h-8 px-2 bg-slate-800 rounded-xs border border-white/5 outline-none font-black text-[10px] uppercase tracking-widest text-slate-100 appearance-none cursor-pointer focus:ring-1 focus:ring-primary transition-all"
             >
-              <option value="ALL">Global Universe (All)</option>
+              <option value="ALL">Wszystkie marki</option>
               {manufacturersList.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
-            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-primary pointer-events-none" />
           </div>
        </div>
     </div>

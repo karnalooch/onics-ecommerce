@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface CartItem {
-  id: string; // Strapi Product ID lub lokalny
+  id: string; // Unikalne ID produktu
   sku: string;
   name: string;
   price: number; // Cena netto w B2B / brutto w B2C

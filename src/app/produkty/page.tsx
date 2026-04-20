@@ -1,14 +1,13 @@
-import { AddToCartButton } from "@/components/ui/AddToCartButton";
-import { Lock } from "lucide-react";
+import { Lock, Search, Filter, ShoppingCart, List, Grid3X3, Package } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@/auth";
+import { AddToCartButton } from "@/components/ui/AddToCartButton";
 
-export const revalidate = 60; 
+export const revalidate = 0; 
 
 export default async function ConsumerCatalogPage() {
   const session = await auth();
   
-  // Pobieramy dane z naszego API, które obsługuje RBAC (ukrywanie cen)
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
   let products = [];
   try {
@@ -18,75 +17,127 @@ export default async function ConsumerCatalogPage() {
     console.error("Błąd pobierania produktów:", e);
   }
 
-  return (
-    <div className="container mx-auto py-12 px-6 max-w-7xl animate-in fade-in duration-700">
-      <div className="flex flex-col gap-1 mb-10">
-        <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase italic">Katalog <span className="text-accent underline decoration-4 underline-offset-4">Produktowy</span></h1>
-        <p className="text-muted-foreground font-medium">Przeglądaj pełną ofertę systemów bezpieczeństwa Celtronics.</p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-        {products.map((p: any) => {
-          // Mapowanie kategorii na nowo wygenerowane grafiki premium
-          let imageUrl = "/placeholder.png"; 
-          if (p.categoryId === "c3") imageUrl = "/security_monitoring_hero_1776461316604.png";
-          if (p.categoryId === "c7") imageUrl = "/alarm_system_premium_1776461332910.png";
-          if (p.categoryId === "c4" || p.categoryId === "c2") imageUrl = "/networking_pro_hardware_1776461349508.png";
-          if (p.categoryId === "c1") imageUrl = "/sat_tv_antenna_pro_1776461365418.png";
+  // Symulacja kategorii horyzontalnych (Progessive Disclosure)
+  const categories = ["Wszystkie", "CCTV", "Alarmy", "Automatyka", "Zasilanie", "Sieci IT"];
 
-          return (
-            <div key={p.id} className="group relative flex flex-col bg-white dark:bg-slate-900/40 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 overflow-hidden backdrop-blur-sm">
-              <div className="aspect-square bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 group-hover:scale-105 transition-transform duration-700 relative overflow-hidden">
-                <img src={imageUrl} alt={p.name} className="object-cover w-full h-full opacity-90 group-hover:opacity-100 transition-opacity" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 to-transparent opacity-60" />
-                <span className="absolute top-4 left-4 text-[9px] font-black text-white/80 uppercase tracking-widest bg-black/20 backdrop-blur-md px-2 py-1 rounded-lg">
-                  {p.manufacturer || "Celtronics"}
-                </span>
-              </div>
-              
-              <div className="p-6 flex flex-col flex-1 relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-400/10 px-2 py-0.5 rounded-full">
-                    {p.sku}
-                  </span>
-                </div>
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-snug mb-4 group-hover:text-blue-600 transition-colors line-clamp-2 min-h-[3rem]">
-                  {p.name}
-                </h3>
-                
-                <div className="mt-auto pt-4 border-t border-slate-50 dark:border-white/5">
+  return (
+    <div className="flex flex-col gap-4">
+      {/* HEADER: DENSE & TECHNICAL */}
+      <header className="technical-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-sm font-bold uppercase tracking-widest text-foreground flex items-center gap-2">
+            <Package className="w-4 h-4 text-primary" /> Katalog Produktowy [DENSE_VIEW]
+          </h1>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Stan bazy: {products.length} pozycji aktywnych</p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="Szukaj SKU / Nazwa..." 
+              className="pl-8 pr-3 py-1.5 bg-secondary/50 border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary w-64"
+            />
+          </div>
+          <button className="p-2 border border-border rounded hover:bg-secondary text-muted-foreground">
+            <Filter className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </header>
+
+      {/* HORIZONTAL CATEGORY SELECTOR */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-2 custom-scrollbar">
+        {categories.map((cat, i) => (
+          <button 
+            key={cat} 
+            className={`px-3 py-1.5 rounded-sm text-[11px] font-bold uppercase tracking-tight transition-all border
+              ${i === 0 ? "bg-primary text-white border-primary" : "bg-white text-muted-foreground border-border hover:bg-secondary hover:text-foreground"}
+            `}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* DENSE TABLE VIEW */}
+      <div className="technical-panel overflow-hidden">
+        <table className="w-full border-collapse dense-table">
+          <thead className="bg-secondary/30 text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">
+            <tr>
+              <th className="w-10">Zdjęcie</th>
+              <th className="w-24">SKU / Kod</th>
+              <th>Nazwa Produktu</th>
+              <th className="hidden lg:table-cell">Producent</th>
+              <th className="w-24 text-right">Cena Netto</th>
+              <th className="w-24 text-center">Status</th>
+              <th className="w-32 text-right">Akcja</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {products.map((p: any) => (
+              <tr key={p.id} className="dense-row-hover">
+                <td className="py-1">
+                  <div className="w-8 h-8 bg-muted rounded-sm flex items-center justify-center overflow-hidden border border-border/50">
+                    <img 
+                      src={p.imageUrl || "/placeholder.png"} 
+                      alt={p.sku} 
+                      className="w-full h-full object-contain mix-blend-multiply opacity-80" 
+                    />
+                  </div>
+                </td>
+                <td className="font-bold text-primary">{p.sku}</td>
+                <td>
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-foreground leading-tight text-xs">{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground truncate max-w-xs">{p.specs || "Brak specyfikacji"}</span>
+                  </div>
+                </td>
+                <td className="hidden lg:table-cell">
+                   <span className="text-[10px] font-bold uppercase text-muted-foreground/70">{p.manufacturer || "Inny"}</span>
+                </td>
+                <td className="text-right font-bold text-foreground">
                   {!p.priceHidden ? (
-                    <div className="flex flex-col">
-                      <div className="flex items-end justify-between mb-4">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-0.5">Twoja Cena Netto</span>
-                          <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter">{p.price?.toFixed(2)} PLN</span>
-                        </div>
-                        <div className="bg-emerald-500/10 text-emerald-600 px-2 py-1 rounded-lg text-[10px] font-black uppercase">
-                          Dostępny
-                        </div>
-                      </div>
-                      <AddToCartButton product={p} />
-                    </div>
+                    <span className="text-xs">{p.price?.toFixed(2)} PLN</span>
                   ) : (
-                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-dashed border-slate-200 dark:border-white/10 group/lock transition-all hover:bg-slate-100 dark:hover:bg-slate-800">
-                      <div className="flex items-center gap-2 text-slate-500 mb-2">
-                        <Lock className="w-3.5 h-3.5 group-hover:text-blue-500 transition-colors" />
-                        <span className="text-[10px] font-black uppercase tracking-wider">Cena Chroniona</span>
-                      </div>
-                      <Link href="/logowanie">
-                        <button className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] hover:tracking-[0.25em] transition-all">
-                          Zaloguj się dla cen B2B
-                        </button>
-                      </Link>
+                    <div className="flex items-center justify-end gap-1 text-muted-foreground opacity-50">
+                      <Lock className="w-2.5 h-2.5" />
+                      <span className="text-[9px] uppercase font-bold">Lock</span>
                     </div>
                   )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                </td>
+                <td className="text-center">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                </td>
+                <td className="text-right">
+                  {!p.priceHidden ? (
+                    <div className="flex justify-end scale-75 origin-right">
+                       <AddToCartButton product={p} />
+                    </div>
+                  ) : (
+                    <Link href="/logowanie" className="text-[9px] font-black uppercase text-primary hover:underline">
+                      Auth B2B
+                    </Link>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* COMPACT FOOTER ACTIONS */}
+      <div className="flex items-center justify-between p-2 text-muted-foreground text-[10px] uppercase font-bold tracking-tight">
+        <div className="flex items-center gap-4">
+           <span>Wyświetlono: {products.length} / {products.length}</span>
+           <span className="text-primary cursor-pointer hover:underline">Pobierz Cennik PDF</span>
+        </div>
+        <div className="flex items-center gap-2">
+           <button className="px-2 py-1 border border-border rounded disabled:opacity-30">Poprzednia</button>
+           <button className="px-2 py-1 border border-primary bg-primary text-white rounded">1</button>
+           <button className="px-2 py-1 border border-border rounded disabled:opacity-30">Następna</button>
+        </div>
       </div>
     </div>
-  );
+  )
 }

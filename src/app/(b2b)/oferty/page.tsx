@@ -45,7 +45,7 @@ export default async function B2BOfertyPage() {
             ))}
           </div>
           <div className="text-center font-bold text-muted-foreground mt-8 p-12 border-2 border-dashed border-border rounded-3xl uppercase tracking-widest text-xs">
-            Pobieranie indeksów z węzła Strapi / KSeF...
+            Pobieranie indeksów z bazy hybrydowej...
           </div>
         </div>
       }>
