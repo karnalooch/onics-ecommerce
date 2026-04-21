@@ -12,15 +12,18 @@ import {
   Database,
   Lock,
   Globe,
-  Settings
+  Settings,
+  LogOut
 } from "lucide-react"
+import { auth } from "@/auth"
 
-export default function Home() {
+export default async function Home() {
+  const session = await auth();
   return (
     <div className="flex flex-col gap-1 w-full animate-in fade-in duration-500 overflow-hidden">
       
       {/* 1. ELITE HERO SECTION (STATIC / HIGH CONTRAST) */}
-      <section className="satel-card p-0 border-none rounded-none bg-slate-900 text-white min-h-[500px] flex items-center relative">
+      <section className="p-0 border-none rounded-none bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] text-white min-h-[500px] flex items-center relative">
          
          {/* Subtle Technical Pattern (No Blur) */}
          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ 
@@ -47,10 +50,25 @@ export default function Home() {
                </p>
                
                <div className="flex flex-wrap gap-4 pt-6">
-                  <Link href="/logowanie" className="h-14 px-12 bg-primary text-white flex items-center justify-center font-black uppercase text-[12px] tracking-[0.2em] transition-all active-press active-inset hover:brightness-110 shadow-lg shadow-primary/20">
-                     Zaloguj do Panelu
-                  </Link>
-                  <Link href="/oferta" className="h-14 px-10 border border-slate-700 text-white flex items-center justify-center font-black uppercase text-[11px] tracking-widest hover:bg-slate-800 transition-all active-press">
+                  {session ? (
+                     <>
+                        <Link href="/admin" className="h-14 px-12 bg-primary text-white flex items-center justify-center font-black uppercase text-[12px] tracking-[0.2em] transition-all active-press hover:brightness-110 shadow-lg shadow-blue-500/40">
+                           Przejdź do Pulpitu
+                        </Link>
+                        <form action={async () => { "use server"; const { signOut } = await import("@/auth"); await signOut({ redirectTo: "/" }); }}>
+                           <button type="submit" className="h-14 px-8 border-2 border-red-500 text-red-500 flex items-center justify-center gap-3 font-black uppercase text-[11px] tracking-widest hover:bg-red-500 hover:text-white transition-all active-press">
+                              <LogOut className="w-4 h-4" />
+                              Wyloguj
+                           </button>
+                        </form>
+                     </>
+                  ) : (
+                     <Link href="/logowanie" className="h-14 px-12 bg-primary text-white flex items-center justify-center font-black uppercase text-[12px] tracking-[0.2em] transition-all active-press hover:brightness-110 shadow-lg shadow-blue-500/40">
+                        Zaloguj do Panelu
+                     </Link>
+                  )}
+                  
+                  <Link href="/oferta" className="h-14 px-10 border-2 border-primary text-primary flex items-center justify-center font-black uppercase text-[11px] tracking-widest hover:bg-primary hover:text-white transition-all active-press italic">
                      Przeglądaj Ofertę
                   </Link>
                </div>
@@ -58,7 +76,7 @@ export default function Home() {
 
             {/* Industrial Data Box (Visualizing the Standard) */}
             <div className="hidden lg:flex justify-end pr-10">
-               <div className="satel-card p-10 bg-slate-800 border-slate-700 min-w-[400px] shadow-2xl relative">
+               <div className="satel-card p-10 bg-slate-800 border-slate-700 min-w-[400px] shadow-md relative">
                   <div className="absolute -top-4 -left-4 w-12 h-12 bg-primary flex items-center justify-center text-white font-black italic">V4</div>
                   <div className="space-y-6">
                      <div className="flex justify-between border-b border-slate-700 pb-2">
@@ -116,7 +134,7 @@ export default function Home() {
                <h4 className="text-2xl font-black text-slate-950 leading-tight">Systemy Sygnalizacji Włamania</h4>
                <p className="text-xs text-slate-500 font-bold leading-relaxed">Centrale INTEGRA, PERFECTA, urządzenia bezprzewodowe ABAX 2. Bezkompromisowe bezpieczeństwo.</p>
             </div>
-            <Link href="/oferta/sswin" className="pill-action bg-slate-950 text-white w-fit group-hover:bg-primary group-hover:shadow-lg transition-all flex items-center gap-2">
+            <Link href="/oferta/sswin" className="pill-action bg-slate-950 text-white w-fit group-hover:bg-primary transition-all flex items-center gap-2 active-press">
                Eksploruj <ChevronRight className="w-3 h-3" />
             </Link>
          </div>
@@ -131,7 +149,7 @@ export default function Home() {
                <h4 className="text-2xl font-black text-slate-950 leading-tight">Monitoring IP & Analityka VCA</h4>
                <p className="text-xs text-slate-500 font-bold leading-relaxed">Technologia AcuSense, ColorVu i systemy termowizyjne Hikvision. Najwyższa jakość obrazowania.</p>
             </div>
-            <Link href="/oferta/cctv" className="pill-action bg-slate-950 text-white w-fit group-hover:bg-primary group-hover:shadow-lg transition-all flex items-center gap-2">
+            <Link href="/oferta/cctv" className="pill-action bg-slate-950 text-white w-fit group-hover:bg-primary transition-all flex items-center gap-2 active-press">
                Eksploruj <ChevronRight className="w-3 h-3" />
             </Link>
          </div>
@@ -146,7 +164,7 @@ export default function Home() {
                <h4 className="text-2xl font-black text-slate-950 leading-tight">Kontrola Dostępu & RCP</h4>
                <p className="text-xs text-slate-500 font-bold leading-relaxed">Terminale biometryczne, zarządzanie personelem, systemy hotelowe. Precyzyjna kontrola uprawnień.</p>
             </div>
-            <Link href="/oferta/kd" className="pill-action bg-slate-950 text-white w-fit group-hover:bg-primary group-hover:shadow-lg transition-all flex items-center gap-2">
+            <Link href="/oferta/kd" className="pill-action bg-slate-950 text-white w-fit group-hover:bg-primary transition-all flex items-center gap-2 active-press">
                Eksploruj <ChevronRight className="w-3 h-3" />
             </Link>
          </div>
@@ -161,7 +179,7 @@ export default function Home() {
                <h4 className="text-2xl font-black text-slate-950 leading-tight">Automatyka PPOŻ & Oddymianie</h4>
                <p className="text-xs text-slate-500 font-bold leading-relaxed">Systemy oddymiania Satel mSR-1, klapy dymowe i integracje pożarowe. Ochrona życia i mienia.</p>
             </div>
-            <Link href="/oferta/ppoz" className="pill-action bg-slate-950 text-white w-fit group-hover:bg-primary group-hover:shadow-lg transition-all flex items-center gap-2">
+            <Link href="/oferta/ppoz" className="pill-action bg-slate-950 text-white w-fit group-hover:bg-primary transition-all flex items-center gap-2 active-press">
                Eksploruj <ChevronRight className="w-3 h-3" />
             </Link>
          </div>
@@ -201,7 +219,7 @@ export default function Home() {
 
          {/* 5. SIDEBAR TOOLS (B2B CTA) */}
          <div className="space-y-8">
-            <div className="satel-card p-8 bg-slate-950 text-white border-none shadow-2xl relative overflow-hidden group">
+            <div className="satel-card p-8 bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] text-white border-none shadow-md relative overflow-hidden group">
                <div className="absolute top-0 right-0 p-4 opacity-10">
                   <Globe className="w-32 h-32" />
                </div>
@@ -223,7 +241,7 @@ export default function Home() {
                      </div>
                   ))}
                </div>
-               <Link href="/rejestracja" className="w-full h-14 bg-white text-slate-950 flex items-center justify-center text-[11px] font-black uppercase tracking-[0.3em] active-press shadow-xl">
+               <Link href="/rejestracja" className="w-full h-14 bg-white text-slate-950 flex items-center justify-center text-[11px] font-black uppercase tracking-[0.3em] active-press shadow-sm">
                   Rozpocznij Integrację
                </Link>
             </div>

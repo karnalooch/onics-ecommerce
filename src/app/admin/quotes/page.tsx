@@ -1,16 +1,13 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import React, { useEffect, useState, useCallback } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { 
   FileText, Printer, Plus, Trash2, Search, 
-  Tv, Smartphone, Video, Network, Activity, Home, Shield,
-  ChevronRight, Info, AlertTriangle, Check, X
+  ChevronRight, LayoutGrid, Package, UserCircle, Settings, Layers, Briefcase,
+  Terminal, ShieldCheck, Activity, Download, RefreshCcw, Box
 } from "lucide-react"
-import * as Icons from "lucide-react";
+import { toast } from "sonner"
 
 export default function QuotesGenerator() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -19,58 +16,44 @@ export default function QuotesGenerator() {
   const [loading, setLoading] = useState(true);
 
   const [items, setItems] = useState<{productId: string, qty: number, discount: number}[]>([]);
-  const [clientInfo, setClientInfo] = useState({ name: "Firma Instalatorska XYZ", nip: "1234567890" });
-  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const [clientInfo, setClientInfo] = useState({ name: "KLIENT_TEST_B2B", nip: "000-000-00-00" });
   const [searchQuery, setSearchQuery] = useState("");
-  const [isClientDataCollapsed, setIsClientDataCollapsed] = useState(false);
   const [refNumber, setRefNumber] = useState("");
   const [quoteDate, setQuoteDate] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [cRes, pRes, uRes] = await Promise.all([
-          fetch("/api/categories"),
-          fetch("/api/products"),
-          fetch("/api/users")
-        ]);
+  const loadData = useCallback(async () => {
+    try {
+      const [cRes, pRes, uRes] = await Promise.all([
+        fetch("/api/categories"),
+        fetch("/api/products"),
+        fetch("/api/users")
+      ]);
 
-        if (!cRes.ok || !pRes.ok || !uRes.ok) {
-          throw new Error("Jeden z serwerów API zwrócił błąd. Sprawdź logi serwera.");
-        }
+      const [cats, prods, users] = await Promise.all([
+        cRes.json().catch(() => []),
+        pRes.json().catch(() => []), 
+        uRes.json().catch(() => [])
+      ]);
+      setCategories(cats);
+      setProducts(prods);
+      setClients(users.filter((u: any) => u.roleType === "BIZ"));
 
-        const [cats, prods, users] = await Promise.all([
-          cRes.json().catch(() => []),
-          pRes.json().catch(() => []), 
-          uRes.json().catch(() => [])
-        ]);
-        setCategories(cats);
-        setProducts(prods);
-        setClients(users.filter((u: any) => u.roleType === "BIZ"));
-        if (cats.length > 0) setSelectedCategoryId(cats[0].id);
-
-        // Zapobieganie hydration mismatch
-        setRefNumber(`OFF/${new Date().getFullYear()}/${Math.floor(Math.random() * 9000) + 1000}`);
-        setQuoteDate(new Date().toLocaleDateString("pl-PL"));
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+      setRefNumber(`CPQ/ENGINE/${new Date().getFullYear()}/${Math.floor(Math.random() * 9000) + 1000}`);
+      setQuoteDate(new Date().toLocaleDateString("pl-PL"));
+    } catch (e) {
+      toast.error("FAULT: Błąd synchronizacji baz danych.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleClientNameChange = (name: string) => {
-    setClientInfo(prev => ({ ...prev, name }));
-    const client = clients.find((u: any) => u.companyName === name);
-    if (client) {
-      setClientInfo(prev => ({ ...prev, nip: client.nip || "" }));
-    }
-  }
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const addLineItem = (productId: string) => {
     setItems([...items, { productId, qty: 1, discount: 0 }]);
+    toast.success("LOG: Dodano indeks do kolejki wyceny.");
   }
 
   const removeLineItem = (index: number) => {
@@ -83,470 +66,363 @@ export default function QuotesGenerator() {
     setItems(newItems);
   }
 
-  const getProduct = (id: string) => products.find(p => p.id === id) || products[0] || { name: "...", price: 0, sku: "" };
-
-  const getIcon = (name: string) => {
-    const IconComp = (Icons as any)[name] || Info;
-    return <IconComp className="h-5 w-5" />;
-  };
+  const getProduct = (id: string) => products.find(p => p.id === id) || { name: "MODUŁ_NIEZNANY", price: 0, sku: "ERROR_404" };
 
   const calculateTotal = () => {
     return items.reduce((sum, item) => {
       const p = getProduct(item.productId);
-      const rowTotal = (p.price * (1 - item.discount / 100)) * item.qty;
-      return sum + rowTotal;
+      return sum + (p.price * (1 - item.discount / 100)) * item.qty;
     }, 0);
   }
 
-  const handlePrint = () => {
-    window.print();
-  }
-
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 print:m-0 print:p-0">
-      {/* Header */}
-      <div className="flex justify-between items-center print:hidden">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <FileText className="h-6 w-6 text-primary" />
-            </div>
-            Generator Ofert B2B
-          </h2>
-          <p className="text-muted-foreground ml-10">
-            Szyba konfiguracja ofert dla partnerów biznesowych.
-          </p>
+    <div className="flex flex-col gap-10 animate-in fade-in duration-700 select-none no-blur max-w-[1920px] mx-auto print:m-0">
+      
+      {/* 1. OPERATIONAL CPQ HEADER */}
+      <div className="flex flex-col xl:flex-row justify-between items-end xl:items-center gap-8 border-b-2 border-slate-950 pb-8 print:hidden">
+        <div className="flex items-center gap-6">
+           <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center rounded-none shadow-xl">
+              <Terminal className="w-7 h-7 text-primary" />
+           </div>
+           <div className="flex flex-col">
+              <div className="flex items-center gap-3">
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic leading-none">SYS_CPQ_ENGINE</span>
+                 <div className="w-8 h-[1px] bg-slate-200" />
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 leading-none">Blueprint_Gen_v9</span>
+              </div>
+              <h1 className="text-4xl font-black text-slate-950 uppercase tracking-tighter italic leading-none mt-1">Konfigurator Ofert</h1>
+           </div>
         </div>
-        <div className="flex gap-2">
-           <Button variant="outline" onClick={() => setItems([])} className="gap-2">
-             Wyczyść
-           </Button>
-           <Button onClick={handlePrint} className="gap-2 shadow-lg shadow-primary/20">
-            <Printer className="h-4 w-4" /> Wygeneruj PDF
-          </Button>
+        
+        <div className="flex items-center gap-4">
+           <button 
+             onClick={() => setItems([])} 
+             className="h-11 px-6 bg-white border border-slate-950 text-slate-950 hover:bg-slate-50 font-black uppercase text-[10px] tracking-widest flex items-center gap-3 transition-all active-press italic"
+           >
+              Wyczyść_Bufor
+           </button>
+           <button 
+             onClick={() => window.print()} 
+             className="h-11 px-8 bg-slate-950 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-4 active-press transition-all hover:bg-primary shadow-xl shadow-primary/10 italic rounded-none"
+           >
+              <Printer className="w-4 h-4 text-primary" /> EXPORT_BLUEPRINT_PDF
+           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 print:block print:w-full">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10 print:block">
         
-        {/* SECTION 1: EDITOR & BASKET (Left) - col-span-3 */}
-        <div className="md:col-span-3 space-y-4 print:hidden">
-          <Card className="border-none shadow-sm bg-muted/20">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Info className="h-4 w-4" /> Dane Klienta
-              </CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setIsClientDataCollapsed(!isClientDataCollapsed)} 
-                className="h-6 w-6 p-0"
-              >
-                {isClientDataCollapsed ? <Plus className="h-4 w-4" /> : <Trash2 className="h-4 w-4 opacity-0 group-hover:opacity-100" />}
-                <ChevronRight className={`h-4 w-4 transition-transform ${isClientDataCollapsed ? "" : "rotate-90"}`} />
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3 pb-4">
-              {isClientDataCollapsed ? (
-                <div onClick={() => setIsClientDataCollapsed(false)} className="cursor-pointer group">
-                   <p className="text-[13px] font-bold text-foreground leading-tight">{clientInfo.name || "—"}</p>
-                   <p className="text-[10px] text-muted-foreground uppercase font-semibold">NIP: {clientInfo.nip || "—"}</p>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-muted-foreground">Nazwa Firmy</label>
+        {/* LEFT_NODE: PARAMETER CONTROLS */}
+        <aside className="xl:col-span-3 space-y-8 print:hidden">
+           
+           {/* PARTNER CONTEXT CARD */}
+           <div className="satel-card p-0 bg-white border-none overflow-hidden rounded-none shadow-sm">
+              <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
+                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-950 italic">Identyfikacja_Partnera</h3>
+              </div>
+              <div className="p-6 space-y-5">
+                 <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Nazwa Podmiotu B2B</label>
                     <input 
-                      type="text" 
-                      list="clients-list"
-                      value={clientInfo.name}
-                      onChange={(e) => handleClientNameChange(e.target.value)}
-                      placeholder="Wyszukaj lub wpisz..."
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:ring-1 focus:ring-primary transition-all"
+                       type="text" 
+                       value={clientInfo.name}
+                       onChange={(e) => setClientInfo({...clientInfo, name: e.target.value})}
+                       className="w-full h-11 bg-slate-50 border border-slate-100 px-4 text-[12px] font-black uppercase italic outline-none focus:border-primary focus:bg-white transition-all shadow-sm"
                     />
-                    <datalist id="clients-list">
-                      {clients.map((c: any) => (
-                        <option key={c.id} value={c.companyName} />
-                      ))}
-                    </datalist>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase font-bold text-muted-foreground">NIP</label>
+                 </div>
+                 <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">NIP_TRANS_ID</label>
                     <input 
-                      type="text" 
-                      value={clientInfo.nip}
-                      onChange={(e) => setClientInfo({...clientInfo, nip: e.target.value})}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:ring-1 focus:ring-primary transition-all"
+                       type="text" 
+                       value={clientInfo.nip}
+                       onChange={(e) => setClientInfo({...clientInfo, nip: e.target.value})}
+                       className="w-full h-11 bg-slate-50 border border-slate-100 px-4 text-[12px] font-mono font-bold outline-none focus:border-primary focus:bg-white transition-all shadow-sm"
                     />
-                  </div>
-                  <Button 
-                    className="w-full text-xs h-8 mt-2 variant-outline" 
-                    onClick={() => setIsClientDataCollapsed(true)}
-                  >
-                    Zatwierdź dane
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                 </div>
+              </div>
+           </div>
 
-          <Card className="flex flex-col border-none shadow-sm">
-            <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pozycje w ofercie ({items.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 max-h-[500px] overflow-y-auto">
-              <div className="divide-y">
-                {items.length === 0 && (
-                  <div className="p-8 text-center text-muted-foreground italic text-sm">
-                    Brak pozycji. Wybierz produkty z listy po prawej.
-                  </div>
-                )}
-                {items.map((item, idx) => {
-                  const p = getProduct(item.productId);
-                  return (
-                    <div key={idx} className="p-3 hover:bg-muted/50 transition-colors group relative">
-                        <button 
-                         onClick={() => removeLineItem(idx)} 
-                         className="absolute right-2 top-2 p-1.5 btn-action-red !border-none !shadow-none opacity-20 hover:opacity-100 transition-opacity"
-                         title="Usuń pozycję"
-                       >
-                         <Trash2 className="h-3 w-3" />
-                       </button>
-                      <div className="pr-6">
-                        <p className="text-xs font-bold leading-tight line-clamp-1">{p.name}</p>
-                        <p className="text-[10px] text-muted-foreground mb-2">{p.sku}</p>
-                        <div className="flex gap-4 items-end">
-                          <div className="flex-1">
-                            <label className="text-[9px] uppercase font-semibold text-muted-foreground block">Ilość</label>
-                            <input 
-                              type="number" 
-                              min="1" 
-                              value={item.qty} 
-                              onChange={(e) => updateItem(idx, 'qty', Number(e.target.value))} 
-                              className="w-full text-xs font-bold border-b border-transparent hover:border-input focus:border-primary bg-transparent py-0.5" 
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <label className="text-[9px] uppercase font-semibold text-muted-foreground block">Rabat %</label>
-                            <input 
-                              type="number" 
-                              min="0" 
-                              max="100"
-                              value={item.discount} 
-                              onChange={(e) => updateItem(idx, 'discount', Number(e.target.value))} 
-                              className="w-full text-xs font-bold text-destructive border-b border-transparent hover:border-input focus:border-primary bg-transparent py-0.5" 
-                            />
-                          </div>
-                          <div className="text-right">
-                             <p className="text-xs font-bold">{(p.price * (1 - item.discount / 100) * item.qty).toFixed(2)} zł</p>
-                          </div>
-                        </div>
-                      </div>
+           {/* OPERATIONAL QUEUE (BASKET) */}
+           <div className="satel-card p-0 bg-white border-none overflow-hidden rounded-none shadow-sm flex flex-col min-h-[500px]">
+              <div className="p-4 bg-slate-950 flex justify-between items-center text-white">
+                 <div className="flex items-center gap-3">
+                    <Activity className="w-4 h-4 text-primary animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">Operational_Buffer</span>
+                 </div>
+                 <div className="h-6 px-3 bg-white/10 text-primary text-[9px] font-black flex items-center tabular-nums">{items.length} PCS</div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-50 custom-scrollbar">
+                 {items.length === 0 ? (
+                    <div className="p-20 text-center flex flex-col items-center justify-center opacity-20">
+                       <Briefcase className="w-10 h-10 mb-4" />
+                       <span className="text-[9px] font-black uppercase tracking-[0.4em] italic">Buffer_Empty</span>
                     </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-            <div className="p-4 border-t bg-muted/10 mt-auto">
-               <div className="flex justify-between items-baseline mb-2">
-                 <span className="text-xs text-muted-foreground">Suma netto:</span>
-                 <span className="text-lg font-black text-primary">{calculateTotal().toFixed(2)} zł</span>
-               </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* SECTION 2: LIVE PREVIEW (Middle) - col-span-6 */}
-        <div className="md:col-span-6 print:block print:w-full">
-          <Card className="min-h-[842px] print:border-none print:shadow-none shadow-xl border-primary/10">
-            <CardHeader className="print:pb-8 border-b border-dashed">
-              <div className="flex justify-between items-start">
-                <div>
-                   <div className="flex items-center gap-2 mb-4">
-                     <div className="h-10 w-10 bg-primary flex items-center justify-center rounded-none font-bold text-white text-xl">C</div>
-                     <span className="text-xl font-bold tracking-tighter brightness-0">CELTRONICS</span>
-                   </div>
-                  <h1 className="text-3xl font-black uppercase text-primary tracking-tighter">Oferta Handlowa</h1>
-                  <p className="text-xs font-medium text-muted-foreground mt-1">Nr ref: {refNumber || "Generowanie..."}</p>
-                </div>
-                <div className="text-right text-[10px] text-muted-foreground">
-                  <p className="font-bold text-foreground text-sm">Celtronics S.C.</p>
-                  <p>NIP: 123-456-78-90</p>
-                  <p>ul. Niklowa 22, 08-110 Siedlce</p>
-                  <p>e-mail: biuro@celtronics.pl</p>
-                  <p className="mt-2 font-medium">Data: {quoteDate || "—"}</p>
-                </div>
-              </div>
-              <div className="mt-10 grid grid-cols-2 gap-8">
-                <div>
-                  <h3 className="font-bold text-[10px] text-primary uppercase tracking-widest mb-2 border-b">Przygotowano dla:</h3>
-                  <p className="font-black text-lg text-foreground">{clientInfo.name || "—"}</p>
-                  <p className="text-sm font-medium">NIP: {clientInfo.nip || "—"}</p>
-                </div>
-                <div className="bg-muted/5 p-4 border rounded-sm">
-                   <p className="text-[10px] italic text-muted-foreground">Niniejsza oferta została wygenerowana automatycznie w systemie B2B Celtronics.</p>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="py-8">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b-2 border-primary hover:bg-transparent">
-                    <TableHead className="w-10 text-[10px] font-black uppercase">Lp.</TableHead>
-                    <TableHead className="text-[10px] font-black uppercase">Urządzenie</TableHead>
-                    <TableHead className="text-right text-[10px] font-black uppercase">Ilość</TableHead>
-                    <TableHead className="text-right text-[10px] font-black uppercase">Cena Kat.</TableHead>
-                    <TableHead className="text-right text-[10px] font-black uppercase">Rabat</TableHead>
-                    <TableHead className="text-right text-[10px] font-black uppercase">Wartość</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                        Wybierz produkty aby zobaczyć wycenę...
-                      </TableCell>
-                    </TableRow>
-                  )}
-                  {(() => {
-                    let globalLp = 0;
-                    return categories.map(cat => {
-                      const itemsInCat = items.map(item => ({ ...item, product: getProduct(item.productId) }))
-                                             .filter(i => i.product.categoryId === cat.id);
-                      if (itemsInCat.length === 0) return null;
-
-                      return (
-                        <React.Fragment key={cat.id}>
-                          <TableRow className="bg-primary/5 hover:bg-primary/5 print:bg-primary/5 border-t-2 border-primary">
-                             <TableCell colSpan={6} className="py-2 px-4">
-                               <div className="flex items-center gap-2">
-                                  {getIcon(cat.iconName)}
-                                  <span className="font-black uppercase tracking-widest text-xs text-primary">{cat.name}</span>
-                               </div>
-                             </TableCell>
-                          </TableRow>
-                          
-                          {(cat.subcategories || []).map((sub: any) => {
-                             const itemsInSub = itemsInCat.filter(i => i.product.subcategoryId === sub.id);
-                             if (itemsInSub.length === 0) return null;
-                             return (
-                               <React.Fragment key={sub.id}>
-                                 <TableRow className="bg-muted/10 hover:bg-muted/10 border-b">
-                                    <TableCell colSpan={6} className="py-1 px-4">
-                                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1">
-                                        <ChevronRight className="w-3 h-3" /> {sub.name}
-                                      </span>
-                                    </TableCell>
-                                 </TableRow>
-                                 {itemsInSub.map((item, idx) => {
-                                   globalLp++;
-                                   const p = item.product;
-                                   const priceAfterDiscount = p.price * (1 - item.discount / 100);
-                                   const lineTotal = priceAfterDiscount * item.qty;
-                                   return (
-                                     <TableRow key={item.productId + idx} className="border-b last:border-b-0 hover:bg-transparent">
-                                       <TableCell className="font-medium text-[10px]">{globalLp}</TableCell>
-                                       <TableCell>
-                                         <p className="font-bold text-xs">{p.name}</p>
-                                         <p className="text-[9px] text-muted-foreground tracking-tight">{p.sku}</p>
-                                       </TableCell>
-                                       <TableCell className="text-right text-xs font-medium">{item.qty}</TableCell>
-                                       <TableCell className="text-right text-xs">{Number(p.price).toFixed(2)} zł</TableCell>
-                                       <TableCell className="text-right text-xs text-destructive font-bold">{item.discount > 0 ? `-${item.discount}%` : '0%'}</TableCell>
-                                       <TableCell className="text-right text-xs font-black">{lineTotal.toFixed(2)} zł</TableCell>
-                                     </TableRow>
-                                   )
-                                 })}
-                               </React.Fragment>
-                             )
-                          })}
-
-                          {/* Items in Main Cat WITHOUT subcat */}
-                          {itemsInCat.filter(i => !i.product.subcategoryId).length > 0 && (
-                             <>
-                               <TableRow className="bg-muted/5 hover:bg-muted/5 border-b italic">
-                                  <TableCell colSpan={6} className="py-1 px-4">
-                                    <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-tighter">Inne / Akcesoria</span>
-                                  </TableCell>
-                               </TableRow>
-                               {itemsInCat.filter(i => !i.product.subcategoryId).map((item, idx) => {
-                                 globalLp++;
-                                 const p = item.product;
-                                 const priceAfterDiscount = p.price * (1 - item.discount / 100);
-                                 const lineTotal = priceAfterDiscount * item.qty;
-                                 return (
-                                   <TableRow key={item.productId + idx} className="border-b last:border-b-0 hover:bg-transparent">
-                                     <TableCell className="font-medium text-[10px]">{globalLp}</TableCell>
-                                     <TableCell>
-                                       <p className="font-bold text-xs">{p.name}</p>
-                                       <p className="text-[9px] text-muted-foreground tracking-tight">{p.sku}</p>
-                                     </TableCell>
-                                     <TableCell className="text-right text-xs font-medium">{item.qty}</TableCell>
-                                     <TableCell className="text-right text-xs">{Number(p.price).toFixed(2)} zł</TableCell>
-                                     <TableCell className="text-right text-xs text-destructive font-bold">{item.discount > 0 ? `-${item.discount}%` : '0%'}</TableCell>
-                                     <TableCell className="text-right text-xs font-black">{lineTotal.toFixed(2)} zł</TableCell>
-                                   </TableRow>
-                                 )
-                               })}
-                             </>
-                          )}
-                        </React.Fragment>
-                      )
-                    })
-                  })()}
-                </TableBody>
-              </Table>
-              
-              <div className="mt-12 flex justify-end">
-                <div className="w-72 space-y-1">
-                  <div className="flex justify-between text-sm py-1 border-b">
-                    <span className="text-muted-foreground">Suma wartości netto:</span>
-                    <span className="font-bold">{calculateTotal().toFixed(2)} zł</span>
-                  </div>
-                  <div className="flex justify-between text-sm py-1 border-b">
-                    <span className="text-muted-foreground">Podatek VAT (23%):</span>
-                    <span className="font-bold">{(calculateTotal() * 0.23).toFixed(2)} zł</span>
-                  </div>
-                  <div className="flex justify-between text-xl font-black pt-4 text-primary">
-                    <span>RAZEM BRUTTO:</span>
-                    <span>{(calculateTotal() * 1.23).toFixed(2)} zł</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-24 space-y-8">
-                <div className="grid grid-cols-2 gap-16">
-                   <div className="border-t pt-2 text-center">
-                     <p className="text-[9px] uppercase font-bold text-muted-foreground">Pieczątka i podpis wystawiającego</p>
-                   </div>
-                   <div className="border-t pt-2 text-center">
-                     <p className="text-[9px] uppercase font-bold text-muted-foreground">Podpis akceptującego ofertę</p>
-                   </div>
-                </div>
-                <div className="text-[9px] text-muted-foreground text-center leading-relaxed">
-                  Powyższa oferta nie stanowi oferty handlowej w rozumieniu art. 66 § 1 Kodeksu Cywilnego. Ceny podlegają zmianom z uwagi na wahania kursów walut. <br/>
-                  Termin płatności: wg ustaleń. Ważność oferty: 7 dni od daty wystawienia.
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* SECTION 3: PRODUCT BROWSER (Right) - col-span-3 */}
-        <div className="md:col-span-3 flex bg-background rounded-xl border shadow-sm h-[842px] overflow-hidden print:hidden">
-          {/* Main area of browser */}
-          <div className="flex-1 flex flex-col min-w-0">
-             <div className="p-4 border-b space-y-3 bg-muted/5">
-                <h3 className="font-bold text-sm tracking-tight">Przeglądaj katalog</h3>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input 
-                    type="text" 
-                    placeholder="Szukaj urządzenia..." 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 py-1 text-sm transition-all focus:ring-1 focus:ring-primary shadow-inner"
-                  />
-                </div>
-             </div>
-             
-              <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
-                 {loading ? (
-                    <div className="p-8 text-center text-muted-foreground animate-pulse text-xs">Synchronizacja...</div>
                  ) : (
-                   <div className="space-y-6">
-                      {categories.find(c => c.id === selectedCategoryId)?.subcategories?.map((sub: any) => (
-                        <div key={sub.id} className="space-y-2">
-                           <h4 className="text-[10px] font-black uppercase text-primary/60 px-2 tracking-widest flex items-center gap-2">
-                              <ChevronRight className="w-3 h-3" /> {sub.name}
-                           </h4>
-                           <div className="grid gap-1">
-                              {products
-                                .filter(p => p.categoryId === selectedCategoryId && p.subcategoryId === sub.id && (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase())))
-                                .map(product => (
-                                  <div 
-                                    key={product.id} 
-                                    className="p-3 border rounded-lg hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all group flex flex-col gap-1"
-                                    onClick={() => addLineItem(product.id)}
-                                  >
-                                     <div className="flex justify-between items-start">
-                                        <h4 className="text-[12px] font-bold leading-tight group-hover:text-primary transition-colors">{product.name}</h4>
-                                        <Plus className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 shrink-0" />
-                                     </div>
-                                     <div className="flex justify-between items-end">
-                                        <span className="text-[9px] text-muted-foreground font-mono">{product.sku}</span>
-                                        <span className="text-xs font-black">{product.price.toFixed(2)} zł</span>
-                                     </div>
-                                  </div>
-                                ))
-                              }
-                           </div>
-                        </div>
-                      ))}
-
-                      <div className="space-y-2 pt-2">
-                         <h4 className="text-[10px] font-black uppercase text-muted-foreground/60 px-2 tracking-widest">Inne / Nieskategoryzowane</h4>
-                         <div className="grid gap-1">
-                           {products
-                            .filter(p => p.categoryId === selectedCategoryId && !p.subcategoryId && (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase())))
-                            .map(product => (
-                              <div key={product.id} className="p-3 border rounded-lg hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all group flex flex-col gap-1" onClick={() => addLineItem(product.id)}>
-                                 <div className="flex justify-between items-start">
-                                    <h4 className="text-[12px] font-bold leading-tight group-hover:text-primary transition-colors">{product.name}</h4>
-                                    <Plus className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 shrink-0" />
-                                 </div>
-                                 <div className="flex justify-between items-end">
-                                    <span className="text-[9px] text-muted-foreground font-mono">{product.sku}</span>
-                                    <span className="text-xs font-black">{product.price.toFixed(2)} zł</span>
-                                 </div>
-                              </div>
-                            ))
-                           }
-                         </div>
-                      </div>
-                   </div>
+                    items.map((item, idx) => {
+                       const p = getProduct(item.productId);
+                       return (
+                          <div key={idx} className="p-5 bg-white group hover:bg-slate-50 transition-all border-l-4 border-transparent hover:border-primary">
+                             <div className="flex justify-between items-start mb-3">
+                                <div className="flex flex-col min-w-0">
+                                   <span className="text-[12px] font-black text-slate-950 uppercase truncate leading-none italic">{p.name}</span>
+                                   <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">{p.sku}</span>
+                                </div>
+                                <button onClick={() => removeLineItem(idx)} className="w-8 h-8 flex items-center justify-center text-slate-200 hover:text-red-600 transition-colors active-press">
+                                   <Trash2 className="w-4 h-4" />
+                                </button>
+                             </div>
+                             <div className="flex items-center gap-4">
+                                <div className="flex-1">
+                                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Ilość</span>
+                                   <input 
+                                      type="number" 
+                                      value={item.qty} 
+                                      onChange={(e) => updateItem(idx, 'qty', Number(e.target.value))}
+                                      className="w-full h-9 bg-slate-50 border border-transparent px-3 text-[11px] font-black outline-none focus:bg-white focus:border-primary transition-all tabular-nums"
+                                   />
+                                </div>
+                                <div className="flex-1">
+                                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Rabat_%</span>
+                                   <input 
+                                      type="number" 
+                                      value={item.discount} 
+                                      onChange={(e) => updateItem(idx, 'discount', Number(e.target.value))}
+                                      className="w-full h-9 bg-slate-50 border border-transparent px-3 text-[11px] font-black text-primary outline-none focus:bg-white focus:border-primary transition-all tabular-nums"
+                                   />
+                                </div>
+                             </div>
+                          </div>
+                       )
+                    })
                  )}
               </div>
+
+              <div className="p-8 bg-slate-950 text-white border-t border-white/5 mt-auto">
+                 <div className="flex justify-between items-end mb-1">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">VAL_NET_AGGREGATE</span>
+                    <span className="text-3xl font-black italic tracking-tighter tabular-nums leading-none">
+                       {calculateTotal().toFixed(2)} <span className="text-[10px] NOT-italic opacity-40">PLN</span>
+                    </span>
+                 </div>
+                 <div className="flex items-center gap-2 mt-4 text-[8px] font-black text-primary uppercase tracking-[0.3em] italic">
+                    <ShieldCheck className="w-3 h-3" /> System_Calibrated_OK
+                 </div>
+              </div>
            </div>
 
-           {/* Vertical categories on the right edge */}
-           <div className="w-14 border-l bg-muted/20 flex flex-col py-4 gap-2 overflow-y-auto items-center">
-              {categories.map(cat => {
-                const isActive = selectedCategoryId === cat.id;
-                return (
-                  <button
-                     key={cat.id}
-                     onClick={() => setSelectedCategoryId(cat.id)}
-                     className={`p-3 rounded-lg transition-all relative group ${isActive ? 'bg-primary text-white shadow-lg' : 'hover:bg-primary/10 text-muted-foreground hover:text-primary'}`}
-                     title={cat.name}
-                  >
-                     {getIcon(cat.iconName)}
-                     {!isActive && (
-                       <div className="absolute right-full mr-2 px-2 py-1 bg-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none mb-1">
-                         {cat.name}
+        </aside>
+
+        {/* CENTER_NODE: VISUAL BLUEPRINT (PDF VIEW) */}
+        <main className="xl:col-span-6 print:w-full">
+           <div className="bg-white min-h-[1100px] shadow-2xl flex flex-col p-16 print:p-0 print:border-none print:shadow-none relative rounded-none border border-slate-50">
+              
+              {/* OPERATIONAL WATERMARK */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 pointer-events-none opacity-[0.03]">
+                 <span className="text-[140px] font-black text-slate-950 uppercase tracking-[0.1em] whitespace-nowrap italic">DOKUMENT_PROCEDURALNY</span>
+              </div>
+
+              {/* PDF_BLUEPRINT_HEADER */}
+              <div className="flex justify-between items-start border-b-[5px] border-slate-950 pb-10 relative z-10">
+                 <div className="flex flex-col gap-6">
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 bg-slate-950 text-white flex items-center justify-center font-black italic text-xl">CT</div>
+                       <span className="text-3xl font-black tracking-tighter italic uppercase text-slate-950">CEL-TRONICS</span>
+                    </div>
+                    <div className="flex flex-col mt-4">
+                       <h1 className="text-5xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">BLUEPRINT_OFFER</h1>
+                       <div className="flex items-center gap-3 mt-4">
+                          <span className="text-[12px] font-black text-primary uppercase tracking-[0.4em] italic">{refNumber}</span>
+                          <div className="w-1.5 h-1.5 bg-slate-200 rounded-full" />
+                          <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">{quoteDate}</span>
                        </div>
-                     )}
-                  </button>
-                )
-              })}
+                    </div>
+                 </div>
+                 
+                 <div className="text-right flex flex-col gap-1 items-end">
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4 italic">Provider_Node:</span>
+                    <span className="text-lg font-black text-slate-950 uppercase tracking-tighter">Celtronics S.C.</span>
+                    <span className="text-[11px] font-black text-slate-950 tracking-widest">NIP: 123-456-78-90</span>
+                    <span className="text-[11px] font-black text-primary italic tracking-widest mt-2 underline decoration-2 underline-offset-4">BIURO@CELTRONICS.PL</span>
+                 </div>
+              </div>
+
+              {/* TARGET_CONTEXT */}
+              <div className="grid grid-cols-2 gap-16 mt-16 py-10 border-b border-slate-50 relative z-10">
+                 <div className="flex flex-col gap-3">
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Authorized_Recipient</span>
+                    <span className="text-2xl font-black text-slate-950 uppercase italic tracking-tighter leading-tight">{clientInfo.name}</span>
+                    <span className="text-[13px] font-black text-slate-500 tracking-[0.2em]">IDENT_ID: {clientInfo.nip}</span>
+                 </div>
+                 <div className="bg-slate-950/2 p-8 flex flex-col justify-center border-l-8 border-primary">
+                    <p className="text-[11px] font-black text-slate-950 uppercase leading-relaxed tracking-wider italic">
+                       Projekcja techniczna przygotowana w systemie <span className="text-primary font-black italic">ELITE_CPQ</span>. 
+                       Wszystkie kwoty wyrażone w PLN_NET. Termin ważności blueprintu: 7 Dni Operacyjnych.
+                    </p>
+                 </div>
+              </div>
+
+              {/* EXECUTION_GRID_TABLE */}
+              <div className="mt-16 flex-1 relative z-10 overflow-hidden">
+                 <Table>
+                    <TableHeader className="bg-slate-50">
+                       <TableRow className="hover:bg-transparent border-none">
+                          <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-5 pl-6 w-16">ID_N</TableHead>
+                          <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-5 px-6">SPECYFIKACJA_URZĄDZENIA</TableHead>
+                          <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-5 text-center w-24">QTY</TableHead>
+                          <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-5 text-right pr-6 w-40">VALUE_NET</TableHead>
+                       </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                       {items.map((item, idx) => {
+                          const p = getProduct(item.productId);
+                          const lineTotal = (p.price * (1 - item.discount / 100)) * item.qty;
+                          return (
+                             <TableRow key={idx} className="border-b last:border-0 border-slate-100 group hover:bg-slate-50/50 transition-colors">
+                                <TableCell className="text-[12px] font-black text-slate-300 py-8 pl-6 italic">{idx + 1}.</TableCell>
+                                <TableCell className="px-6">
+                                   <div className="flex flex-col gap-1">
+                                      <span className="text-[15px] font-black text-slate-950 uppercase tracking-tighter italic leading-none">{p.name}</span>
+                                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{p.sku}</span>
+                                   </div>
+                                </TableCell>
+                                <TableCell className="text-center font-black text-slate-950 text-base tabular-nums italic">{item.qty}</TableCell>
+                                <TableCell className="text-right pr-6 font-black text-slate-950 text-base tabular-nums italic">
+                                   {lineTotal.toFixed(2)}
+                                </TableCell>
+                             </TableRow>
+                          )
+                       })}
+                       {items.length === 0 && (
+                          <TableRow>
+                             <TableCell colSpan={4} className="h-96 text-center">
+                                <div className="flex flex-col items-center justify-center opacity-10">
+                                   <Box className="w-16 h-16 mb-4" />
+                                   <span className="text-[13px] font-black uppercase tracking-[0.6em] italic">NO_DATA_POINTS_COLLECTED</span>
+                                </div>
+                             </TableCell>
+                          </TableRow>
+                       )}
+                    </TableBody>
+                 </Table>
+              </div>
+
+              {/* CORE_SUMMARY_TOTALS */}
+              <div className="mt-16 pt-16 border-t-4 border-slate-950 relative z-10">
+                 <div className="flex justify-end">
+                    <div className="w-[380px] space-y-4">
+                       <div className="flex justify-between items-baseline py-3 border-b border-slate-50">
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">SUM_NET_TOTAL:</span>
+                          <span className="text-[18px] font-black text-slate-950 tabular-nums italic">{calculateTotal().toFixed(2)} PLN</span>
+                       </div>
+                       <div className="flex justify-between items-baseline py-3 border-b border-slate-50">
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">VAT_TAX_PROJECTION (23%):</span>
+                          <span className="text-[18px] font-black text-slate-950 tabular-nums italic">{(calculateTotal() * 0.23).toFixed(2)} PLN</span>
+                       </div>
+                       <div className="flex justify-between items-baseline pt-6 border-t border-slate-950 h-20">
+                          <span className="text-[16px] font-black text-primary uppercase italic tracking-[0.3em]">TOTAL_GROSS_VAL:</span>
+                          <div className="flex flex-col items-end leading-none">
+                             <span className="text-[38px] font-black text-primary tabular-nums tracking-tighter italic leading-none">
+                                {(calculateTotal() * 1.23).toFixed(2)}
+                             </span>
+                             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-1">Currency: PLN_OFFICIAL</span>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              {/* AUTH_SIGNATURES */}
+              <div className="mt-auto pt-24 grid grid-cols-2 gap-24 relative z-10">
+                 <div className="border-t-2 border-slate-950 pt-6 flex flex-col gap-2 items-center">
+                    <span className="text-[10px] font-black uppercase text-slate-300 tracking-[0.3em] italic">Authorized_Agent_ID</span>
+                    <span className="text-[13px] font-black text-slate-950 italic tracking-tighter">PLATFORMA_B2B_ENG_CORE</span>
+                 </div>
+                 <div className="border-t-2 border-slate-950 pt-6 flex flex-col gap-2 items-center">
+                    <span className="text-[10px] font-black uppercase text-slate-300 tracking-[0.3em] italic">Business_Partner_Stamp</span>
+                    <span className="text-[13px] font-black text-slate-950 italic tracking-tighter">___________________________</span>
+                 </div>
+              </div>
+
            </div>
-        </div>
+        </main>
+
+        {/* RIGHT_NODE: PIM INDICES SCANNER */}
+        <aside className="xl:col-span-3 space-y-8 print:hidden">
+           
+           <div className="satel-card p-0 bg-white border-none overflow-hidden rounded-none shadow-sm flex flex-col h-[940px]">
+              <div className="p-8 bg-slate-50 border-b border-slate-100 flex flex-col gap-6">
+                 <div className="flex items-center gap-4">
+                    <Search className="w-5 h-5 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] italic">PIM_Registry_Scanner</span>
+                 </div>
+                 <div className="relative group">
+                    <Terminal className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-200 group-focus-within:text-primary transition-colors" />
+                    <input 
+                       type="text" 
+                       placeholder="SEARCH_INDEX_OR_MODEL..."
+                       value={searchQuery}
+                       onChange={(e) => setSearchQuery(e.target.value)}
+                       className="w-full h-12 bg-white border border-slate-100 pl-12 pr-4 text-[11px] font-black uppercase tracking-widest italic outline-none focus:border-primary transition-all shadow-sm"
+                    />
+                 </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-3 divide-y divide-slate-50 custom-scrollbar">
+                 {loading ? (
+                    <div className="p-20 text-center flex flex-col items-center justify-center text-slate-200">
+                       <RefreshCcw className="w-10 h-10 mb-4 animate-spin" />
+                       <span className="text-[10px] font-black uppercase tracking-widest italic">LOADING_INDICES...</span>
+                    </div>
+                 ) : (
+                    products
+                      .filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+                      .slice(0, 100)
+                      .map((p) => (
+                       <button 
+                         key={p.id} 
+                         onClick={() => addLineItem(p.id)}
+                         className="w-full p-5 bg-white hover:bg-slate-50 text-left transition-all active-press border-l-4 border-transparent hover:border-primary flex flex-col gap-2 group"
+                       >
+                          <div className="flex justify-between items-start">
+                             <span className="text-[13px] font-black text-slate-950 uppercase italic leading-none group-hover:text-primary transition-colors">{p.name}</span>
+                             <Plus className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                          <div className="flex justify-between items-baseline mt-2">
+                             <span className="text-[9px] font-black text-slate-300 font-mono tracking-widest leading-none">{p.sku}</span>
+                             <div className="flex flex-col items-end">
+                                <span className="text-[13px] font-black text-slate-950 tabular-nums italic leading-none">{p.price.toFixed(2)}</span>
+                                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">PLN_NET</span>
+                             </div>
+                          </div>
+                       </button>
+                    ))
+                 )}
+              </div>
+              
+              <div className="p-5 bg-slate-950 text-white flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                    <span className="text-[9px] font-black uppercase tracking-[0.4em] italic">Database_PIM: ONLINE</span>
+                 </div>
+                 <Layers className="w-4 h-4 text-primary" />
+              </div>
+           </div>
+
+        </aside>
+
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print\\:block, .print\\:block * {
-            visibility: visible;
-          }
-          .print\\:block {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
+          @page { size: A4; margin: 0; }
+          body { background: white !important; }
+          header, nav, .print\\:hidden, aside { display: none !important; }
+          .satel-card { border: none !important; box-shadow: none !important; }
+          main { width: 100% !important; margin: 0 !important; border: none !important; }
+          .print\\:block { display: block !important; }
+          .mx-auto { margin: 0 !important; }
+          .max-w-screen-xl { max-width: 100% !important; }
         }
       `}} />
     </div>

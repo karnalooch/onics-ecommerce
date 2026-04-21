@@ -24,7 +24,7 @@ export function HeroSection() {
           <motion.div 
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center justify-center lg:justify-start space-x-4 glass-card px-8 py-3 w-fit mx-auto lg:mx-0 shadow-ks-md"
+            className="flex items-center justify-center lg:justify-start space-x-4 bg-white border border-slate-200 px-8 py-3 w-fit mx-auto lg:mx-0 shadow-sm"
           >
             <div className="relative">
               <div className="w-2.5 h-2.5 rounded-full bg-primary animate-ping absolute inset-0" />
@@ -69,13 +69,13 @@ export function HeroSection() {
           <div className="flex flex-col sm:flex-row justify-center lg:justify-start items-center gap-6">
             <Link 
               href="/logowanie" 
-              className="w-full h-20 px-12 glass-card bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-2xl flex items-center justify-center gap-6 font-black uppercase tracking-[0.4em] text-[10px] hover:bg-primary dark:hover:bg-primary transition-all shadow-ks-lg hover:-translate-y-2 active:scale-95 group"
+              className="w-full h-20 px-12 bg-slate-900 text-white dark:bg-white dark:text-slate-900 rounded-md flex items-center justify-center gap-6 font-black uppercase tracking-[0.4em] text-[10px] hover:bg-primary dark:hover:bg-primary transition-all shadow-sm active-press group"
             >
               <Lock className="w-5 h-5 group-hover:scale-110 transition-transform" /> Autoryzacja Terminala
             </Link>
             <Link 
               href="/sklep" 
-              className="w-full h-20 px-10 glass-card rounded-2xl flex items-center justify-center gap-6 font-black uppercase tracking-[0.4em] text-[10px] text-slate-400 hover:text-primary transition-all hover:-translate-y-2 active:scale-95 group"
+              className="w-full h-20 px-10 border border-slate-200 rounded-md flex items-center justify-center gap-6 font-black uppercase tracking-[0.4em] text-[10px] text-slate-400 hover:text-primary transition-all active-press group"
             >
               Katalog Publiczny <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
             </Link>

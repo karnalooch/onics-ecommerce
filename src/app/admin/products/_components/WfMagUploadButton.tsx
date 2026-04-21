@@ -2,8 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { UploadCloud } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { UploadCloud, FileSpreadsheet, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
 
@@ -31,16 +30,15 @@ export function WfMagUploadButton({ onParsed, disabled }: IWfMagUploadButtonProp
         const data = XLSX.utils.sheet_to_json(ws);
         
         onParsed(data);
-        toast.success(`Wczytano ${data.length} pozycji do bufora.`);
+        toast.success(`LOG: Wczytano ${data.length} wierszy danych WF-Mag.`);
       } catch (err) {
-        toast.error("Błąd podczas odczytu pliku Excel.");
+        toast.error("FAULT: Błąd parsowania pliku .xls / .xlsx");
       } finally {
         setLoading(false);
       }
     };
 
     reader.readAsBinaryString(file);
-    // Reset input value to allow re-uploading the same file
     e.target.value = '';
   };
 
@@ -54,18 +52,16 @@ export function WfMagUploadButton({ onParsed, disabled }: IWfMagUploadButtonProp
         id="wfmag-upload-input"
         disabled={disabled || loading}
       />
-      <label htmlFor="wfmag-upload-input">
-        <Button 
-          asChild
-          disabled={disabled || loading}
-          variant="outline"
-          className="h-14 px-6 rounded-2xl bg-white border-2 border-slate-200 hover:border-primary/30 font-bold shadow-sm transition-all gap-3 cursor-pointer"
-        >
-          <span>
-            <UploadCloud className="w-5 h-5 text-primary" />
-            {loading ? "Odczyt..." : "Importuj Excel"}
-          </span>
-        </Button>
+      <label 
+        htmlFor="wfmag-upload-input" 
+        className={`inline-flex items-center gap-4 h-11 px-8 bg-slate-950 text-white font-black text-[10px] uppercase tracking-[0.2em] italic active-press active-inset cursor-pointer transition-all ${disabled || loading ? 'opacity-30 pointer-events-none' : 'hover:bg-primary'}`}
+      >
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <FileSpreadsheet className="w-4 h-4 text-primary" />
+        )}
+        <span>{loading ? "LOAD_DATA..." : "IMPORT_WF_MAG"}</span>
       </label>
     </div>
   );

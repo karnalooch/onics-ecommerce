@@ -125,7 +125,7 @@ export function GlobalTrainingModal() {
       }
     }}>
       <DialogContent className="sm:max-w-lg p-0 overflow-y-auto max-h-[95vh] border-0 bg-transparent shadow-2xl scrollbar-thin [&>button]:hidden">
-        <div className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-white/20 dark:border-slate-800/50 rounded-xl shadow-[0_0_40px_-10px_rgba(59,130,246,0.3)] relative">
+        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800/50 rounded-md shadow-2xl relative">
           
           {/* Header Window Controls (Unified Minimize) */}
           <div className="absolute right-4 top-4 z-[60]">
@@ -157,7 +157,6 @@ export function GlobalTrainingModal() {
 
           {/* Header Section with Gradient */}
           <div className="px-6 pt-6 pb-4 bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2"></div>
             
             <DialogHeader className="flex flex-row items-start justify-between relative z-10">
               <div className="space-y-1.5 text-left">
@@ -346,11 +345,6 @@ export function GlobalTrainingModal() {
                         >
                           <Cog className="h-32 w-32 text-blue-600 dark:text-blue-500 drop-shadow-[0_0_15px_rgba(37,99,235,0.3)]" />
                         </motion.div>
-                        <motion.div 
-                          animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.3, 0.1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="absolute inset-0 bg-blue-500 blur-3xl rounded-full"
-                        />
                       </div>
 
                       <motion.div

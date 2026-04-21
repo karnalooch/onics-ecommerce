@@ -2,7 +2,7 @@
 
 import React from "react"
 import { motion } from "framer-motion"
-import { FileText } from "lucide-react"
+import { FileText, Database, Activity, ShieldCheck } from "lucide-react"
 import { useKnowledge } from "@/lib/knowledge/KnowledgeContext"
 
 export function GlobalKnowledgeIndicator() {
@@ -11,49 +11,46 @@ export function GlobalKnowledgeIndicator() {
   if (!isTraining) return null
 
   const isPdf = trainingFile?.toLowerCase().endsWith('.pdf')
-  const themeColor = isPdf ? 'red' : 'emerald'
 
   return (
     <motion.div 
       layout
       initial={{ opacity: 0, x: 20 }}
-      animate={!isDone ? { 
-        opacity: 1, 
-        x: 0,
-        boxShadow: [
-          "0 0 0px rgba(0, 0, 0, 0)",
-          isPdf 
-            ? "0 0 25px rgba(239, 68, 68, 0.7)" 
-            : "0 0 25px rgba(16, 185, 129, 0.7)",
-          "0 0 0px rgba(0, 0, 0, 0)"
-        ],
-        borderColor: [
-          "rgba(203, 213, 225, 0.4)",
-          isPdf 
-            ? "rgba(239, 68, 68, 0.8)" 
-            : "rgba(16, 185, 129, 0.8)",
-          "rgba(203, 213, 225, 0.4)"
-        ]
-      } : { opacity: 1, x: 0 }}
-      transition={!isDone ? { 
-        boxShadow: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
-        borderColor: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
-        duration: 0.3 
-      } : { duration: 0.3 }}
-      whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.8)" }}
+      animate={{ opacity: 1, x: 0 }}
+      whileHover={{ backgroundColor: "rgba(248, 250, 252, 1)" }}
       onClick={() => setIsMinimized(false)}
-      className={`flex items-center gap-2.5 bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border-2 ${isDone ? 'border-emerald-500/50' : 'border-transparent'} pr-4 pl-2 py-1.5 rounded-2xl shadow-xl cursor-pointer transition-all group shrink-0`}
+      className={`flex items-center gap-4 bg-white border-2 px-6 py-2 select-none cursor-pointer transition-all active-press h-14 ${
+        isDone ? 'border-status-success shadow-lg shadow-status-success/5' : 'border-slate-950 shadow-xl'
+      }`}
     >
       <div className="relative flex items-center justify-center">
-        <div className={`h-8 w-8 rounded-full flex items-center justify-center border ${isDone ? 'border-emerald-500/50 bg-emerald-500/10' : `border-${themeColor}-500/20 bg-${themeColor}-500/5`} transition-colors`}>
-          <FileText className={`h-4 w-4 ${isDone ? 'text-emerald-500' : `text-${themeColor}-500`}`} />
+        <div className={`w-10 h-10 flex items-center justify-center border-2 transition-colors ${
+          isDone ? 'border-status-success bg-status-success/5 text-status-success' : 'border-slate-950 bg-slate-950 text-white'
+        }`}>
+          <FileText className="w-5 h-5" />
+          {!isDone && (
+             <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary animate-ping" />
+          )}
         </div>
       </div>
 
       <div className="flex flex-col">
-        <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          {isDone ? 'Analiza Gotowa' : 'Inteligentna Analiza'}
-        </span>
+        <div className="flex items-center gap-3">
+           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-950 italic leading-none">
+             {isDone ? 'REJESTR_GOTOWY' : 'PROCESOR_AI_AKTYWNY'}
+           </span>
+           {isDone ? (
+              <ShieldCheck className="w-3 h-3 text-status-success" />
+           ) : (
+              <Activity className="w-3 h-3 text-primary animate-pulse" />
+           )}
+        </div>
+        <div className="flex items-center gap-2 mt-1.5 overflow-hidden">
+           <Database className="w-2.5 h-2.5 text-slate-300" />
+           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[120px] italic leading-none">
+              Node_Stream: {trainingFile || "PIM_QUEUE"}
+           </span>
+        </div>
       </div>
     </motion.div>
   )

@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Database, Box, Activity } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { useRouter } from "next/navigation";
 
@@ -25,30 +25,49 @@ export function B2BDashboardGrid({ nip, email }: B2BDashboardGridProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
       {[1, 2, 3, 4, 5, 6].map((i) => {
         const price = 400 + i * 50;
         const name = `Płyta Główna Asus Z${i}0 (Multi-Pack)`;
         const id = String(i);
 
         return (
-          <div key={id} className="border border-border p-8 rounded-[2rem] bg-card shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all animate-in fade-in zoom-in duration-500 group">
-            <div className="bg-muted w-full h-40 rounded-2xl mb-6 flex items-center justify-center text-muted-foreground text-xs font-black uppercase tracking-widest border border-border/50 group-hover:bg-primary/5 transition-colors">
-              [HURT_IMG_{i}]
-            </div>
-            <h3 className="font-extrabold text-xl mb-3 leading-tight tracking-tight text-foreground">{name}</h3>
-            <div className="flex flex-col mb-8 p-4 bg-muted/50 rounded-2xl border border-border/50">
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">Stawka B2B Partner</span>
-              <p className="font-black text-primary text-2xl tracking-tighter">{price.toFixed(2)} PLN <span className="text-xs font-bold text-muted-foreground">Netto</span></p>
-            </div>
+          <div key={id} className="satel-card bg-white p-0 border-none shadow-sm relative group h-full overflow-hidden transition-all active:ring-2 active:ring-primary">
+            {/* SECTOR LINE */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-slate-100 group-hover:bg-primary transition-colors" />
             
-            <button 
-              onClick={() => handleAddToCart(id, name, price)}
-              className="w-full flex items-center justify-center gap-3 bg-primary text-primary-foreground py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-primary/90 transition shadow-[0_0_20px_-5px_rgba(37,99,235,0.4)] active:scale-95"
-            >
-              <ShoppingCart className="w-5 h-5" />
-              Dodaj do Koszyka
-            </button>
+            <div className="p-8 flex flex-col h-full">
+               <div className="bg-slate-50 w-full h-44 border-2 border-slate-100 mb-8 flex items-center justify-center relative overflow-hidden group-hover:border-slate-950 transition-colors">
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] italic z-10">[ IMG_NODE_{i} ]</span>
+                  <Database className="absolute -bottom-4 -right-4 w-20 h-20 text-slate-200 opacity-20" />
+               </div>
+               
+               <div className="flex flex-col gap-2 mb-6">
+                  <div className="flex items-center gap-2">
+                     <Box className="w-3.5 h-3.5 text-primary" />
+                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Inventory_Stock: OK</span>
+                  </div>
+                  <h3 className="font-black text-xl italic tracking-tighter uppercase text-slate-950 leading-none">{name}</h3>
+               </div>
+
+               <div className="bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] p-6 flex flex-col mb-8 border border-white/10 shadow-lg rounded-xl text-white">
+                  <div className="flex items-center justify-between mb-2">
+                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">Matryca_B2B_Partner</span>
+                     <Activity className="w-3 h-3 text-primary animate-pulse" />
+                  </div>
+                  <p className="font-black text-white text-3xl tabular-nums italic tracking-tighter leading-none">
+                     {price.toFixed(2)} <span className="text-primary text-xs NOT-italic font-bold">PLN_NET</span>
+                  </p>
+               </div>
+               
+               <button 
+                 onClick={() => handleAddToCart(id, name, price)}
+                 className="w-full h-14 bg-gradient-to-r from-primary to-blue-600 text-white font-black uppercase text-[11px] tracking-widest flex items-center justify-center gap-4 hover:brightness-110 transition-all active-press italic shadow-lg shadow-blue-500/40 rounded-md"
+               >
+                 <ShoppingCart className="w-5 h-5 text-primary" />
+                 DODAJ_DO_KOSZYKA
+               </button>
+            </div>
           </div>
         );
       })}

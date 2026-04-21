@@ -1,7 +1,6 @@
-// src/app/admin/categories/_components/SubcategoryGrid.tsx
 "use client";
 
-import { Edit2, Trash2 } from "lucide-react";
+import { Edit2, Trash2, Layers, AlertCircle } from "lucide-react";
 
 interface ISubcategory {
   id: string;
@@ -25,49 +24,61 @@ export function SubcategoryGrid({
 }: ISubcategoryGridProps) {
   if (!subcategories || subcategories.length === 0) {
     return (
-      <div className="col-span-full text-xs font-black text-slate-400 p-10 border-2 border-dashed rounded-3xl text-center bg-slate-50 uppercase tracking-widest">
-        Brak aktywnych gałęzi w tym wydziale.
+      <div className="col-span-full py-20 border-2 border-dashed border-slate-100 flex flex-col items-center justify-center opacity-20">
+         <Layers className="w-10 h-10 mb-4" />
+         <span className="text-[10px] font-black uppercase tracking-[0.4em] italic text-center">Brak_Zdefiniowanych_Gałęzi</span>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {subcategories.map((sub) => (
-        <div key={sub.id} className="group flex items-center justify-between p-4 rounded-3xl border border-slate-200 bg-white hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 h-16">
-           <div className="flex-1 mr-4">
-              {renamingId === sub.id ? (
-                <input
-                  autoFocus
-                  className="bg-primary/5 border border-primary/20 rounded-xl px-3 py-1.5 w-full outline-none text-sm font-bold"
-                  value={renameValue}
-                  onChange={(e) => onSetRenameValue(e.target.value)}
-                  onBlur={() => onConfirmRename(sub.id, renameValue)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') onConfirmRename(sub.id, renameValue);
-                    if (e.key === 'Escape') onCancelRename();
-                  }}
-                />
-              ) : (
-                <span className="font-bold text-sm truncate block text-slate-700">{sub.name}</span>
-              )}
-           </div>
-           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-              <button 
-                 onClick={() => onStartRename(sub.id, sub.name)}
-                 className="btn-action-blue !w-8 !h-8 !rounded-xl"
-              >
-                 <Edit2 className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                 onClick={() => onDelete(sub.id)}
-                 className="btn-action-red !w-8 !h-8 !rounded-xl"
-              >
-                 <Trash2 className="w-3.5 h-3.5" />
-              </button>
-           </div>
-        </div>
-      ))}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {subcategories.map((sub) => {
+        const isRenaming = renamingId === sub.id;
+        return (
+          <div 
+            key={sub.id} 
+            className={`group flex items-center justify-between p-4 bg-white border h-16 transition-all ${
+              isRenaming ? 'border-primary shadow-lg shadow-primary/5' : 'border-slate-100 hover:border-slate-950/20'
+            }`}
+          >
+             <div className="flex-1 mr-4 min-w-0">
+                {isRenaming ? (
+                  <input
+                    autoFocus
+                    className="w-full h-9 bg-slate-50 border border-primary px-3 text-[12px] font-black uppercase italic outline-none shadow-inner"
+                    value={renameValue}
+                    onChange={(e) => onSetRenameValue(e.target.value)}
+                    onBlur={() => onConfirmRename(sub.id, renameValue)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') onConfirmRename(sub.id, renameValue);
+                      if (e.key === 'Escape') onCancelRename();
+                    }}
+                  />
+                ) : (
+                  <div className="flex items-center gap-3">
+                     <div className="w-1.5 h-6 bg-slate-50 group-hover:bg-primary transition-colors" />
+                     <span className="text-[13px] font-black text-slate-950 uppercase italic truncate leading-none">{sub.name}</span>
+                  </div>
+                )}
+             </div>
+             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                <button 
+                   onClick={() => onStartRename(sub.id, sub.name)}
+                   className="w-8 h-8 flex items-center justify-center bg-white border border-slate-100 text-slate-300 hover:text-primary transition-all active-press"
+                >
+                   <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button 
+                   onClick={() => onDelete(sub.id)}
+                   className="w-8 h-8 flex items-center justify-center bg-white border border-slate-100 text-slate-300 hover:text-red-600 transition-all active-press"
+                >
+                   <Trash2 className="w-3.5 h-3.5" />
+                </button>
+             </div>
+          </div>
+        )
+      })}
     </div>
   );
 }

@@ -47,10 +47,55 @@ It incorporates the core modules of the SoftSpark AI Toolkit.
   - **Hardened Pricing**: No scientific notation or EAN codes allowed in the Price column.
   - **Specs Merging**: Aggregate all technical columns between Model and Price for rich descriptions.
 
-## Elite Engineering Standard (Satel/DHL Hybrid)
+## Elite Engineering Standard (The Golden Master)
 
-- **Utility over Decoration**: Purge all blur, gradients, and decorative layered depth. Use clean white work zones on light gray backgrounds (`bg-background`).
-- **Iconic Navigation (DHL Pattern)**: Standardize on a horizontal top bar with iconic modular caps. Save vertical space.
-- **Data Density**: 14px compact font. Use inline table headers for filtering instead of sidebars. Ensure zero horizontal scroll on 1366x768.
-- **Physical Interaction**: Native physics mandate. All interactive elements must react via `active-press` (scale-97) and `active-inset` (inset shadow).
-- **OKLCH Palette**: Mandatory use of perceived-brightness whites, Dark Slate texts, and Technical Blue/Yellow accents.
+> [!IMPORTANT]
+> The **B2B Authorization Screen** is the absolute ultimate visual reference ("top of the top") for the entire Celtronics platform. All subsequent UI/UX architecture must strictly derive from its specific tokens, spacing, and physics.
+
+### 1. The Golden Master Tokens (Derived from B2B Auth)
+- **Golden Layout**: Architectural 50/50 visual split for distinct Informational vs. Operational zones.
+- **The Navy-Slate Gradient**: The deep immersive background `bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] text-white` (deep navy to metallic grey) for branding and trust anchors.
+- **The Pure White Canvas**: Operational zones (forms, tables, dashboards) are strictly `#FFFFFF` with no decorative backgrounds.
+- **The Pastel Input Base**: Inputs **must** use a light blue fill tint (e.g., `bg-blue-50/60` or `bg-slate-50`) with transparent borders, removing visual clutter.
+- **The Vivid CTA Glow**: Primary actions use a highly saturated active blue (`bg-blue-500` or `#2b8aeb`) combined with a matching colored drop-shadow (e.g., `shadow-lg shadow-blue-500/40`) to create floating depth, rejecting flat gray shadows.
+- **Typographic Authority**: Technical caps for labels (`text-xs font-semibold uppercase tracking-wider text-slate-500`), heavily weighted dark headers (`text-slate-900 font-extrabold`). 
+
+### 2. Architectural Foundations
+- **Fluid Grid & Scalability**: Mandatory responsive design using **Tailwind v4 Container Queries**. Optimize for 1366x768 (installers) up to 4K (ops centers).
+- **Compact Scaling**: Use a density factor of **1.125 - 1.200**. Minimal margins, 14px compact font.
+- **Horizontal Workflow**: Purge sidebars. Use horizontal alignment with action buttons (pills) at the end of rows.
+- **Data Density**: Zero horizontal scroll on 1366x768. Collapse low-priority columns to icons with hover-expand.
+
+### 3. Layout Patterns
+- **Iconic Navigation (DHL Pattern)**: Horizontal top bar with large circular icons and short labels. Active tab marked with a high-contrast technical underline.
+- **Action Bars & Inline Filters**: Bulk action buttons (solid blocks) placed directly above tables. **Inline Filters**: Search inputs must be built directly into table headers below the title.
+- **Data Cards (Satel Pattern)**: Pure white work zones (#FFFFFF) on light gray backgrounds (`bg-background`). Rows separated by whitespace and subtle lines, no harsh black borders.
+- **Fixed Contextual Panel**: "Contact Support" card docked to the right on high-resolution screens.
+
+### 4. Physical Interaction & Physics
+- **Physical Feedback**: All interactive elements must react via `active:scale-[0.98]` and `shadow-inner` (physical depression illusion).
+- **The Colored Glow**: Hover states on primary elements should use a colored shadow matching the element's background.
+- **Timing**: Use `ease-out` easing with 150-200ms duration `transition-all`.
+
+## Strategic Operational Instruction (Walkthrough)
+
+### Phase 1: Setup & Design Tokens
+Establish Tailwind v4 configuration with Container Queries. Define the color palette (Dark Slate, Light Blue Fill, Vivid Sky Blue) and interaction physics (scale-97).
+
+### Phase 2: Priority Blueprint (Public Hub & Auth)
+Rebuild the login screen as the visual master:
+- **Left**: Dark Slate/Navy gradient informational panel.
+- **Right**: Pure white operational form with `bg-blue-50` inputs and Vivid Sky Blue CTA.
+- **Verification Node**: Bordered box with blue typographic accents.
+
+### Phase 3: Dashboard & Iconic Navigation
+Implement the DHL-style iconic top bar and Satel-style context support panel. Ensure maximum vertical space preservation.
+
+### Phase 4: High-Density Data Grids
+Build responsive B2B tables with inline filters and action pills. Verify zero-scroll on 1366x768.
+
+### Phase 5: Pricing & CPQ Logic
+Implement discount matrices and quote generation with physical feedback states.
+
+### Phase 6: RMA & System Audit
+Final validation of fluidity and strict color adherence across all service modules.

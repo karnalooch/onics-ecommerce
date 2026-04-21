@@ -1,47 +1,34 @@
-// src/app/admin/repairs/_components/RmaHeader.tsx
 "use client";
 
-import { Search, Wrench, Plus, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Plus, ShieldAlert, Terminal } from "lucide-react";
 
-interface IHeaderProps {
-  searchQuery: string;
-  setSearchQuery: (s: string) => void;
-  isAdding: boolean;
-  setIsAdding: (b: boolean) => void;
+interface IRmaHeaderProps {
+  onAddClick: () => void;
 }
 
-export function RmaHeader({ searchQuery, setSearchQuery, isAdding, setIsAdding }: IHeaderProps) {
+export function RmaHeader({ onAddClick }: IRmaHeaderProps) {
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-      <div>
-        <h2 className="text-4xl font-extrabold tracking-tight flex items-center gap-3">
-           <Wrench className="w-10 h-10 text-primary" /> Centrum <span className="text-primary italic tracking-tighter uppercase">RMA</span>
-        </h2>
-        <p className="text-muted-foreground font-medium mt-2">
-          Centralny panel zarządzania serwisem i gwarancjami Celtronics B2B.
-        </p>
+    <div className="flex flex-col xl:flex-row justify-between items-end xl:items-center gap-6 border-b-2 border-slate-950 pb-8 no-blur">
+      <div className="flex items-center gap-6">
+        <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center shadow-xl">
+          <ShieldAlert className="w-7 h-7 text-primary" />
+        </div>
+        <div className="flex flex-col">
+          <div className="flex items-center gap-3">
+             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic leading-none">SERVICE_MODULE</span>
+             <div className="w-8 h-[1px] bg-slate-200" />
+             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 leading-none">RMA_Diagnostic_v4</span>
+          </div>
+          <h1 className="text-4xl font-black text-slate-950 uppercase tracking-tighter italic leading-none mt-1">Obsługa Serwisowa</h1>
+        </div>
       </div>
-      <div className="flex items-center gap-4">
-         <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
-            <input 
-              type="text"
-              placeholder="Szukaj RMA / Klienta..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 pr-6 py-3.5 bg-card border border-border rounded-2xl w-64 md:w-80 outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium text-sm shadow-sm"
-            />
-         </div>
-         <Button 
-           onClick={() => setIsAdding(!isAdding)} 
-           size="lg"
-           className={`rounded-2xl px-6 py-6 h-auto font-black uppercase tracking-widest gap-3 shadow-lg shadow-primary/20 transition-all ${isAdding ? 'bg-slate-900 border-slate-800' : ''}`}
-         >
-           {isAdding ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-           {isAdding ? "Anuluj" : "Zgłoś RMA"}
-         </Button>
-      </div>
+
+      <button 
+        onClick={onAddClick}
+        className="h-12 px-8 bg-slate-950 text-white font-black uppercase text-[11px] tracking-widest flex items-center gap-4 transition-all hover:bg-primary active-press italic shadow-xl shadow-primary/10"
+      >
+        <Plus className="w-4 h-4 text-primary" /> DODAJ_ZGŁOSZENIE_RMA
+      </button>
     </div>
   );
 }

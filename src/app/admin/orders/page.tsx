@@ -1,42 +1,43 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { ShoppingBag, CalendarClock, Loader2, CheckCircle2 } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { 
+  ShoppingBag, CalendarClock, Loader2, CheckCircle2, 
+  Terminal, Activity, Package, Truck, Search, 
+  ChevronRight, MoreHorizontal, FileText, Database,
+  ArrowRight, ShieldCheck, RefreshCcw, Box
+} from "lucide-react"
+import { toast } from "sonner"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [validatingOrder, setValidatingOrder] = useState<any | null>(null);
 
-  // States for modal inputs
   const [deliveryDays, setDeliveryDays] = useState<string>("5");
   const [editableItems, setEditableItems] = useState<any[]>([]);
+  const [saving, setSaving] = useState(false);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const res = await fetch("/api/orders");
       const data = await res.json();
       setOrders(data);
     } catch (err) {
-      console.error(err);
+      toast.error("FAULT: Błąd synchronizacji potoku zamówień.");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
   const openVerificationModal = (order: any) => {
     setValidatingOrder(order);
     setDeliveryDays(order.estimatedDeliveryDays?.toString() || "3");
-    // Kopie pozycji z koszyka, by Admin mógł edytować stawkę ZAMÓWIONĄ
     setEditableItems([...order.items]);
   }
 
@@ -47,170 +48,298 @@ export default function AdminOrdersPage() {
   }
 
   const confirmOrder = async () => {
+    setSaving(true);
     try {
-      await fetch("/api/orders", {
+      const res = await fetch("/api/orders", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: validatingOrder.id,
           status: "CONFIRMED",
           estimatedDeliveryDays: parseInt(deliveryDays),
-          items: editableItems // wysyłamy ewentualnie nowe zmodyfikowane ceny
+          items: editableItems
         })
       });
-      // Symulacja e-maila
-      alert("✅ E-mail Weryfikacyjny został wysłany do Klienta z załączonymi czasami realizacji!");
-      setValidatingOrder(null);
-      fetchOrders();
+      if (res.ok) {
+        toast.success("LOG: Zamówienie zweryfikowane. Alert wysłany do klienta.");
+        setValidatingOrder(null);
+        fetchOrders();
+      }
     } catch {
-      alert("Błąd podczas zapisywania!");
+      toast.error("FAULT: Błąd zapisu weryfikacji.");
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <ShoppingBag className="h-8 w-8 text-primary" /> Zamówienia B2B i Czas Dostaw
-        </h2>
-        <p className="text-muted-foreground">
-          Zarządzaj potokiem twardych zamówień. Tutaj jako administrator, nadpisujesz globalne czasy realizacji oraz masz ostateczne okienko modyfikacji cen poszczególnych pozycji przed przyjęciem rezerwacji magazynowej.
-        </p>
+    <div className="flex flex-col gap-10 animate-in fade-in duration-700 pb-20 no-blur max-w-[1920px] mx-auto">
+      
+      {/* 1. FULFILLMENT STREAM HEADER */}
+      <div className="flex flex-col xl:flex-row justify-between items-end xl:items-center gap-8 border-b-2 border-slate-950 pb-8">
+        <div className="flex items-center gap-6">
+           <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center shadow-xl">
+              <ShoppingBag className="w-7 h-7 text-primary" />
+           </div>
+           <div className="flex flex-col">
+              <div className="flex items-center gap-3">
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic leading-none">DHL_FLOW_LOGISTICS</span>
+                 <div className="w-8 h-[1px] bg-slate-200" />
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 leading-none">Order_Pipeline_v7</span>
+              </div>
+              <h1 className="text-4xl font-black text-slate-950 uppercase tracking-tighter italic leading-none mt-1">Potok Rezerwacji B2B</h1>
+           </div>
+        </div>
+        
+        <div className="flex items-center gap-6 bg-slate-50 p-2 border border-slate-100 h-14 px-8">
+           <div className="flex flex-col items-end">
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">OCZEKUJĄCE</span>
+              <span className="text-xl font-black text-slate-950 tabular-nums italic mt-1 leading-none">
+                 {orders.filter(o => o.status === 'PENDING_VERIFICATION').length}
+              </span>
+           </div>
+           <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+           <div className="flex flex-col items-end">
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">W_LOGISTYCE</span>
+              <span className="text-xl font-black text-primary tabular-nums italic mt-1 leading-none">
+                 {orders.filter(o => o.status === 'CONFIRMED').length}
+              </span>
+           </div>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Logistyka - Przegląd Kolejki Weryfikacyjnej</CardTitle>
-          <CardDescription>Zamówienia wysłane poprzez system E-commerce / Integracja ze stanami WF-Mag.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="py-12 flex justify-center"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>
-          ) : orders.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground border-2 border-dashed rounded-lg">Brak spływających zamówień w buforze.</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nr Zamówienia</TableHead>
-                  <TableHead>Akcja / Typ</TableHead>
-                  <TableHead>Zgłaszający</TableHead>
-                  <TableHead>Wartość Startowa</TableHead>
-                  <TableHead>Wartość Finalna</TableHead>
-                  <TableHead>Stan weryfikacji / Czas dostawy</TableHead>
-                  <TableHead className="text-right">Działanie</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {orders.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-mono font-bold text-primary">{o.id}</TableCell>
-                    <TableCell>
-                      {o.orderType === "ORDER" 
-                        ? <Badge className="bg-green-600">Rezerwacja LOG / Zamówienie</Badge> 
-                        : <Badge variant="secondary">Zapytanie / Wycena Luźna</Badge>}
-                    </TableCell>
-                    <TableCell>{o.user?.name || o.user?.email}</TableCell>
-                    <TableCell>{Number(o.totalPriceOrig).toFixed(2)} zł</TableCell>
-                    <TableCell className="font-bold">{Number(o.totalPriceFinal).toFixed(2)} zł</TableCell>
-                    <TableCell>
-                      {o.status === 'PENDING_VERIFICATION' ? (
-                        <span className="flex items-center text-orange-500 font-medium text-xs border border-orange-200 bg-orange-50 px-2 py-1 rounded w-fit">
-                           <CalendarClock className="w-3 h-3 mr-1" /> Wymaga oznaczenia dni 
-                        </span>
-                      ) : (
-                        <span className="flex items-center text-green-600 font-medium text-xs border border-green-200 bg-green-50 px-2 py-1 rounded w-fit">
-                           <CheckCircle2 className="w-3 h-3 mr-1" /> Zakończono (Dostawa: ~{o.estimatedDeliveryDays} dni)
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                       <Dialog open={validatingOrder?.id === o.id} onOpenChange={(open) => !open && setValidatingOrder(null)}>
-                          <DialogTrigger asChild>
-                             <Button size="sm" variant={o.status === "PENDING_VERIFICATION" ? "default" : "outline"} onClick={() => openVerificationModal(o)}>
-                               {o.status === "PENDING_VERIFICATION" ? "Weryfikuj & Ustal ceny" : "Podgląd nadpisania"}
-                             </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-3xl">
-                            <DialogHeader>
-                              <DialogTitle className="text-2xl">Zarządzanie Czasem i Cenami (#{o.id})</DialogTitle>
-                              <DialogDescription>Wiadomość z potwierdzeniem zostanie automatycznie wystosowana do Klienta Poczty Instalatorskiej.</DialogDescription>
-                            </DialogHeader>
-                            
-                            <div className="py-4 space-y-6">
-                              <div className="bg-muted px-4 py-3 rounded-lg border flex items-center justify-between">
-                                 <div>
-                                   <p className="font-semibold text-sm">Nadaj gwarantowany czas dostawy (logistyka)</p>
-                                   <p className="text-xs text-muted-foreground">Liczba ta pojawi się w panelu klienta jako "Szacowany czas (Dni Roboczych)"</p>
-                                 </div>
-                                 <div className="flex items-center gap-2">
-                                    <input 
-                                       type="number" 
-                                       value={deliveryDays} 
-                                       onChange={(e) => setDeliveryDays(e.target.value)}
-                                       className="w-20 text-center text-xl font-bold bg-background border p-2 rounded-md"
-                                       min="1"
-                                    />
-                                    <strong>Dni</strong>
-                                 </div>
-                              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
+        
+        {/* OPERATIONAL PIPELINE (TABLE) */}
+        <div className="xl:col-span-12 space-y-8">
+           
+           <div className="satel-card p-0 bg-white border-none shadow-sm overflow-hidden rounded-none">
+              <div className="p-5 border-b border-slate-100 bg-slate-950 flex items-center justify-between text-white">
+                 <div className="flex items-center gap-4">
+                    <Terminal className="w-5 h-5 text-primary" />
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] italic">TRANSACTION_QUEUE_STREAM</h3>
+                 </div>
+                 <Activity className="w-4 h-4 text-primary animate-pulse" />
+              </div>
 
-                              <div>
-                                 <h4 className="font-semibold mb-2">Edycja stawek poszczególnych indeksów:</h4>
-                                 <div className="border rounded-lg overflow-hidden">
-                                   <table className="w-full text-sm">
-                                     <thead className="bg-muted text-muted-foreground font-medium text-left">
-                                       <tr>
-                                         <th className="p-2 pl-4">Indeks / SKU</th>
-                                         <th className="p-2">Zamówiona Ilość</th>
-                                         <th className="p-2">Pierwotna Kwota (Systemowa)</th>
-                                         <th className="p-2 pr-4 text-right">Ostateczna Kwota (po Mod.)</th>
-                                       </tr>
-                                     </thead>
-                                     <tbody>
-                                        {editableItems.map((item, idx) => (
-                                          <tr key={idx} className="border-t">
-                                            <td className="p-2 pl-4 font-medium">{item.name} <span className="text-xs text-muted-foreground block">{item.sku}</span></td>
-                                            <td className="p-2">{item.quantity} szt.</td>
-                                            <td className="p-2 text-muted-foreground">{item.price?.toFixed(2)} zł</td>
-                                            <td className="p-2 pr-4 text-right">
-                                               <input 
-                                                 type="number" 
-                                                 value={item.price}
-                                                 onChange={(e) => updateItemPrice(idx, e.target.value)}
-                                                 className="w-24 border text-right p-1 rounded font-bold"
-                                                 step="0.01"
-                                               /> zł
-                                            </td>
-                                          </tr>
-                                        ))}
-                                     </tbody>
-                                   </table>
-                                 </div>
-                                 <div className="mt-4 text-right">
-                                   <span className="text-sm text-muted-foreground">Suma bazowa: {Number(o.totalPriceOrig).toFixed(2)} zł</span>
-                                   <div className="text-lg font-bold">
-                                     Nowa Suma (dla klienta): <span className="text-primary">{editableItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0).toFixed(2)} zł</span>
+              <div className="w-full overflow-x-auto">
+                 <table className="w-full border-collapse">
+                    <thead>
+                       <tr className="bg-slate-50 border-b border-slate-100">
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pl-6 text-left w-20 italic">ID_T</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-left italic">Typ / Rezerwacja</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-left italic">Podmiot_B2B</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-right italic">Wartość_System</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-right italic">Wartość_Final</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-center italic">DHL_Status_Flow</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pr-6 text-right italic">Operacja</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                       {loading ? (
+                          <tr>
+                             <td colSpan={7} className="h-64 text-center">
+                                <div className="flex flex-col items-center justify-center opacity-10">
+                                   <RefreshCcw className="w-10 h-10 mb-4 animate-spin" />
+                                   <span className="text-[11px] font-black uppercase tracking-[0.5em] italic">Syncing_Logistics_Nodes...</span>
+                                </div>
+                             </td>
+                          </tr>
+                       ) : orders.length === 0 ? (
+                          <tr>
+                             <td colSpan={7} className="h-64 text-center text-[11px] font-black text-slate-200 uppercase tracking-[0.4em] italic">Stream_Inactive: Brak_Zamówień</td>
+                          </tr>
+                       ) : (
+                          orders.map((o) => (
+                             <tr key={o.id} className="group hover:bg-slate-50/50 transition-colors">
+                                <td className="py-6 pl-6">
+                                   <span className="text-[11px] font-black text-primary italic tabular-nums">#{o.id}</span>
+                                </td>
+                                <td className="px-6 py-6">
+                                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-950 text-white border border-slate-800">
+                                      {o.orderType === "ORDER" ? <Package className="w-3 h-3 text-primary" /> : <FileText className="w-3 h-3" />}
+                                      <span className="text-[8px] font-black uppercase italic tracking-widest">
+                                         {o.orderType === "ORDER" ? "HARD_RESERVATION" : "LIGHT_QUOTE"}
+                                      </span>
                                    </div>
-                                 </div>
-                              </div>
-                            </div>
+                                </td>
+                                <td className="px-6 py-6">
+                                   <div className="flex flex-col gap-1">
+                                      <span className="text-[13px] font-black text-slate-950 uppercase italic tracking-tighter leading-none">{o.user?.companyName || "PARTNER_EXT_ID"}</span>
+                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{o.user?.email || "N/A"}</span>
+                                   </div>
+                                </td>
+                                <td className="px-6 py-6 text-right">
+                                   <span className="text-[11px] font-black text-slate-300 tabular-nums italic line-through decoration-slate-200">{Number(o.totalPriceOrig).toFixed(2)}</span>
+                                </td>
+                                <td className="px-6 py-6 text-right">
+                                   <span className="text-[15px] font-black text-slate-950 tabular-nums italic tracking-tighter">{Number(o.totalPriceFinal).toFixed(2)} <span className="text-[8px] NOT-italic text-slate-400 ml-1">PLN</span></span>
+                                </td>
+                                <td className="px-6 py-6">
+                                   <div className="flex items-center justify-center gap-1">
+                                      {[1, 2, 3].map(step => {
+                                         const isActive = (step === 1) || (step === 2 && o.status === 'CONFIRMED') || (step === 3 && o.status === 'SHIPPED');
+                                         return (
+                                            <div key={step} className="flex items-center gap-1">
+                                               <div className={`h-2 w-10 ${isActive ? 'bg-primary' : 'bg-slate-100'} skew-x-[-20deg]`} />
+                                               {step < 3 && <ArrowRight className={`w-2 h-2 ${isActive ? 'text-primary' : 'text-slate-200'}`} />}
+                                            </div>
+                                         )
+                                      })}
+                                   </div>
+                                </td>
+                                <td className="pr-6 py-6 text-right">
+                                   <button 
+                                      onClick={() => openVerificationModal(o)}
+                                      className={`h-10 px-5 text-[9px] font-black uppercase tracking-widest italic transition-all active-press ${
+                                         o.status === "PENDING_VERIFICATION" 
+                                            ? "bg-primary text-white shadow-lg shadow-primary/20" 
+                                            : "bg-slate-50 text-slate-400 border border-slate-100"
+                                      }`}
+                                   >
+                                      {o.status === "PENDING_VERIFICATION" ? "VERIFY_NODE" : "VIEW_LOGS"}
+                                   </button>
+                                </td>
+                             </tr>
+                          ))
+                       )}
+                    </tbody>
+                 </table>
+              </div>
+           </div>
 
-                            <DialogFooter>
-                              {o.status === "PENDING_VERIFICATION" && (
-                                <Button onClick={confirmOrder} className="w-full md:w-auto">Zatwierdź Terminy i Ceny (Wyślij Alert)</Button>
-                              )}
-                            </DialogFooter>
-                          </DialogContent>
-                       </Dialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* VERIFICATION TERMINAL (MODAL) */}
+      <AnimatePresence>
+        {validatingOrder && (
+           <div className="fixed inset-0 z-50 flex items-center justify-center p-6 no-blur">
+              <div className="absolute inset-0 bg-slate-950/70" onClick={() => setValidatingOrder(null)} />
+              
+              <motion.div 
+                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                 animate={{ opacity: 1, scale: 1, y: 0 }}
+                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                 className="w-full max-w-[800px] bg-white relative z-10 overflow-hidden shadow-2xl border-none p-0 flex flex-col max-h-[90vh]"
+              >
+                 <div className="bg-slate-950 px-8 py-5 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                       <ShieldCheck className="w-5 h-5 text-primary" />
+                       <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] italic">MODYFIKACJA_PARAMETRÓW_POTOKU</h3>
+                    </div>
+                    <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">ORDER_T: #{validatingOrder.id}</div>
+                 </div>
+
+                 <div className="p-10 space-y-10 overflow-y-auto custom-scrollbar">
+                    
+                    {/* LOGISTICS CONFIG */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                       <div className="space-y-4">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">Szacowany Czas Realizacji (DHL-DAYS)</label>
+                          <div className="flex items-center gap-6 bg-slate-50 p-6 border-l-4 border-primary">
+                             <input 
+                                type="number" 
+                                value={deliveryDays} 
+                                onChange={(e) => setDeliveryDays(e.target.value)}
+                                className="w-24 h-14 bg-white border border-slate-200 text-center text-4xl font-black text-slate-950 tabular-nums italic outline-none focus:border-primary transition-all"
+                                min="1"
+                             />
+                             <div>
+                                <span className="text-[11px] font-black text-slate-950 uppercase italic">DNI_ROBOCZYCH</span>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gwarantowany termin logystyczny</p>
+                             </div>
+                          </div>
+                       </div>
+                       
+                       <div className="flex flex-col justify-end p-6 bg-slate-950 text-white italic">
+                          <span className="text-[8px] font-black text-primary uppercase tracking-[0.3em]">Alert_Signal:</span>
+                          <p className="text-[10px] font-bold leading-relaxed mt-2 opacity-60">
+                             Zatwierdzenie spowoduje natychmiastową wysyłkę certyfikatu weryfikacyjnego do Partnera B2B.
+                          </p>
+                       </div>
+                    </div>
+
+                    {/* ITEM REDEFINITION GRID */}
+                    <div className="space-y-4">
+                       <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-[0.2em] italic border-b border-slate-100 pb-2">Korekta Stawek Indeksowych</h4>
+                       <div className="bg-slate-50 border border-slate-100">
+                          <table className="w-full text-left">
+                             <thead>
+                                <tr className="border-b border-slate-200 bg-slate-100">
+                                   <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">Indeks / SKU</th>
+                                   <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">QTY</th>
+                                   <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">System_Price</th>
+                                   <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right pr-6">Override_Price</th>
+                                </tr>
+                             </thead>
+                             <tbody className="divide-y divide-slate-200">
+                                {editableItems.map((item, idx) => (
+                                   <tr key={idx} className="hover:bg-white transition-colors">
+                                      <td className="p-4">
+                                         <div className="flex flex-col">
+                                            <span className="text-[12px] font-black text-slate-950 uppercase italic truncate max-w-[200px]">{item.name}</span>
+                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.sku}</span>
+                                         </div>
+                                      </td>
+                                      <td className="p-4 text-center font-black text-[12px] italic tabular-nums">{item.quantity} PCS</td>
+                                      <td className="p-4 text-right text-[11px] font-bold text-slate-400 tabular-nums">{item.price?.toFixed(2)}</td>
+                                      <td className="p-4 text-right pr-6">
+                                         <input 
+                                            type="number" 
+                                            value={item.price}
+                                            onChange={(e) => updateItemPrice(idx, e.target.value)}
+                                            className="w-28 h-10 bg-white border border-slate-200 text-right px-4 text-sm font-black text-primary italic outline-none focus:border-primary transition-all tabular-nums"
+                                            step="0.01"
+                                         />
+                                      </td>
+                                   </tr>
+                                ))}
+                             </tbody>
+                          </table>
+                       </div>
+                    </div>
+
+                    {/* VALUATION SYNOPSIS */}
+                    <div className="flex justify-end pt-6 border-t-2 border-slate-950">
+                       <div className="w-[300px] space-y-2">
+                          <div className="flex justify-between items-baseline">
+                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">VAL_BASE_TOTAL:</span>
+                             <span className="text-[13px] font-black text-slate-400 tabular-nums">{validatingOrder.totalPriceOrig?.toFixed(2)} PLN</span>
+                          </div>
+                          <div className="flex justify-between items-end pt-4">
+                             <span className="text-[13px] font-black text-primary uppercase italic tracking-widest">VAL_OVERRIDE:</span>
+                             <div className="flex items-baseline gap-2 leading-none">
+                                <span className="text-[32px] font-black text-primary tabular-nums italic tracking-tighter leading-none">
+                                   {editableItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0).toFixed(2)}
+                                </span>
+                                <span className="text-[10px] font-black text-slate-400 NOT-italic">PLN</span>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="p-6 bg-slate-950 flex items-center gap-4">
+                    <button 
+                       onClick={() => setValidatingOrder(null)}
+                       className="flex-1 h-14 border-2 border-white/20 text-white font-black text-[11px] uppercase tracking-widest hover:border-white transition-all active-press italic"
+                    >
+                       ANULUJ_WERYFIKACJĘ
+                    </button>
+                    <button 
+                       onClick={confirmOrder}
+                       disabled={saving}
+                       className="flex-1 h-14 bg-primary text-slate-950 font-black text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-4 transition-all hover:brightness-110 active-press italic"
+                    >
+                       {saving ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
+                       {saving ? "PROPAGACJA_PARAMETRÓW..." : "ZATWIERDŹ_DO_LOGISTYKI"}
+                    </button>
+                 </div>
+              </motion.div>
+           </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

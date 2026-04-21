@@ -2,8 +2,19 @@
 "use client";
 
 import { memo, useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { ArrowUpRight, Search, ChevronDown, AlertTriangle, Trash2, Check, Zap, Filter, Activity } from "lucide-react";
+import { 
+  ArrowUpRight, 
+  Search, 
+  ChevronDown, 
+  AlertTriangle, 
+  Trash2, 
+  Check, 
+  Zap, 
+  Filter, 
+  Activity,
+  RefreshCcw,
+  Database
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { StagingItem } from "./StagingItem";
 import { Badge } from "@/components/ui/badge";
@@ -58,51 +69,51 @@ export const StagingDashboard = memo(function StagingDashboard({
   };
 
   return (
-    <div className="staging-container space-y-8 animate-in slide-in-from-top-12 duration-1000 p-10 rounded-[4rem] bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border-2 border-white dark:border-slate-800 shadow-[0_45px_100px_-20px_rgba(0,0,0,0.15)]">
+    <div className="flex flex-col gap-8 animate-in fade-in duration-700 select-none no-blur">
       
-      {/* COMMAND HEADER V12 */}
-      <div className="flex flex-col xl:flex-row items-center gap-10">
+      {/* 1. STAGING MASTER HEADER */}
+      <div className="flex flex-col xl:flex-row items-center gap-8 border-b border-slate-100 pb-8">
         
-        {/* STATUS ORB & TITLE */}
+        {/* STATUS & HUB IDENTITY */}
         <div className="flex items-center gap-6 shrink-0">
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`p-6 rounded-[2rem] shadow-2xl transition-all duration-700 relative overflow-hidden group active:scale-90 ${isCollapsed ? 'bg-slate-900' : 'bg-primary shadow-primary/20 rotate-12'}`}
+            className={`w-14 h-14 flex items-center justify-center transition-all bg-slate-950 text-white active-press rounded-none ${isCollapsed ? 'opacity-50' : ''}`}
           >
-            <Zap className={`w-8 h-8 text-white relative z-10 transition-transform duration-700 ${isCollapsed ? 'rotate-180' : ''}`} />
-            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Database className={`w-7 h-7 text-primary transition-transform duration-500 ${isCollapsed ? 'rotate-180' : ''}`} />
           </button>
           
-          <div>
+          <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter leading-none">
-                Biurko <span className="text-primary italic">Weryfikacyjne</span>
+              <h2 className="text-3xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">
+                STAGING_TERMINAL <span className="text-slate-400 not-italic">_BUFFER</span>
               </h2>
-              {isCollapsed && <Badge className="bg-primary text-slate-900 border-none font-black text-[10px] px-3 py-1 rounded-full">{payload.length} POZ.</Badge>}
             </div>
-            <div className="flex items-center gap-4 mt-2">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest italic">{payload.filter(isItemConfirmed).length} / {payload.length} Autoryzowanych</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest italic leading-none">
+                  Status: {payload.filter(isItemConfirmed).length} / {payload.length} REKORDÓW_ZWERYFIKOWANYCH
+                </span>
               </div>
               {isTraining && (
-                <div className="bg-blue-600/10 text-blue-600 px-3 py-1 rounded-full flex items-center gap-2 border border-blue-600/20">
-                   <Activity className="w-3 h-3 animate-spin" />
-                   <span className="text-[8px] font-black uppercase">Analiza IQ Sync: {progressPercent}%</span>
+                <div className="flex items-center gap-2 px-2 py-0.5 bg-slate-50 border border-slate-100">
+                   <Activity className="w-3 h-3 text-primary animate-spin" />
+                   <span className="text-[8px] font-black uppercase text-slate-600">ANALIZA_SYNC: {progressPercent}%</span>
                 </div>
               )}
             </div>
           </div>
         </div>
         
-        {/* NEURAL FILTERS & SEARCH */}
+        {/* FILTERS AREA */}
         {!isCollapsed && (
-          <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-6 animate-in slide-in-from-right-8 duration-700">
-            <div className="relative flex-1 group">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-primary transition-all duration-300" />
+          <div className="flex-1 w-full flex flex-col md:flex-row items-center gap-4 animate-in slide-in-from-right-4">
+            <div className="relative flex-1 group w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-primary transition-colors" />
               <input 
-                placeholder="Szukaj w centrum weryfikacji..."
-                className="w-full h-16 pl-16 pr-8 rounded-[1.8rem] bg-white/60 dark:bg-slate-800/60 border-2 border-slate-100 dark:border-slate-800 focus:border-primary outline-none text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest transition-all placeholder:text-slate-300"
+                placeholder="FILTRUJ_BUFOR_DANYCH..."
+                className="w-full h-11 pl-12 pr-4 bg-blue-50 border border-transparent focus:border-primary outline-none text-[10px] font-black text-slate-950 uppercase tracking-widest transition-all placeholder:text-slate-400 shadow-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -110,99 +121,81 @@ export const StagingDashboard = memo(function StagingDashboard({
             
             <button 
                 onClick={() => setShowConflictsOnly(!showConflictsOnly)}
-                className={`h-16 px-8 rounded-[1.8rem] flex items-center gap-4 transition-all font-black text-[10px] uppercase tracking-widest border-2 ${showConflictsOnly ? 'bg-orange-500 text-white border-orange-500 shadow-xl shadow-orange-500/20' : 'bg-white/60 dark:bg-slate-800/60 text-slate-500 border-slate-100 dark:border-slate-800 hover:border-orange-200'}`}
+                className={`h-11 px-6 flex items-center gap-3 transition-all font-black text-[10px] uppercase tracking-widest border active-press ${showConflictsOnly ? 'bg-slate-950 text-white border-slate-950' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
             >
-              <AlertTriangle className={`w-5 h-5 ${showConflictsOnly ? 'animate-bounce' : 'text-orange-400'}`} />
-              Tylko Konflikty
+              <AlertTriangle className={`w-4 h-4 ${showConflictsOnly ? 'text-primary' : 'text-slate-200'}`} />
+              Konflikty
             </button>
           </div>
         )}
 
-        {/* MASTER ACTIONS */}
-        <div className="shrink-0">
-          <div className="flex gap-4">
-             <Button 
-                variant="ghost" 
-                onClick={onClear} 
-                className="h-16 px-8 rounded-[1.8rem] text-red-500 hover:bg-red-500 hover:text-white font-black uppercase text-[10px] tracking-widest flex gap-3 transition-all border border-transparent hover:shadow-2xl active:scale-95"
-              >
-                <Trash2 className="w-5 h-5" /> Wyczyść
-              </Button>
-              <Button 
-                onClick={onCommitAll} 
-                disabled={importing || !allConfirmed} 
-                className={`h-16 px-10 rounded-[1.8rem] font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl transition-all relative overflow-hidden group ${
-                  !allConfirmed ? 'bg-slate-200 text-slate-400' : 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 group-hover:bg-primary group-hover:text-white'
-                }`}
-              >
-                {importing ? (
-                  <RefreshCcw className="w-5 h-5 animate-spin" />
-                ) : (
-                  <span className="flex items-center gap-3">
-                    Autoryzuj całą paczkę <Check className="w-5 h-5" />
-                  </span>
-                )}
-                {!allConfirmed && <div className="absolute inset-0 bg-slate-900/5 cursor-not-allowed" />}
-              </Button>
-          </div>
+        {/* MASTER_COMMANDS */}
+        <div className="flex gap-2">
+           <button 
+              onClick={onClear} 
+              className="h-11 px-6 bg-white border border-slate-100 text-slate-300 hover:text-red-600 hover:border-red-100 font-black uppercase text-[10px] tracking-widest flex items-center gap-3 transition-all active-press"
+            >
+              <Trash2 className="w-4 h-4" /> Wyczyść
+            </button>
+            <button 
+              onClick={onCommitAll} 
+              disabled={importing || !allConfirmed} 
+              className={`h-11 px-8 font-black uppercase tracking-widest text-[10px] transition-all relative overflow-hidden active-press ${
+                !allConfirmed ? 'bg-slate-50 text-slate-200 border border-slate-50 cursor-not-allowed' : 'bg-primary text-white hover:brightness-110 shadow-lg shadow-primary/20'
+              }`}
+            >
+              {importing ? (
+                <RefreshCcw className="w-4 h-4 animate-spin" />
+              ) : (
+                <span className="flex items-center gap-3 leading-none">
+                  AUTORYZUJ_TRANSFER <Check className="w-4 h-4" />
+                </span>
+              )}
+            </button>
         </div>
       </div>
 
-      {/* VERIFICATION LIST */}
+      {/* VERIFICATION SPACE */}
       <AnimatePresence>
         {!isCollapsed && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            className="space-y-6 pt-4 border-t border-slate-100 dark:border-slate-800/50"
-          >
+          <div className="flex flex-col gap-6 animate-in slide-in-from-bottom-2 duration-500">
             {importSummary && (
-              <div className={`p-8 rounded-[2.5rem] border-2 animate-in slide-in-from-left-8 duration-700 ${
-                importSummaryType === 'error' ? 'bg-red-50/50 border-red-200 text-red-900' : 'bg-emerald-50/50 border-emerald-200 text-emerald-900'
+              <div className={`p-6 border-l-4 rounded-none ${
+                importSummaryType === 'error' ? 'bg-red-50 border-red-500 text-red-900' : 'bg-slate-50 border-primary text-slate-900'
               }`}>
                 <div className="flex items-center gap-6">
-                  <div className={`p-4 rounded-[1.5rem] shadow-xl ${importSummaryType === 'error' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
-                    {importSummaryType === 'error' ? <AlertTriangle className="w-6 h-6 border-none" /> : <Check className="w-6 h-6" />}
+                  <div className={`w-10 h-10 flex items-center justify-center ${importSummaryType === 'error' ? 'bg-red-500 text-white' : 'bg-slate-950 text-white'}`}>
+                    {importSummaryType === 'error' ? <AlertTriangle className="w-5 h-5" /> : <Check className="w-5 h-5 text-primary" />}
                   </div>
                   <div>
-                     <h3 className="text-xl font-black uppercase italic tracking-tighter">Raport Systemowy</h3>
-                     <p className="font-bold opacity-70 text-sm italic leading-relaxed whitespace-pre-line mt-1">{importSummary}</p>
+                     <h3 className="text-[11px] font-black uppercase italic tracking-[0.2em] leading-none mb-1">Raport_Systemowy_IQ</h3>
+                     <p className="font-bold text-[10px] uppercase tracking-widest opacity-60 leading-relaxed whitespace-pre-line">{importSummary}</p>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="space-y-4 max-h-[800px] overflow-y-auto pr-4 custom-scrollbar">
-              <AnimatePresence mode="popLayout">
-                {filtered.slice(0, visibleCount).map((item, index) => (
-                  <motion.div
-                    key={item.tempId}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <StagingItem 
-                      item={item} categories={categories} manufacturers={manufacturers}
-                      onUpdate={onUpdateItem} onCommit={onCommitItem} onRemove={onRemoveItem}
-                      isItemConfirmed={isItemConfirmed}
-                      isSelected={selectedIds.includes(item.tempId)}
-                      onToggleSelect={() => toggleSelect(item.tempId)}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+            <div className="flex flex-col gap-2 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
+              {filtered.slice(0, visibleCount).map((item) => (
+                <StagingItem 
+                  key={item.tempId}
+                  item={item} categories={categories} manufacturers={manufacturers}
+                  onUpdate={onUpdateItem} onCommit={onCommitItem} onRemove={onRemoveItem}
+                  isItemConfirmed={isItemConfirmed}
+                  isSelected={selectedIds.includes(item.tempId)}
+                  onToggleSelect={() => toggleSelect(item.tempId)}
+                />
+              ))}
 
               {visibleCount < filtered.length && (
-                <div className="pt-10 pb-6 flex justify-center">
-                  <Button 
+                <div className="pt-8 flex justify-center">
+                  <button 
                     onClick={() => setVisibleCount(v => v + 50)} 
-                    variant="ghost" 
-                    className="h-16 px-12 rounded-[2rem] bg-slate-100 dark:bg-slate-800 text-slate-500 font-black uppercase tracking-widest gap-4 border-2 border-transparent hover:border-primary transition-all group"
+                    className="h-10 px-8 bg-slate-50 border border-slate-100 text-slate-400 font-black uppercase tracking-widest text-[10px] flex items-center gap-3 hover:text-slate-950 transition-all active-press"
                   >
-                    <ChevronDown className="w-6 h-6 animate-bounce group-hover:text-primary" /> 
-                    Zwolnij Kolejne ({filtered.length - visibleCount})
-                  </Button>
+                    <ChevronDown className="w-4 h-4 animate-bounce" /> 
+                    Zwolnij_Blok_Danych ({filtered.length - visibleCount})
+                  </button>
                 </div>
               )}
             </div>
@@ -214,7 +207,7 @@ export const StagingDashboard = memo(function StagingDashboard({
               categories={categories}
               manufacturers={manufacturers}
             />
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

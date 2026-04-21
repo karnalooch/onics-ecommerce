@@ -51,13 +51,13 @@ export function GlobalAdminSidebar() {
 
   return (
     <>
-      {/* COMMAND GLASS TOP BAR */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] h-14 bg-white/40 backdrop-blur-3xl border-b border-white/20 flex items-center justify-between px-6 shadow-2xl select-none font-mono">
+      {/* COMMAND TOP BAR (FLAT & FUNCTIONAL) */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] h-14 bg-white border-b border-slate-100 flex items-center justify-between px-6 shadow-sm select-none font-mono">
         <div className="flex items-center h-full">
           
-          {/* BRANDING (GLASS) */}
-          <Link href="/" className="flex items-center gap-4 pr-10 border-r border-black/[0.05] h-full hover:bg-white/40 transition-all group">
-            <div className="w-8 h-8 bg-slate-950 text-white flex items-center justify-center rounded-none shrink-0 shadow-2xl group-hover:scale-110 transition-transform">
+          {/* BRANDING (FLAT) */}
+          <Link href="/" className="flex items-center gap-4 pr-10 border-r border-slate-100 h-full hover:bg-slate-50 transition-all group active-press">
+            <div className="w-8 h-8 bg-slate-950 text-white flex items-center justify-center rounded-none shrink-0 shadow-sm transition-transform">
                <Database className="w-4 h-4" />
             </div>
             <div className="flex flex-col leading-none">
@@ -77,10 +77,10 @@ export function GlobalAdminSidebar() {
               <Link 
                 key={item.path}
                 href={item.path}
-                className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-snap ease-snap border-b-4 ${
+                className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-snap ease-snap border-b-4 active-press ${
                   isActive(item.path) 
-                    ? 'border-slate-950 text-slate-950 bg-white/60' 
-                    : 'border-transparent text-slate-400 hover:text-slate-950 hover:bg-white/20'
+                    ? 'border-primary text-slate-950 bg-slate-50' 
+                    : 'border-transparent text-slate-400 hover:text-slate-950 hover:bg-slate-50'
                 }`}
               >
                 <item.icon className="w-4 h-4" />
@@ -91,22 +91,22 @@ export function GlobalAdminSidebar() {
             <div className="relative h-full flex xl:hidden group">
                <button 
                   onClick={() => setIsMoreOpen(!isMoreOpen)}
-                  className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all ${isMoreOpen ? 'text-slate-950 bg-white/60' : 'text-slate-400 hover:text-slate-950 hover:bg-white/20'}`}
+                  className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all ${isMoreOpen ? 'text-slate-950 bg-white' : 'text-slate-400 hover:text-slate-950 hover:bg-slate-50'}`}
                >
                   <MoreHorizontal className="w-4 h-4" />
                   <span>Tools</span>
                </button>
 
                {isMoreOpen && (
-                  <div className="absolute top-[105%] left-0 w-64 bg-white/60 backdrop-blur-3xl border border-white/20 shadow-3xl py-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute top-[105%] left-0 w-64 bg-white border border-slate-100 shadow-md py-2 animate-in fade-in slide-in-from-top-2 z-50">
                      {secondaryItems.map((item) => (
                         <Link 
                            key={item.path}
                            href={item.path}
-                           className={`flex items-center gap-4 px-6 py-4 text-[11px] font-black uppercase tracking-widest transition-all ${
+                           className={`flex items-center gap-4 px-6 py-4 text-[11px] font-black uppercase tracking-widest transition-all active-press ${
                               isActive(item.path) 
                               ? 'bg-slate-950 text-white' 
-                              : 'text-slate-500 hover:text-slate-950 hover:bg-white/40'
+                              : 'text-slate-500 hover:text-slate-950 hover:bg-slate-50'
                            }`}
                         >
                            <item.icon className="w-4 h-4" />
@@ -122,10 +122,10 @@ export function GlobalAdminSidebar() {
                   <Link 
                      key={item.path}
                      href={item.path}
-                     className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-snap ease-snap border-b-4 ${
+                     className={`h-full px-6 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-snap ease-snap border-b-4 active-press ${
                         isActive(item.path) 
-                        ? 'border-slate-950 text-slate-950 bg-white/60' 
-                        : 'border-transparent text-slate-400 hover:text-slate-950 hover:bg-white/20'
+                        ? 'border-primary text-slate-950 bg-slate-50' 
+                        : 'border-transparent text-slate-400 hover:text-slate-950 hover:bg-slate-50'
                      }`}
                   >
                      <item.icon className="w-4 h-4" />
@@ -140,10 +140,10 @@ export function GlobalAdminSidebar() {
         <div className="flex items-center h-full">
           <button 
             onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-            className="h-full px-8 text-slate-400 hover:text-slate-950 transition-all flex items-center gap-4 group border-l border-black/[0.05] active:bg-white/40"
+            className="h-full px-8 text-slate-400 hover:text-slate-950 transition-all flex items-center gap-4 group border-l border-slate-100 active:bg-slate-50 active-press"
           >
             <Search className="w-5 h-5" />
-            <div className="hidden xl:flex items-center gap-2 px-3 py-1 bg-slate-950 text-white rounded-none shadow-xl group-hover:scale-105 transition-transform">
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1 bg-slate-950 text-white rounded-none shadow-sm transition-transform">
                <span className="text-[9px] font-black uppercase tracking-widest">Command_Log</span>
                <span className="text-[9px] font-black opacity-30">·</span>
                <span className="text-[9px] font-black text-slate-400 animate-pulse">LIVE</span>
@@ -152,7 +152,7 @@ export function GlobalAdminSidebar() {
 
           <Link 
             href="/" 
-            className="h-full px-8 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-950 hover:bg-white/40 transition-all border-l border-black/[0.05]"
+            className="h-full px-8 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-950 hover:bg-slate-50 transition-all border-l border-slate-100 active-press"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline italic px-2 bg-slate-50 border border-slate-100">LOGOUT</span>
@@ -160,7 +160,7 @@ export function GlobalAdminSidebar() {
 
           <button 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden h-full px-6 text-slate-400 hover:text-slate-950 transition-colors border-l border-black/[0.05]"
+            className="lg:hidden h-full px-6 text-slate-400 hover:text-slate-950 transition-colors border-l border-slate-100 active-press"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -169,7 +169,7 @@ export function GlobalAdminSidebar() {
 
       {/* MOBILE GLASS OVERLAY */}
       <div 
-        className={`fixed inset-0 z-[90] bg-white/80 backdrop-blur-3xl lg:hidden transition-all duration-700 ${
+        className={`fixed inset-0 z-[90] bg-white lg:hidden transition-all duration-700 ${
           isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
         }`}
       >
@@ -179,10 +179,10 @@ export function GlobalAdminSidebar() {
             <Link 
               key={item.path}
               href={item.path}
-              className={`flex items-center justify-between p-6 border transition-all active:scale-[0.98] ${
+              className={`flex items-center justify-between p-6 border border-slate-100 transition-all active-press ${
                 isActive(item.path) 
-                  ? 'bg-slate-950 border-slate-950 text-white shadow-2xl scale-[1.05]' 
-                  : 'bg-white/40 border-white/20 text-slate-500 hover:text-slate-950'
+                  ? 'bg-slate-950 border-slate-950 text-white shadow-md' 
+                  : 'bg-white text-slate-500 hover:text-slate-950 hover:bg-slate-50'
               }`}
             >
               <div className="flex items-center gap-5">

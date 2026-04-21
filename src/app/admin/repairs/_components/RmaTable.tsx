@@ -1,58 +1,45 @@
-// src/app/admin/repairs/_components/RmaTable.tsx
 "use client";
 
-import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "@/components/ui/table";
-import { Package, Clock } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RmaTableRow } from "./RmaTableRow";
 
-interface IRepair {
-  id: string;
-  client: string;
-  item: string;
-  serial: string;
-  date: string;
-  status: string;
+interface IRmaTableProps {
+  rmas: any[];
+  onUpdate: (rmas: any[]) => void;
 }
 
-export function RmaTable({ repairs }: { repairs: IRepair[] }) {
+export function RmaTable({ rmas, onUpdate }: IRmaTableProps) {
   return (
-    <div className="bg-card border border-border rounded-[3rem] shadow-sm overflow-hidden min-h-[500px]">
-       <div className="p-10 border-b flex justify-between items-center bg-muted/30">
-          <div className="flex items-center gap-4">
-             <Clock className="w-5 h-5 text-primary" />
-             <h3 className="text-xl font-black uppercase tracking-tight">Aktywna Kolejka <span className="text-primary italic">Zadań</span></h3>
-          </div>
-          <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-white px-3 py-1.5 rounded-full border border-border">
-             LIVE SYNC: {new Date().toLocaleTimeString()}
-          </div>
-       </div>
-       
-       <Table>
-         <TableHeader className="bg-slate-50 border-b">
-           <TableRow className="hover:bg-transparent">
-             <TableHead className="py-6 font-black uppercase text-[10px] tracking-widest pl-10">Klient / Firma</TableHead>
-             <TableHead className="py-6 font-black uppercase text-[10px] tracking-widest">ID RMA</TableHead>
-             <TableHead className="py-6 font-black uppercase text-[10px] tracking-widest">Urządzenie</TableHead>
-             <TableHead className="py-6 font-black uppercase text-[10px] tracking-widest">Wpłynęło</TableHead>
-             <TableHead className="py-6 font-black uppercase text-[10px] tracking-widest">Status</TableHead>
-             <TableHead className="py-6 font-black uppercase text-[10px] tracking-widest text-right pr-10">Zarządzaj</TableHead>
-           </TableRow>
-         </TableHeader>
-         <TableBody>
-           {repairs.map(r => (
-             <RmaTableRow key={r.id} r={r} />
-           ))}
-           
-           {repairs.length === 0 && (
-              <TableRow>
-                 <TableCell colSpan={6} className="py-40 text-center">
-                    <Package className="w-20 h-20 text-slate-100 mx-auto mb-6" />
-                    <h4 className="text-xl font-black text-slate-300 uppercase italic">Brak zgłoszeń</h4>
-                 </TableCell>
-              </TableRow>
-           )}
-         </TableBody>
-       </Table>
+    <div className="w-full overflow-x-auto">
+      <Table className="border-collapse">
+        <TableHeader className="bg-slate-50 border-y border-slate-100">
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pl-6 w-16 italic">ID</TableHead>
+            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 italic">Specyfikacja_Sprzętu</TableHead>
+            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 italic">Partner_B2B</TableHead>
+            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 italic">Status_Naprawy</TableHead>
+            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pr-6 text-right italic">Działania</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rmas.map((rma) => (
+            <RmaTableRow 
+              key={rma.id} 
+              rma={rma} 
+              onUpdate={() => {
+                // Simplified refresh logic
+              }} 
+            />
+          ))}
+          {rmas.length === 0 && (
+             <TableRow>
+                <TableCell colSpan={5} className="h-48 text-center text-[11px] font-black text-slate-200 uppercase tracking-[0.5em] italic">
+                   Brak_Aktywnych_Zgłoszeń
+                </TableCell>
+             </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -1,7 +1,6 @@
-// src/app/(b2b)/dashboard/_components/StatCard.tsx
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, TrendingUp } from "lucide-react";
 
 interface IStatCardProps {
   label: string;
@@ -16,41 +15,47 @@ export function StatCard({ label, value, subValue, Icon, variant = "white", tren
   const isPrimary = variant === "primary";
 
   return (
-    <div className={`rounded-[2.5rem] p-8 relative overflow-hidden group shadow-xl transition-all duration-500 hover:-translate-y-1 ${
-      isPrimary 
-        ? 'bg-slate-900 text-white shadow-slate-900/20' 
-        : 'bg-white border border-slate-100 text-slate-800 shadow-slate-200/50'
+    <div className={`satel-card p-0 bg-white border-none shadow-sm transition-all relative group h-full overflow-hidden ${
+      isPrimary ? 'bg-slate-950 text-white' : 'bg-white text-slate-950 border border-slate-50'
     }`}>
-      {/* Background Decor */}
-      <div className={`absolute -right-8 -top-8 w-40 h-40 rounded-full blur-3xl opacity-20 transition-all duration-700 group-hover:scale-150 ${
-        isPrimary ? 'bg-primary' : 'bg-slate-100'
-      }`} />
-
-      <div className="relative z-10 flex flex-col h-full justify-between">
+      {/* ELITE DESIGN LINE */}
+      <div className={`absolute left-0 top-0 w-1 h-full ${isPrimary ? 'bg-primary' : 'bg-slate-200 group-hover:bg-primary transition-colors'}`} />
+      
+      <div className="p-8 flex flex-col h-full justify-between relative z-10">
          <div className="flex items-start justify-between">
-            <div className={`p-4 rounded-2xl ${isPrimary ? 'bg-white/10' : 'bg-slate-50 border border-slate-100'}`}>
-               <Icon className={`w-6 h-6 ${isPrimary ? 'text-primary' : 'text-slate-400'}`} />
+            <div className={`w-12 h-12 flex items-center justify-center border transition-all ${
+               isPrimary ? 'bg-white/5 border-white/10 text-primary' : 'bg-slate-50 border-slate-100 text-slate-400 group-hover:border-primary group-hover:text-primary'
+            }`}>
+               <Icon className="w-5 h-5" />
             </div>
             {trend && (
-              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                isPrimary ? 'bg-white/10 text-primary' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+              <div className={`flex items-center gap-2 px-3 py-1 text-[9px] font-black uppercase tracking-widest border italic ${
+                isPrimary ? 'bg-white/5 border-white/10 text-primary' : 'bg-status-success/5 text-status-success border-status-success/10'
               }`}>
-                <ArrowUpRight className="w-3 h-3" /> {trend}
+                <TrendingUp className="w-3 h-3" /> {trend}
               </div>
             )}
          </div>
 
          <div className="mt-8">
-            <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-2 ${isPrimary ? 'text-white/40' : 'text-slate-400'}`}>
-              {label}
-            </p>
-            <h3 className="text-3xl font-black tracking-tight">{value}</h3>
+            <div className="flex items-center gap-2 mb-3">
+               <div className={`w-3 h-[1px] ${isPrimary ? 'bg-primary' : 'bg-slate-200'}`} />
+               <p className={`text-[10px] font-black uppercase tracking-[0.3em] italic ${isPrimary ? 'text-slate-500' : 'text-slate-400'}`}>
+                 {label}
+               </p>
+            </div>
+            <h3 className="text-4xl font-black tracking-tighter italic leading-none tabular-nums">{value}</h3>
             {subValue && (
-              <p className={`text-xs font-medium mt-1 ${isPrimary ? 'text-white/60' : 'text-slate-500'}`}>
+              <p className={`text-[10px] font-black uppercase tracking-widest mt-4 italic ${isPrimary ? 'text-slate-500' : 'text-slate-300'}`}>
                  {subValue}
               </p>
             )}
          </div>
+      </div>
+      
+      {/* TECHNICAL INDICATOR */}
+      <div className={`absolute bottom-2 right-2 opacity-5 scale-150 transition-transform group-hover:scale-100 ${isPrimary ? 'text-white' : 'text-slate-900'}`}>
+         <Icon className="w-12 h-12" />
       </div>
     </div>
   );

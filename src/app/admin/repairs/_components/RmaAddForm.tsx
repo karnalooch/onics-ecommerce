@@ -1,69 +1,123 @@
-// src/app/admin/repairs/_components/RmaAddForm.tsx
 "use client";
 
-import { useTransition } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Save, Wrench } from "lucide-react";
-import { addRepairAction } from "../_actions";
-import { toast } from "sonner";
+import { useState } from "react";
+import { X, ShieldAlert, Cpu, Database, Save } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-export function RmaAddForm({ onCancel }: { onCancel: () => void }) {
-  const [isPending, startTransition] = useTransition();
-
-  async function handleSubmit(formData: FormData) {
-    startTransition(async () => {
-      const result = await addRepairAction(formData);
-      if (result.success) {
-        toast.success(result.message);
-        onCancel();
-      } else {
-        toast.error(result.error);
-      }
-    });
-  }
-
-  return (
-    <div className="lg:col-span-12 animate-in slide-in-from-top-4 duration-500">
-      <Card className="border-primary/20 bg-primary/5 shadow-2xl rounded-[3rem] overflow-hidden">
-         <div className="bg-primary p-8 text-primary-foreground flex justify-between items-center">
-            <div>
-              <h3 className="text-2xl font-black uppercase italic tracking-tight">Nowy Protokół Usterki</h3>
-              <p className="text-primary-foreground/70 font-bold text-sm">Ręczne wprowadzanie danych urządzenia do systemu RMA.</p>
-            </div>
-            <Wrench className="w-10 h-10 opacity-20" />
-         </div>
-         <CardContent className="p-10">
-           <form action={handleSubmit}>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-end">
-                <FormInput label="Nazwa Klienta" name="client" placeholder="np. Sklep El-Mont" required />
-                <FormInput label="Urządzenie / Model" name="item" placeholder="np. BCS-L-DVR04" required />
-                <FormInput label="S/N - Numer Seryjny" name="serial" placeholder="SN..." />
-             </div>
-             <div className="mt-10 flex justify-end gap-4 border-t border-primary/10 pt-8">
-                <Button variant="ghost" type="button" className="rounded-2xl font-black uppercase text-xs" onClick={onCancel}>Anuluj</Button>
-                <Button type="submit" disabled={isPending} className="rounded-2xl px-10 h-14 bg-primary hover:bg-primary/90 text-white font-black uppercase tracking-widest shadow-xl shadow-primary/30">
-                   {isPending ? "Przetwarzanie..." : <><Save className="w-5 h-5 mr-3" /> Utwórz Zgłoszenie</>}
-                </Button>
-             </div>
-           </form>
-         </CardContent>
-      </Card>
-    </div>
-  );
+interface IRmaAddFormProps {
+  onClose: () => void;
+  onAdd: (rma: any) => void;
 }
 
-function FormInput({ label, name, placeholder, required }: { label: string, name: string, placeholder: string, required?: boolean }) {
+export function RmaAddForm({ onClose, onAdd }: IRmaAddFormProps) {
+  const [formData, setFormData] = useState({
+    deviceModel: "",
+    serialNumber: "",
+    clientName: "",
+    description: ""
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onAdd({
+      id: Date.now(),
+      ...formData,
+      status: "PENDING",
+      date: new Date().toISOString()
+    });
+    onClose();
+  };
+
   return (
-    <div className="space-y-4 text-left">
-       <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] ml-2">{label}</label>
-       <input 
-         name={name}
-         required={required}
-         autoComplete="off"
-         className="w-full h-14 bg-white rounded-2xl border border-slate-200 px-5 font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all"
-         placeholder={placeholder}
-       />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 no-blur">
+      <div className="absolute inset-0 bg-slate-950/60" onClick={onClose} />
+      
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-[540px] bg-white relative z-10 overflow-hidden shadow-2xl border-none p-0 flex flex-col"
+      >
+        <div className="bg-slate-950 px-8 py-5 flex items-center justify-between">
+           <div className="flex items-center gap-4">
+              <ShieldAlert className="w-5 h-5 text-primary" />
+              <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] italic">NOWE_ZGŁOSZENIE_RMA</h3>
+           </div>
+           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+           </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-10 space-y-8">
+           <div className="grid grid-cols-1 gap-8">
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">KOD_MODELU / NAZWA</label>
+                 <div className="relative group">
+                    <Cpu className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-200 group-focus-within:text-primary transition-colors" />
+                    <input 
+                       required
+                       value={formData.deviceModel}
+                       onChange={e => setFormData({...formData, deviceModel: e.target.value.toUpperCase()})}
+                       className="w-full h-12 pl-12 bg-slate-50 border border-slate-100 text-[12px] font-black uppercase italic outline-none focus:bg-white focus:border-primary transition-all"
+                       placeholder="NP. SATEL_INTEGRA_128"
+                    />
+                 </div>
+              </div>
+
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">NUMER_SERYJNY (S/N)</label>
+                 <div className="relative group">
+                    <Database className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-200 group-focus-within:text-primary transition-colors" />
+                    <input 
+                       required
+                       value={formData.serialNumber}
+                       onChange={e => setFormData({...formData, serialNumber: e.target.value.toUpperCase()})}
+                       className="w-full h-12 pl-12 bg-slate-50 border border-slate-100 text-[12px] font-mono font-bold outline-none focus:bg-white focus:border-primary transition-all"
+                       placeholder="S/N_00000000"
+                    />
+                 </div>
+              </div>
+
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">IDENTYFIKATOR_PARTNERA</label>
+                 <input 
+                    required
+                    value={formData.clientName}
+                    onChange={e => setFormData({...formData, clientName: e.target.value})}
+                    className="w-full h-12 px-4 bg-slate-50 border border-slate-100 text-[12px] font-black uppercase outline-none focus:bg-white focus:border-primary transition-all"
+                    placeholder="NAZWA FIRMY B2B"
+                 />
+              </div>
+
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">OPIS_USTERKI_TECHNICZNEJ</label>
+                 <textarea 
+                    required
+                    rows={4}
+                    value={formData.description}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                    className="w-full p-4 bg-slate-50 border border-slate-100 text-[12px] font-bold outline-none focus:bg-white focus:border-primary transition-all resize-none"
+                    placeholder="SZCZEGÓŁOWY PROTOKÓŁ BŁĘDÓW..."
+                 />
+              </div>
+           </div>
+
+           <div className="pt-4 flex items-center gap-4">
+              <button 
+                 type="button" 
+                 onClick={onClose}
+                 className="flex-1 h-12 border-2 border-slate-950 text-slate-950 font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all active-press"
+              >
+                 ANULUJ_PROCES
+              </button>
+              <button 
+                 type="submit"
+                 className="flex-1 h-12 bg-primary text-white font-black text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-3 transition-all hover:brightness-110 active-press italic"
+              >
+                 <Save className="w-4 h-4" /> REJESTRUJ_RMA
+              </button>
+           </div>
+        </form>
+      </motion.div>
     </div>
   );
 }

@@ -1,8 +1,7 @@
-// src/components/ui/AtmosphereToggle.tsx
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Sun, Moon, Zap } from "lucide-react";
+import { Sun, Moon, Database, Terminal } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
@@ -12,67 +11,69 @@ export function AtmosphereToggle() {
 
   useEffect(() => setMounted(true), []);
 
-  if (!mounted) return <div className="w-48 h-14 bg-slate-100 dark:bg-slate-900 rounded-3xl animate-pulse" />;
+  if (!mounted) return <div className="w-48 h-12 bg-slate-100 animate-pulse" />;
 
   const isDark = theme === "dark";
 
   return (
-    <div className="relative group">
-      {/* AMBIENT DOCK GLOW */}
-      <div className={`absolute inset-0 blur-2xl transition-opacity duration-1000 ${isDark ? 'bg-primary/20 opacity-100' : 'bg-orange-500/10 opacity-0'}`} />
+    <div className="relative group select-none">
       
       <button
         onClick={() => setTheme(isDark ? "light" : "dark")}
-        className="relative w-56 h-16 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/20 dark:border-slate-800 rounded-3xl p-1.5 flex items-center cursor-pointer shadow-ks-lg overflow-hidden"
+        className="relative w-64 h-12 bg-white border-2 border-slate-950 p-1 flex items-center cursor-pointer transition-all active-press overflow-hidden shadow-xl shadow-slate-900/5"
       >
-        {/* SLIDING NEURAL CORE */}
+        {/* SLIDING MECHANICAL CORE */}
         <motion.div
            layout
-           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-           className={`absolute h-13 w-24 rounded-2xl flex items-center justify-center z-10 shadow-2xl ${isDark ? 'bg-primary left-[calc(100%-6.5rem)]' : 'bg-white left-1.5'}`}
+           transition={{ type: "spring", stiffness: 400, damping: 40 }}
+           className={`absolute h-9 w-28 flex items-center justify-center z-10 border-2 transition-all ${
+             isDark ? 'bg-slate-950 border-primary left-[calc(100%-7.25rem)]' : 'bg-slate-950 border-slate-900 left-1'
+           }`}
         >
            <AnimatePresence mode="wait">
              {isDark ? (
                 <motion.div
                   key="moon"
-                  initial={{ rotate: -90, scale: 0 }}
-                  animate={{ rotate: 0, scale: 1 }}
-                  exit={{ rotate: 90, scale: 0 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="flex items-center gap-2"
                 >
-                   <Moon className="w-6 h-6 text-slate-900 fill-slate-900" />
+                   <Moon className="w-3.5 h-3.5 text-primary" />
+                   <span className="text-[9px] font-black uppercase text-white tracking-widest italic">Obsidian</span>
                 </motion.div>
              ) : (
                 <motion.div
                   key="sun"
-                  initial={{ rotate: 90, scale: 0 }}
-                  animate={{ rotate: 0, scale: 1 }}
-                  exit={{ rotate: -90, scale: 0 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  className="flex items-center gap-2"
                 >
-                   <Sun className="w-6 h-6 text-orange-500 fill-orange-500" />
+                   <Sun className="w-3.5 h-3.5 text-primary" />
+                   <span className="text-[9px] font-black uppercase text-white tracking-widest italic">Solar</span>
                 </motion.div>
              )}
            </AnimatePresence>
         </motion.div>
 
-        {/* MODE LABELS */}
+        {/* STATUS LABELS */}
         <div className="flex-1 flex justify-between px-6 z-0">
-           <div className={`flex flex-col items-start transition-opacity duration-500 ${isDark ? 'opacity-30' : 'opacity-100'}`}>
-              <span className="text-[8px] font-black uppercase tracking-[0.3em] text-orange-600">Active</span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">Solar Hub</span>
+           <div className={`flex items-center gap-2 transition-opacity duration-500 ${isDark ? 'opacity-20' : 'opacity-100'}`}>
+              <Terminal className="w-3 h-3 text-slate-400" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-950 italic">Core_Light</span>
            </div>
            
-           <div className={`flex flex-col items-end transition-opacity duration-500 ${isDark ? 'opacity-100' : 'opacity-30'}`}>
-              <span className="text-[8px] font-black uppercase tracking-[0.3em] text-primary">Active</span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-white">Obsidian</span>
+           <div className={`flex items-center gap-2 transition-opacity duration-500 ${isDark ? 'opacity-100' : 'opacity-20'}`}>
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-950 italic">Night_Grid</span>
+              <Database className="w-3 h-3 text-slate-400" />
            </div>
         </div>
 
-        {/* INTERNAL SCANLINE FX */}
-        <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-scanline" />
+        {/* MECHANICAL INDICATOR FX */}
+        <div className={`absolute bottom-0 left-0 h-0.5 bg-primary transition-all ${isDark ? 'w-full' : 'w-0'}`} />
       </button>
 
-      {/* TACTILE FEEDBACK: STATUS HOVER */}
-      <div className="absolute -bottom-1 left-12 right-12 h-[2px] bg-primary scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-center" />
-    </div>
+   </div>
   );
 }

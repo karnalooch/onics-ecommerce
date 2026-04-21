@@ -1,10 +1,9 @@
-// src/app/admin/categories/_components/IconPicker.tsx
 "use client";
 
 import { 
-  Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Wrench, Home, Activity, Speaker, Mic, X, Folder
+  Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Wrench, Home, Activity, Speaker, Mic, X, Folder,
+  Terminal, ShieldCheck
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const AVAILABLE_ICONS = [
   { name: "Tv", Icon: Tv },
@@ -30,23 +29,37 @@ interface IIconPickerProps {
 
 export function IconPicker({ currentIcon, onSelect, onClose }: IIconPickerProps) {
   return (
-    <div className="mb-8 p-6 bg-muted/30 border-2 border-dashed border-primary/10 rounded-3xl animate-in zoom-in-95 duration-200 shadow-inner">
-      <div className="flex justify-between items-center mb-6">
-        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Paleta Ikon Kategorii</h4>
-        <Button variant="ghost" size="sm" onClick={onClose} className="rounded-xl"><X className="w-4 h-4" /></Button>
+    <div className="mb-10 p-8 bg-slate-50 border-2 border-dashed border-slate-200 rounded-none animate-in fade-in duration-300">
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-3">
+           <Terminal className="w-4 h-4 text-primary" />
+           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-950 italic leading-none">Paleta_Identyfikatorów_Węzła</h4>
+        </div>
+        <button 
+           onClick={onClose} 
+           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-950 transition-colors active-press"
+        >
+           <X className="w-5 h-5" />
+        </button>
       </div>
-      <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-13 gap-3">
+      
+      <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-13 gap-4">
         {AVAILABLE_ICONS.map(icon => (
           <button
             key={icon.name}
             onClick={() => onSelect(icon.name)}
-            className={`p-4 rounded-2xl border-2 flex items-center justify-center transition-all shadow-sm ${
+            className={`h-16 flex items-center justify-center transition-all border-2 active-press relative group ${
               currentIcon === icon.name 
-                ? 'bg-primary border-primary text-white scale-110 shadow-primary/20' 
-                : 'bg-white border-transparent hover:border-primary/30 hover:bg-primary/5 text-slate-400'
+                ? 'bg-slate-950 border-slate-950 text-primary shadow-xl shadow-primary/5' 
+                : 'bg-white border-slate-100 text-slate-300 hover:border-primary hover:text-primary'
             }`}
           >
             <icon.Icon className="w-6 h-6" />
+            {currentIcon === icon.name && (
+               <div className="absolute -top-1 -right-1">
+                  <ShieldCheck className="w-3 h-3 text-primary bg-slate-950" />
+               </div>
+            )}
           </button>
         ))}
       </div>

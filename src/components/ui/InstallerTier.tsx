@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, ShieldCheck, Sparkles } from "lucide-react";
+import { Award, ShieldCheck, Sparkles, Terminal, Database } from "lucide-react";
 
 interface InstallerTierProps {
   currentLevel: string;
@@ -9,50 +9,63 @@ interface InstallerTierProps {
 
 export function InstallerTier({ currentLevel, discount }: InstallerTierProps) {
   return (
-    <div className="bg-card backdrop-blur-xl rounded-3xl p-8 border border-border shadow-xl shadow-primary/5 relative overflow-hidden group min-h-[280px] flex flex-col justify-between transition-all duration-700">
-      {/* Decorative background gradients - strictly blue/gray */}
-      <div className="absolute -right-12 -top-12 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors duration-700" />
-      <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-muted rounded-full blur-3xl opacity-50 group-hover:bg-primary/5 transition-colors duration-700" />
+    <div className="bg-white border-2 border-slate-950 p-10 h-full relative overflow-hidden group select-none flex flex-col justify-between transition-all duration-300 shadow-xl shadow-slate-900/5">
       
-      <div className="relative z-10">
-        <div className="flex items-start justify-between mb-8">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-primary rounded-lg shadow-lg shadow-primary/30">
-                <Award className="w-4 h-4 text-primary-foreground" />
+      {/* ELITE DECORATIVE GRID */}
+      <div className="absolute inset-0 bg-grid-slate-100/50 [mask-image:radial-gradient(ellipse_at_top_right,transparent_20%,black)] pointer-events-none opacity-20" />
+      
+      <div className="relative z-10 flex flex-col h-full justify-between">
+        
+        <div className="flex flex-col md:flex-row items-start justify-between gap-8">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-slate-950 text-white flex items-center justify-center border border-white/10 shadow-lg">
+                <Award className="w-5 h-5 text-primary" />
               </div>
-              <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Partner Celtronics</span>
+              <div className="flex flex-col">
+                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic leading-none">PLATFORM_PARTNER</span>
+                 <span className="text-[8px] font-black text-primary uppercase tracking-widest mt-1">Verified_Access</span>
+              </div>
             </div>
-            <h2 className="text-4xl font-black text-foreground tracking-tight uppercase leading-none italic">
-              Level: <span className="text-primary">{currentLevel}</span>
+            
+            <h2 className="text-5xl font-black text-slate-950 tracking-tighter uppercase leading-none italic mt-8">
+               LEVEL: <span className="text-primary NOT-italic">{currentLevel}</span>
             </h2>
+            <div className="flex items-center gap-4 mt-4">
+               <div className="h-[2px] w-6 bg-primary" />
+               <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">Standard handlowy sektora MSWiA</p>
+            </div>
           </div>
           
-          <div className="relative group/badge">
-             <div className="absolute inset-0 bg-primary blur-lg opacity-10 group-hover/badge:opacity-20 transition-opacity" />
-             <div className="relative bg-primary/5 border border-primary/20 px-5 py-3 rounded-2xl flex flex-col items-center">
-               <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none mb-1">Rabat</span>
-               <span className="text-3xl font-black text-primary">-{discount}%</span>
+          <div className="relative shrink-0">
+             <div className="bg-slate-950 p-8 border-2 border-primary flex flex-col items-center justify-center min-w-[140px] shadow-2xl shadow-primary/10">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic leading-none mb-3">GLOBAL_DISCOUNT</span>
+                <span className="text-5xl font-black text-white italic leading-none tabular-nums">-{discount}<span className="text-primary NOT-italic text-2xl">%</span></span>
              </div>
           </div>
         </div>
 
-        <div className="space-y-6 pt-4 border-t border-border">
-          <div className="flex items-center gap-4">
-             <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center border border-border group-hover:scale-110 transition-transform">
-                <ShieldCheck className="w-6 h-6 text-primary" />
+        <div className="mt-12 pt-10 border-t-2 border-slate-950 space-y-8">
+          <div className="flex items-center gap-6 group/item">
+             <div className="w-14 h-14 bg-slate-50 border-2 border-slate-100 flex items-center justify-center transition-all group-hover/item:border-primary group-hover/item:bg-white active-press">
+                <ShieldCheck className="w-7 h-7 text-primary" />
              </div>
-             <div>
-                <p className="text-xs font-black text-foreground uppercase tracking-tighter">Status: Autoryzowany</p>
-                <p className="text-[10px] text-muted-foreground font-medium">Masz pełny dostęp do cen hurtowych B2B</p>
+             <div className="flex flex-col">
+                <p className="text-[12px] font-black text-slate-950 uppercase italic tracking-tighter">Status_Systemowy: Autoryzowany</p>
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-1 italic">Pełna ewidencja cen hurtowych B2B aktywna</p>
              </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-2xl shadow-lg shadow-primary/20">
-             <Sparkles className="w-4 h-4 text-white" />
-             <span className="text-[10px] font-black uppercase tracking-widest">Twoje warunki są przydzielane indywidualnie</span>
+          <div className="flex items-center gap-4 bg-slate-950 text-white px-6 py-4 border-l-4 border-primary">
+             <Terminal className="w-4 h-4 text-primary" />
+             <span className="text-[9px] font-black uppercase tracking-[0.2em] italic">Warunki przydzielane indywidualnie w klastrze PIM</span>
           </div>
         </div>
+      </div>
+      
+      {/* OPERATIONAL BG TEXT */}
+      <div className="absolute -bottom-8 -right-8 opacity-[0.03] select-none pointer-events-none">
+         <span className="text-[120px] font-black text-slate-950 uppercase tracking-tighter italic">CERTIFIED</span>
       </div>
     </div>
   );

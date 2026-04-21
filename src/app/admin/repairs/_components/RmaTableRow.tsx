@@ -1,118 +1,73 @@
-// src/app/admin/repairs/_components/RmaTableRow.tsx
 "use client";
 
-import { useTransition } from "react";
-import { Search, Wrench, CheckCircle, Package, Trash2, Pencil } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { updateStatusAction, deleteRepairAction } from "../_actions";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { 
+  MoreHorizontal, 
+  ChevronRight, 
+  Clock, 
+  Wrench, 
+  CheckCircle2, 
+  XCircle,
+  FileText,
+  AlertTriangle
+} from "lucide-react";
+import { useState } from "react";
 
-interface IRepair {
-  id: string;
-  client: string;
-  item: string;
-  serial: string;
-  date: string;
-  status: string;
-}
+const statusConfig: any = {
+  PENDING: { label: "OCZEKUJE", color: "bg-slate-100 text-slate-500", icon: Clock },
+  DIAGNOSIS: { label: "DIAGNOSTYKA", color: "bg-primary/10 text-primary", icon: AlertTriangle },
+  REPAIRING: { label: "W_NAPRAWIE", color: "bg-orange-50 text-orange-600", icon: Wrench },
+  COMPLETED: { label: "ZAKOŃCZONO", color: "bg-status-success/10 text-status-success", icon: CheckCircle2 },
+  RETURNED: { label: "ZWRÓCONO", color: "bg-slate-900 text-white", icon: ChevronRight },
+  REJECTED: { label: "ODRZUCONO", color: "bg-status-error/10 text-status-error", icon: XCircle },
+};
 
-export function RmaTableRow({ r }: { r: IRepair }) {
-  const [isPending, startTransition] = useTransition();
-
-  const handleStatusChange = (newStatus: string) => {
-    if (isPending) return;
-    startTransition(async () => {
-      const result = await updateStatusAction(r.id, newStatus);
-      if (!result.success) toast.error(result.error);
-      else toast.success(`Zaktualizowano status: ${newStatus}`);
-    });
-  };
-
-  const handleDelete = () => {
-    if (!confirm("Usunąć to zgłoszenie?")) return;
-    startTransition(async () => {
-      const result = await deleteRepairAction(r.id);
-      if (!result.success) toast.error(result.error);
-      else toast.success(result.message);
-    });
-  };
+export function RmaTableRow({ rma, onUpdate }: { rma: any, onUpdate: () => void }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const status = statusConfig[rma.status] || statusConfig.PENDING;
 
   return (
-    <TableRow className="group hover:bg-primary/5 transition-all duration-300">
-       <TableCell className="py-8 pl-10">
-          <div className="flex flex-col">
-             <span className="font-black text-slate-800 uppercase tracking-tight leading-none mb-1">{r.client}</span>
-             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">B2B Partner</span>
+    <TableRow className="group border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+      <TableCell className="py-6 pl-6">
+        <span className="text-[11px] font-black text-slate-400 italic">#{rma.id.toString().padStart(4, '0')}</span>
+      </TableCell>
+      
+      <TableCell className="px-6">
+        <div className="flex flex-col gap-1">
+          <span className="text-[13px] font-black text-slate-950 uppercase italic tracking-tighter leading-none">{rma.deviceModel || "URZĄDZENIE_TECH"}</span>
+          <div className="flex items-center gap-3">
+             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">{rma.serialNumber}</span>
+             <div className="h-2 w-[1px] bg-slate-200" />
+             <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest italic">{rma.type || "GWARANCJA_STANDARD"}</span>
           </div>
-       </TableCell>
-       <TableCell className="py-8">
-          <Badge variant="outline" className="font-mono text-[10px] font-black tracking-widest bg-slate-100/50 border-slate-200">
-             {r.id}
-          </Badge>
-       </TableCell>
-       <TableCell className="py-8">
-          <div className="flex flex-col">
-             <span className="font-bold text-slate-700 leading-none mb-1">{r.item}</span>
-             <span className="text-[9px] font-black text-primary/60 uppercase tracking-widest">S/N: {r.serial}</span>
-          </div>
-       </TableCell>
-       <TableCell className="py-8">
-          <span className="text-xs font-bold text-slate-500">{r.date}</span>
-       </TableCell>
-       <TableCell className="py-8">
-         <StatusBadge status={r.status} />
-       </TableCell>
-       <TableCell className="py-8 text-right pr-10">
-         <div className={`flex items-center justify-end gap-2 transition-all duration-300 ${isPending ? 'opacity-40 grayscale pointer-events-none' : ''}`}>
-           <ActionStrip currentStatus={r.status} onStatusChange={handleStatusChange} />
-           <div className="w-px h-6 bg-slate-200 mx-1"></div>
-           <button className="btn-action-blue !w-10 !h-10 !rounded-2xl" title="Edytuj zgłoszenie">
-             <Pencil className="h-5 w-5" />
+        </div>
+      </TableCell>
+
+      <TableCell className="px-6">
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-slate-950 uppercase leading-none">{rma.clientName || "PARYNER_B2B"}</span>
+          <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest tabular-nums italic">NIP: 000-00-00-000</span>
+        </div>
+      </TableCell>
+
+      <TableCell className="px-6">
+        <div className={`inline-flex items-center gap-2 px-3 py-1 ${status.color} border border-current/10`}>
+          <status.icon className="w-3 h-3" />
+          <span className="text-[9px] font-black uppercase tracking-[0.1em] italic">{status.label}</span>
+        </div>
+      </TableCell>
+
+      <TableCell className="py-6 pr-6 text-right">
+        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all scale-95 group-hover:scale-100">
+           <button className="h-8 w-8 flex items-center justify-center bg-white border border-slate-100 text-slate-400 hover:text-primary transition-all active-press">
+              <FileText className="w-4 h-4" />
            </button>
-           <button onClick={handleDelete} className="btn-action-red !w-10 !h-10 !rounded-2xl" title="Usuń zgłoszenie">
-             <Trash2 className="h-5 w-5" />
+           <button className="h-8 px-4 bg-slate-950 text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all hover:bg-primary active-press italic">
+              ZARZĄDZAJ <ChevronRight className="w-3 h-3" />
            </button>
-         </div>
-       </TableCell>
+        </div>
+      </TableCell>
     </TableRow>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const isDone = status === "ZAKOŃCZONE";
-  const variant = isDone ? "outline" : (status === "W NAPRAWIE" ? "default" : "destructive");
-  return (
-    <Badge variant={variant} 
-           className={`rounded-xl px-4 py-1.5 font-black text-[9px] uppercase tracking-widest ${isDone ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : ''}`}>
-      {status}
-    </Badge>
-  );
-}
-
-function ActionStrip({ currentStatus, onStatusChange }: { currentStatus: string, onStatusChange: (s: string) => void }) {
-  const actions = [
-    { id: 'WERYFIKACJA', icon: Search, color: 'text-blue-600', bg: 'bg-blue-100/80', border: 'border-blue-200', label: 'WERYFIKACJA' },
-    { id: 'W NAPRAWIE', icon: Wrench, color: 'text-amber-600', bg: 'bg-amber-100/80', border: 'border-amber-200', label: 'SERWIS' },
-    { id: 'ZAKOŃCZONE', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100/80', border: 'border-emerald-200', label: 'GOTOWE' },
-    { id: 'ODRZUCONE', icon: Package, color: 'text-red-600', bg: 'bg-red-100/80', border: 'border-red-200', label: 'ODRZUĆ' }
-  ];
-
-  return (
-    <div className="flex bg-slate-100/50 p-1 rounded-2xl border border-slate-200/60 backdrop-blur-sm gap-1 ml-4 shadow-inner">
-      {actions.map((act) => {
-        const isActive = currentStatus === act.id;
-        return (
-          <button
-            key={act.id}
-            onClick={() => onStatusChange(act.id)}
-            className={`h-8 px-3 flex items-center justify-center gap-2 rounded-xl transition-all duration-300 ${isActive ? `${act.bg} ${act.color} ${act.border} border shadow-sm scale-105 z-10 font-bold` : 'text-slate-400 hover:text-slate-600 hover:bg-white'}`}
-          >
-            <act.icon className={`w-3.5 h-3.5 ${isActive ? 'scale-110' : ''}`} />
-            <span className="text-[9px] font-black tracking-tighter uppercase">{act.label}</span>
-          </button>
-        );
-      })}
-    </div>
   );
 }

@@ -1,12 +1,10 @@
-// src/app/admin/categories/_components/CategoryList.tsx
 "use client";
 
 import { 
   Folder, Edit2, Trash2, ChevronRight, Plus,
-  Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Activity, Wrench, Home, Speaker, Mic
+  Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Activity, Wrench, Home, Speaker, Mic,
+  Terminal, ShieldCheck
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 const ICON_MAP: Record<string, any> = {
   Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Activity, Wrench, Home, Speaker, Mic, Folder
@@ -18,45 +16,53 @@ export function CategoryList({
   newCatName, onNewCatNameChange
 }: any) {
   return (
-    <Card className="shadow-2xl border-none rounded-[3rem] overflow-hidden bg-white/50 backdrop-blur-sm border border-white/20">
-      <CardHeader className="pb-6 border-b bg-slate-900 text-white pt-8">
-        <CardTitle className="text-xl font-black uppercase tracking-tight italic">Główne <span className="text-primary italic">Działy</span></CardTitle>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="flex flex-col max-h-[600px] overflow-y-auto">
-          {categories.map((cat: any) => (
-            <CategoryItem 
-              key={cat.id} 
-              cat={cat} 
-              isActive={activeCatId === cat.id} 
-              onSelect={onSelect}
-              onDelete={onDelete}
-              onStartRename={onStartRename}
-              renamingId={renamingId}
-              renameValue={renameValue}
-              onSetRenameValue={onSetRenameValue}
-              onConfirmRename={onConfirmRename}
-              onCancelRename={onCancelRename}
-            />
-          ))}
-        </div>
-        <div className="p-6 border-t bg-slate-50/50">
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              value={newCatName}
-              onChange={e => onNewCatNameChange(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && onAdd()}
-              placeholder="np. Oświetlenie LED" 
-              className="flex h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 py-1 text-sm font-bold shadow-sm focus:ring-4 focus:ring-primary/10 transition-all outline-none"
-            />
-            <Button onClick={onAdd} size="icon" className="h-12 w-12 rounded-2xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20" disabled={!newCatName.trim()}>
-              <Plus className="w-5 h-5" />
-            </Button>
+    <div className="satel-card p-0 bg-white border-none shadow-sm overflow-hidden rounded-none flex flex-col h-full min-h-[700px]">
+      <div className="bg-slate-950 px-8 py-5 border-b border-white/5">
+        <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] italic">REJESTR_WĘZŁÓW_GŁÓWNYCH</h3>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto divide-y divide-slate-50 custom-scrollbar">
+        {categories.map((cat: any) => (
+          <CategoryItem 
+            key={cat.id} 
+            cat={cat} 
+            isActive={activeCatId === cat.id} 
+            onSelect={onSelect}
+            onDelete={onDelete}
+            onStartRename={onStartRename}
+            renamingId={renamingId}
+            renameValue={renameValue}
+            onSetRenameValue={onSetRenameValue}
+            onConfirmRename={onConfirmRename}
+            onCancelRename={onCancelRename}
+          />
+        ))}
+      </div>
+
+      <div className="p-8 bg-slate-50 border-t border-slate-100 space-y-3">
+        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Inicjuj Nowy Węzeł</label>
+        <div className="flex gap-2">
+          <div className="relative flex-1 group">
+             <Terminal className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-200 group-focus-within:text-primary transition-colors" />
+             <input 
+               type="text" 
+               value={newCatName}
+               onChange={e => onNewCatNameChange(e.target.value)}
+               onKeyDown={e => e.key === 'Enter' && onAdd()}
+               placeholder="IDENTYFIKATOR_TEKSTOWY..." 
+               className="w-full h-12 pl-12 bg-white border border-slate-200 px-4 text-[12px] font-black uppercase italic outline-none focus:border-primary transition-all shadow-sm"
+             />
           </div>
+          <button 
+             onClick={onAdd} 
+             disabled={!newCatName.trim()}
+             className="h-12 w-12 bg-slate-950 text-white flex items-center justify-center hover:bg-primary transition-all active-press shadow-xl shadow-primary/10 disabled:opacity-20"
+          >
+            <Plus className="w-5 h-5 text-primary" />
+          </button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -67,18 +73,18 @@ function CategoryItem({ cat, isActive, onSelect, onDelete, onStartRename, renami
   return (
     <div 
       onClick={() => !isRenaming && onSelect(cat.id)}
-      className={`group flex items-center justify-between p-5 cursor-pointer border-b last:border-0 transition-all duration-300 ${
-        isActive ? 'bg-primary/5 border-l-[6px] border-l-primary' : 'hover:bg-muted/50 border-l-[6px] border-l-transparent'
+      className={`group flex items-center justify-between p-6 cursor-pointer border-l-4 transition-all ${
+        isActive ? 'bg-slate-50 border-primary' : 'bg-white border-transparent hover:bg-slate-50/50 hover:border-slate-100'
       }`}
     >
-      <div className="flex items-center gap-4 font-bold text-sm flex-1">
-        <div className={`${isActive ? 'text-primary scale-110' : 'text-slate-400'} transition-transform`}>
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className={`transition-all ${isActive ? 'text-primary' : 'text-slate-300'}`}>
           <IconComp className="w-5 h-5" />
         </div>
         {isRenaming ? (
           <input
             autoFocus
-            className="bg-white border-2 border-primary/20 rounded-xl px-3 py-1.5 w-full focus:ring-4 focus:ring-primary/10 outline-none"
+            className="w-full h-9 bg-white border border-primary px-3 text-[12px] font-black uppercase italic outline-none shadow-inner"
             value={renameValue}
             onChange={(e) => onSetRenameValue(e.target.value)}
             onBlur={() => onConfirmRename(cat.id, renameValue)}
@@ -89,24 +95,29 @@ function CategoryItem({ cat, isActive, onSelect, onDelete, onStartRename, renami
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <span className={`truncate uppercase tracking-tight ${isActive ? 'text-slate-900 font-black' : 'text-slate-600'}`}>{cat.name}</span>
+          <div className="flex flex-col min-w-0">
+             <span className={`text-[13px] font-black uppercase italic truncate leading-none ${isActive ? 'text-slate-950' : 'text-slate-500'}`}>
+                {cat.name}
+             </span>
+             {isActive && <span className="text-[8px] font-black text-primary uppercase tracking-widest mt-1">NODE_SELECTED</span>}
+          </div>
         )}
       </div>
 
       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all ml-4">
         <button 
           onClick={(e) => { e.stopPropagation(); onStartRename(cat.id, cat.name); }}
-          className="btn-action-blue !w-8 !h-8 !rounded-xl"
+          className="w-8 h-8 flex items-center justify-center bg-white border border-slate-100 text-slate-300 hover:text-primary transition-all active-press"
         >
           <Edit2 className="w-3.5 h-3.5" />
         </button>
         <button 
           onClick={(e) => { e.stopPropagation(); onDelete(cat.id); }}
-          className="btn-action-red !w-8 !h-8 !rounded-xl"
+          className="w-8 h-8 flex items-center justify-center bg-white border border-slate-100 text-slate-300 hover:text-red-600 transition-all active-press"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
-        <ChevronRight className={`w-4 h-4 transition-transform ml-1 ${isActive ? 'text-primary translate-x-1' : 'text-slate-300'}`} />
+        <ChevronRight className={`w-4 h-4 transition-transform ml-2 ${isActive ? 'text-primary translate-x-1' : 'text-slate-200'}`} />
       </div>
     </div>
   );

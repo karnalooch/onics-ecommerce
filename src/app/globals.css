@@ -6,104 +6,107 @@
   
   /* Primary Foundation (Flat & Functional) */
   --color-background: oklch(98% 0.005 250); /* Ultra Light Gray (Satel Base) */
-  --color-foreground: oklch(20% 0.02 250);  /* Deep Slate (Typography) */
+  --color-foreground: oklch(15% 0.01 250);  /* Dark Technical Slate */
   
-  /* Work Panels (Flat Identity) */
+  /* Work Panels (Pure Identity) */
   --color-card: oklch(100% 0 0);           /* Pure White Work Zone */
-  --color-card-foreground: oklch(20% 0.02 250);
+  --color-card-foreground: oklch(15% 0.01 250);
   
-  /* Secondary & Muted */
-  --color-secondary: oklch(96% 0.01 250);
-  --color-muted: oklch(97% 0.01 250);
-  --color-muted-foreground: oklch(50% 0.02 250);
-  --color-border: oklch(92% 0.01 250);
-
-  /* INTERACTION: TECHNICAL BLUE (CTA MANDATE) */
-  --color-primary: oklch(60% 0.18 250);     /* Engineering Blue (High Contrast) */
+  /* Palette: Blueprints & Technical Shading */
+  --color-primary: oklch(58% 0.18 245);    /* Vivid Sky Blue (High Visibility) */
   --color-primary-foreground: oklch(100% 0 0);
   
-  /* ACTION ACCENTS */
-  --color-action-yellow: oklch(85% 0.15 90);   /* DHL Style Action Yellow */
-  --color-action-blue: oklch(70% 0.15 250);    /* Satel Style Detail Blue */
+  --color-input-bg: oklch(97% 0.014 250);  /* Pastel Input Base (Tailwind blue-50 approx) */
+  --color-secondary: oklch(92% 0.01 250);
+  --color-muted: oklch(94% 0.01 250);
+  --color-muted-foreground: oklch(45% 0.02 250);
   
-  /* STATUS ROLES (Satel Pattern) */
-  --color-status-success: oklch(60% 0.12 150);
-  --color-status-warning: oklch(75% 0.15 70);
-  --color-status-error: oklch(60% 0.15 20);
+  /* Action Accents */
+  --color-action-yellow: oklch(88% 0.18 95);   /* DHL Alert Yellow */
+  --color-action-blue: oklch(60% 0.18 250);    /* Engineering Blue */
+  
+  /* Status Indicators */
+  --color-status-success: oklch(62% 0.18 145);
+  --color-status-warning: oklch(78% 0.15 85);
+  --color-status-error: oklch(55% 0.22 25);
+  
+  /* Geometry & Scaling */
+  --radius-sm: 0px;        /* Sharp Satel Corners */
+  --radius-md: 2px;        /* Precision Edge */
+  --radius-lg: 4px;        /* Structural Block */
+  --radius-pill: 9999px;   /* Satel Action Pill */
+  
+  /* Motion: Instant Feedback Pulse */
+  --animate-pulse-fast: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 
-  /* GEOMETRY: DENSE UI SCALING (1.125 - 1.200) */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 8px;
-  --radius-pill: 9999px; /* For Satel-style Pill Buttons */
-  
-  /* Motion: Technical Snap */
-  --transition-duration-snap: 150ms;
-  --transition-timing-function-snap: cubic-bezier(0, 0, 0.2, 1);
+  /* PURGE BLACK: Global Navy Overrides for Dark Slates */
+  --color-slate-800: #2b334a;
+  --color-slate-900: #21273b;
+  --color-slate-950: #1a1f30;
+}
+
+:root {
+  --radius: 0.75rem; /* Essential for Tailwind v3 backwards compatibility rounded-* utility generation */
 }
 
 @layer base {
   html {
-    font-size: 14px; /* Core Mandate: High Density */
-    @apply selection:bg-primary/20;
+    font-size: 14px; /* Density Mandate */
+    @apply selection:bg-primary/30 selection:text-white;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
-    line-height: 1.4;
     font-family: 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.01em;
   }
 
-  /* Input Technical Reset (DHL Style) */
-  input, textarea, select {
-    @apply bg-slate-50 border-none rounded-sm transition-all;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  /* Structural blueprint inputs */
+  input, select, textarea {
+    @apply bg-input-bg border-none rounded-md px-4 h-11 transition-all text-[13px] font-bold outline-none ring-0;
   }
-  
-  input:focus {
-    @apply bg-white ring-2 ring-primary/20;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+
+  input:focus, select:focus {
+    @apply bg-white ring-2 ring-primary/40;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.08);
   }
 }
 
 @layer utilities {
   /* PHYSICAL INTERACTION ENGINE */
   .active-press {
-    @apply transition-transform active:scale-[0.97];
+    @apply transition-all duration-150 ease-out active:scale-[0.98] active:shadow-[inset_0_3px_6px_rgba(0,0,0,0.15)];
   }
-  
+
+  /* Deprecated: Merged with active-press */
   .active-inset {
-    @apply transition-all active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)];
+    @apply transition-none;
   }
 
-  /* SATEL-STYLE FLAT CARD */
+  /* SATEL WORKSPACE COMPONENT (Aligned to Węzeł Weryfikacyjny) */
   .satel-card {
-    @apply bg-card border border-slate-100 shadow-sm transition-all hover:shadow-md;
+    @apply bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all duration-200;
+    backdrop-filter: none !important;
+    filter: none !important;
   }
 
-  /* DHL-STYLE ICON CAP */
-  .icon-cap {
-    @apply flex items-center justify-center rounded-full border-2 transition-all;
+  /* DHL BRAND CARRIER */
+  .dhl-action {
+    @apply h-11 px-6 bg-action-yellow text-slate-950 font-black uppercase text-[11px] tracking-widest flex items-center justify-center transition-all duration-150 ease-out active:scale-[0.98] active:shadow-[inset_0_3px_6px_rgba(0,0,0,0.15)];
   }
 
-  /* NO-BLUR MANDATE */
+  .pill-action {
+    @apply px-5 py-2 rounded-pill bg-primary text-white font-black uppercase text-[10px] tracking-[0.1em] transition-all duration-150 ease-out active:scale-[0.98] active:shadow-[inset_0_3px_6px_rgba(0,0,0,0.15)];
+  }
+
+  /* NO-DECORATION PURGE */
   .no-blur {
     backdrop-filter: none !important;
     filter: none !important;
   }
 
-  /* TABLE: HOVER-EXPAND (Priority+ Table Logic) */
-  .expandable-col {
-    @apply w-12 overflow-hidden whitespace-nowrap transition-all duration-300 hover:w-64;
+  /* HIGH DENSITY TABS */
+  .compact-row {
+    @apply grid items-center gap-4 py-3 border-b border-slate-100 hover:bg-slate-50 transition-colors;
   }
-
-  /* ACTION PILL */
-  .pill-action {
-    @apply px-4 py-1.5 rounded-pill text-[10px] font-black uppercase tracking-widest transition-all;
-  }
-}
-
-/* Print Rules */
-@media print {
-  .no-print { display: none !important; }
 }

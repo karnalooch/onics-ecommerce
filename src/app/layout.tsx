@@ -30,10 +30,7 @@ export default function RootLayout({
         >
           <Toaster position="top-right" richColors />
           <SessionProvider>
-            {/* STICKY HEADER (Elite Top Bar Mandate) */}
-            <header className="sticky top-0 z-[100] bg-white border-b border-slate-100 shadow-sm no-print">
-               <IconicNav />
-            </header>
+            <IconicNav />
 
             <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 lg:px-8 py-6" suppressHydrationWarning>
               {children}

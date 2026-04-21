@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Send, Loader2, Building2 } from "lucide-react";
+import { X, Send, Loader2, Building2, Terminal, ShieldCheck, Database, Box } from "lucide-react";
 
 interface QuoteModalProps {
   productId: string;
@@ -30,79 +30,116 @@ export function QuoteRequestModal({ productId, productName, companyNip, clientEm
 
       if (res.ok) {
         setSuccess(true);
-        setTimeout(onClose, 2500); // Zamknij po sukcesie
+        setTimeout(onClose, 2500);
       } else {
-        alert("Błąd integracji z API. Spróbuj ponownie.");
+        alert("FAULT: Błąd integracji z API_GATEWAY.");
       }
     } catch {
-      alert("Brak połączenia z siecią.");
+      alert("FAULT: Brak połączenia z klastrem sieciowym.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm transition-all animate-in fade-in duration-300">
-      <div className="bg-card w-full max-w-lg rounded-2xl shadow-2xl border flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/60 transition-all animate-in fade-in duration-300 no-blur select-none" suppressHydrationWarning>
+      <div className="bg-white w-full max-w-xl border-2 border-slate-950 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-500 shadow-2xl">
         
-        {/* Modal Header */}
-        <div className="flex justify-between items-center p-5 border-b bg-muted/30">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary" />
-            <h3 className="font-bold text-lg">Indywidualna Wycena</h3>
+        {/* OPERATIONAL_MODAL_HEADER */}
+        <div className="flex justify-between items-center p-6 border-b-2 border-slate-950 bg-slate-950 text-white relative">
+          <div className="flex items-center gap-4">
+            <Terminal className="w-5 h-5 text-primary" />
+            <div className="flex flex-col">
+               <h3 className="font-black text-xs uppercase tracking-[0.3em] italic leading-none">Indywidualna_Wycena_Hurt</h3>
+               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">Node_ID: QRT-{Math.floor(Math.random()*1000)}</span>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-md hover:bg-muted text-muted-foreground transition"><X className="w-5 h-5"/></button>
+          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-all active-press">
+             <X className="w-6 h-6 text-slate-400"/>
+          </button>
         </div>
 
-        {/* Form Body */}
-        {success ? (
-          <div className="p-12 text-center flex flex-col items-center">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
-              <Send className="w-8 h-8" />
-            </div>
-            <h4 className="text-xl font-bold mb-2">Zapytanie przesłane!</h4>
-            <p className="text-muted-foreground">Nasz opiekun biznesowy odniesie się do wolumenu w ciągu 24h na Twój e-mail.</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
-            <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg flex flex-col">
-              <span className="text-xs font-semibold text-primary/70 uppercase">Dotyczy asortymentu</span>
-              <span className="font-bold text-foreground">{productName}</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-muted-foreground">Oczekiwany Wolumen (szt.)</label>
-                <input 
-                  type="number" min="1" required 
-                  value={quantity} onChange={e => setQuantity(Number(e.target.value))}
-                  className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary outline-none" 
-                />
+        {/* TERMINAL_BODY */}
+        <div className="flex-1" suppressHydrationWarning>
+          {success ? (
+            <div className="p-16 text-center flex flex-col items-center gap-6">
+              <div className="w-20 h-20 bg-slate-50 border-2 border-status-success flex items-center justify-center shadow-xl shadow-status-success/10">
+                <Send className="w-8 h-8 text-status-success" />
               </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-muted-foreground">Powiązany NIP Działalności</label>
-                <div className="w-full p-2 border rounded-md bg-muted text-muted-foreground font-mono truncate">{companyNip}</div>
+              <div className="space-y-2">
+                 <h4 className="text-2xl font-black uppercase italic tracking-tighter text-slate-950">ZAPYTANIE_WYPROMOWANE_DO_PIM</h4>
+                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 leading-relaxed italic">Instalatorze, Twój wniosek o wolumen został zarejestrowany. Analiza handlowa zostanie przesłana na adres {clientEmail} w ciągu 24h.</p>
               </div>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="p-10 space-y-8">
+              <div className="bg-slate-50 border-2 border-slate-100 p-6 flex flex-col relative group overflow-hidden">
+                <div className="absolute top-0 right-0 p-2 opacity-5">
+                   <Box className="w-16 h-16" />
+                </div>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic mb-2">DOTYCZY_ASORTYMENTU_ID:</span>
+                <span className="font-black text-xl italic text-slate-950 leading-none uppercase truncate">{productName}</span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Oczekiwany Wolumen (szt.)</label>
+                  <div className="relative group">
+                     <Database className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-200 group-focus-within:text-primary transition-colors" />
+                     <input 
+                       type="number" min="1" required 
+                       value={quantity} onChange={e => setQuantity(Number(e.target.value))}
+                       className="w-full h-12 pl-12 bg-white border-2 border-slate-100 px-4 text-[13px] font-black tabular-nums italic outline-none focus:border-slate-950 transition-all font-mono" 
+                     />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Identyfikator Podmiotu (NIP)</label>
+                  <div className="w-full h-12 flex items-center px-4 bg-slate-50 border-2 border-slate-100 text-slate-400 font-mono text-[13px] tabular-nums font-black italic">
+                     {companyNip}
+                  </div>
+                </div>
+              </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-muted-foreground">Opcjonalna wiadomość handlowa</label>
-              <textarea 
-                rows={4} placeholder="Dodatkowe uwagi dotyczące terminów przetargów, dostaw..."
-                value={message} onChange={e => setMessage(e.target.value)}
-                className="w-full p-2 border rounded-md focus:ring-2 focus:ring-primary outline-none resize-none"
-              ></textarea>
-            </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Notatki Projektowe (Opcjonalne)</label>
+                <textarea 
+                  rows={4} placeholder=" np. Termin realizacji przetargu, wymagane certyfikaty dodatkowe..."
+                  value={message} onChange={e => setMessage(e.target.value)}
+                  className="w-full p-4 bg-white border-2 border-slate-100 text-[12px] font-black uppercase italic outline-none focus:border-slate-950 transition-all resize-none font-mono"
+                ></textarea>
+              </div>
 
-            <div className="pt-2 border-t flex justify-end gap-3">
-              <button type="button" onClick={onClose} className="px-4 py-2 rounded-md hover:bg-muted font-medium text-muted-foreground transition">Anuluj</button>
-              <button type="submit" disabled={loading} className="px-6 py-2 bg-primary text-primary-foreground rounded-md font-semibold hover:bg-primary/90 transition flex items-center gap-2">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Opłać i Wyślij Request
-              </button>
-            </div>
-          </form>
-        )}
+              <div className="pt-6 border-t-2 border-slate-50 flex flex-col sm:flex-row justify-end gap-4">
+                <button 
+                  type="button" 
+                  onClick={onClose} 
+                  className="px-8 h-12 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:text-slate-950 transition-all italic"
+                >
+                  [ ANULUJ_PROCES ]
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="px-10 h-12 bg-slate-950 text-white font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-3 transition-all hover:bg-primary active-press shadow-xl shadow-primary/10 italic"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Send className="w-4 h-4 text-primary" />}
+                  WYŚLIJ_ZAPYTANIE_O_PROJEKT
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* MODAL_FOOTER_STATUS */}
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <div className="w-1.5 h-1.5 bg-status-success rounded-none" />
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest italic">Encrypted_B2B_Socket_Active</span>
+           </div>
+           <ShieldCheck className="w-3.5 h-3.5 text-slate-200" />
+        </div>
+
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, X, MessageSquare, Trash2 } from "lucide-react";
 
 export default function AdminActions({ actionType, userId, quoteId, currentStatus }: any) {
   const router = useRouter();
@@ -20,8 +21,12 @@ export default function AdminActions({ actionType, userId, quoteId, currentStatu
     };
 
     return (
-      <button onClick={handleApprove} disabled={loading} className="btn-sm btn-approve">
-        {loading ? "..." : "✅ Zatwierdź"}
+      <button 
+        onClick={handleApprove} 
+        disabled={loading} 
+        className="pill-action bg-status-success text-white hover:brightness-110 active-press flex items-center gap-2"
+      >
+        <Check className="w-3.5 h-3.5" /> {loading ? "..." : "Zatwierdź"}
       </button>
     );
   }
@@ -38,8 +43,13 @@ export default function AdminActions({ actionType, userId, quoteId, currentStatu
     };
 
     return (
-      <button onClick={handleDelete} disabled={loading} className="p-1 px-2 text-red-500 hover:bg-red-50 rounded transition-colors" title="Usuń zgłoszenie">
-        {loading ? "..." : "✕"}
+      <button 
+        onClick={handleDelete} 
+        disabled={loading} 
+        className="w-8 h-8 flex items-center justify-center text-slate-200 hover:text-status-error hover:bg-slate-50 transition-all rounded-none active-press" 
+        title="Usuń"
+      >
+        {loading ? "..." : <Trash2 className="w-3.5 h-3.5" />}
       </button>
     );
   }
@@ -80,16 +90,24 @@ export default function AdminActions({ actionType, userId, quoteId, currentStatu
     };
 
     if (currentStatus !== "PENDING") {
-      return <span style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Brak akcji</span>;
+      return <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">ARCHIVE</span>;
     }
 
     return (
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <button onClick={handleSendQuote} disabled={loading} className="btn-sm btn-quote">
-          {loading ? "..." : "💬 Wyceń"}
+      <div className="flex items-center gap-2">
+        <button 
+          onClick={handleSendQuote} 
+          disabled={loading} 
+          className="pill-action bg-primary text-white hover:brightness-110 active-press flex items-center gap-2"
+        >
+          <MessageSquare className="w-3.5 h-3.5" /> {loading ? "..." : "Wyceń"}
         </button>
-        <button onClick={handleReject} disabled={loading} className="btn-sm btn-reject">
-          ✕
+        <button 
+          onClick={handleReject} 
+          disabled={loading} 
+          className="w-8 h-8 flex items-center justify-center text-slate-200 hover:text-status-error hover:bg-slate-50 transition-all active-press"
+        >
+          <X className="w-4 h-4" />
         </button>
       </div>
     );
