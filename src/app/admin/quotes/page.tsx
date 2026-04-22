@@ -397,7 +397,7 @@ export default function QuotesGenerator() {
                            <div className="flex justify-between items-end mt-4 relative z-10">
                               <Badge variant="outline" className="text-[9px] font-mono font-bold tracking-widest border-black/5 dark:border-white/10 px-2 py-0.5 opacity-60">{p.sku}</Badge>
                               <div className="flex flex-col items-end">
-                                 <span className="text-[15px] font-extrabold text-foreground tabular-nums leading-none italic">{p.price.toFixed(2)}</span>
+                                 <span className="text-[15px] font-extrabold text-foreground tabular-nums leading-none italic">{(p.price ?? 0).toFixed(2)}</span>
                                  <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-1">PLN Netto</span>
                               </div>
                            </div>

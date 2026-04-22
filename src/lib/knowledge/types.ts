@@ -9,6 +9,8 @@ export const KnowledgeEntrySchema = z.object({
   manufacturer: z.string().optional(),
   category: z.string().optional(),
   subcategory: z.string().optional(),
+  model: z.string().optional(),
+  lastUpdated: z.string().optional(),
 });
 
 export type KnowledgeEntry = z.infer<typeof KnowledgeEntrySchema>;

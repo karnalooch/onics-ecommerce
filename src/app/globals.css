@@ -77,43 +77,50 @@
   }
 
   input:focus, select:focus {
-    @apply bg-white ring-2 ring-primary/40 border-primary/50 !important;
+    @apply bg-white ring-2 ring-primary/40 border-primary/50;
   }
 }
 
 @layer utilities {
   /* WINDOWS 11 MATERIAL: MICA / ACRYLIC */
   .glass-mica {
-    @apply backdrop-blur-xl border border-white/40 shadow-xl;
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
     background: rgba(255, 255, 255, 0.7);
   }
   
   .dark .glass-mica {
-    @apply border-white/10 shadow-2xl;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
     background: rgba(43, 43, 43, 0.6);
   }
 
   /* WINDOWS 11 CARD STYLE */
   .fluent-card {
-    @apply glass-mica rounded-lg transition-all duration-300;
+    /* Manual inclusion of glass-mica properties to avoid @apply issues */
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    background: rgba(255, 255, 255, 0.7);
+    
+    border-radius: 8px;
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   
+  .dark .fluent-card {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(43, 43, 43, 0.6);
+  }
+
   .fluent-card:hover {
-    @apply shadow-2xl scale-[1.005];
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    transform: scale(1.005);
     border-color: rgba(255, 255, 255, 0.6);
   }
 
   .dark .fluent-card:hover {
     border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  /* INTERACTION PHYSICS (SOFT & BOUNCY) */
-  .active-press {
-    @apply transition-transform duration-150 active:scale-[0.97];
-  }
-
-  .pill-action {
-    @apply px-6 py-2 rounded-pill bg-primary text-white font-bold text-[12px] transition-all hover:brightness-110 active-press shadow-lg shadow-primary/30;
   }
 
   /* NO-DECORATION PURGE (Legacy support) */
@@ -123,6 +130,23 @@
 
   /* SATEL Legacy fallbacks mapping to Fluent */
   .satel-card {
-    @apply fluent-card;
+    /* Use properties instead of @apply to avoid layering issues */
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
   }
+}
+
+/* INTERACTION PHYSICS (SOFT & BOUNCY) - Top Level Utilities for v4 */
+@utility active-press {
+  transition: transform 150ms;
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+@utility pill-action {
+  @apply px-6 py-2 rounded-full bg-primary text-white font-bold text-[12px] transition-all hover:brightness-110 active-press shadow-lg shadow-primary/30;
 }

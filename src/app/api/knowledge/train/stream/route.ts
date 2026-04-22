@@ -55,7 +55,7 @@ export async function GET(req: Request) {
 
         if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
           const result = await parseExcel(buffer, filename, onProgress, { 
-            apiKey, 
+            apiKey: apiKey || '', 
             modelId: modelId || 'gemini-1.5-flash',
             availableModels: modelPool,
             signal: cancelSignal
@@ -77,7 +77,7 @@ export async function GET(req: Request) {
           const result = await parsePDFWithAI(
             buffer, 
             filename, 
-            apiKey, 
+            apiKey || undefined, 
             modelId || 'gemini-1.5-flash',
             modelPool,
             onProgress,

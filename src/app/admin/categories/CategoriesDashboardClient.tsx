@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
 import { 
   FolderTree, Plus, Tv, Smartphone, Video, Network, Shield, Cpu, Zap, 
   Activity, Wrench, Home, Speaker, Mic, Folder, Terminal, Database,

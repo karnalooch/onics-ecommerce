@@ -52,7 +52,7 @@ export type ActionState =
  */
 export async function saveProductAction(data: any): Promise<ActionState> {
   const validated = ProductSchema.safeParse(data);
-  if (!validated.success) return { success: false, error: validated.error.errors[0].message };
+  if (!validated.success) return { success: false, error: validated.error.issues[0].message };
 
   try {
     const { products } = initializeMockData();
@@ -149,7 +149,7 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
       if (!finalSubcategoryId && im.xlsSubcategoryName && finalCategoryId && !isJunk(im.xlsSubcategoryName)) {
         const cat = categories.find((c: any) => c.id === finalCategoryId);
         if (cat) {
-          const sub = getSmartMatch(im.xlsSubcategoryName, cat.subcategories);
+          const sub = getDirectMatch(im.xlsSubcategoryName, cat.subcategories);
           if (sub) {
             finalSubcategoryId = sub.id;
           } else if (im.isNewSubcategory) {
@@ -212,7 +212,7 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
     
     const enriched = items.map(item => {
       const match = findBestKnowledgeMatch(item.name || '', item.sku, store);
-      let quality = { isClean: false, reason: "Brak danych w katalogu" };
+      let quality: { isClean: boolean; reason?: string } = { isClean: false, reason: "Brak danych w katalogu" };
       let catalogPrice = 0;
       let catalogSpecs = "";
       let priceMismatch = false;
@@ -237,7 +237,7 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
         catalogSpecs,
         priceMismatch,
         qualityLevel: quality.isClean ? 'HIGH' : 'LOW',
-        qualityReason: quality.reason,
+        qualityReason: quality.reason || "",
         manufacturer: item.manufacturer || (match?.entry.manufacturer || ""),
       };
 
@@ -247,9 +247,9 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
         const existingIdx = products.findIndex((p: any) => String(p.sku || '').trim().toLowerCase() === imSku);
         
         const iqData = {
-          catalogPrice: match.entry.price || 0,
-          catalogSpecs: match.entry.specs || "",
-          manufacturer: item.manufacturer || match.entry.manufacturer,
+          catalogPrice: match?.entry.price || 0,
+          catalogSpecs: match?.entry.specs || "",
+          manufacturer: item.manufacturer || match?.entry.manufacturer,
           isIqSynced: true
         };
 
@@ -480,7 +480,7 @@ export async function manageStructureAction(
          return { 
            success: true, 
            message: `Producent ${mName} usunięty. ${orphanedProducts.length} produktów trafiło na Biurko do ponownej klasyfikacji.`,
-           data: orphanedProducts.map(p => ({
+           data: orphanedProducts.map((p: any) => ({
              ...p,
              tempId: `orphaned_${p.id}`,
              qualityLevel: 'LOW',
@@ -522,7 +522,7 @@ export async function manageStructureAction(
         return { 
           success: true, 
           message: `Kategoria ${cName} usunięta. ${orphanedProducts.length} produktów trafiło na Biurko.`,
-          data: orphanedProducts.map(p => ({
+          data: orphanedProducts.map((p: any) => ({
              ...p,
              tempId: `orphaned_${p.id}`,
              categoryId: null,

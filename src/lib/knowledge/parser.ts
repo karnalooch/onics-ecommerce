@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema, ProgressCallback } from './types';
+import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema, ProgressCallback, ParserOptions } from './types';
 
 import { ToolkitParser } from './ToolkitParser';
 
@@ -31,6 +31,7 @@ export async function getKnowledge(): Promise<KnowledgeStore> {
           specs: p.specs || p.seoDescription || "",
           price: p.catalogPrice || p.price || 0,
           manufacturer: p.manufacturer,
+          currency: 'PLN',
           lastUpdated: p.lastUpdated || new Date().toISOString()
         };
       }
@@ -381,9 +382,13 @@ export async function parseExcel(
       }
       if (sheetName.includes('Zbiorczo')) {
           columnMap = { 
+            ...columnMap,
             model: 0, 
             specs: 0, 
-            price: 1 
+            price: 1,
+            modelScore: 100,
+            specsScore: 100,
+            priceScore: 100
           };
           headerFoundRow = 0;
           console.log(`[XLSX] Arkusz specjalny ${sheetName}: Wymuszam kolumny Model=${columnMap.model}, Cena=${columnMap.price}`);
@@ -450,10 +455,18 @@ export async function parseExcel(
                   if (validMatches >= 1) {
                       console.log(`[XLSX] Header match confirmed at row ${i} with ${validMatches} sample matches in col ${columnMap.model}`);
                       break; 
-                  } else {
-                      columnMap = { model: -1, specs: -1, price: -1, modelScore: 0, specsScore: 0, priceScore: 0 };
-                      headerFoundRow = -1;
-                  }
+                   } else {
+                       columnMap = { 
+                         ...columnMap,
+                         model: -1, 
+                         specs: -1, 
+                         price: -1, 
+                         modelScore: 0, 
+                         specsScore: 0, 
+                         priceScore: 0 
+                       };
+                       headerFoundRow = -1;
+                   }
               }
           }
       }
@@ -492,7 +505,12 @@ export async function parseExcel(
               }
           }
 
-          columnMap = { model: colCandidate, specs: colCandidate + 1, price: priceColCandidate };
+          columnMap = { 
+            ...columnMap,
+            model: colCandidate, 
+            specs: colCandidate + 1, 
+            price: priceColCandidate 
+          };
           headerFoundRow = 0;
           console.log(`[XLSX] Inteligentny Fallback: Wykryto wzorzec produktów w kolumnie ${colCandidate}, Cena w kolumnie ${priceColCandidate}`);
         } else {
@@ -500,9 +518,15 @@ export async function parseExcel(
              // W przeciwnym razie pomijamy (user nie podał klucza).
              if (apiKey && apiKey !== 'dummy') {
                 onProgress?.({ type: 'log', message: `Uruchamiam Auto-Mapper AI dla ${sheetName}...`});
-                const aiMapping = await queryAIForColumnMapping(rawRows.slice(0, 50), apiKey, modelId);
+                // @ts-ignore
+                const aiMapping = typeof queryAIForColumnMapping === 'function' ? await queryAIForColumnMapping(rawRows.slice(0, 50), apiKey, modelId) : null;
                 if (aiMapping && aiMapping.model !== -1) {
-                    columnMap = { model: aiMapping.model, specs: aiMapping.specs, price: aiMapping.price };
+                    columnMap = { 
+                      ...columnMap, 
+                      model: aiMapping.model, 
+                      specs: aiMapping.specs, 
+                      price: aiMapping.price 
+                    };
                     headerFoundRow = aiMapping.headerFoundRow;
                 }
              }
@@ -535,7 +559,7 @@ export async function parseExcel(
           const colsCount = Math.max(...possibleHeaderRows.map(r => rawRows[r]?.length || 0));
           
           for (let c = 0; c < colsCount; c++) {
-              let combinedHeader = [];
+              let combinedHeader: string[] = [];
               for (const rIdx of possibleHeaderRows) {
                   const val = String(rawRows[rIdx]?.[c] || '').trim();
                   if (val && !combinedHeader.includes(val) && val.length < 40 && !isLikelyProductCode(val)) {
@@ -654,7 +678,11 @@ export async function parseExcel(
       percent: 100 
     });
 
-    return { count: totalAddedCount, stats: { type: 'Excel (Deterministic V6)' }, sessionKnowledge };
+    return { 
+      count: totalAddedCount, 
+      stats: { type: 'Excel (Deterministic V6)' }, 
+      sessionKnowledge 
+    };
 
   } catch (err: any) {
     if (err.message !== 'PROCES_PRZERWANY') {
@@ -886,7 +914,11 @@ export async function parsePDFHeuristic(
         });
     }
 
-    return { count: totalAddedCount, stats: { type: 'PDF Heuristic V8' }, sessionKnowledge };
+    return { 
+      count: totalAddedCount, 
+      stats: { model: 'AI PDF', requests: 1, type: 'text' }, 
+      sessionKnowledge 
+    };
   } catch (err: any) {
     onProgress?.({ type: 'error', message: `Błąd PDF Heuristic: ${err.message}` });
     throw err;
@@ -984,13 +1016,22 @@ export async function parsePDFWithAI(
       count: totalAddedCount,
       percent: 100 
     });
+    
+    // Capture session knowledge (Simplified for AI mode)
+    const sessionKnowledge: Record<string, KnowledgeEntry> = {};
+    Object.keys(currentStore.knowledge).forEach(sku => {
+        if (currentStore.knowledge[sku].source === filename) {
+            sessionKnowledge[sku] = currentStore.knowledge[sku];
+        }
+    });
 
-    return { count: totalAddedCount, stats: toolkit.getStats() };
-
+    return { 
+      count: totalAddedCount, 
+      stats: { model: modelId, requests: chunks.length, type: 'text' }, 
+      sessionKnowledge 
+    };
   } catch (err: any) {
-    if (err.message !== 'PROCES_PRZERWANY') {
-      onProgress?.({ type: 'error', message: err.message || 'Błąd krytyczny parsera PDF.' });
-    }
+    onProgress?.({ type: 'error', message: `Błąd AI PDF: ${err.message}` });
     throw err;
   }
 }

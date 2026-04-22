@@ -26,14 +26,18 @@ interface KnowledgeContextType {
   sessionResults: Record<string, any> | null
   selectedModelId: string | null
   isApproved: boolean
+  tempApiKey: string
+  isValidatingKey: boolean
+  validationResult: any | null
   setSelectedModelId: (val: string | null) => void
   setIsApproved: (val: boolean) => void
   setTempApiKey: (val: string) => void
   setValidationResult: (val: any | null) => void
   setIsValidatingKey: (val: boolean) => void
+  setSessionResults: (val: Record<string, any> | null) => void
   setIsMinimized: (val: boolean) => void
   setTrainingFile: (file: string | null) => void
-  startTraining: (filename: string, apiKey: string, modelId: string, availableModels: any[]) => void
+  startTraining: (filename: string, apiKey?: string, modelId?: string, availableModels?: any[]) => void
   stopTraining: () => void
   resetState: () => void
 }

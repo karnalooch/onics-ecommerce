@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
     const models = data.models || [];
     // Filtrujemy modele wspierające generowanie treści (szersze dopasowanie)
-    const validModels = models.filter((m: any) => {
+    const validModels = models.filter((m: { name: string, supportedGenerationMethods?: string[] }) => {
       const name = m.name.toLowerCase();
       // Wspieramy najnowsze modele Gemini (w tym szerokodostępne 1.5)
       const isModernGemini = name.includes('gemini-1.5') ||
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     const recommendedId = findBestRecommendation(modelNames, !!isPDF);
     const cheapestId = findBestRecommendation(modelNames, false); // For the "Cheap" badge
     
-    let modelsWithPricing = modelNames.map(id => {
+    let modelsWithPricing = modelNames.map((id: string) => {
       const pricing = GEMINI_PRICING[id];
       return {
         id,

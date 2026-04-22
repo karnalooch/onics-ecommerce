@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     // 2. Analizujemy plik i wyciągamy wiedzę (V7 Heuristics)
     if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
       const result = await parseExcel(buffer, filename, undefined, { 
-        apiKey: transientApiKey || undefined, 
+        apiKey: transientApiKey || '', 
         modelId: 'gemini-1.5-flash' 
       });
       addedCount = result.count;

@@ -7,6 +7,7 @@ import { RmaTable } from "./_components/RmaTable";
 import { RmaAddForm } from "./_components/RmaAddForm";
 import { Search, ShieldAlert, Cpu, HardDrive, CheckCircle2, ChevronRight, Database, Terminal, Activity, Zap } from "lucide-react";
 import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
 
 export function RepairsDashboardClient({ initialData }: { initialData: any[] }) {
   const [rmas, setRmas] = useState(initialData);

@@ -24,10 +24,7 @@ export default function AdminLayout({
             </div>
           </main>
 
-          {/* FIXED CONTEXTUAL SUPPORT (SATEL PATTERN) - Hidden on mobile/small tablets */}
-          <aside className="hidden xl:block w-[320px] shrink-0">
-             <SupportCard />
-          </aside>
+          <SupportCard />
         </div>
 
       </div>

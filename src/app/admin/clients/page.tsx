@@ -27,7 +27,7 @@ export default function AdminClientsPage() {
     try {
       const res = await fetch("/api/users", { cache: "no-store" });
       const data = await res.json();
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (e) {
       toast.error("FAULT: Błąd synchronizacji rejestru partnerów.");
     } finally {

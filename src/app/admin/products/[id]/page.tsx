@@ -4,7 +4,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { initializeMockData, saveMockData } from "@/store/serverStore";
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditProductPage({ params }: { params: any }) {
   const session = await auth();
 
   if (!session?.user || (session.user as any).role !== "ADMIN") {
@@ -165,7 +165,5 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         </div>
       </div>
     </div>
-  );
-}
   );
 }
