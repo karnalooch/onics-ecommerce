@@ -47,24 +47,22 @@ It incorporates the core modules of the SoftSpark AI Toolkit.
   - **Hardened Pricing**: No scientific notation or EAN codes allowed in the Price column.
   - **Specs Merging**: Aggregate all technical columns between Model and Price for rich descriptions.
 
-## Elite Engineering Standard (The Golden Master)
+## Elite Engineering Standard (The Fluent Master)
 
 > [!IMPORTANT]
-> The **B2B Authorization Screen** is the absolute ultimate visual reference ("top of the top") for the entire Celtronics platform. All subsequent UI/UX architecture must strictly derive from its specific tokens, spacing, and physics.
+> The **Windows 11 Fluent Design** is the absolute ultimate visual reference. All UI/UX architecture must strictly derive from its specific tokens: Mica material, rounded corners (12-16px), and Electric Blue accents.
 
-### 1. The Golden Master Tokens (Derived from B2B Auth)
-- **Golden Layout**: Architectural 50/50 visual split for distinct Informational vs. Operational zones.
-- **The Navy-Slate Gradient**: The deep immersive background `bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] text-white` (deep navy to metallic grey) for branding and trust anchors.
-- **The Pure White Canvas**: Operational zones (forms, tables, dashboards) are strictly `#FFFFFF` with no decorative backgrounds.
-- **The Pastel Input Base**: Inputs **must** use a light blue fill tint (e.g., `bg-blue-50/60` or `bg-slate-50`) with transparent borders, removing visual clutter.
-- **The Vivid CTA Glow**: Primary actions use a highly saturated active blue (`bg-blue-500` or `#2b8aeb`) combined with a matching colored drop-shadow (e.g., `shadow-lg shadow-blue-500/40`) to create floating depth, rejecting flat gray shadows.
-- **Typographic Authority**: Technical caps for labels (`text-xs font-semibold uppercase tracking-wider text-slate-500`), heavily weighted dark headers (`text-slate-900 font-extrabold`). 
+### 1. The Fluent Master Tokens
+- **Acrylic & Mica**: Use `glass-mica` (defined in globals.css) for parent containers. Layers of depth via soft borders and background blurs.
+- **The Electric Blue Accent**: Primary actions use `#0078d4` (Electric Blue).
+- **The Fluent Card**: Operational zones use `fluent-card` with rounded corners (12-16px) and subtle elevations (`shadow-2xl` on hover).
+- **Typographic Airy Mode**: Move away from heavy black headers. Use balanced, professional typography with ample whitespace and technical caps for metadata.
+- **Interaction Physics**: Mandatory `active:scale-[0.98]` and `transition-all duration-300` for physical feedback.
 
 ### 2. Architectural Foundations
-- **Fluid Grid & Scalability**: Mandatory responsive design using **Tailwind v4 Container Queries**. Optimize for 1366x768 (installers) up to 4K (ops centers).
-- **Compact Scaling**: Use a density factor of **1.125 - 1.200**. Minimal margins, 14px compact font.
-- **Horizontal Workflow**: Purge sidebars. Use horizontal alignment with action buttons (pills) at the end of rows.
-- **Data Density**: Zero horizontal scroll on 1366x768. Collapse low-priority columns to icons with hover-expand.
+- **Layout Grid**: Airy 50/50 splits for auth, and immersive 12-column grids for dashboards.
+- **Zero Industrial Clutter**: Remove sharp black borders, brutalist overlays, and high-contrast "industrial" grids unless specifically requested for a technical diagnostic view.
+- **Data Density**: Maintain high density but use vertical rhythm and whitespace instead of hard lines.
 
 ### 3. Layout Patterns
 - **Iconic Navigation (DHL Pattern)**: Horizontal top bar with large circular icons and short labels. Active tab marked with a high-contrast technical underline.

@@ -15,7 +15,10 @@ import {
   UserPlus,
   Activity,
   ArrowUpRight,
-  Database
+  Database,
+  ShieldCheck,
+  Zap,
+  Globe
 } from "lucide-react";
 
 import { initializeMockData } from "@/store/serverStore";
@@ -37,108 +40,122 @@ export default async function AdminDashboard() {
   const pendingRepairs = repairs.filter((r: any) => r.status !== "DONE");
 
   return (
-    <div className="flex flex-col gap-8 animate-in fade-in duration-700">
+    <div className="flex flex-col gap-12 animate-in fade-in duration-700 pb-20">
       
-      {/* 1. COMMAND HEADER (HORIZONTAL DENSITY) */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 border-b border-slate-100 pb-8">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] text-white flex items-center justify-center rounded-lg italic font-black shadow-md shadow-[#1e2335]/30">CD</div>
-             <h2 className="text-3xl font-black tracking-tighter text-[#1e2335] uppercase italic leading-none">OPERATIONAL_COMMAND</h2>
-          </div>
-          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] ml-12">
-            Zasoby: B2B_PARTNERS / PIM_VAULT / RMA_LOGISTICS
-          </p>
+      {/* 1. FLUENT DASHBOARD HEADER */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
+        <div className="flex items-center gap-6">
+           <div className="w-16 h-16 bg-primary text-white flex items-center justify-center rounded-xl shadow-2xl shadow-primary/30">
+              <Zap className="w-8 h-8" />
+           </div>
+           <div className="flex flex-col">
+              <div className="flex items-center gap-3">
+                 <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Centrum Operacyjne</span>
+                 <span className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
+                 <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Admin_Node_v4</span>
+              </div>
+              <h1 className="text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mt-1">Panel Sterowania</h1>
+           </div>
         </div>
         
-        <div className="flex items-center gap-4">
-           <div className="flex flex-col items-end leading-none">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">System_Node_Ok</span>
-              <span className="text-[10px] font-black text-primary uppercase mt-1 italic leading-none">REBUILD_COMPLETE_V4</span>
-           </div>
-           <div className="h-10 px-4 bg-white border border-slate-100 flex items-center justify-center rounded-none">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <div className="flex items-center gap-10">
+           <div className="flex flex-col items-end">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status Systemu</span>
+              <div className="flex items-center gap-2 mt-1">
+                 <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-lg shadow-green-500/40 animate-pulse" />
+                 <span className="text-[12px] font-bold text-foreground uppercase tracking-tight">Active Online</span>
+              </div>
            </div>
         </div>
       </div>
 
-      {/* 2. OPERATIONAL METRICS (FLAT HORIZONTAL GRID) */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      {/* 2. OPERATIONAL METRICS (FLUENT CARDS) */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard 
           label="Partnerzy B2B" 
           value={registeredUsers.length} 
           subText="Zatwierdzone konta" 
-          icon={<Users className="w-4 h-4" />}
+          icon={<Users className="w-5 h-5" />}
           trend="+2"
+          sector="Sprzedaż"
         />
         <StatCard 
           label="Logistyka RMA" 
           value={pendingRepairs.length} 
           subText="Aktywne zgłoszenia" 
-          icon={<Wrench className="w-4 h-4 text-white" />}
+          icon={<Wrench className="w-5 h-5" />}
           variant="navy"
+          sector="Serwis"
         />
         <StatCard 
           label="Baza PIM" 
           value={totalProducts} 
           subText="Indeksy asortymentu" 
-          icon={<Package className="w-4 h-4" />}
+          icon={<Package className="w-5 h-5" />}
           variant="primary"
+          sector="Katalog"
         />
         <StatCard 
           label="Wyceny CPQ" 
           value={pendingQuotes.length} 
           subText="Oczekujące oferty" 
-          icon={<FileText className="w-4 h-4" />}
+          icon={<FileText className="w-5 h-5" />}
+          sector="Oferty"
         />
         <StatCard 
           label="Weryfikacja" 
           value={unapprovedUsers.length} 
           subText="Kolejka NIP" 
-          icon={<UserPlus className="w-4 h-4" />}
+          icon={<UserPlus className="w-5 h-5" />}
           variant="secondary"
+          sector="System"
         />
       </div>
 
-      {/* 3. MAIN WORKSPACE (SATEL PATTERN) */}
-      <div className="grid gap-6 grid-cols-1 xl:grid-cols-12">
+      {/* 3. MAIN WORKSPACE */}
+      <div className="grid gap-10 grid-cols-1 xl:grid-cols-12">
         
-        {/* Verification Hub (Left Broad Card) */}
-        <div className="xl:col-span-8 satel-card p-0 bg-white overflow-hidden rounded-xl border border-slate-200">
-          <div className="bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] text-white px-8 py-5 flex justify-between items-center shadow-md">
-             <div className="flex flex-col">
-                <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] flex items-center gap-3 italic">
-                   <Database className="w-4 h-4 text-white" /> B2B_IDENTITY_RECORDS
-                </h3>
+        {/* Verification Hub */}
+        <div className="xl:col-span-8 fluent-card p-0 border-white/10 overflow-hidden shadow-2xl">
+          <div className="bg-primary/5 px-8 py-6 border-b border-black/5 dark:border-white/10 flex justify-between items-center">
+             <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center rounded-lg">
+                   <ShieldCheck className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Weryfikacja Partnerów B2B</h3>
              </div>
-             <Link href="/admin/clients" className="text-[9px] font-black text-slate-300 hover:text-white uppercase tracking-widest transition-colors active-press">
-                Pełen_Rejestr →
+             <Link href="/admin/clients" className="text-[11px] font-bold text-primary hover:underline uppercase tracking-widest transition-all">
+                Pełen Rejestr →
              </Link>
           </div>
           
-          <div className="p-2">
+          <div className="p-4">
             {unapprovedUsers.length === 0 ? (
-              <div className="text-[10px] font-black text-slate-400 text-center py-20 uppercase tracking-[0.4em] italic opacity-30">
-                BRAK_ZADAŃ: Rejestr Partnerów Zsynchronizowany.
+              <div className="flex flex-col items-center justify-center py-20 text-center group">
+                <Activity className="w-12 h-12 text-primary/10 mb-4 group-hover:scale-110 transition-transform" />
+                <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest">Kolejka Pusta</span>
               </div>
             ) : (
               <Table>
-                <TableHeader className="bg-slate-50 border-b border-slate-100">
+                <TableHeader className="bg-black/5 dark:bg-white/5 border-b border-black/5 dark:border-white/10">
                   <TableRow className="hover:bg-transparent border-none">
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-slate-400 py-4 pl-6">Firma / Partner</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-slate-400">NIP / VAT_ID</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-slate-400">Rejestracja</TableHead>
-                    <TableHead className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-right pr-6">Działania</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground py-4 pl-6">Firma / Partner</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-center">NIP</TableHead>
+                    <TableHead className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground text-right pr-6">Akcje</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {unapprovedUsers.map((user: any) => (
-                    <TableRow key={user.id} className="hover:bg-slate-50/50 border-b border-slate-50 last:border-0 transition-colors group">
-                      <TableCell className="font-black text-slate-950 py-4 pl-6 text-[13px] uppercase tracking-tighter">{user.companyName}</TableCell>
-                      <TableCell className="font-bold text-slate-400 text-[11px] tabular-nums">{user.nip}</TableCell>
-                      <TableCell suppressHydrationWarning className="text-slate-400 text-[10px] font-bold uppercase">{new Date(user.createdAt).toLocaleDateString("pl-PL")}</TableCell>
+                    <TableRow key={user.id} className="hover:bg-black/5 dark:hover:bg-white/5 border-b border-black/5 dark:border-white/10 last:border-0 transition-colors group">
+                      <TableCell className="py-5 pl-6">
+                         <div className="flex flex-col">
+                            <span className="font-bold text-foreground text-[14px]">{user.companyName}</span>
+                            <span className="text-[11px] text-muted-foreground italic">{user.username}</span>
+                         </div>
+                      </TableCell>
+                      <TableCell className="font-bold text-center text-muted-foreground text-[12px] tabular-nums tracking-wider">{user.nip}</TableCell>
                       <TableCell className="text-right pr-6">
-                         <div className="flex justify-end gap-2">
+                         <div className="flex justify-end gap-3 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all">
                             <AdminActions actionType="approveUser" userId={user.id} />
                             <AdminActions actionType="deleteUser" userId={user.id} />
                          </div>
@@ -151,44 +168,48 @@ export default async function AdminDashboard() {
           </div>
         </div>
 
-        {/* Activity Feed (Right Narrow Card) */}
-        <div className="xl:col-span-4 satel-card p-0 bg-white overflow-hidden rounded-xl border border-slate-200">
-          <div className="bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] px-8 py-5 flex justify-between items-center shadow-md">
-             <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] flex items-center gap-3 italic">
-                <Activity className="w-4 h-4 text-white" /> SYSTEM_ACTIVITY
-             </h3>
-             <div className="h-6 px-3 bg-white/20 backdrop-blur-sm text-white text-[9px] flex items-center font-black rounded-sm shadow-sm border border-white/30">LOG: {pendingQuotes.length}</div>
+        {/* Activity Feed */}
+        <div className="xl:col-span-4 fluent-card p-0 border-white/10 overflow-hidden shadow-2xl">
+          <div className="bg-primary/5 px-8 py-6 border-b border-black/5 dark:border-white/10 flex justify-between items-center">
+             <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center rounded-lg">
+                   <Activity className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">Ostatnia Aktywność</h3>
+             </div>
+             <div className="h-7 px-3 bg-primary text-white text-[10px] flex items-center font-bold rounded-md shadow-lg shadow-primary/20">LOG: {pendingQuotes.length}</div>
           </div>
           
-          <div className="p-6">
-            <div className="space-y-6">
+          <div className="p-8">
+            <div className="space-y-8">
               {pendingQuotes.length > 0 ? (
                 pendingQuotes.slice(0, 6).map((quote: any) => (
-                  <div key={quote.id} className="flex justify-between items-center group cursor-pointer active-press border-b border-slate-50 pb-4 last:border-0 last:pb-0">
+                  <div key={quote.id} className="flex justify-between items-center group cursor-pointer active-press border-b border-black/5 dark:border-white/10 pb-6 last:border-0 last:pb-0">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
-                         <span className="font-black text-slate-950 text-[12px] uppercase tracking-tight group-hover:text-primary transition-colors">{quote.id}</span>
-                         <ArrowUpRight className="w-3 h-3 text-slate-200 group-hover:text-primary transition-colors" />
+                         <span className="font-bold text-foreground text-[13px] tracking-tight group-hover:text-primary transition-colors">{quote.id}</span>
+                         <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors" />
                       </div>
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{quote.user?.email || "Partner_B2B"}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{quote.user?.email || "Partner B2B"}</span>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                       <span className="text-[13px] font-black text-slate-950 tabular-nums leading-none">
+                    <div className="flex flex-col items-end leading-none">
+                       <span className="text-[16px] font-extrabold text-foreground tabular-nums leading-none">
                           {quote.totalPriceOrig.toFixed(2)}
                        </span>
-                       <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">PLN_NETTO</span>
+                       <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">PLN</span>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-[10px] font-black text-slate-300 text-center py-20 uppercase tracking-[0.4em] italic opacity-50">
-                  QUIET_NODE: Brak zdarzeń.
+                <div className="text-center py-20">
+                  <Globe className="w-12 h-12 text-primary/10 mx-auto mb-4" />
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Brak zdarzeń</span>
                 </div>
               )}
             </div>
             
-            <button className="w-full mt-6 h-10 bg-slate-50 text-slate-400 hover:text-slate-950 font-black text-[10px] uppercase tracking-widest border border-slate-100 active-press transition-all">
-               Szczegółowy_Dziennik_Zdarzeń
+            <button className="w-full mt-8 h-12 rounded-xl bg-primary/5 dark:bg-white/5 text-primary hover:bg-primary hover:text-white font-bold text-[11px] uppercase tracking-widest transition-all active-press border border-primary/10 shadow-sm">
+               Szczegółowy Log Zdarzeń
             </button>
           </div>
         </div>
@@ -198,33 +219,27 @@ export default async function AdminDashboard() {
   );
 }
 
-function StatCard({ label, value, subText, icon, variant = "default", trend }: { 
-  label: string, value: number, subText: string, icon: React.ReactNode, variant?: "default" | "primary" | "secondary" | "navy", trend?: string 
+function StatCard({ label, value, subText, icon, variant = "default", trend, sector }: { 
+  label: string, value: number, subText: string, icon: React.ReactNode, variant?: "default" | "primary" | "secondary" | "navy", trend?: string, sector: string
 }) {
-  const iconSets = {
-    default: "bg-slate-50 text-slate-400 border-slate-100 rounded-md",
-    primary: "bg-gradient-to-br from-primary to-blue-600 text-white border-transparent shadow-lg shadow-blue-500/30 rounded-md",
-    secondary: "bg-blue-50 text-blue-600 border border-blue-100 rounded-md",
-    navy: "bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] text-white border-transparent shadow-lg shadow-[#1e2335]/30 rounded-md"
-  };
-
   return (
-    <div className="satel-card p-6 bg-white border border-slate-200 flex flex-col gap-5 relative group no-blur rounded-xl">
+    <div className="fluent-card p-8 flex flex-col gap-6 relative group transition-all active-press border-white/5 shadow-xl">
       <div className="flex items-center justify-between">
          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] italic leading-none">{label}</span>
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{sector}</span>
+            <span className="text-[12px] font-extrabold text-foreground uppercase tracking-tight leading-none">{label}</span>
          </div>
-         <div className={`w-10 h-10 flex items-center justify-center border transition-all duration-300 group-hover:scale-110 ${iconSets[variant]}`}>
+         <div className="w-12 h-12 rounded-xl bg-primary/5 dark:bg-white/5 text-primary flex items-center justify-center transition-all group-hover:bg-primary group-hover:text-white group-hover:scale-110 shadow-sm">
             {icon}
          </div>
       </div>
       
       <div className="flex flex-col leading-none">
          <div className="flex items-end gap-2">
-            <span className="text-4xl font-black text-slate-950 tracking-tighter tabular-nums leading-none">{value}</span>
-            {trend && <span className="text-primary text-[10px] font-black italic mb-1">({trend})</span>}
+            <span className="text-4xl font-extrabold text-foreground tracking-tighter tabular-nums leading-none">{value}</span>
+            {trend && <span className="text-green-500 text-[11px] font-bold mb-1">({trend})</span>}
          </div>
-         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-3">{subText}</span>
+         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-4">{subText}</span>
       </div>
     </div>
   );

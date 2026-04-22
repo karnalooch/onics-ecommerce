@@ -19,72 +19,71 @@ export function ProductTableRow({ p, onEdit, onDelete, onGenerateAI, onSyncIQ, i
   const isOutofStock = p.stock <= 0;
 
   return (
-    <TableRow className="group/row hover:bg-slate-50 transition-colors border-b border-slate-50 select-none">
+    <TableRow className="group/row hover:bg-black/5 dark:hover:bg-white/5 transition-all border-b border-black/5 dark:border-white/10 select-none">
       
-      {/* 1. IDENTITY BLOCK (HIGH DENSITY) */}
-      <TableCell className="py-4 pl-8">
+      {/* 1. IDENTITY BLOCK (FLUENT) */}
+      <TableCell className="py-5 pl-8">
         <div className="flex items-center gap-5">
-           <div className="w-12 h-12 bg-white border border-slate-100 flex items-center justify-center shrink-0 group-hover/row:border-primary group-hover/row:scale-105 transition-all">
+           <div className="w-12 h-12 bg-white dark:bg-white/10 border border-black/5 dark:border-white/10 flex items-center justify-center shrink-0 rounded-lg group-hover/row:scale-105 transition-all shadow-sm">
               {p.imageUrl ? (
                  <img src={p.imageUrl} alt={p.sku} className="w-10 h-10 object-contain p-1" />
               ) : (
-                 <PackageIcon className="w-6 h-6 text-slate-100" />
+                 <PackageIcon className="w-6 h-6 text-muted-foreground/30" />
               )}
            </div>
            <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
-                 <h3 className="text-[14px] font-black text-slate-950 truncate uppercase tracking-tighter leading-none group-hover/row:text-primary transition-colors">{p.name}</h3>
-                 {p.isVirtual && <span className="text-[7px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-400 uppercase italic">VIRTUAL_NODE</span>}
+                 <h3 className="text-[14px] font-bold text-foreground truncate tracking-tight group-hover/row:text-primary transition-colors">{p.name}</h3>
+                 {p.isVirtual && <span className="text-[9px] font-bold px-2 py-0.5 bg-black/5 dark:bg-white/10 text-muted-foreground rounded uppercase italic">Virtual</span>}
               </div>
-              <div className="flex items-center gap-3 mt-1.5">
-                 <span className="text-[10px] font-black text-slate-400 tracking-[0.2em] leading-none uppercase">{p.sku || "NO_SKU"}</span>
-                 <div className="w-1 h-1 bg-slate-200 rounded-full" />
-                 <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none">{category?.name || "UNCLASSIFIED"}</span>
+              <div className="flex items-center gap-3 mt-1">
+                 <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase opacity-60">{p.sku || "N/A"}</span>
+                 <div className="w-1 h-1 bg-black/10 dark:bg-white/10 rounded-full" />
+                 <span className="text-[10px] font-bold text-primary/80 uppercase tracking-widest">{category?.name || "Kategoria"}</span>
               </div>
            </div>
         </div>
       </TableCell>
 
-      {/* 2. MANUFACTURER (SLATE ITALIC) */}
-      <TableCell className="hidden lg:table-cell py-4 px-4 text-center">
-         <div className="inline-block px-3 py-1 bg-slate-50 border border-slate-100">
-            <span className="text-[10px] font-black text-slate-950 uppercase italic tracking-widest">{p.manufacturer || "GENERIC"}</span>
+      {/* 2. MANUFACTURER (FLUENT BADGE) */}
+      <TableCell className="hidden lg:table-cell py-5 px-4 text-center">
+         <div className="inline-block px-4 py-1 bg-black/5 dark:bg-white/10 border border-black/5 dark:border-white/10 rounded-md">
+            <span className="text-[11px] font-bold text-foreground uppercase tracking-wider">{p.manufacturer || "General"}</span>
          </div>
       </TableCell>
 
-      {/* 3. PRICE (TECHNICAL BOLD) */}
-      <TableCell className="py-4 px-4 text-right">
+      {/* 3. PRICE (BOLD TYPOGRAPHY) */}
+      <TableCell className="py-5 px-4 text-right">
          <div className="flex flex-col items-end leading-none">
-            <span className="text-[15px] font-black text-slate-950 tabular-nums leading-none">{(p.price || 0).toFixed(2)}</span>
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">PLN_NETTO</span>
+            <span className="text-[16px] font-extrabold text-foreground tabular-nums">{(p.price || 0).toFixed(2)}</span>
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">PLN</span>
          </div>
       </TableCell>
 
-      {/* 4. STOCK STATUS (OKLCH COLORS) */}
-      <TableCell className="hidden md:table-cell py-4 px-4 text-right">
+      {/* 4. STOCK STATUS (FLUENT PILL) */}
+      <TableCell className="hidden md:table-cell py-5 px-4 text-right">
          <div className="flex flex-col items-end gap-1">
-            <div className={`flex items-center gap-2 px-2 py-1 border rounded-none ${isOutofStock ? 'bg-status-error/5 border-status-error/10 text-status-error' : 'bg-primary/5 border-primary/10 text-primary'}`}>
-               <div className={`w-1.5 h-1.5 rounded-full ${isOutofStock ? 'bg-status-error' : 'bg-primary animate-pulse'}`} />
-               <span className="text-[10px] font-black uppercase tracking-tighter tabular-nums">{p.stock || 0} PCS</span>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-pill border ${isOutofStock ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}>
+               <div className={`w-1.5 h-1.5 rounded-full ${isOutofStock ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
+               <span className="text-[11px] font-bold tabular-nums">{p.stock || 0} SZT</span>
             </div>
-            <span className="text-[7px] font-black text-slate-300 uppercase tracking-widest">STOCK_STATUS</span>
          </div>
       </TableCell>
 
-      {/* 5. INTERACTION HUB (SATEL PILL ACTIONS) */}
-      <TableCell className="py-4 pr-8 text-right w-[160px]">
-         <div className="flex items-center justify-end gap-3 translate-x-4 opacity-20 group-hover/row:opacity-100 group-hover/row:translate-x-0 transition-all duration-300">
+      {/* 5. INTERACTION HUB (FLUENT GHOST ACTIONS) */}
+      <TableCell className="py-5 pr-8 text-right w-[160px]">
+         <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity duration-200">
             <button 
               onClick={() => onEdit(p)}
-              className="h-9 px-5 bg-slate-950 text-white font-black text-[9px] uppercase tracking-widest active-press active-inset flex items-center gap-2 hover:bg-primary transition-all rounded-none"
+              className="h-9 px-4 bg-primary/10 text-primary font-bold text-[11px] uppercase tracking-wider rounded-lg hover:bg-primary hover:text-white transition-all active-press flex items-center gap-2"
             >
-               EDYCJA <ChevronRight className="w-3 h-3" />
+               Edytuj
             </button>
 
             <button 
               onClick={() => onDelete(p.id)}
-              className="w-9 h-9 flex items-center justify-center text-slate-300 hover:text-white hover:bg-status-error transition-all active-press border border-slate-100 hover:border-status-error rounded-none"
-              title="Delete Index"
+              className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all active-press"
+              title="Delete"
             >
                <TrashIcon className="w-4 h-4" />
             </button>

@@ -24,9 +24,8 @@ export default function RootLayout({
       <body className={`${inter.variable} ${jetbrains.variable} font-sans antialiased min-h-screen bg-background text-foreground flex flex-col`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
-          forcedTheme="light"
-          enableSystem={false}
+          defaultTheme="system"
+          enableSystem={true}
         >
           <Toaster position="top-right" richColors />
           <SessionProvider>

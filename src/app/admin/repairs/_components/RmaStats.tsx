@@ -15,14 +15,14 @@ export function RmaStats({ rmas }: { rmas: any[] }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
       {stats.map((s, idx) => (
-        <div key={idx} className="satel-card p-6 bg-white border-none shadow-sm flex flex-col gap-2 group transition-all hover:border-primary">
+        <div key={idx} className="fluent-card p-8 border-white/10 shadow-lg flex flex-col gap-4 group transition-all hover:bg-primary/5">
           <div className="flex items-center justify-between">
-            <s.icon className={`w-4 h-4 ${s.color}`} />
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none italic">{s.label}</span>
+            <s.icon className={`w-5 h-5 ${s.color} shadow-glow`} />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{s.label}</span>
           </div>
-          <span className="text-3xl font-black text-slate-950 tabular-nums italic group-hover:text-primary transition-colors">{s.value}</span>
+          <span className="text-4xl font-extrabold text-foreground tabular-nums tracking-tighter group-hover:text-primary transition-colors">{s.value}</span>
         </div>
       ))}
     </div>

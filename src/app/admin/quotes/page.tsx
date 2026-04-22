@@ -5,9 +5,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   FileText, Printer, Plus, Trash2, Search, 
   ChevronRight, LayoutGrid, Package, UserCircle, Settings, Layers, Briefcase,
-  Terminal, ShieldCheck, Activity, Download, RefreshCcw, Box
+  Terminal, ShieldCheck, Activity, Download, RefreshCcw, Box, Zap, Globe
 } from "lucide-react"
 import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
 
 export default function QuotesGenerator() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -76,36 +77,36 @@ export default function QuotesGenerator() {
   }
 
   return (
-    <div className="flex flex-col gap-10 animate-in fade-in duration-700 select-none no-blur max-w-[1920px] mx-auto print:m-0">
+    <div className="flex flex-col gap-12 animate-in fade-in duration-700 select-none pb-20 max-w-[1920px] mx-auto print:m-0">
       
-      {/* 1. OPERATIONAL CPQ HEADER */}
-      <div className="flex flex-col xl:flex-row justify-between items-end xl:items-center gap-8 border-b-2 border-slate-950 pb-8 print:hidden">
+      {/* 1. OPERATIONAL CPQ HEADER (FLUENT) */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 print:hidden">
         <div className="flex items-center gap-6">
-           <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center rounded-none shadow-xl">
-              <Terminal className="w-7 h-7 text-primary" />
+           <div className="w-16 h-16 bg-primary text-white flex items-center justify-center rounded-xl shadow-2xl shadow-primary/30">
+              <Terminal className="w-8 h-8" />
            </div>
            <div className="flex flex-col">
               <div className="flex items-center gap-3">
-                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic leading-none">SYS_CPQ_ENGINE</span>
-                 <div className="w-8 h-[1px] bg-slate-200" />
-                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 leading-none">Blueprint_Gen_v9</span>
+                 <span className="text-[11px] font-bold uppercase tracking-widest text-primary">System CPQ (Pricing)</span>
+                 <span className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
+                 <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Blueprint_Gen_v9</span>
               </div>
-              <h1 className="text-4xl font-black text-slate-950 uppercase tracking-tighter italic leading-none mt-1">Konfigurator Ofert</h1>
+              <h1 className="text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mt-1">Konfigurator Ofert</h1>
            </div>
         </div>
         
         <div className="flex items-center gap-4">
            <button 
              onClick={() => setItems([])} 
-             className="h-11 px-6 bg-white border border-slate-950 text-slate-950 hover:bg-slate-50 font-black uppercase text-[10px] tracking-widest flex items-center gap-3 transition-all active-press italic"
+             className="h-14 px-8 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl text-muted-foreground hover:text-foreground font-bold uppercase text-[11px] tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-sm"
            >
-              Wyczyść_Bufor
+              Wyczyść Bufor
            </button>
            <button 
              onClick={() => window.print()} 
-             className="h-11 px-8 bg-slate-950 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-4 active-press transition-all hover:bg-primary shadow-xl shadow-primary/10 italic rounded-none"
+             className="h-14 px-10 bg-primary text-white font-bold uppercase text-[11px] tracking-widest flex items-center gap-4 active:scale-95 transition-all hover:brightness-110 shadow-xl shadow-primary/20 rounded-xl"
            >
-              <Printer className="w-4 h-4 text-primary" /> EXPORT_BLUEPRINT_PDF
+              <Printer className="w-4 h-4" /> EKSPORTUJ BLUEPRINT
            </button>
         </div>
       </div>
@@ -116,79 +117,79 @@ export default function QuotesGenerator() {
         <aside className="xl:col-span-3 space-y-8 print:hidden">
            
            {/* PARTNER CONTEXT CARD */}
-           <div className="satel-card p-0 bg-white border-none overflow-hidden rounded-none shadow-sm">
-              <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
-                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-950 italic">Identyfikacja_Partnera</h3>
+           <div className="fluent-card p-0 border-white/10 overflow-hidden shadow-2xl">
+              <div className="bg-primary/5 px-8 py-5 border-b border-black/5 dark:border-white/10">
+                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Identyfikacja Partnera</h3>
               </div>
-              <div className="p-6 space-y-5">
-                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Nazwa Podmiotu B2B</label>
+              <div className="p-8 space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none ml-1">Nazwa Podmiotu B2B</label>
                     <input 
                        type="text" 
                        value={clientInfo.name}
                        onChange={(e) => setClientInfo({...clientInfo, name: e.target.value})}
-                       className="w-full h-11 bg-slate-50 border border-slate-100 px-4 text-[12px] font-black uppercase italic outline-none focus:border-primary focus:bg-white transition-all shadow-sm"
+                       className="w-full h-12 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl px-5 text-[13px] font-bold outline-none focus:bg-white dark:focus:bg-white/10 focus:border-primary/20 transition-all shadow-inner"
                     />
                  </div>
-                 <div className="space-y-1.5">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">NIP_TRANS_ID</label>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none ml-1">Identyfikator NIP</label>
                     <input 
                        type="text" 
                        value={clientInfo.nip}
                        onChange={(e) => setClientInfo({...clientInfo, nip: e.target.value})}
-                       className="w-full h-11 bg-slate-50 border border-slate-100 px-4 text-[12px] font-mono font-bold outline-none focus:border-primary focus:bg-white transition-all shadow-sm"
+                       className="w-full h-12 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl px-5 text-[13px] font-mono font-bold outline-none focus:bg-white dark:focus:bg-white/10 focus:border-primary/20 transition-all shadow-inner"
                     />
                  </div>
               </div>
            </div>
 
            {/* OPERATIONAL QUEUE (BASKET) */}
-           <div className="satel-card p-0 bg-white border-none overflow-hidden rounded-none shadow-sm flex flex-col min-h-[500px]">
-              <div className="p-4 bg-slate-950 flex justify-between items-center text-white">
+           <div className="fluent-card p-0 border-white/10 overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
+              <div className="p-5 bg-primary px-8 lg:px-5 flex justify-between items-center text-white">
                  <div className="flex items-center gap-3">
-                    <Activity className="w-4 h-4 text-primary animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">Operational_Buffer</span>
+                    <Zap className="w-5 h-5 text-white animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest">Bufor Roboczy</span>
                  </div>
-                 <div className="h-6 px-3 bg-white/10 text-primary text-[9px] font-black flex items-center tabular-nums">{items.length} PCS</div>
+                 <Badge variant="outline" className="bg-white/20 text-white border-transparent font-black tracking-widest">{items.length} ELT</Badge>
               </div>
               
-              <div className="flex-1 overflow-y-auto divide-y divide-slate-50 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto divide-y divide-black/5 dark:divide-white/5 custom-scrollbar">
                  {items.length === 0 ? (
                     <div className="p-20 text-center flex flex-col items-center justify-center opacity-20">
-                       <Briefcase className="w-10 h-10 mb-4" />
-                       <span className="text-[9px] font-black uppercase tracking-[0.4em] italic">Buffer_Empty</span>
+                       <Briefcase className="w-12 h-12 mb-4 text-primary" />
+                       <span className="text-[11px] font-bold uppercase tracking-widest">Kolejka Pusta</span>
                     </div>
                  ) : (
                     items.map((item, idx) => {
                        const p = getProduct(item.productId);
                        return (
-                          <div key={idx} className="p-5 bg-white group hover:bg-slate-50 transition-all border-l-4 border-transparent hover:border-primary">
-                             <div className="flex justify-between items-start mb-3">
+                          <div key={idx} className="p-6 bg-white dark:bg-[#1e2335]/50 group hover:bg-primary/5 transition-all border-l-4 border-transparent hover:border-primary">
+                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex flex-col min-w-0">
-                                   <span className="text-[12px] font-black text-slate-950 uppercase truncate leading-none italic">{p.name}</span>
-                                   <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest mt-1">{p.sku}</span>
+                                   <span className="text-[14px] font-extrabold text-foreground leading-none">{p.name}</span>
+                                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1.5 opacity-60">{p.sku}</span>
                                 </div>
-                                <button onClick={() => removeLineItem(idx)} className="w-8 h-8 flex items-center justify-center text-slate-200 hover:text-red-600 transition-colors active-press">
+                                <button onClick={() => removeLineItem(idx)} className="w-9 h-9 flex items-center justify-center text-muted-foreground/30 hover:text-red-500 transition-all active:scale-90 bg-black/5 dark:bg-white/5 rounded-lg">
                                    <Trash2 className="w-4 h-4" />
                                 </button>
                              </div>
-                             <div className="flex items-center gap-4">
-                                <div className="flex-1">
-                                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Ilość</span>
+                             <div className="grid grid-cols-2 gap-4">
+                                <div className="flex flex-col gap-1.5">
+                                   <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Sztuk</span>
                                    <input 
                                       type="number" 
                                       value={item.qty} 
                                       onChange={(e) => updateItem(idx, 'qty', Number(e.target.value))}
-                                      className="w-full h-9 bg-slate-50 border border-transparent px-3 text-[11px] font-black outline-none focus:bg-white focus:border-primary transition-all tabular-nums"
+                                      className="w-full h-11 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl px-4 text-[13px] font-extrabold outline-none focus:bg-white dark:focus:bg-white/10 focus:border-primary/20 transition-all tabular-nums shadow-inner"
                                    />
                                 </div>
-                                <div className="flex-1">
-                                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Rabat_%</span>
+                                <div className="flex flex-col gap-1.5">
+                                   <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Rabat %</span>
                                    <input 
                                       type="number" 
                                       value={item.discount} 
                                       onChange={(e) => updateItem(idx, 'discount', Number(e.target.value))}
-                                      className="w-full h-9 bg-slate-50 border border-transparent px-3 text-[11px] font-black text-primary outline-none focus:bg-white focus:border-primary transition-all tabular-nums"
+                                      className="w-full h-11 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl px-4 text-[13px] font-extrabold text-primary outline-none focus:bg-white dark:focus:bg-white/10 focus:border-primary/20 transition-all tabular-nums shadow-inner"
                                    />
                                 </div>
                              </div>
@@ -198,24 +199,27 @@ export default function QuotesGenerator() {
                  )}
               </div>
 
-              <div className="p-8 bg-slate-950 text-white border-t border-white/5 mt-auto">
-                 <div className="flex justify-between items-end mb-1">
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">VAL_NET_AGGREGATE</span>
-                    <span className="text-3xl font-black italic tracking-tighter tabular-nums leading-none">
-                       {calculateTotal().toFixed(2)} <span className="text-[10px] NOT-italic opacity-40">PLN</span>
-                    </span>
+              <div className="p-10 bg-primary/5 dark:bg-white/5 border-t border-black/5 dark:border-white/10 mt-auto">
+                 <div className="flex justify-between items-end mb-2">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Wartość Netto</span>
+                    <div className="flex items-baseline gap-2">
+                       <span className="text-4xl font-extrabold text-foreground tabular-nums tracking-tighter leading-none">
+                          {calculateTotal().toFixed(2)}
+                       </span>
+                       <span className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest">PLN</span>
+                    </div>
                  </div>
-                 <div className="flex items-center gap-2 mt-4 text-[8px] font-black text-primary uppercase tracking-[0.3em] italic">
-                    <ShieldCheck className="w-3 h-3" /> System_Calibrated_OK
+                 <div className="flex items-center gap-3 mt-6 text-[10px] font-bold text-green-500 uppercase tracking-widest opacity-80">
+                    <ShieldCheck className="w-4 h-4 shadow-lg shadow-green-500/20" /> Kalkulacja Zweryfikowana
                  </div>
               </div>
            </div>
 
         </aside>
 
-        {/* CENTER_NODE: VISUAL BLUEPRINT (PDF VIEW) */}
+        {/* CENTER_NODE: VISUAL BLUEPRINT (MODERNIZED VIEW) */}
         <main className="xl:col-span-6 print:w-full">
-           <div className="bg-white min-h-[1100px] shadow-2xl flex flex-col p-16 print:p-0 print:border-none print:shadow-none relative rounded-none border border-slate-50">
+           <div className="bg-white min-h-[1100px] shadow-3xl flex flex-col p-16 print:p-0 print:border-none print:shadow-none relative rounded-[32px] border border-black/5 dark:border-white/10 print:rounded-none overflow-hidden text-slate-900">
               
               {/* OPERATIONAL WATERMARK */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 pointer-events-none opacity-[0.03]">
@@ -230,34 +234,34 @@ export default function QuotesGenerator() {
                        <span className="text-3xl font-black tracking-tighter italic uppercase text-slate-950">CEL-TRONICS</span>
                     </div>
                     <div className="flex flex-col mt-4">
-                       <h1 className="text-5xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">BLUEPRINT_OFFER</h1>
-                       <div className="flex items-center gap-3 mt-4">
-                          <span className="text-[12px] font-black text-primary uppercase tracking-[0.4em] italic">{refNumber}</span>
-                          <div className="w-1.5 h-1.5 bg-slate-200 rounded-full" />
-                          <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">{quoteDate}</span>
+                       <h1 className="text-5xl font-extrabold tracking-tighter leading-none uppercase italic">Blueprint Offer</h1>
+                       <div className="flex items-center gap-4 mt-6">
+                          <Badge className="bg-primary/10 text-primary border-transparent font-bold tracking-widest px-4 py-1.5 uppercase text-[12px]">{refNumber}</Badge>
+                          <div className="w-2 h-2 bg-slate-200 rounded-full" />
+                          <span className="text-[13px] font-bold text-slate-500 uppercase tracking-widest">{quoteDate}</span>
                        </div>
                     </div>
                  </div>
                  
-                 <div className="text-right flex flex-col gap-1 items-end">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4 italic">Provider_Node:</span>
-                    <span className="text-lg font-black text-slate-950 uppercase tracking-tighter">Celtronics S.C.</span>
-                    <span className="text-[11px] font-black text-slate-950 tracking-widest">NIP: 123-456-78-90</span>
-                    <span className="text-[11px] font-black text-primary italic tracking-widest mt-2 underline decoration-2 underline-offset-4">BIURO@CELTRONICS.PL</span>
+                 <div className="text-right flex flex-col gap-2 items-end">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Dostawca Systemu:</span>
+                    <span className="text-xl font-extrabold tracking-tight">Celtronics S.C.</span>
+                    <span className="text-[12px] font-bold text-slate-600 tracking-wider">NIP: 123-456-78-90</span>
+                    <span className="text-[12px] font-bold text-primary tracking-widest mt-3 underline decoration-4 underline-offset-4 decoration-primary/20 italic">BIURO@CELTRONICS.PL</span>
                  </div>
               </div>
 
               {/* TARGET_CONTEXT */}
-              <div className="grid grid-cols-2 gap-16 mt-16 py-10 border-b border-slate-50 relative z-10">
-                 <div className="flex flex-col gap-3">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Authorized_Recipient</span>
-                    <span className="text-2xl font-black text-slate-950 uppercase italic tracking-tighter leading-tight">{clientInfo.name}</span>
-                    <span className="text-[13px] font-black text-slate-500 tracking-[0.2em]">IDENT_ID: {clientInfo.nip}</span>
+              <div className="grid grid-cols-2 gap-20 mt-20 py-12 border-b border-slate-100 relative z-10">
+                 <div className="flex flex-col gap-4">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Odbiorca Dokumentu</span>
+                    <span className="text-3xl font-extrabold tracking-tight leading-none uppercase italic">{clientInfo.name}</span>
+                    <span className="text-[14px] font-bold text-slate-500 tracking-wider font-mono">IDENT_ID: {clientInfo.nip}</span>
                  </div>
-                 <div className="bg-slate-950/2 p-8 flex flex-col justify-center border-l-8 border-primary">
-                    <p className="text-[11px] font-black text-slate-950 uppercase leading-relaxed tracking-wider italic">
-                       Projekcja techniczna przygotowana w systemie <span className="text-primary font-black italic">ELITE_CPQ</span>. 
-                       Wszystkie kwoty wyrażone w PLN_NET. Termin ważności blueprintu: 7 Dni Operacyjnych.
+                 <div className="bg-primary/5 p-10 flex flex-col justify-center border-l-8 border-primary rounded-r-2xl">
+                    <p className="text-[12px] font-bold uppercase leading-relaxed tracking-wider opacity-80 italic">
+                       Projekt wyceny wygenerowany automatycznie przez silnik <span className="text-primary font-black">ELITE_CPQ</span>. 
+                       Wszystkie kwoty wyrażone są w walucie PLN netto. Oferta wiążąca programowo przez 14 Dni Kalendarzowych.
                     </p>
                  </div>
               </div>
@@ -265,12 +269,12 @@ export default function QuotesGenerator() {
               {/* EXECUTION_GRID_TABLE */}
               <div className="mt-16 flex-1 relative z-10 overflow-hidden">
                  <Table>
-                    <TableHeader className="bg-slate-50">
+                    <TableHeader className="bg-slate-50 border-b-2 border-slate-900">
                        <TableRow className="hover:bg-transparent border-none">
-                          <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-5 pl-6 w-16">ID_N</TableHead>
-                          <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-5 px-6">SPECYFIKACJA_URZĄDZENIA</TableHead>
-                          <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-5 text-center w-24">QTY</TableHead>
-                          <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-5 text-right pr-6 w-40">VALUE_NET</TableHead>
+                          <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 pl-8 w-24">Nr_Indeks</TableHead>
+                          <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 px-6">Specyfikacja Techniczna / Urządzenie</TableHead>
+                          <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 text-center w-24">Ilość</TableHead>
+                          <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 text-right pr-8 w-44">Wartość Netto</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -333,82 +337,83 @@ export default function QuotesGenerator() {
               </div>
 
               {/* AUTH_SIGNATURES */}
-              <div className="mt-auto pt-24 grid grid-cols-2 gap-24 relative z-10">
-                 <div className="border-t-2 border-slate-950 pt-6 flex flex-col gap-2 items-center">
-                    <span className="text-[10px] font-black uppercase text-slate-300 tracking-[0.3em] italic">Authorized_Agent_ID</span>
-                    <span className="text-[13px] font-black text-slate-950 italic tracking-tighter">PLATFORMA_B2B_ENG_CORE</span>
+              <div className="mt-auto pt-32 grid grid-cols-2 gap-32 relative z-10">
+                 <div className="border-t-[3px] border-slate-200 pt-8 flex flex-col gap-3 items-center">
+                    <span className="text-[11px] font-bold uppercase text-slate-300 tracking-[0.4em]">Sporządził Agent</span>
+                    <span className="text-[14px] font-bold text-slate-900 tracking-tight uppercase">PLATFORMA CPQ CORE</span>
                  </div>
-                 <div className="border-t-2 border-slate-950 pt-6 flex flex-col gap-2 items-center">
-                    <span className="text-[10px] font-black uppercase text-slate-300 tracking-[0.3em] italic">Business_Partner_Stamp</span>
-                    <span className="text-[13px] font-black text-slate-950 italic tracking-tighter">___________________________</span>
+                 <div className="border-t-[3px] border-slate-200 pt-8 flex flex-col gap-3 items-center">
+                    <span className="text-[11px] font-bold uppercase text-slate-300 tracking-[0.4em]">Pieczęć Partnera</span>
+                    <span className="text-[14px] font-bold text-slate-300 tracking-widest uppercase">STAMP_ID_VERIFIED</span>
                  </div>
               </div>
 
            </div>
         </main>
 
-        {/* RIGHT_NODE: PIM INDICES SCANNER */}
+        {/* RIGHT_NODE: PIM INDICES SCANNER (FLUENT) */}
         <aside className="xl:col-span-3 space-y-8 print:hidden">
            
-           <div className="satel-card p-0 bg-white border-none overflow-hidden rounded-none shadow-sm flex flex-col h-[940px]">
-              <div className="p-8 bg-slate-50 border-b border-slate-100 flex flex-col gap-6">
+           <div className="fluent-card p-0 border-white/10 overflow-hidden shadow-2xl flex flex-col h-[1000px]">
+              <div className="p-8 bg-primary/5 dark:bg-white/5 border-b border-black/5 dark:border-white/10 flex flex-col gap-8">
                  <div className="flex items-center gap-4">
                     <Search className="w-5 h-5 text-primary" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] italic">PIM_Registry_Scanner</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Skaner Rejestru PIM</span>
                  </div>
                  <div className="relative group">
-                    <Terminal className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-200 group-focus-within:text-primary transition-colors" />
+                    <Terminal className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                     <input 
                        type="text" 
-                       placeholder="SEARCH_INDEX_OR_MODEL..."
+                       placeholder="Szukaj po modelu lub SKU..."
                        value={searchQuery}
                        onChange={(e) => setSearchQuery(e.target.value)}
-                       className="w-full h-12 bg-white border border-slate-100 pl-12 pr-4 text-[11px] font-black uppercase tracking-widest italic outline-none focus:border-primary transition-all shadow-sm"
+                       className="w-full h-14 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl pl-12 pr-4 text-[13px] font-medium outline-none focus:bg-white dark:focus:bg-white/10 focus:border-primary/20 transition-all shadow-inner"
                     />
                  </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3 divide-y divide-slate-50 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                  {loading ? (
-                    <div className="p-20 text-center flex flex-col items-center justify-center text-slate-200">
-                       <RefreshCcw className="w-10 h-10 mb-4 animate-spin" />
-                       <span className="text-[10px] font-black uppercase tracking-widest italic">LOADING_INDICES...</span>
+                    <div className="p-24 text-center flex flex-col items-center justify-center text-muted-foreground">
+                       <RefreshCcw className="w-12 h-12 mb-6 animate-spin opacity-20" />
+                       <span className="text-[11px] font-bold uppercase tracking-widest">Inicjalizacja...</span>
                     </div>
                  ) : (
                     products
-                      .filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
-                      .slice(0, 100)
-                      .map((p) => (
-                       <button 
-                         key={p.id} 
-                         onClick={() => addLineItem(p.id)}
-                         className="w-full p-5 bg-white hover:bg-slate-50 text-left transition-all active-press border-l-4 border-transparent hover:border-primary flex flex-col gap-2 group"
-                       >
-                          <div className="flex justify-between items-start">
-                             <span className="text-[13px] font-black text-slate-950 uppercase italic leading-none group-hover:text-primary transition-colors">{p.name}</span>
-                             <Plus className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
-                          <div className="flex justify-between items-baseline mt-2">
-                             <span className="text-[9px] font-black text-slate-300 font-mono tracking-widest leading-none">{p.sku}</span>
-                             <div className="flex flex-col items-end">
-                                <span className="text-[13px] font-black text-slate-950 tabular-nums italic leading-none">{p.price.toFixed(2)}</span>
-                                <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">PLN_NET</span>
-                             </div>
-                          </div>
-                       </button>
-                    ))
+                       .filter(p => !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+                       .slice(0, 100)
+                       .map((p) => (
+                        <button 
+                          key={p.id} 
+                          onClick={() => addLineItem(p.id)}
+                          className="w-full p-6 bg-white dark:bg-white/5 hover:bg-primary/5 rounded-2xl text-left transition-all active:scale-[0.98] border border-black/5 dark:border-white/5 hover:border-primary/20 group relative overflow-hidden backdrop-blur-sm"
+                        >
+                           <div className="flex justify-between items-start relative z-10">
+                              <span className="text-[14px] font-extrabold text-foreground leading-tight group-hover:text-primary transition-colors pr-8 uppercase italic">{p.name}</span>
+                              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
+                                 <Plus className="w-5 h-5" />
+                              </div>
+                           </div>
+                           <div className="flex justify-between items-end mt-4 relative z-10">
+                              <Badge variant="outline" className="text-[9px] font-mono font-bold tracking-widest border-black/5 dark:border-white/10 px-2 py-0.5 opacity-60">{p.sku}</Badge>
+                              <div className="flex flex-col items-end">
+                                 <span className="text-[15px] font-extrabold text-foreground tabular-nums leading-none italic">{p.price.toFixed(2)}</span>
+                                 <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mt-1">PLN Netto</span>
+                              </div>
+                           </div>
+                        </button>
+                     ))
                  )}
               </div>
               
-              <div className="p-5 bg-slate-950 text-white flex items-center justify-between">
+              <div className="p-6 bg-primary text-white flex items-center justify-between shadow-2xl">
                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                    <span className="text-[9px] font-black uppercase tracking-[0.4em] italic">Database_PIM: ONLINE</span>
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-glow" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Database: Online</span>
                  </div>
-                 <Layers className="w-4 h-4 text-primary" />
+                 <Globe className="w-5 h-5 opacity-60" />
               </div>
            </div>
-
         </aside>
 
       </div>
@@ -416,13 +421,13 @@ export default function QuotesGenerator() {
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page { size: A4; margin: 0; }
-          body { background: white !important; }
+          body { background: white !important; color: black !important; }
           header, nav, .print\\:hidden, aside { display: none !important; }
-          .satel-card { border: none !important; box-shadow: none !important; }
+          .fluent-card { border: none !important; box-shadow: none !important; background: transparent !important; }
           main { width: 100% !important; margin: 0 !important; border: none !important; }
-          .print\\:block { display: block !important; }
+          main > div { shadow: none !important; border: none !important; padding: 0 !important; }
           .mx-auto { margin: 0 !important; }
-          .max-w-screen-xl { max-width: 100% !important; }
+          .max-w-[1920px] { max-width: 100% !important; }
         }
       `}} />
     </div>

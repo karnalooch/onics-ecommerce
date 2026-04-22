@@ -63,107 +63,120 @@ export default function LoginPage() {
   if (!mounted) return null;
 
   return (
-    <div className="flex h-screen w-full bg-white select-none font-sans overflow-hidden no-blur">
+    <div className="flex h-screen w-full bg-background select-none font-sans overflow-hidden">
       
-      {/* 1. BRANDING PANEL (NAVY BLOCK - SATEL STYLE) */}
-      <div className="hidden lg:flex w-[45%] bg-gradient-to-b from-[#1e2335] to-[#cbd5e1] text-white relative items-center justify-center overflow-hidden">
-        {/* Technical Grid Overlay */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ 
-            backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)',
+      {/* 1. BRANDING PANEL (FLUENT MICA GRADIENT) */}
+      <div className="hidden lg:flex w-[48%] bg-gradient-to-br from-[#1e2335] via-[#2a2f45] to-[#4a5568] text-white relative items-center justify-center overflow-hidden border-r border-white/5">
+        {/* Modern Interactive Grid Overlay */}
+        <div className="absolute inset-0 opacity-[0.08] pointer-events-none" style={{ 
+            backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)',
             backgroundSize: '40px 40px'
         }} />
         
-        <div className="relative z-10 flex flex-col px-24 w-full">
-           <div className="w-16 h-16 bg-primary text-white flex items-center justify-center mb-10 rounded-none shadow-2xl">
-              <ShieldCheck className="w-8 h-8" />
-           </div>
+        {/* Animated Background Glows */}
+        <div className="absolute top-[-10%] right-[-10%] w-[60%] h-[60%] bg-primary/20 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-400/10 blur-[100px] rounded-full" />
+
+        <div className="relative z-10 flex flex-col px-24 w-full max-w-[800px]">
+           <motion.div 
+             initial={{ opacity: 0, scale: 0.8 }}
+             animate={{ opacity: 1, scale: 1 }}
+             className="w-20 h-20 bg-primary text-white flex items-center justify-center mb-12 rounded-3xl shadow-[0_20px_50px_rgba(0,120,212,0.4)]"
+           >
+              <ShieldCheck className="w-10 h-10 shadow-glow" />
+           </motion.div>
            
-           <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                 <span className="text-[11px] font-black uppercase tracking-[0.5em] text-primary italic">Secure_Auth_V4</span>
-                 <div className="h-px flex-1 bg-slate-800" />
+           <div className="space-y-6">
+              <div className="flex items-center gap-5">
+                 <span className="text-[12px] font-bold uppercase tracking-[0.3em] text-primary">Security_Auth_v9</span>
+                 <div className="h-[1px] flex-1 bg-white/10" />
               </div>
-              <h1 className="text-6xl font-black text-white tracking-tighter uppercase italic leading-none">
-                 PLATFORMA<br />ELITE_B2B
+              <h1 className="text-7xl font-extrabold text-white tracking-tight leading-[0.9]">
+                 B2B HUB<br />
+                 <span className="text-white/40">CELTRONICS.</span>
               </h1>
            </div>
            
-           <p className="text-slate-400 text-sm font-bold max-w-md leading-relaxed mt-10 uppercase tracking-widest italic opacity-60">
-              Terminal dostępowy sektora security. <br/>
-              Weryfikacja tożsamości instalatora: AKTYWNA.
+           <p className="text-slate-300 text-lg font-medium max-w-md leading-relaxed mt-12 opacity-80">
+              Autoryzowany dostęp do ekosystemu instalatorskiego. <br/>
+              Weryfikacja tożsamości partnera: AKTYWNA.
            </p>
 
-           <div className="mt-20 grid grid-cols-2 gap-8 border-t border-slate-900 pt-10">
-              <div className="flex flex-col gap-1">
-                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Węzeł_Danych</span>
-                 <span className="text-[11px] font-black text-white uppercase italic">WF-MAG_SYNC_OK</span>
+           <div className="mt-20 grid grid-cols-2 gap-12 border-t border-white/10 pt-12">
+              <div className="flex flex-col gap-2">
+                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Węzeł Operacyjny</span>
+                 <span className="text-[13px] font-bold text-white uppercase italic tracking-tight">Sync: Stable</span>
               </div>
-              <div className="flex flex-col gap-1">
-                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Szyfrowanie</span>
-                 <span className="text-[11px] font-black text-white uppercase italic">AES_256_GCM</span>
+              <div className="flex flex-col gap-2">
+                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Technologia</span>
+                 <span className="text-[13px] font-bold text-white uppercase italic tracking-tight">Fluent Mica</span>
               </div>
            </div>
         </div>
 
         {/* Operational Watermark */}
-        <div className="absolute bottom-12 left-24 flex items-center gap-4 text-[10px] font-black text-white/10 tracking-[0.4em] uppercase leading-none italic">
-           <Activity className="w-4 h-4" />
-           CELTRONICS_CORE_ENGINE_2026
+        <div className="absolute bottom-12 left-24 flex items-center gap-4 text-[11px] font-bold text-white/20 tracking-[0.4em] uppercase italic">
+           <Activity className="w-5 h-5" />
+           CORE_ENGINE_2026_V9
         </div>
       </div>
 
-      {/* 2. OPERATIONAL PANEL (FORM - PURE WHITE) */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-white relative">
+      {/* 2. OPERATIONAL PANEL (FORM - PURE WHITE CANVAS) */}
+      <div className="flex-1 flex items-center justify-center p-12 bg-white dark:bg-[#0a0a0a] relative">
         
         <Link 
           href="/" 
-          className="absolute top-12 left-12 flex items-center gap-3 text-[10px] font-black text-slate-300 hover:text-slate-950 uppercase tracking-widest transition-all active-press"
+          className="absolute top-12 right-12 flex items-center gap-3 text-[11px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-widest transition-all active:scale-95 px-6 py-2 bg-black/5 dark:bg-white/5 rounded-full"
         >
-          <ChevronLeft className="w-4 h-4" /> REZYGNACJA
+          <ChevronLeft className="w-4 h-4" /> POWRÓT
         </Link>
         
-        <div className="w-full max-w-[420px] space-y-12">
+        <div className="w-full max-w-[440px] space-y-16">
           
-          <div className="space-y-3">
-            <h2 className="text-4xl font-black text-slate-950 tracking-tighter uppercase italic">Logowanie_Do_Węzła</h2>
+          <div className="space-y-4">
+            <h2 className="text-5xl font-extrabold text-foreground tracking-tight">Zaloguj się</h2>
             <div className="flex items-center gap-3">
-               <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Oczekiwanie na poświadczenia B2B...</p>
+               <div className="w-2.5 h-2.5 bg-primary rounded-full animate-pulse shadow-glow" />
+               <p className="text-[12px] font-bold text-muted-foreground uppercase tracking-widest">Oczekiwanie na poświadczenia B2B...</p>
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-600 text-white text-[10px] p-4 font-black uppercase tracking-widest border border-red-700 animate-in shake duration-500 flex items-center gap-4">
-              <ShieldAlert className="w-5 h-5 shrink-0" />
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-red-500/10 text-red-500 text-[11px] p-6 font-bold uppercase tracking-widest border border-red-500/20 rounded-2xl flex items-center gap-5"
+            >
+              <ShieldAlert className="w-6 h-6 shrink-0" />
               {error}
-            </div>
+            </motion.div>
           )}
 
-          <form className="space-y-8" onSubmit={(e) => handleSubmit(e)}>
-            <div className="space-y-2">
-              <label htmlFor="login-email" className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 italic">
-                 Identyfikator_Konta
+          <form className="space-y-10" onSubmit={(e) => handleSubmit(e)}>
+            <div className="space-y-3">
+              <label htmlFor="login-email" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                 Identyfikator Konta
               </label>
-              <div className="relative">
-                 <Database className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-200" />
+              <div className="relative group">
+                 <Database className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                  <input 
                    id="login-email" 
                    type="email" 
                    value={email} 
                    onChange={e => setEmail(e.target.value)} 
                    required 
-                   placeholder="ADMIN_PROMPT@CELTRONICS.PL" 
-                   className="w-full h-14 pl-12 bg-blue-50/60 border border-transparent text-[12px] font-black text-slate-950 uppercase tracking-widest outline-none focus:border-primary focus:bg-white transition-all shadow-sm"
+                   placeholder="E-MAIL PARTNERA" 
+                   className="w-full h-16 pl-14 bg-blue-50/50 dark:bg-white/5 border border-transparent text-[14px] font-bold text-foreground uppercase outline-none focus:border-primary/20 focus:bg-white dark:focus:bg-white/10 transition-all rounded-2xl shadow-inner"
                  />
               </div>
             </div>
             
-            <div className="space-y-2">
-              <label htmlFor="login-password" className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1 italic">
-                 Klucz_Dostępowy
+            <div className="space-y-3">
+              <label htmlFor="login-password" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                 Klucz Dostępowy
               </label>
-              <div className="relative">
-                 <Terminal className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-200" />
+              <div className="relative group">
+                 <Terminal className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
                  <input 
                    id="login-password" 
                    type="password" 
@@ -171,7 +184,7 @@ export default function LoginPage() {
                    onChange={e => setPassword(e.target.value)} 
                    required 
                    placeholder="*************" 
-                   className="w-full h-14 pl-12 bg-blue-50/60 border border-transparent text-[12px] font-black text-slate-950 uppercase tracking-widest outline-none focus:border-primary focus:bg-white transition-all shadow-sm"
+                   className="w-full h-16 pl-14 bg-blue-50/50 dark:bg-white/5 border border-transparent text-[14px] font-bold text-foreground outline-none focus:border-primary/20 focus:bg-white dark:focus:bg-white/10 transition-all rounded-2xl shadow-inner"
                  />
               </div>
             </div>
@@ -179,45 +192,45 @@ export default function LoginPage() {
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full h-14 bg-primary text-white text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 active-press shadow-lg shadow-blue-500/40 disabled:opacity-50 mt-4 italic transition-all hover:brightness-110"
+              className="w-full h-16 bg-primary text-white text-[12px] font-extrabold uppercase tracking-widest flex items-center justify-center gap-4 active:scale-95 shadow-[0_20px_40px_rgba(0,120,212,0.3)] disabled:opacity-50 transition-all hover:brightness-110 rounded-2xl"
             >
               {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-white" />
+                <Loader2 className="h-6 w-6 animate-spin text-white" />
               ) : (
-                <KeyRound className="h-5 w-5" />
+                <KeyRound className="h-6 w-6 shadow-glow" />
               )}
-              {loading ? "WERYFIKACJA_IQ..." : "AUTORYZUJ_DOSTĘP"}
+              {loading ? "WERYFIKACJA..." : "AUTORYZUJ_DOSTĘP"}
             </button>
           </form>
 
           {/* VERIFICATION NODE INFO (DEMO HUB) */}
-          <div className="pt-10 border-t border-slate-100">
-             <div className="bg-slate-50 p-8 border border-slate-100 space-y-6">
+          <div className="pt-12 border-t border-black/5 dark:border-white/5">
+             <div className="bg-primary/5 p-8 rounded-[24px] space-y-8 border border-primary/10">
                 <div className="flex items-center gap-3">
-                   <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.3em] italic">WĘZEŁ_DEMO_LOGS:</h3>
+                   <h3 className="text-[11px] font-extrabold text-primary uppercase tracking-widest">Dostęp Deweloperski:</h3>
                 </div>
-                <div className="grid grid-cols-1 gap-6">
-                   <div className="flex flex-col gap-1">
-                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Admin_Identity</span>
-                      <code className="text-[11px] font-black text-slate-950 bg-white px-2 py-1 border border-slate-100">admin@celtronics.pl</code>
+                <div className="grid grid-cols-1 gap-8">
+                   <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Identyfikator Testowy</span>
+                      <code className="text-[13px] font-bold text-foreground bg-white dark:bg-white/5 px-4 py-2 rounded-xl border border-black/5 dark:border-white/10">admin@celtronics.pl</code>
                    </div>
-                   <div className="flex flex-col gap-1">
-                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Master_Pass</span>
-                      <code className="text-[11px] font-black text-primary bg-white px-2 py-1 border border-primary/20">test</code>
+                   <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Klucz Testowy</span>
+                      <code className="text-[13px] font-bold text-primary bg-white dark:bg-white/5 px-4 py-2 rounded-xl border border-primary/20">test</code>
                    </div>
                 </div>
              </div>
           </div>
 
-          <div className="text-center space-y-4">
-             <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">
-               Nie posiadasz autoryzacji B2B?
+          <div className="text-center space-y-6">
+             <p className="text-[11px] text-muted-foreground font-bold uppercase tracking-widest leading-none">
+               Brak autoryzacji w systemie?
              </p>
              <Link 
                href="/rejestracja" 
-               className="inline-block h-10 px-8 border-2 border-slate-950 text-slate-950 font-black text-[9px] uppercase tracking-widest hover:bg-slate-950 hover:text-white transition-all active-press italic"
+               className="inline-block h-12 px-10 border border-foreground text-foreground font-bold text-[11px] uppercase tracking-widest hover:bg-foreground hover:text-background transition-all active:scale-95 rounded-2xl"
              >
-               REJESTRACJA_NOWEGO_WĘZŁA
+               REJESTRACJA NOWEGO WĘZŁA
              </Link>
           </div>
         </div>

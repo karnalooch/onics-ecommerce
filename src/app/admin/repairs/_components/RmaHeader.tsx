@@ -8,26 +8,26 @@ interface IRmaHeaderProps {
 
 export function RmaHeader({ onAddClick }: IRmaHeaderProps) {
   return (
-    <div className="flex flex-col xl:flex-row justify-between items-end xl:items-center gap-6 border-b-2 border-slate-950 pb-8 no-blur">
+    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 pb-6 border-b border-black/5 dark:border-white/10">
       <div className="flex items-center gap-6">
-        <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center shadow-xl">
-          <ShieldAlert className="w-7 h-7 text-primary" />
+        <div className="w-16 h-16 bg-primary text-white flex items-center justify-center rounded-2xl shadow-2xl shadow-primary/30">
+          <ShieldAlert className="w-8 h-8" />
         </div>
         <div className="flex flex-col">
           <div className="flex items-center gap-3">
-             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic leading-none">SERVICE_MODULE</span>
-             <div className="w-8 h-[1px] bg-slate-200" />
-             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 leading-none">RMA_Diagnostic_v4</span>
+             <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Service Hub (RMA)</span>
+             <span className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
+             <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Diagnostic_v9</span>
           </div>
-          <h1 className="text-4xl font-black text-slate-950 uppercase tracking-tighter italic leading-none mt-1">Obsługa Serwisowa</h1>
+          <h1 className="text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mt-1">Obsługa Serwisowa</h1>
         </div>
       </div>
 
       <button 
         onClick={onAddClick}
-        className="h-12 px-8 bg-slate-950 text-white font-black uppercase text-[11px] tracking-widest flex items-center gap-4 transition-all hover:bg-primary active-press italic shadow-xl shadow-primary/10"
+        className="h-14 px-10 bg-primary text-white font-bold uppercase text-[11px] tracking-widest flex items-center gap-4 transition-all hover:brightness-110 active:scale-95 shadow-xl shadow-primary/20 rounded-xl"
       >
-        <Plus className="w-4 h-4 text-primary" /> DODAJ_ZGŁOSZENIE_RMA
+        <Plus className="w-5 h-5 shadow-glow" /> NOWE ZGŁOSZENIE RMA
       </button>
     </div>
   );

@@ -12,13 +12,13 @@ export function RmaTable({ rmas, onUpdate }: IRmaTableProps) {
   return (
     <div className="w-full overflow-x-auto">
       <Table className="border-collapse">
-        <TableHeader className="bg-slate-50 border-y border-slate-100">
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pl-6 w-16 italic">ID</TableHead>
-            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 italic">Specyfikacja_Sprzętu</TableHead>
-            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 italic">Partner_B2B</TableHead>
-            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 italic">Status_Naprawy</TableHead>
-            <TableHead className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pr-6 text-right italic">Działania</TableHead>
+        <TableHeader className="bg-primary/5 border-b border-black/5 dark:border-white/10">
+          <TableRow className="hover:bg-transparent border-none">
+            <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest py-6 pl-8 w-24">Log_ID</TableHead>
+            <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest py-6 px-6">Specyfikacja Urządzenia</TableHead>
+            <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest py-6 px-6">Partner B2B</TableHead>
+            <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest py-6 px-6">Status Naprawy</TableHead>
+            <TableHead className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest py-6 pr-8 text-right">Zarządzanie</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
