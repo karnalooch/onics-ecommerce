@@ -1,67 +1,91 @@
-import { NextResponse } from 'next/server';
-import { parseExcel, parsePDFWithAI, getKnowledge, saveKnowledge } from '@/lib/knowledge/parser';
-import fs from 'fs';
-import path from 'path';
+import { NextResponse } from "next/server"
+import fs from "fs"
+import {
+  getKnowledge,
+  parseExcel,
+  parsePDFWithAI,
+  saveKnowledge,
+} from "@/lib/knowledge/parser"
+import { authorizeAPI } from "@/lib/authUtils"
+import {
+  KNOWLEDGE_UPLOAD_ROOT,
+  MAX_KNOWLEDGE_UPLOAD_BYTES,
+  validateKnowledgeFilename,
+} from "@/lib/knowledge/files"
+
+export const runtime = "nodejs"
 
 export async function POST(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
+
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
-    const transientApiKey = formData.get('apiKey') as string; // Klucz podany tylko do tej sesji
-    
-    if (!file) {
-      return NextResponse.json({ error: "Nie wybrano pliku" }, { status: 400 });
+    const formData = await req.formData()
+    const file = formData.get("file")
+    const transientApiKey = String(formData.get("apiKey") || "").trim()
+
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "Nie wybrano pliku." }, { status: 400 })
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filename = file.name;
-    const uploadPath = path.join(process.cwd(), 'public/uploads/catalogs', filename);
-    
-    // 1. Zapisujemy plik fizycznie do repozytorium (zawsze)
-    fs.writeFileSync(uploadPath, buffer);
-
-    let addedCount = 0;
-    let learned = false;
-
-    // 2. Analizujemy plik i wyciągamy wiedzę (V7 Heuristics)
-    if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-      const result = await parseExcel(buffer, filename, undefined, { 
-        apiKey: transientApiKey || '', 
-        modelId: 'gemini-1.5-flash' 
-      });
-      addedCount = result.count;
-      learned = addedCount > 0;
-    } else if (filename.toLowerCase().endsWith('.pdf') && transientApiKey) {
-      const result = await parsePDFWithAI(buffer, filename, transientApiKey);
-      addedCount = result.count;
-      learned = true;
+    if (file.size <= 0 || file.size > MAX_KNOWLEDGE_UPLOAD_BYTES) {
+      return NextResponse.json(
+        { error: "Plik jest pusty albo przekracza limit 25 MB." },
+        { status: 413 }
+      )
     }
 
-    // 3. Aktualizujemy listę wgranych plików w metadanych
-    const currentStore = await getKnowledge();
-    
-    if (!currentStore.sources.includes(filename)) {
-      currentStore.sources.push(filename);
-    }
-    
-    // Jeśli udało się coś wyciągnąć, oznaczamy jako przetworzony
-    if (learned && !currentStore.processedSources.includes(filename)) {
-      currentStore.processedSources.push(filename);
-    }
-    
-    currentStore.lastUpdated = new Date().toISOString();
-    await saveKnowledge(currentStore);
+    const { filename, extension, absolutePath } = validateKnowledgeFilename(file.name)
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-    return NextResponse.json({ 
-      success: true, 
-      count: addedCount,
-      learned: learned,
-      message: learned 
-        ? `Plik ${filename} przetworzony pomyślnie (${addedCount} modeli).`
-        : `Plik ${filename} zapisany w archiwum (analiza zostanie wykonana w kroku uczenia).`
-    });
-  } catch (err: any) {
-    console.error("Upload error:", err);
-    return NextResponse.json({ error: err.message || "Błąd serwera" }, { status: 500 });
+    fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
+    fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
+
+    let addedCount = 0
+    let learned = false
+
+    try {
+      if ([".xlsx", ".xls", ".xlsm"].includes(extension)) {
+        const result = await parseExcel(buffer, filename, undefined, {
+          apiKey: transientApiKey,
+          modelId: "gemini-1.5-flash",
+        })
+        addedCount = result.count
+        learned = addedCount > 0
+      } else if (extension === ".pdf" && transientApiKey) {
+        const result = await parsePDFWithAI(buffer, filename, transientApiKey)
+        addedCount = result.count
+        learned = addedCount > 0
+      }
+
+      const store = await getKnowledge()
+      if (!store.sources.includes(filename)) store.sources.push(filename)
+      if (learned && !store.processedSources.includes(filename)) {
+        store.processedSources.push(filename)
+      }
+      store.lastUpdated = new Date().toISOString()
+      await saveKnowledge(store)
+    } catch (processingError) {
+      fs.rmSync(absolutePath, { force: true })
+      throw processingError
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        count: addedCount,
+        learned,
+        filename,
+        message: learned
+          ? `Plik ${filename} został zapisany i przetworzony.`
+          : `Plik ${filename} został bezpiecznie zapisany do późniejszej analizy.`,
+      },
+      { status: 201 }
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Błąd serwera."
+    const status = /EEXIST/.test(message) ? 409 : /nazwa pliku|format/.test(message) ? 400 : 500
+    console.error("Knowledge upload error:", error)
+    return NextResponse.json({ error: message }, { status })
   }
 }

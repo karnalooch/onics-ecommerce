@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { GEMINI_PRICING, findBestRecommendation, sortModelsByRecommendation } from '@/lib/knowledge/aiPricing';
+import { authorizeAPI } from "@/lib/authUtils";
 
 export async function POST(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) return authCheck.response;
+
   try {
     const { apiKey, isPDF } = await req.json();
 

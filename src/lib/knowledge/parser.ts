@@ -37,10 +37,16 @@ export async function getKnowledge(): Promise<KnowledgeStore> {
       }
     });
 
-    return {
-      lastUpdated: new Date().toISOString(),
+    const meta = db.knowledgeMeta || {
       sources: [],
-      processedSources: [], 
+      processedSources: [],
+      lastUpdated: null
+    };
+
+    return {
+      lastUpdated: meta.lastUpdated || new Date().toISOString(),
+      sources: Array.isArray(meta.sources) ? meta.sources : [],
+      processedSources: Array.isArray(meta.processedSources) ? meta.processedSources : [],
       knowledge: knowledgeMap
     };
   } catch (e) {
@@ -99,6 +105,12 @@ function resolveCategoryIds(categoryName: string | undefined, subcategoryName: s
 
 export async function saveKnowledge(data: KnowledgeStore) {
   const db = initializeMockData();
+
+  (global as any).mockKnowledgeMetaStore = {
+    sources: Array.from(new Set(data.sources || [])),
+    processedSources: Array.from(new Set(data.processedSources || [])),
+    lastUpdated: data.lastUpdated || new Date().toISOString()
+  };
   
   // Merge knowledge back into products
   Object.entries(data.knowledge).forEach(([sku, entry]) => {
