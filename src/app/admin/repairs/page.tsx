@@ -1,5 +1,5 @@
 // src/app/admin/repairs/page.tsx
-import { initializeMockData } from "@/store/serverStore";
+import { readServerData } from "@/store/serverStore";
 import { RepairsDashboardClient } from "./RepairsDashboardClient";
 
 /**
@@ -9,7 +9,7 @@ import { RepairsDashboardClient } from "./RepairsDashboardClient";
  */
 export default async function AdminRmaPage() {
   // 1. Fetch data directly on the server (RSC)
-  const { repairs } = initializeMockData();
+  const { repairs } = await readServerData();
   
   // 2. Ensure data structure compatibility
   // Note: Local storage in node global might have different field names from manual UI entries
