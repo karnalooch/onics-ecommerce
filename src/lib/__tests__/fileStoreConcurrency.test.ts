@@ -62,6 +62,19 @@ describe("file store concurrency", () => {
     ])
   })
 
+  it("does not overwrite the database when the current file is malformed", async () => {
+    const dbPath = process.env.CELTRONICS_DB_PATH!
+    fs.writeFileSync(dbPath, "{ definitely-not-json", "utf-8")
+
+    await expect(
+      mutateMockData((db) => {
+        db.orders.push({ id: "ORD-MUST-NOT-PERSIST" })
+      })
+    ).rejects.toThrow("Nie udało się bezpiecznie odczytać bazy danych przed zapisem.")
+
+    expect(fs.readFileSync(dbPath, "utf-8")).toBe("{ definitely-not-json")
+  })
+
   it("does not persist a mutation when the transaction throws", async () => {
     await expect(
       mutateMockData((db) => {
