@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData, readServerData } from "@/store/serverStore"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher"
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nieprawidłowy produkt." }, { status: 400 })
     }
 
-    const { products } = initializeMockData()
+    const { products } = await readServerData()
     const product = (products as ProductRecord[]).find(
       (entry) => String(entry.id) === parsed.data.productId
     )
