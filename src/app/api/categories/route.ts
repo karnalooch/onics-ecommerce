@@ -1,86 +1,152 @@
-import { NextResponse } from 'next/server';
-import { initializeMockData, saveMockData } from '@/store/serverStore';
-import { authorizeAPI } from '@/lib/authUtils';
+import { NextResponse } from "next/server"
+import { z } from "zod"
+import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { authorizeAPI } from "@/lib/authUtils"
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic"
+
+type Subcategory = { id: string; name: string }
+type Category = {
+  id: string
+  name: string
+  iconName?: string
+  subcategories: Subcategory[]
+}
+
+const SubcategoryInput = z.union([
+  z.string().trim().min(1).max(120),
+  z.object({
+    id: z.string().trim().optional(),
+    name: z.string().trim().min(1).max(120),
+  }),
+])
+
+const CategoryInput = z.object({
+  id: z.string().trim().optional(),
+  name: z.string().trim().min(1).max(120),
+  iconName: z.string().trim().max(80).optional(),
+  subcategories: z.array(SubcategoryInput).max(500).optional(),
+})
+
+function normalizeSubcategories(
+  values: z.infer<typeof SubcategoryInput>[] = []
+): Subcategory[] {
+  return values.map((value) =>
+    typeof value === "string"
+      ? { id: `s_${crypto.randomUUID()}`, name: value }
+      : {
+          id: value.id || `s_${crypto.randomUUID()}`,
+          name: value.name,
+        }
+  )
+}
 
 export async function GET() {
-  const { categories } = initializeMockData();
-  return NextResponse.json(categories);
+  const { categories } = initializeMockData()
+  return NextResponse.json(categories)
 }
 
 export async function POST(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN"]);
-  if (!authCheck.authorized) return authCheck.response;
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
-  const body = await req.json();
-  const { categories } = initializeMockData();
-  const newCat = {
-    id: `c${Date.now()}`,
-    name: body.name,
-    iconName: body.iconName || "Folder",
-    subcategories: body.subcategories || []
-  };
-  categories.push(newCat);
-  if (!saveMockData()) {
-    return NextResponse.json({ error: "Nie udało się zapisać kategorii." }, { status: 500 });
+  const parsed = CategoryInput.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || "Nieprawidłowa kategoria." },
+      { status: 400 }
+    )
   }
-  return NextResponse.json(newCat, { status: 201 });
+
+  const { categories } = initializeMockData()
+  const categoryStore = categories as Category[]
+  const newCategory: Category = {
+    id: `c_${crypto.randomUUID()}`,
+    name: parsed.data.name.toUpperCase(),
+    iconName: parsed.data.iconName || "Folder",
+    subcategories: normalizeSubcategories(parsed.data.subcategories),
+  }
+
+  categoryStore.push(newCategory)
+  if (!saveMockData()) {
+    return NextResponse.json(
+      { error: "Nie udało się zapisać kategorii." },
+      { status: 500 }
+    )
+  }
+  return NextResponse.json(newCategory, { status: 201 })
 }
 
 export async function PUT(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN"]);
-  if (!authCheck.authorized) return authCheck.response;
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
-  const body = await req.json();
-  const { categories } = initializeMockData();
-  
-  const idx = categories.findIndex((c: any) => c.id === body.id);
-  if (idx !== -1) {
-    // Sanitizacja podkategorii - upewniamy się, że zawsze są obiektami z ID
-    if (body.subcategories && Array.isArray(body.subcategories)) {
-        body.subcategories = body.subcategories.map((sub: any) => {
-            if (typeof sub === 'string') {
-                return {
-                    id: `s${Math.random().toString(36).substr(2, 9)}`,
-                    name: sub.trim()
-                };
-            }
-            return {
-                id: sub.id || `s${Math.random().toString(36).substr(2, 9)}`,
-                name: sub.name?.trim() || "Bez nazwy"
-            };
-        });
-    }
+  const parsed = CategoryInput.extend({
+    id: z.string().trim().min(1),
+  }).safeParse(await req.json())
 
-    // Aktualizacja w miejscu (reference update)
-    const updatedCategory = { ...categories[idx], ...body };
-    categories[idx] = updatedCategory;
-    
-    console.log(`[API] Zaktualizowano kategorię ${body.id}. Liczba subkategorii: ${updatedCategory.subcategories?.length}`);
-    if (!saveMockData()) {
-      return NextResponse.json({ error: "Nie udało się zapisać kategorii." }, { status: 500 });
-    }
-    return NextResponse.json(updatedCategory);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || "Nieprawidłowa kategoria." },
+      { status: 400 }
+    )
   }
-  return NextResponse.json({error: "Not Found"}, {status: 404});
+
+  const { categories } = initializeMockData()
+  const categoryStore = categories as Category[]
+  const index = categoryStore.findIndex(
+    (category) => category.id === parsed.data.id
+  )
+
+  if (index === -1) {
+    return NextResponse.json({ error: "Nie znaleziono kategorii." }, { status: 404 })
+  }
+
+  const current = categoryStore[index]
+  const updated: Category = {
+    ...current,
+    name: parsed.data.name.toUpperCase(),
+    iconName: parsed.data.iconName || current.iconName || "Folder",
+    subcategories: parsed.data.subcategories
+      ? normalizeSubcategories(parsed.data.subcategories)
+      : current.subcategories,
+  }
+
+  categoryStore[index] = updated
+  if (!saveMockData()) {
+    return NextResponse.json(
+      { error: "Nie udało się zapisać kategorii." },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json(updated)
 }
 
 export async function DELETE(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN"]);
-  if (!authCheck.authorized) return authCheck.response;
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  const { categories } = initializeMockData();
-  
-  const idx = categories.findIndex((c: any) => c.id === id);
-  if (idx !== -1) {
-    categories.splice(idx, 1);
-    if (!saveMockData()) {
-      return NextResponse.json({ error: "Nie udało się zapisać zmian." }, { status: 500 });
-    }
-    return NextResponse.json({ success: true });
+  const id = new URL(req.url).searchParams.get("id")
+  if (!id) {
+    return NextResponse.json({ error: "Brak ID kategorii." }, { status: 400 })
   }
-  return NextResponse.json({error: "Not Found"}, {status: 404});
+
+  const { categories } = initializeMockData()
+  const categoryStore = categories as Category[]
+  const index = categoryStore.findIndex((category) => category.id === id)
+
+  if (index === -1) {
+    return NextResponse.json({ error: "Nie znaleziono kategorii." }, { status: 404 })
+  }
+
+  categoryStore.splice(index, 1)
+  if (!saveMockData()) {
+    return NextResponse.json(
+      { error: "Nie udało się zapisać zmian." },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json({ success: true })
 }

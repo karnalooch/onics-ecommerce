@@ -1,39 +1,60 @@
-import { NextResponse } from "next/server";
-import { authorizeAPI } from "@/lib/authUtils";
-import { initializeMockData, saveMockData } from "@/store/serverStore";
+import { NextResponse } from "next/server"
+import { z } from "zod"
+import { authorizeAPI } from "@/lib/authUtils"
+import { initializeMockData, saveMockData } from "@/store/serverStore"
+
+type DiscountUser = {
+  id: string
+  discount?: number
+  tierName?: string
+  [key: string]: unknown
+}
+
+const DiscountSchema = z.object({
+  id: z.string().min(1),
+  discount: z.coerce.number().min(0).max(100),
+  tierName: z.string().trim().min(1).max(40).default("PARTNER"),
+})
 
 export async function PUT(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN"]);
-  if (!authCheck.authorized) return authCheck.response;
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
   try {
-    const { id, discount, tierName } = await req.json();
-    if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 });
-
-    const numDiscount = Number(discount);
-    if (isNaN(numDiscount) || numDiscount < 0 || numDiscount > 100) {
-      return NextResponse.json({ error: "Nieprawidłowa wartość rabatu (0-100)" }, { status: 400 });
+    const parsed = DiscountSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Nieprawidłowy rabat." },
+        { status: 400 }
+      )
     }
 
-    const cleanTierStr = String(tierName || "PARTNER").trim().toUpperCase();
-
-    const { users } = initializeMockData();
-    const userIndex = users.findIndex((u: any) => u.id === id);
+    const { users } = initializeMockData()
+    const userStore = users as DiscountUser[]
+    const userIndex = userStore.findIndex(
+      (user) => user.id === parsed.data.id
+    )
 
     if (userIndex === -1) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Nie znaleziono użytkownika." },
+        { status: 404 }
+      )
     }
 
-    // Update in mock store
-    users[userIndex].discount = numDiscount;
-    users[userIndex].tierName = cleanTierStr;
+    userStore[userIndex].discount = parsed.data.discount
+    userStore[userIndex].tierName = parsed.data.tierName.toUpperCase()
 
     if (!saveMockData()) {
-      return NextResponse.json({ error: "Nie udało się zapisać rabatu." }, { status: 500 });
+      return NextResponse.json(
+        { error: "Nie udało się zapisać rabatu." },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json({ success: true, user: users[userIndex] });
-  } catch (e) {
-    return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
+    return NextResponse.json({ success: true, user: userStore[userIndex] })
+  } catch (error) {
+    console.error("Discount update error:", error)
+    return NextResponse.json({ error: "Błąd serwera." }, { status: 500 })
   }
 }

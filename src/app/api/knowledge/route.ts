@@ -3,6 +3,10 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { getKnowledge, saveKnowledge } from "@/lib/knowledge/parser"
 import { initializeMockData, saveMockData } from "@/store/serverStore"
 
+type VirtualProduct = {
+  isVirtual?: boolean
+}
+
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
@@ -42,17 +46,17 @@ export async function DELETE() {
 
   try {
     const { products } = initializeMockData()
-    const retainedProducts = products.filter(
-      (product: { isVirtual?: boolean }) => !product.isVirtual
-    )
+    const productStore = products as VirtualProduct[]
 
-    ;(global as any).mockProductsStore = retainedProducts
+    for (let index = productStore.length - 1; index >= 0; index -= 1) {
+      if (productStore[index].isVirtual) productStore.splice(index, 1)
+    }
 
     const store = await getKnowledge()
     store.sources = []
     store.processedSources = []
     store.lastUpdated = new Date().toISOString()
-    await saveKnowledge({ ...store, knowledge: {} })
+    await saveKnowledge(store)
 
     if (!saveMockData()) {
       throw new Error("Nie udało się utrwalić zmian.")
@@ -60,7 +64,7 @@ export async function DELETE() {
 
     return NextResponse.json({
       success: true,
-      message: "Baza wiedzy i metadane źródeł zostały wyczyszczone.",
+      message: "Metadane źródeł i wirtualne wpisy zostały wyczyszczone.",
     })
   } catch (error) {
     console.error("DELETE Knowledge API Error:", error)

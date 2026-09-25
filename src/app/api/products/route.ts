@@ -1,38 +1,105 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@/auth';
-import { initializeMockData, saveMockData } from '@/store/serverStore';
-import { authorizeAPI } from '@/lib/authUtils';
-import { getKnowledge } from '@/lib/knowledge/parser';
-import { calculateCustomerUnitPrice } from "@/lib/commerce";
-import fs from 'fs';
-import path from 'path';
+import fs from "fs"
+import path from "path"
+import { NextResponse } from "next/server"
+import { z } from "zod"
+import { auth } from "@/auth"
+import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { authorizeAPI } from "@/lib/authUtils"
+import { getKnowledge } from "@/lib/knowledge/parser"
+import { calculateCustomerUnitPrice } from "@/lib/commerce"
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic"
 
-function logImport(msg: string) {
+type ProductRecord = {
+  id: string
+  sku: string
+  name: string
+  price?: number | null
+  stock?: number | null
+  manufacturer?: string
+  categoryId?: string | null
+  subcategoryId?: string | null
+  seoDescription?: string
+  catalogPrice?: number | null
+  catalogSpecs?: string
+  isVirtual?: boolean
+  isIqSynced?: boolean
+  [key: string]: unknown
+}
+
+type Subcategory = { id: string; name: string }
+type CategoryRecord = {
+  id: string
+  name: string
+  iconName?: string
+  subcategories: Subcategory[]
+}
+
+const ImportItemSchema = z
+  .object({
+    sku: z.string().trim().optional(),
+    name: z.string().trim().optional(),
+    price: z.coerce.number().min(0).optional(),
+    stock: z.coerce.number().min(0).optional(),
+    manufacturer: z.string().trim().optional(),
+    categoryId: z.string().trim().nullable().optional(),
+    subcategoryId: z.string().trim().nullable().optional(),
+    isNewCategory: z.boolean().optional(),
+    isNewSubcategory: z.boolean().optional(),
+    xlsCategoryName: z.string().trim().optional(),
+    xlsSubcategoryName: z.string().trim().optional(),
+  })
+  .passthrough()
+
+const ProductInputSchema = z
+  .object({
+    id: z.string().optional(),
+    sku: z.string().trim().min(1),
+    name: z.string().trim().min(2),
+    price: z.coerce.number().min(0).nullable().optional(),
+    stock: z.coerce.number().min(0).optional(),
+    manufacturer: z.string().trim().optional(),
+    categoryId: z.string().trim().nullable().optional(),
+    subcategoryId: z.string().trim().nullable().optional(),
+    seoDescription: z.string().max(5000).optional(),
+  })
+  .passthrough()
+
+const ProductPostSchema = z.union([
+  z.object({
+    action: z.literal("IMPORT_WFMAG"),
+    items: z.array(ImportItemSchema).max(10000),
+  }),
+  ProductInputSchema,
+])
+
+function logImport(message: string) {
   try {
-    const logPath = path.join(process.cwd(), 'import_debug.log');
-    const timestamp = new Date().toISOString();
-    fs.appendFileSync(logPath, `[${timestamp}] ${msg}\n`);
-  } catch (e) {}
+    const logPath = path.join(process.cwd(), "import_debug.log")
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${message}\n`)
+  } catch {
+    // Diagnostic logging must not break an import.
+  }
+}
+
+function normalize(value: unknown) {
+  return String(value ?? "").trim().toLowerCase()
 }
 
 export async function GET() {
-  const session = await auth();
-  const { products } = initializeMockData();
-  
-  // V27: UNIFIED HYBRID FUSION (Physical + Virtual)
-  let unifiedDevices: any[] = [];
-  try {
-    const store = await getKnowledge();
-    const knowledgeKeys = Object.keys(store.knowledge);
-    const existingSkus = new Set(products.map((p: any) => String(p.sku || '').trim().toLowerCase()));
+  const session = await auth()
+  const { products } = initializeMockData()
+  const productStore = products as ProductRecord[]
 
-    // Create Virtual Products from the Knowledge Hub
-    const virtualDevices = knowledgeKeys
-      .filter(key => !existingSkus.has(key.trim().toLowerCase()))
-      .map(key => {
-        const entry = store.knowledge[key];
+  let unifiedDevices: ProductRecord[]
+  try {
+    const store = await getKnowledge()
+    const existingSkus = new Set(productStore.map((product) => normalize(product.sku)))
+
+    const virtualDevices: ProductRecord[] = Object.keys(store.knowledge)
+      .filter((key) => !existingSkus.has(normalize(key)))
+      .map((key) => {
+        const entry = store.knowledge[key]
         return {
           id: `virtual_${key}`,
           sku: key,
@@ -43,229 +110,258 @@ export async function GET() {
           stock: 0,
           isVirtual: true,
           seoDescription: entry.specs || "",
-          catalogSpecs: entry.specs || ""
-        };
-      });
-
-    // Enrich existing Physical Products with Knowledge Hub data
-    const enrichedProducts = products.map((p: any) => {
-        const entry = store.knowledge[p.sku];
-        if (entry) {
-            return {
-                ...p,
-                manufacturer: p.manufacturer && p.manufacturer !== "NIEZNANY" ? p.manufacturer : (entry.manufacturer || "NIEZNANY"),
-                catalogSpecs: entry.specs || "",
-                catalogPrice: entry.price || 0,
-                isIqSynced: true
-            };
+          catalogSpecs: entry.specs || "",
         }
-        return p;
-    });
+      })
 
-    unifiedDevices = [...enrichedProducts, ...virtualDevices];
-  } catch (e) {
-    unifiedDevices = [...products];
+    const enrichedProducts = productStore.map((product) => {
+      const entry = store.knowledge[product.sku]
+      if (!entry) return product
+
+      return {
+        ...product,
+        manufacturer:
+          product.manufacturer && product.manufacturer !== "NIEZNANY"
+            ? product.manufacturer
+            : entry.manufacturer || "NIEZNANY",
+        catalogSpecs: entry.specs || "",
+        catalogPrice: entry.price || 0,
+        isIqSynced: true,
+      }
+    })
+
+    unifiedDevices = [...enrichedProducts, ...virtualDevices]
+  } catch {
+    unifiedDevices = [...productStore]
   }
 
-  // Sprawdź rolę użytkownika
   const sessionUser = session?.user as
     | { role?: string; isApproved?: boolean; discount?: number }
-    | undefined;
-  const role = sessionUser?.role;
-  const isAuthorized =
-    role === "ADMIN" || (role === "BIZ" && Boolean(sessionUser?.isApproved));
+    | undefined
+  const role = sessionUser?.role
+  const canSeePrices =
+    role === "ADMIN" || (role === "BIZ" && Boolean(sessionUser?.isApproved))
 
-  if (!isAuthorized) {
-    // Ukrywamy ceny przed detalistami i gośćmi
-    const safeProducts = unifiedDevices.map((p: any) => ({
-      ...p,
-      price: null,
-      catalogPrice: null,
-      priceHidden: true
-    }));
-    return NextResponse.json(safeProducts);
+  if (!canSeePrices) {
+    return NextResponse.json(
+      unifiedDevices.map((product) => ({
+        ...product,
+        price: null,
+        catalogPrice: null,
+        priceHidden: true,
+      }))
+    )
   }
 
-  const fullProducts = unifiedDevices.map((p: any) => {
-    const visiblePrice =
-      role === "BIZ"
-        ? calculateCustomerUnitPrice(
-            {
-              id: String(p.id),
-              sku: String(p.sku || ""),
-              name: String(p.name || ""),
-              price: Number(p.price ?? 0),
-              stock: Number(p.stock ?? 0),
-            },
-            { role: "BIZ", discount: Number(sessionUser?.discount ?? 0) }
-          )
-        : Number(p.price ?? 0);
-
-    return {
-      ...p,
-      price: visiblePrice,
+  return NextResponse.json(
+    unifiedDevices.map((product) => ({
+      ...product,
+      price:
+        role === "BIZ"
+          ? calculateCustomerUnitPrice(
+              {
+                id: product.id,
+                sku: product.sku,
+                name: product.name,
+                price: Number(product.price ?? 0),
+                stock: Number(product.stock ?? 0),
+              },
+              { role: "BIZ", discount: Number(sessionUser?.discount ?? 0) }
+            )
+          : Number(product.price ?? 0),
       priceHidden: false,
-    };
-  });
-
-  return NextResponse.json(fullProducts);
+    }))
+  )
 }
 
 export async function POST(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN"]);
-  if (!authCheck.authorized) return authCheck.response;
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
-  const body = await req.json();
-  const { products } = initializeMockData();
-  
-  // Symulacja importu z WF-Maga
-  if (body.action === 'IMPORT_WFMAG') {
-    const importedItems = body.items || [];
-    const { categories } = initializeMockData();
-    let updatedCount = 0;
-    let addedCount = 0;
-    
-    logImport(`--- START IMPORT (${importedItems.length} pozycji) ---`);
+  const parsed = ProductPostSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane produktu." },
+      { status: 400 }
+    )
+  }
 
-    importedItems.forEach((im: any, index: number) => {
-      const imSku = String(im.sku || '').trim().toLowerCase();
-      
-      if (index === 0) {
-        logImport(`Wykryte pola w pierwszym produkcie: ${Object.keys(im).join(', ')}`);
+  const { products, categories } = initializeMockData()
+  const productStore = products as ProductRecord[]
+  const categoryStore = categories as CategoryRecord[]
+
+  if ("action" in parsed.data && parsed.data.action === "IMPORT_WFMAG") {
+    let updatedCount = 0
+    let addedCount = 0
+
+    logImport(`--- START IMPORT (${parsed.data.items.length} pozycji) ---`)
+
+    for (const item of parsed.data.items) {
+      const sku = normalize(item.sku)
+      if (!sku) continue
+
+      let existing = productStore.find((product) => normalize(product.sku) === sku)
+      if (!existing && item.name) {
+        existing = productStore.find(
+          (product) => normalize(product.name) === normalize(item.name)
+        )
       }
 
-      if (!imSku) {
-        logImport(`Pominięto pozycję bez SKU (Wirtualne SKU nie dotarło?)`);
-        return;
-      }
-      
-      let existing = products.find((p: any) => 
-        String(p.sku || '').trim().toLowerCase() === imSku
-      );
+      let categoryId = item.categoryId ?? null
+      let subcategoryId = item.subcategoryId ?? null
 
-      if (!existing && im.name) {
-        const imNameMatch = String(im.name).trim().toLowerCase();
-        existing = products.find((p: any) => p.name.trim().toLowerCase() === imNameMatch);
-        if (existing) logImport(`Dopasowano po NAZWIE: "${im.name}"`);
-      }
-
-      logImport(`Przetwarzanie SKU: "${im.sku}" -> Dopasowano: ${existing ? 'TAK (' + existing.id + ')' : 'NIE'}`);
-      
-      // Obsługa propozycji kategoryzacji
-      let finalCategoryId = im.categoryId;
-      let finalSubcategoryId = im.subcategoryId;
-
-      // 1. Jeśli to nowa kategoria (PROPOZYCJA)
-      if (im.isNewCategory && im.xlsCategoryName) {
-        let cat = categories.find((c: any) => c.name.toLowerCase().trim() === im.xlsCategoryName.toLowerCase().trim());
-        if (!cat) {
-          cat = { 
-            id: `c_auto_${Math.random().toString(36).substr(2, 5)}`, 
-            name: im.xlsCategoryName.toUpperCase().trim(), 
-            iconName: "Layers", 
-            subcategories: [] 
-          };
-          categories.push(cat);
-          logImport(`Utworzono nową kategorię: ${cat.name}`);
-        }
-        finalCategoryId = cat.id;
-      }
-
-      // 2. Jeśli to nowa podkategoria (PROPOZYCJA)
-      if (im.isNewSubcategory && im.xlsSubcategoryName && finalCategoryId) {
-        let cat = categories.find((c: any) => c.id === finalCategoryId);
-        if (cat) {
-          let sub = cat.subcategories.find((s: any) => s.name.toLowerCase().trim() === im.xlsSubcategoryName.toLowerCase().trim());
-          if (!sub) {
-            sub = {
-              id: `s_auto_${Math.random().toString(36).substr(2, 5)}`,
-              name: im.xlsSubcategoryName.trim()
-            };
-            cat.subcategories.push(sub);
-            logImport(`Dodano nową podkategorię "${sub.name}" do kategorii ${cat.name}`);
+      if (item.isNewCategory && item.xlsCategoryName) {
+        let category = categoryStore.find(
+          (candidate) => normalize(candidate.name) === normalize(item.xlsCategoryName)
+        )
+        if (!category) {
+          category = {
+            id: `c_auto_${crypto.randomUUID()}`,
+            name: item.xlsCategoryName.toUpperCase(),
+            iconName: "Layers",
+            subcategories: [],
           }
-          finalSubcategoryId = sub.id;
+          categoryStore.push(category)
+        }
+        categoryId = category.id
+      }
+
+      if (item.isNewSubcategory && item.xlsSubcategoryName && categoryId) {
+        const category = categoryStore.find(
+          (candidate) => candidate.id === categoryId
+        )
+        if (category) {
+          let subcategory = category.subcategories.find(
+            (candidate) =>
+              normalize(candidate.name) === normalize(item.xlsSubcategoryName)
+          )
+          if (!subcategory) {
+            subcategory = {
+              id: `s_auto_${crypto.randomUUID()}`,
+              name: item.xlsSubcategoryName,
+            }
+            category.subcategories.push(subcategory)
+          }
+          subcategoryId = subcategory.id
         }
       }
 
       if (existing) {
-        existing.price = im.price;
-        existing.stock = im.stock;
-        existing.manufacturer = im.manufacturer || existing.manufacturer;
-
-        if (finalCategoryId) {
-          existing.categoryId = finalCategoryId;
-          existing.subcategoryId = finalSubcategoryId;
-          logImport(`Zaktualizowano kategoryzację dla ${im.sku}: ${finalCategoryId} / ${finalSubcategoryId}`);
+        if (item.price !== undefined) existing.price = item.price
+        if (item.stock !== undefined) existing.stock = item.stock
+        if (item.manufacturer) existing.manufacturer = item.manufacturer
+        if (categoryId) {
+          existing.categoryId = categoryId
+          existing.subcategoryId = subcategoryId
         }
-        
-        updatedCount++;
+        updatedCount += 1
       } else {
-        const newProd = {
-          id: `p${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-          ...im,
-          categoryId: finalCategoryId,
-          subcategoryId: finalSubcategoryId,
-          seoDescription: "" 
-        };
-        products.push(newProd);
-        addedCount++;
-        logImport(`Dodano NOWY produkt (${newProd.sku}): ${im.name}`);
+        productStore.push({
+          ...item,
+          id: `p_${crypto.randomUUID()}`,
+          sku: item.sku || "",
+          name: item.name || item.sku || "Produkt",
+          categoryId,
+          subcategoryId,
+          seoDescription: "",
+        } as ProductRecord)
+        addedCount += 1
       }
-    });
-
-    logImport(`--- KONIEC IMPORTU (Zaktualizowano: ${updatedCount}, Dodano: ${addedCount}, Suma w bazie: ${products.length}) ---`);
-    if (!saveMockData()) {
-      return NextResponse.json({ error: "Nie udało się utrwalić importu." }, { status: 500 });
     }
-    return NextResponse.json({ success: true, updatedCount, addedCount });
+
+    if (!saveMockData()) {
+      return NextResponse.json(
+        { error: "Nie udało się utrwalić importu." },
+        { status: 500 }
+      )
+    }
+
+    logImport(
+      `--- KONIEC IMPORTU (Zaktualizowano: ${updatedCount}, Dodano: ${addedCount}) ---`
+    )
+    return NextResponse.json({ success: true, updatedCount, addedCount })
   }
 
-  // Zwykłe dodanie pojedynczego produktu
-  const newProduct = {
-    id: `p${Date.now()}`,
-    ...body
-  };
-  products.push(newProduct);
+  const newProduct: ProductRecord = {
+    ...parsed.data,
+    id: `p_${crypto.randomUUID()}`,
+  } as ProductRecord
+
+  productStore.push(newProduct)
   if (!saveMockData()) {
-    return NextResponse.json({ error: "Nie udało się zapisać produktu." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Nie udało się zapisać produktu." },
+      { status: 500 }
+    )
   }
-  return NextResponse.json(newProduct, { status: 201 });
+
+  return NextResponse.json(newProduct, { status: 201 })
 }
 
 export async function PUT(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN"]);
-  if (!authCheck.authorized) return authCheck.response;
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
-  const body = await req.json();
-  const { products } = initializeMockData();
-  
-  const idx = products.findIndex((p: any) => p.id === body.id);
-  if (idx !== -1) {
-    products[idx] = { ...products[idx], ...body };
-    if (!saveMockData()) {
-      return NextResponse.json({ error: "Nie udało się zapisać produktu." }, { status: 500 });
-    }
-    return NextResponse.json(products[idx]);
+  const parsed = ProductInputSchema.extend({
+    id: z.string().min(1),
+  }).safeParse(await req.json())
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane produktu." },
+      { status: 400 }
+    )
   }
-  return NextResponse.json({error: "Not Found"}, {status: 404});
+
+  const { products } = initializeMockData()
+  const productStore = products as ProductRecord[]
+  const index = productStore.findIndex(
+    (product) => product.id === parsed.data.id
+  )
+
+  if (index === -1) {
+    return NextResponse.json({ error: "Nie znaleziono produktu." }, { status: 404 })
+  }
+
+  productStore[index] = {
+    ...productStore[index],
+    ...parsed.data,
+  }
+
+  if (!saveMockData()) {
+    return NextResponse.json(
+      { error: "Nie udało się zapisać produktu." },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json(productStore[index])
 }
 
 export async function DELETE(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN"]);
-  if (!authCheck.authorized) return authCheck.response;
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get('id');
-  const { products } = initializeMockData();
-  
-  const idx = products.findIndex((p: any) => p.id === id);
-  if (idx !== -1) {
-    products.splice(idx, 1);
-    if (!saveMockData()) {
-      return NextResponse.json({ error: "Nie udało się zapisać zmian." }, { status: 500 });
-    }
-    return NextResponse.json({ success: true });
+  const id = new URL(req.url).searchParams.get("id")
+  if (!id) {
+    return NextResponse.json({ error: "Brak ID produktu." }, { status: 400 })
   }
-  return NextResponse.json({error: "Not Found"}, {status: 404});
+
+  const { products } = initializeMockData()
+  const productStore = products as ProductRecord[]
+  const index = productStore.findIndex((product) => product.id === id)
+
+  if (index === -1) {
+    return NextResponse.json({ error: "Nie znaleziono produktu." }, { status: 404 })
+  }
+
+  productStore.splice(index, 1)
+  if (!saveMockData()) {
+    return NextResponse.json(
+      { error: "Nie udało się zapisać zmian." },
+      { status: 500 }
+    )
+  }
+
+  return NextResponse.json({ success: true })
 }
