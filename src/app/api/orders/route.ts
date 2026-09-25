@@ -55,6 +55,20 @@ type StoredUser = {
   discount?: number
 }
 
+type StoredOrder = {
+  id?: string
+  status?: string
+  estimatedDeliveryDays?: number | null
+  items?: Array<z.infer<typeof AdminOrderItemSchema>>
+  user?: {
+    id?: string
+    email?: string
+    companyName?: string
+    nip?: string | null
+  }
+  [key: string]: unknown
+}
+
 function findStoredUser(users: StoredUser[], sessionUser: SessionUser) {
   return users.find(
     (user) =>
@@ -70,13 +84,14 @@ export async function GET() {
 
   const sessionUser = authCheck.user as SessionUser
   const { orders } = initializeMockData()
+  const orderStore = orders as StoredOrder[]
 
   if (authCheck.currentRole === "ADMIN") {
-    return NextResponse.json(orders)
+    return NextResponse.json(orderStore)
   }
 
-  const ownOrders = orders.filter(
-    (order: { user?: { id?: string; email?: string } }) =>
+  const ownOrders = orderStore.filter(
+    (order) =>
       (sessionUser.id && order.user?.id === sessionUser.id) ||
       (sessionUser.email &&
         order.user?.email?.toLowerCase() === sessionUser.email.toLowerCase())
@@ -111,7 +126,7 @@ export async function POST(req: Request) {
       const isHardOrder = parsed.data.orderType === "ORDER"
       const resolved = resolveCartItems(
         parsed.data.items,
-        db.products,
+        db.products as Parameters<typeof resolveCartItems>[1],
         {
           id: String(storedUser.id ?? ""),
           email: storedUser.email,
@@ -178,26 +193,24 @@ export async function PUT(req: Request) {
     }
 
     const updatedOrder = await mutateMockData((db) => {
-      const index = db.orders.findIndex(
-        (order: { id?: string }) => order.id === parsed.data.id
-      )
+      const orderStore = db.orders as StoredOrder[]
+      const index = orderStore.findIndex((order) => order.id === parsed.data.id)
 
       if (index === -1) throw new Error("ORDER_NOT_FOUND")
 
-      const currentOrder = db.orders[index]
+      const currentOrder = orderStore[index]
       const items = parsed.data.items ?? currentOrder.items ?? []
       const totalPriceFinal =
         Math.round(
           (items.reduce(
-            (sum: number, item: { price: number; quantity: number }) =>
-              sum + item.price * item.quantity,
+            (sum, item) => sum + item.price * item.quantity,
             0
           ) +
             Number.EPSILON) *
             100
         ) / 100
 
-      const nextOrder = {
+      const nextOrder: StoredOrder = {
         ...currentOrder,
         status: parsed.data.status,
         estimatedDeliveryDays:
@@ -209,7 +222,7 @@ export async function PUT(req: Request) {
         updatedAt: new Date().toISOString(),
       }
 
-      db.orders[index] = nextOrder
+      orderStore[index] = nextOrder
       return nextOrder
     })
 
