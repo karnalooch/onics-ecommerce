@@ -21,16 +21,6 @@ type ServerDb = {
   [key: string]: unknown
 }
 
-type LegacyGlobals = typeof globalThis & {
-  mockUsersStore?: JsonRecord[]
-  mockCategoriesStore?: JsonRecord[]
-  mockManufacturersStore?: JsonRecord[]
-  mockProductsStore?: JsonRecord[]
-  mockOrdersStore?: JsonRecord[]
-  mockRepairsStore?: JsonRecord[]
-  mockKnowledgeMetaStore?: KnowledgeMeta
-}
-
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -70,24 +60,11 @@ function normalizeDb(input: unknown): ServerDb {
   }
 }
 
-function hydrateGlobals(db: ServerDb) {
-  const legacyGlobals = globalThis as LegacyGlobals
-  legacyGlobals.mockUsersStore = db.users
-  legacyGlobals.mockCategoriesStore = db.categories
-  legacyGlobals.mockManufacturersStore = db.manufacturers
-  legacyGlobals.mockProductsStore = db.products
-  legacyGlobals.mockOrdersStore = db.orders
-  legacyGlobals.mockRepairsStore = db.repairs
-  legacyGlobals.mockKnowledgeMetaStore = db.knowledgeMeta
-}
-
 /**
  * Pobiera najnowszy snapshot trwałej bazy.
  */
 export function initializeMockData() {
   const db = normalizeDb(readDb())
-  hydrateGlobals(db)
-
   return {
     users: db.users,
     orders: db.orders,
@@ -116,7 +93,6 @@ export async function mutateMockData<T>(
       throw new Error("Nie udało się utrwalić atomowej mutacji bazy danych.")
     }
 
-    hydrateGlobals(db)
     return result
   })
 }
