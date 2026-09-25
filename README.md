@@ -20,7 +20,7 @@ npm run dev
 
 The development server runs on http://localhost:3001.
 
-When `CELTRONICS_DB_PATH` and `CELTRONICS_UPLOAD_ROOT` are omitted in development, the app uses repository-local fallback paths.
+When `CELTRONICS_DB_PATH` and `CELTRONICS_UPLOAD_ROOT` are omitted in development, the app uses repository-local fallback paths. Knowledge uploads are stored under `.local/celtronics/uploads`, outside `public/`, so uploaded supplier files are not exposed as static assets.
 
 ## Validation
 
@@ -46,7 +46,7 @@ CELTRONICS_UPLOAD_ROOT=/persistent/celtronics/uploads
 
 If either path is missing while `NODE_ENV=production`, the application fails closed instead of silently writing to repository-local files.
 
-The configured locations must survive application restarts and deployments. Do not treat an ephemeral/serverless function filesystem as durable storage.
+The configured locations must survive application restarts and deployments. Do not treat an ephemeral/serverless function filesystem as durable storage. `CELTRONICS_UPLOAD_ROOT` must also remain outside the application's `public/` directory; startup fails closed when it points at a public static-assets path.
 
 ### File-store lock tuning
 
