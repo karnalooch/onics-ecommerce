@@ -215,6 +215,18 @@ export async function POST(req: Request) {
       const result = await mutateMockData((db) => {
         const productStore = db.products as ProductRecord[]
         const categoryStore = db.categories as CategoryRecord[]
+        const productBySku = new Map(
+          productStore.map((product) => [normalize(product.sku), product] as const)
+        )
+        const productByName = new Map(
+          productStore.map((product) => [normalize(product.name), product] as const)
+        )
+        const categoryByName = new Map(
+          categoryStore.map((category) => [normalize(category.name), category] as const)
+        )
+        const categoryById = new Map(
+          categoryStore.map((category) => [String(category.id), category] as const)
+        )
         let updatedCount = 0
         let addedCount = 0
 
@@ -222,23 +234,17 @@ export async function POST(req: Request) {
           const sku = normalize(item.sku)
           if (!sku) continue
 
-          let existing = productStore.find(
-            (product) => normalize(product.sku) === sku
-          )
+          let existing = productBySku.get(sku)
           if (!existing && item.name) {
-            existing = productStore.find(
-              (product) => normalize(product.name) === normalize(item.name)
-            )
+            existing = productByName.get(normalize(item.name))
           }
 
           let categoryId = item.categoryId ?? null
           let subcategoryId = item.subcategoryId ?? null
 
           if (item.isNewCategory && item.xlsCategoryName) {
-            let category = categoryStore.find(
-              (candidate) =>
-                normalize(candidate.name) === normalize(item.xlsCategoryName)
-            )
+            const normalizedCategoryName = normalize(item.xlsCategoryName)
+            let category = categoryByName.get(normalizedCategoryName)
             if (!category) {
               category = {
                 id: `c_auto_${crypto.randomUUID()}`,
@@ -247,14 +253,14 @@ export async function POST(req: Request) {
                 subcategories: [],
               }
               categoryStore.push(category)
+              categoryByName.set(normalizedCategoryName, category)
+              categoryById.set(String(category.id), category)
             }
             categoryId = category.id
           }
 
           if (item.isNewSubcategory && item.xlsSubcategoryName && categoryId) {
-            const category = categoryStore.find(
-              (candidate) => candidate.id === categoryId
-            )
+            const category = categoryById.get(String(categoryId))
             if (category) {
               let subcategory = category.subcategories.find(
                 (candidate) =>
@@ -282,7 +288,7 @@ export async function POST(req: Request) {
             }
             updatedCount += 1
           } else {
-            productStore.push({
+            const newProduct = {
               ...item,
               id: `p_${crypto.randomUUID()}`,
               sku: item.sku || "",
@@ -290,7 +296,10 @@ export async function POST(req: Request) {
               categoryId,
               subcategoryId,
               seoDescription: "",
-            } as ProductRecord)
+            } as ProductRecord
+            productStore.push(newProduct)
+            productBySku.set(normalize(newProduct.sku), newProduct)
+            productByName.set(normalize(newProduct.name), newProduct)
             addedCount += 1
           }
         }

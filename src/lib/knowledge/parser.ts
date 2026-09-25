@@ -118,6 +118,9 @@ function resolveCategoryIds(categoryName: string | undefined, subcategoryName: s
 export async function saveKnowledge(data: KnowledgeStore) {
   await mutateMockData((db) => {
     const products = db.products as any[];
+    const productIndexBySku = new Map(
+      products.map((product, index) => [String(product.sku || ""), index] as const)
+    );
 
     db.knowledgeMeta = {
       sources: Array.from(new Set(data.sources || [])),
@@ -126,14 +129,14 @@ export async function saveKnowledge(data: KnowledgeStore) {
     };
 
     Object.entries(data.knowledge).forEach(([sku, entry]) => {
-      const existingIdx = products.findIndex((p: any) => p.sku === sku);
+      const existingIdx = productIndexBySku.get(sku);
       const { categoryId, subcategoryId } = resolveCategoryIds(
         entry.category,
         entry.subcategory,
         db
       );
 
-      if (existingIdx !== -1) {
+      if (existingIdx !== undefined) {
         products[existingIdx] = {
           ...products[existingIdx],
           name: entry.model || products[existingIdx].name,
@@ -145,6 +148,7 @@ export async function saveKnowledge(data: KnowledgeStore) {
           lastUpdated: new Date().toISOString()
         };
       } else {
+        const newIndex = products.length;
         products.push({
           id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
           sku,
@@ -158,6 +162,7 @@ export async function saveKnowledge(data: KnowledgeStore) {
           isIqSynced: true,
           lastUpdated: new Date().toISOString()
         });
+        productIndexBySku.set(sku, newIndex);
       }
     });
   });
