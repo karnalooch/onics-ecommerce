@@ -20,8 +20,14 @@ export default async function AdminLayout({
   }
 
   const { users } = initializeMockData()
-  const currentUser = users.find(
-    (user: { id?: string; email?: string; roleType?: string; isBlocked?: boolean }) =>
+  const userStore = users as Array<{
+    id?: string
+    email?: string
+    roleType?: string
+    isBlocked?: boolean
+  }>
+  const currentUser = userStore.find(
+    (user) =>
       (sessionUser.id && user.id === sessionUser.id) ||
       (sessionUser.email &&
         user.email?.toLowerCase() === sessionUser.email.toLowerCase())
