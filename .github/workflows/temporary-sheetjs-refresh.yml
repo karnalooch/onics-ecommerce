@@ -1,0 +1,58 @@
+name: Temporary SheetJS refresh
+
+on:
+  push:
+    branches:
+      - fix/full-platform-audit
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-sheetjs:
+    if: github.event.head_commit.message == 'ci: refresh SheetJS dependency'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: "true"
+      AUTH_SECRET: "ci-sheetjs-refresh-only"
+      NEXTAUTH_SECRET: "ci-sheetjs-refresh-only"
+      NEXTAUTH_URL: "http://localhost:3000"
+      ADMIN_BOOTSTRAP_PASSWORD: "ci-bootstrap-only"
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: fix/full-platform-audit
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install patched SheetJS release
+        run: npm install --save-exact https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
+
+      - name: Run tests
+        run: npm test -- --run
+
+      - name: Production build
+        run: npm run build
+
+      - name: Require clean high-severity audit
+        run: npm audit --audit-level=high
+
+      - name: Commit refreshed dependency graph
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          if git diff --cached --quiet; then
+            echo "No dependency changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(deps): move SheetJS to patched 0.20.3"
+          git push origin HEAD:fix/full-platform-audit
