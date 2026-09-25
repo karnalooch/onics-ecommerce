@@ -23,7 +23,7 @@ async function debugPDFs() {
     
     // Test heuristics
     const results = await parsePDFHeuristic(dataBuffer, path.basename(f));
-    console.log(`\n--- HEURISTIC RESULT: ${results.length} products found ---`);
+    console.log(`\n--- HEURISTIC RESULT: ${results.count} products found ---`);
   }
 }
 
