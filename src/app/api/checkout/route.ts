@@ -4,7 +4,7 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
 import { moneyToMinorUnits } from "@/lib/payments"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData, readServerData } from "@/store/serverStore"
 
 const CartSchema = z.object({
   items: z
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     }
 
     const sessionUser = authCheck.user as SessionUser
-    const snapshot = initializeMockData()
+    const snapshot = await readServerData()
     const { storedUser, resolved } = resolveCheckout(
       snapshot.users as StoredUser[],
       snapshot.products as Parameters<typeof resolveCartItems>[1],
