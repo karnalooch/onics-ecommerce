@@ -1,40 +1,93 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from "next/server"
+import bcrypt from "bcrypt"
+import { z } from "zod"
+import { validateNip } from "@/lib/validation"
+import { initializeMockData, saveMockData } from "@/store/serverStore"
+
+const RegistrationSchema = z.object({
+  email: z.string().trim().email("Nieprawidłowy adres e-mail").transform((value) => value.toLowerCase()),
+  password: z.string().min(8, "Hasło musi mieć co najmniej 8 znaków").max(72, "Hasło jest zbyt długie"),
+  nip: z
+    .string()
+    .transform((value) => value.replace(/\D/g, ""))
+    .refine((value) => validateNip(value), "Nieprawidłowy NIP"),
+  companyName: z.string().trim().min(2, "Nazwa firmy jest zbyt krótka").max(160),
+  phone: z.string().trim().max(50).optional().default(""),
+  address: z.string().trim().max(250).optional().default(""),
+  consentVat: z.boolean().optional().default(false),
+  consentReg: z.literal(true, {
+    error: "Akceptacja regulaminu jest wymagana",
+  }),
+})
 
 export async function POST(req: Request) {
   try {
-    const { email, password, nip, companyName } = await req.json();
+    const parsed = RegistrationSchema.safeParse(await req.json())
 
-    if (!email || !password || !nip || !companyName) {
-      return NextResponse.json({ error: "Brak wymaganych danych autoryzacyjnych lub parametrów NIP/Firma." }, { status: 400 });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane rejestracji." },
+        { status: 400 }
+      )
     }
 
-    const { initializeMockData, saveMockData } = await import("@/store/serverStore");
-    const { users } = initializeMockData();
+    const data = parsed.data
+    const { users } = initializeMockData()
 
-    // Sprawdzamy czy użytkownik już istnieje
-    if (users.some((u: any) => u.email === email)) {
-      return NextResponse.json({ error: "Użytkownik o tym adresie email już istnieje." }, { status: 400 });
+    if (
+      users.some(
+        (user: { email?: string }) =>
+          String(user.email ?? "").trim().toLowerCase() === data.email
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Użytkownik o tym adresie e-mail już istnieje." },
+        { status: 409 }
+      )
     }
 
+    const passwordHash = await bcrypt.hash(data.password, 12)
     const newUser = {
-      id: `u_${Date.now()}`,
-      username: email,
-      email,
-      nip,
-      companyName,
+      id: `u_${crypto.randomUUID()}`,
+      username: data.email,
+      email: data.email,
+      passwordHash,
+      nip: data.nip,
+      companyName: data.companyName,
+      phone: data.phone,
+      address: data.address,
+      consentVat: data.consentVat,
       roleType: "BIZ",
-      isApproved: false, // Wymaga zatwierdzenia przez admina
+      isApproved: false,
       isBlocked: false,
       createdAt: new Date().toISOString(),
-      jwt: `mock-jwt-${Date.now()}`
-    };
+      discount: 0,
+      tierName: "BASIC",
+    }
 
-    (global as any).mockUsersStore.push(newUser);
-    saveMockData();
+    users.push(newUser)
 
-    return NextResponse.json({ success: true, user: newUser });
+    if (!saveMockData()) {
+      throw new Error("Nie udało się utrwalić nowego konta.")
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          companyName: newUser.companyName,
+          isApproved: newUser.isApproved,
+        },
+      },
+      { status: 201 }
+    )
   } catch (error) {
-    console.error("Błąd rejestracji JSON:", error);
-    return NextResponse.json({ error: "Wystąpił błąd podczas zapisu w bazie danych." }, { status: 500 });
+    console.error("Błąd rejestracji:", error)
+    return NextResponse.json(
+      { error: "Wystąpił błąd podczas zapisu konta." },
+      { status: 500 }
+    )
   }
 }
