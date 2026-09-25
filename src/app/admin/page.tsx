@@ -21,7 +21,7 @@ import {
   Globe
 } from "lucide-react";
 
-import { initializeMockData } from "@/store/serverStore";
+import { readServerData } from "@/store/serverStore";
 
 export default async function AdminDashboard() {
   const session = await auth();
@@ -30,7 +30,7 @@ export default async function AdminDashboard() {
     redirect("/logowanie");
   }
 
-  const { users, orders, repairs, products } = initializeMockData();
+  const { users, orders, repairs, products } = await readServerData();
   
   const unapprovedUsers = users.filter((u: any) => u.roleType === "BIZ" && !u.isApproved);
   const registeredUsers = users.filter((u: any) => u.roleType === "BIZ" && u.isApproved);
