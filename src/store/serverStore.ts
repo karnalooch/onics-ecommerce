@@ -1,6 +1,6 @@
 // src/store/serverStore.ts
 // Współdzielony stan serwerowy oparty na trwałym pliku JSON
-import { readDb, withDbWriteLock, writeDb } from "@/lib/jsonDb"
+import { readDb, readDbOrThrow, withDbWriteLock, writeDb } from "@/lib/jsonDb"
 
 type JsonRecord = Record<string, unknown>
 
@@ -86,7 +86,7 @@ export async function mutateMockData<T>(
   mutator: (db: ServerDb) => Promise<T> | T
 ): Promise<T> {
   return withDbWriteLock(async () => {
-    const db = normalizeDb(readDb())
+    const db = normalizeDb(readDbOrThrow())
     const result = await mutator(db)
 
     if (!writeDb(db)) {
