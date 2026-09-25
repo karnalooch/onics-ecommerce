@@ -15,6 +15,20 @@ function safeSecretEqual(candidate: string, expected: string) {
   return crypto.timingSafeEqual(candidateBuffer, expectedBuffer)
 }
 
+type StoredAuthUser = {
+  id?: string
+  email?: string
+  companyName?: string
+  username?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+  nip?: string | null
+  discount?: number
+  tierName?: string
+  passwordHash?: string
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -31,8 +45,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const { initializeMockData } = await import("@/store/serverStore")
         const { users } = initializeMockData()
-        const user = users.find(
-          (entry: { email?: string }) => normalizeEmail(entry.email) === email
+        const user = (users as StoredAuthUser[]).find(
+          (entry) => normalizeEmail(entry.email) === email
         )
 
         if (!user || user.isBlocked) return null
