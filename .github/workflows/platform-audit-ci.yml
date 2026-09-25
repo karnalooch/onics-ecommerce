@@ -44,7 +44,6 @@ jobs:
           src/lib/jsonDb.ts
           src/store/serverStore.ts
           src/lib/knowledge/files.ts
-          src/lib/knowledge/parser.ts
           src/lib/knowledge/KnowledgeContext.tsx
           src/app/api/register/route.ts
           src/app/api/orders/route.ts
