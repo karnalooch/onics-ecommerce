@@ -3,6 +3,14 @@ import fs from "fs"
 import path from "path"
 import { resolvePersistentPath } from "@/lib/storageConfig"
 
+const DB_LOCK_RETRY_MS = 25
+const DB_LOCK_TIMEOUT_MS = 5_000
+const DB_LOCK_STALE_MS = 30_000
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 export function getDbPath() {
   return resolvePersistentPath({
     envName: "CELTRONICS_DB_PATH",
@@ -52,5 +60,60 @@ export function writeDb(data: unknown) {
     }
 
     return false
+  }
+}
+
+async function acquireDbLock() {
+  const dbPath = getDbPath()
+  const lockPath = `${dbPath}.lock`
+  const deadline = Date.now() + DB_LOCK_TIMEOUT_MS
+
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true })
+
+  while (Date.now() < deadline) {
+    try {
+      const handle = fs.openSync(lockPath, "wx", 0o600)
+      fs.writeFileSync(
+        handle,
+        JSON.stringify({ pid: process.pid, acquiredAt: new Date().toISOString() })
+      )
+
+      return () => {
+        try {
+          fs.closeSync(handle)
+        } finally {
+          fs.rmSync(lockPath, { force: true })
+        }
+      }
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      if (code !== "EEXIST") throw error
+
+      try {
+        const stat = fs.statSync(lockPath)
+        if (Date.now() - stat.mtimeMs > DB_LOCK_STALE_MS) {
+          fs.rmSync(lockPath, { force: true })
+          continue
+        }
+      } catch (statError) {
+        const statCode = (statError as NodeJS.ErrnoException).code
+        if (statCode !== "ENOENT") throw statError
+      }
+
+      await sleep(DB_LOCK_RETRY_MS)
+    }
+  }
+
+  throw new Error("Przekroczono czas oczekiwania na blokadę bazy danych.")
+}
+
+export async function withDbWriteLock<T>(
+  operation: () => Promise<T> | T
+): Promise<T> {
+  const release = await acquireDbLock()
+  try {
+    return await operation()
+  } finally {
+    release()
   }
 }
