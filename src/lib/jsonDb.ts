@@ -26,15 +26,32 @@ export function getDbPath() {
   })
 }
 
-export function readDb() {
+function readDbFile() {
   const dbPath = getDbPath()
+  const data = fs.readFileSync(dbPath, "utf-8")
+  return JSON.parse(data)
+}
 
+export function readDb() {
   try {
-    const data = fs.readFileSync(dbPath, "utf-8")
-    return JSON.parse(data)
+    return readDbFile()
   } catch (error) {
     console.error("Błąd odczytu bazy danych:", error)
     return null
+  }
+}
+
+/**
+ * W ścieżkach zapisu błąd odczytu nie może zostać zinterpretowany jako
+ * "pusta baza". W przeciwnym razie uszkodzony/nieczytelny plik mógłby zostać
+ * nadpisany poprawnym JSON-em pozbawionym istniejących danych.
+ */
+export function readDbOrThrow() {
+  try {
+    return readDbFile()
+  } catch (error) {
+    console.error("Krytyczny błąd odczytu bazy przed mutacją:", error)
+    throw new Error("Nie udało się bezpiecznie odczytać bazy danych przed zapisem.")
   }
 }
 
