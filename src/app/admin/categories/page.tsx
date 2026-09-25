@@ -1,7 +1,7 @@
-import { initializeMockData } from "@/store/serverStore";
+import { readServerData } from "@/store/serverStore";
 import { CategoriesDashboardClient } from "./CategoriesDashboardClient";
 
-export default function CategoriesPage() {
-  const { categories } = initializeMockData();
+export default async function CategoriesPage() {
+  const { categories } = await readServerData();
   return <CategoriesDashboardClient initialCategories={categories} />;
 }
