@@ -52,16 +52,17 @@ export async function POST(req: Request) {
     }
 
     await mutateMockData((db) => {
+      const users = db.users as Array<{ email?: string }>
       if (
-        db.users.some(
-          (user: { email?: string }) =>
+        users.some(
+          (user) =>
             String(user.email ?? "").trim().toLowerCase() === data.email
         )
       ) {
         throw new Error("EMAIL_EXISTS")
       }
 
-      db.users.push(newUser)
+      users.push(newUser)
     })
 
     return NextResponse.json(
