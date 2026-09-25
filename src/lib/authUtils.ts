@@ -12,8 +12,14 @@ type SessionUser = {
 type StoredUser = {
   id?: string
   email?: string
+  companyName?: string
+  username?: string
   roleType?: string
+  isApproved?: boolean
   isBlocked?: boolean
+  nip?: string | null
+  discount?: number
+  tierName?: string
 }
 
 function normalizeEmail(value: unknown) {
