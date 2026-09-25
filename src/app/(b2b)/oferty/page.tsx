@@ -32,7 +32,7 @@ export default async function B2BOfertyPage() {
            <strong className="text-foreground text-lg font-black tracking-tight mb-1">Masowy katalog sprzętowy V2</strong>
            <p className="text-sm text-muted-foreground font-medium leading-relaxed max-w-3xl">
              Zidentyfikuj urządzenia dla swoich inwestycji. Możesz buforować wybrane pozycje direct do Zapytania Ofertowego. 
-             Nasz zespół handlowy zweryfikuje dodatkowe upusty projektowe w czasie poniżej 120 minut.
+             Nasz zespół handlowy zweryfikuje dostępność, warunki projektowe i ewentualne dodatkowe upusty.
            </p>
         </div>
       </div>

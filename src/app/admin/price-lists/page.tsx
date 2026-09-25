@@ -10,7 +10,8 @@ import {
 } from "lucide-react"
 import * as Icons from "lucide-react"
 import * as XLSX from "xlsx"
-import { calculateB2BPrice, PRICING_MATRIX } from "./_lib/priceLogic"
+import { applyMarkup, calculateB2BPrice, PRICING_MATRIX } from "./_lib/priceLogic"
+import { COMPANY_PUBLIC } from "@/lib/company"
 import { toast } from "sonner"
 
 const VAT_RATE = 0.23;
@@ -85,8 +86,9 @@ export default function PricelistGenerator() {
     setTimeout(() => {
       try {
         const exportData = filteredProducts.map(p => {
-          const b2b = calculateB2BPrice(p, selectedTier);
-          const finalNetto = b2b.price * (1 + customMarkup / 100);
+          const categoryName = categories.find((cat: any) => cat.id === p.categoryId)?.name;
+          const b2b = calculateB2BPrice(p, selectedTier, categoryName);
+          const finalNetto = applyMarkup(b2b.price, customMarkup);
           return {
             "Kod Produktu": p.sku,
             "Producent": p.manufacturer || "Inny",
@@ -124,8 +126,9 @@ export default function PricelistGenerator() {
       </div>
       <div className="divide-y divide-slate-50">
         {products.map((p) => {
-          const b2b = calculateB2BPrice(p, selectedTier);
-          const priceNetto = b2b.price * (1 + customMarkup / 100);
+          const categoryName = categories.find((cat: any) => cat.id === p.categoryId)?.name;
+          const b2b = calculateB2BPrice(p, selectedTier, categoryName);
+          const priceNetto = applyMarkup(b2b.price, customMarkup);
           const priceGross = priceNetto * (1 + VAT_RATE);
           return (
             <div key={p.id} className="grid grid-cols-12 gap-4 px-5 py-3 text-[10px] items-center hover:bg-slate-50 transition-colors font-mono group">
@@ -212,7 +215,7 @@ export default function PricelistGenerator() {
                         <input 
                            type="number"
                            value={customMarkup}
-                           onChange={(e) => setCustomMarkup(Number(e.target.value))}
+                           onChange={(e) => setCustomMarkup(Math.min(1000, Math.max(-100, Number(e.target.value) || 0)))}
                            className="w-full h-12 bg-slate-50 border border-slate-100 px-4 text-[13px] font-black text-slate-950 outline-none focus:border-primary focus:bg-white transition-all shadow-sm italic"
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-400 italic">%</div>
@@ -314,9 +317,9 @@ export default function PricelistGenerator() {
                         {!isWhiteLabel ? (
                            <div className="text-[11px] font-black text-slate-950 flex flex-col items-end gap-1 uppercase italic tracking-tighter">
                               <span className="bg-slate-950 text-white px-3 py-1 mb-2">CELTRONICS S.C.</span>
-                              <span>NIP: 123-456-78-90</span>
-                              <span>BIURO@CELTRONICS.PL</span>
-                              <span className="text-primary underline underline-offset-4 decoration-2">WWW.CELTRONICS.PL</span>
+                              {COMPANY_PUBLIC.nip && <span>NIP: {COMPANY_PUBLIC.nip}</span>}
+                              <span>{COMPANY_PUBLIC.email.toUpperCase()}</span>
+                              <span className="text-primary underline underline-offset-4 decoration-2">{COMPANY_PUBLIC.website.toUpperCase()}</span>
                            </div>
                         ) : (
                            <div className="h-28 w-60 border-4 border-dashed border-slate-100 flex items-center justify-center">

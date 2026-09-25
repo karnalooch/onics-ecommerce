@@ -62,7 +62,7 @@ function PendingApprovalView() {
          <div className="flex flex-col gap-4">
             <div className="p-4 bg-slate-50 rounded-2xl flex items-center gap-4 border border-slate-100">
                <ShieldAlert className="w-5 h-5 text-slate-400" />
-               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Oczekiwany czas: Do 24h</span>
+               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Status: oczekuje na weryfikację administratora</span>
             </div>
             <Link href="/" className="inline-flex items-center justify-center gap-3 h-14 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10">
                <ArrowLeft className="w-4 h-4" /> Powrót do Strony Głównej

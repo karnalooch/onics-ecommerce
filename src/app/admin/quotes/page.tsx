@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
+import { COMPANY_PUBLIC } from "@/lib/company"
 
 export default function QuotesGenerator() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -17,7 +18,7 @@ export default function QuotesGenerator() {
   const [loading, setLoading] = useState(true);
 
   const [items, setItems] = useState<{productId: string, qty: number, discount: number}[]>([]);
-  const [clientInfo, setClientInfo] = useState({ name: "KLIENT_TEST_B2B", nip: "000-000-00-00" });
+  const [clientInfo, setClientInfo] = useState({ name: "", nip: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [refNumber, setRefNumber] = useState("");
   const [quoteDate, setQuoteDate] = useState("");
@@ -61,9 +62,13 @@ export default function QuotesGenerator() {
     setItems(items.filter((_, i) => i !== index));
   }
 
-  const updateItem = (index: number, field: string, val: any) => {
+  const updateItem = (index: number, field: "qty" | "discount", val: number) => {
     const newItems = [...items];
-    (newItems[index] as any)[field] = val;
+    if (field === "qty") {
+      newItems[index].qty = Math.max(1, Math.min(10000, Math.trunc(val) || 1));
+    } else {
+      newItems[index].discount = Math.max(0, Math.min(100, val || 0));
+    }
     setItems(newItems);
   }
 
@@ -245,9 +250,9 @@ export default function QuotesGenerator() {
                  
                  <div className="text-right flex flex-col gap-2 items-end">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Dostawca Systemu:</span>
-                    <span className="text-xl font-extrabold tracking-tight">Celtronics S.C.</span>
-                    <span className="text-[12px] font-bold text-slate-600 tracking-wider">NIP: 123-456-78-90</span>
-                    <span className="text-[12px] font-bold text-primary tracking-widest mt-3 underline decoration-4 underline-offset-4 decoration-primary/20 italic">BIURO@CELTRONICS.PL</span>
+                    <span className="text-xl font-extrabold tracking-tight">{COMPANY_PUBLIC.shortName}</span>
+                    {COMPANY_PUBLIC.nip && <span className="text-[12px] font-bold text-slate-600 tracking-wider">NIP: {COMPANY_PUBLIC.nip}</span>}
+                    <span className="text-[12px] font-bold text-primary tracking-widest mt-3 underline decoration-4 underline-offset-4 decoration-primary/20 italic">{COMPANY_PUBLIC.email.toUpperCase()}</span>
                  </div>
               </div>
 
@@ -260,8 +265,8 @@ export default function QuotesGenerator() {
                  </div>
                  <div className="bg-primary/5 p-10 flex flex-col justify-center border-l-8 border-primary rounded-r-2xl">
                     <p className="text-[12px] font-bold uppercase leading-relaxed tracking-wider opacity-80 italic">
-                       Projekt wyceny wygenerowany automatycznie przez silnik <span className="text-primary font-black">ELITE_CPQ</span>. 
-                       Wszystkie kwoty wyrażone są w walucie PLN netto. Oferta wiążąca programowo przez 14 Dni Kalendarzowych.
+                       Projekt wyceny wygenerowany przez konfigurator CEL-TRONICS. Wszystkie kwoty wyrażone są w PLN netto.
+                       Dokument pozostaje projektem do czasu zatwierdzenia warunków handlowych przez CEL-TRONICS.
                     </p>
                  </div>
               </div>
