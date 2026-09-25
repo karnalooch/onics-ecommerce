@@ -2,8 +2,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
 import { z } from "zod";
+import { authorizeAPI } from "@/lib/authUtils";
 import { initializeMockData, saveMockData } from "@/store/serverStore";
 
 const SubcategorySchema = z.object({
@@ -22,9 +22,8 @@ export type ActionState =
   | { success: true; message: string; data?: any }
   | { success: false; error: string };
 async function requireAdminAction() {
-  const session = await auth();
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (!session?.user || role !== "ADMIN") {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) {
     return { success: false as const, error: "Brak uprawnień administratora." };
   }
   return null;
