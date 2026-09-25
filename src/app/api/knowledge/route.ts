@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { authorizeAPI } from "@/lib/authUtils"
-import { getKnowledge, saveKnowledge } from "@/lib/knowledge/parser"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { getKnowledge } from "@/lib/knowledge/parser"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 type VirtualProduct = {
   isVirtual?: boolean
@@ -45,22 +45,19 @@ export async function DELETE() {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const { products } = initializeMockData()
-    const productStore = products as VirtualProduct[]
+    await mutateMockData((db) => {
+      const productStore = db.products as VirtualProduct[]
 
-    for (let index = productStore.length - 1; index >= 0; index -= 1) {
-      if (productStore[index].isVirtual) productStore.splice(index, 1)
-    }
+      for (let index = productStore.length - 1; index >= 0; index -= 1) {
+        if (productStore[index].isVirtual) productStore.splice(index, 1)
+      }
 
-    const store = await getKnowledge()
-    store.sources = []
-    store.processedSources = []
-    store.lastUpdated = new Date().toISOString()
-    await saveKnowledge(store)
-
-    if (!saveMockData()) {
-      throw new Error("Nie udało się utrwalić zmian.")
-    }
+      db.knowledgeMeta = {
+        sources: [],
+        processedSources: [],
+        lastUpdated: new Date().toISOString(),
+      }
+    })
 
     return NextResponse.json({
       success: true,
