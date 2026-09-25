@@ -58,7 +58,7 @@ function assertCheckoutUser(user: StoredUser | undefined) {
 
 function resolveCheckout(
   users: StoredUser[],
-  products: any[],
+  products: Parameters<typeof resolveCartItems>[1],
   sessionUser: SessionUser,
   items: z.infer<typeof CartSchema>["items"]
 ) {
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     const snapshot = initializeMockData()
     const { storedUser, resolved } = resolveCheckout(
       snapshot.users as StoredUser[],
-      snapshot.products,
+      snapshot.products as Parameters<typeof resolveCartItems>[1],
       sessionUser,
       parsed.data.items
     )
@@ -159,7 +159,7 @@ export async function POST(req: Request) {
       await mutateMockData((db) => {
         const fresh = resolveCheckout(
           db.users as StoredUser[],
-          db.products,
+          db.products as Parameters<typeof resolveCartItems>[1],
           sessionUser,
           parsed.data.items
         )
