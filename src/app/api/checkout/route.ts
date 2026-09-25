@@ -4,7 +4,7 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
 import { moneyToMinorUnits } from "@/lib/payments"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const CartSchema = z.object({
   items: z
@@ -35,6 +35,52 @@ type StoredUser = {
   discount?: number
 }
 
+function findStoredUser(users: StoredUser[], sessionUser: SessionUser) {
+  return users.find(
+    (user) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  )
+}
+
+function assertCheckoutUser(user: StoredUser | undefined) {
+  if (!user || user.isBlocked) {
+    throw new Error("Konto jest niedostępne.")
+  }
+
+  if (user.roleType === "BIZ" && !user.isApproved) {
+    throw new Error("Konto B2B oczekuje na zatwierdzenie.")
+  }
+
+  return user
+}
+
+function resolveCheckout(
+  users: StoredUser[],
+  products: any[],
+  sessionUser: SessionUser,
+  items: z.infer<typeof CartSchema>["items"]
+) {
+  const storedUser = assertCheckoutUser(findStoredUser(users, sessionUser))
+  const resolved = resolveCartItems(
+    items,
+    products,
+    {
+      id: storedUser.id,
+      email: storedUser.email,
+      role: storedUser.roleType,
+      isApproved: storedUser.isApproved,
+      isBlocked: storedUser.isBlocked,
+      discount: storedUser.discount,
+      nip: storedUser.nip,
+    },
+    { requirePriced: true, requireStock: true }
+  )
+
+  return { storedUser, resolved }
+}
+
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI([])
   if (!authCheck.authorized) return authCheck.response
@@ -56,38 +102,12 @@ export async function POST(req: Request) {
     }
 
     const sessionUser = authCheck.user as SessionUser
-    const { users, products, orders } = initializeMockData()
-    const storedUser = (users as StoredUser[]).find(
-      (user) =>
-        (sessionUser.id && user.id === sessionUser.id) ||
-        (sessionUser.email &&
-          user.email?.toLowerCase() === sessionUser.email.toLowerCase())
-    )
-
-    if (!storedUser || storedUser.isBlocked) {
-      return NextResponse.json({ error: "Konto jest niedostępne." }, { status: 403 })
-    }
-
-    if (storedUser.roleType === "BIZ" && !storedUser.isApproved) {
-      return NextResponse.json(
-        { error: "Konto B2B oczekuje na zatwierdzenie." },
-        { status: 403 }
-      )
-    }
-
-    const resolved = resolveCartItems(
-      parsed.data.items,
-      products,
-      {
-        id: storedUser.id,
-        email: storedUser.email,
-        role: storedUser.roleType,
-        isApproved: storedUser.isApproved,
-        isBlocked: storedUser.isBlocked,
-        discount: storedUser.discount,
-        nip: storedUser.nip,
-      },
-      { requirePriced: true, requireStock: true }
+    const snapshot = initializeMockData()
+    const { storedUser, resolved } = resolveCheckout(
+      snapshot.users as StoredUser[],
+      snapshot.products,
+      sessionUser,
+      parsed.data.items
     )
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -135,37 +155,48 @@ export async function POST(req: Request) {
       throw new Error("Stripe nie zwrócił adresu płatności.")
     }
 
-    const newOrder = {
-      id: orderId,
-      orderType: "ORDER",
-      createdAt: new Date().toISOString(),
-      status: "PENDING_VERIFICATION",
-      estimatedDeliveryDays: null,
-      totalPriceOrig: resolved.total,
-      totalPriceFinal: resolved.total,
-      items: resolved.items,
-      user: {
-        id: storedUser.id,
-        email: storedUser.email,
-        companyName: storedUser.companyName,
-        nip: storedUser.nip ?? null,
-      },
-      paymentProvider: "STRIPE",
-      paymentStatus: "PENDING",
-      stripeCheckoutSessionId: session.id,
-      stripePaymentIntentId: null,
-      paidAt: null,
-    }
+    try {
+      await mutateMockData((db) => {
+        const fresh = resolveCheckout(
+          db.users as StoredUser[],
+          db.products,
+          sessionUser,
+          parsed.data.items
+        )
 
-    orders.unshift(newOrder)
+        if (JSON.stringify(fresh.resolved) !== JSON.stringify(resolved)) {
+          throw new Error("CHECKOUT_STATE_CHANGED")
+        }
 
-    if (!saveMockData()) {
+        db.orders.unshift({
+          id: orderId,
+          orderType: "ORDER",
+          createdAt: new Date().toISOString(),
+          status: "PENDING_VERIFICATION",
+          estimatedDeliveryDays: null,
+          totalPriceOrig: fresh.resolved.total,
+          totalPriceFinal: fresh.resolved.total,
+          items: fresh.resolved.items,
+          user: {
+            id: fresh.storedUser.id,
+            email: fresh.storedUser.email,
+            companyName: fresh.storedUser.companyName,
+            nip: fresh.storedUser.nip ?? null,
+          },
+          paymentProvider: "STRIPE",
+          paymentStatus: "PENDING",
+          stripeCheckoutSessionId: session.id,
+          stripePaymentIntentId: null,
+          paidAt: null,
+        })
+      })
+    } catch (persistenceError) {
       try {
         await stripe.checkout.sessions.expire(session.id)
       } catch (expireError) {
         console.error("Nie udało się wygasić osieroconej sesji Stripe:", expireError)
       }
-      throw new Error("Nie udało się utrwalić zamówienia przed płatnością.")
+      throw persistenceError
     }
 
     return NextResponse.json({
@@ -174,10 +205,14 @@ export async function POST(req: Request) {
       orderId,
     })
   } catch (error) {
+    const message =
+      error instanceof Error && error.message === "CHECKOUT_STATE_CHANGED"
+        ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
+        : error instanceof Error
+          ? error.message
+          : "Błąd serwera."
+
     console.error("Błąd generowania bramki checkout:", error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Błąd serwera." },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
