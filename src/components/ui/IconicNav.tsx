@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
+import { useState, useSyncExternalStore } from "react"
 import {
   BookOpen,
   Boxes,
@@ -26,18 +26,24 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
+const emptySubscribe = () => () => {}
+const getClientMountedSnapshot = () => true
+const getServerMountedSnapshot = () => false
+
 export function IconicNav() {
   const pathname = usePathname()
   const { data: session, status } = useSession()
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientMountedSnapshot,
+    getServerMountedSnapshot
+  )
+  const [mobileOpenPath, setMobileOpenPath] = useState<string | null>(null)
+  const mobileOpen = mobileOpenPath === pathname
 
   const isAuthenticated = status === "authenticated"
   const isAdmin = isAuthenticated && (session?.user as { role?: string } | undefined)?.role === "ADMIN"
-
-  useEffect(() => setMounted(true), [])
-  useEffect(() => setMobileOpen(false), [pathname])
 
   const publicItems = [
     { name: "Start", path: "/", icon: Home },
@@ -70,7 +76,7 @@ export function IconicNav() {
   }) => (
     <Link
       href={item.path}
-      onClick={() => setMobileOpen(false)}
+      onClick={() => setMobileOpenPath(null)}
       className={`flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${
         compact ? "px-3 py-3" : "px-3 py-2"
       } ${
@@ -165,7 +171,7 @@ export function IconicNav() {
 
           <button
             type="button"
-            onClick={() => setMobileOpen((open) => !open)}
+            onClick={() => setMobileOpenPath((openPath) => openPath === pathname ? null : pathname)}
             className="flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 text-foreground lg:hidden dark:border-white/10"
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Zamknij menu" : "Otwórz menu"}
