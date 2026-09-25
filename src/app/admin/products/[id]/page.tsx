@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { initializeMockData, mutateMockData } from "@/store/serverStore";
+import { mutateMockData, readServerData } from "@/store/serverStore";
 
 export default async function EditProductPage({ params }: { params: any }) {
   const session = await auth();
@@ -14,7 +14,7 @@ export default async function EditProductPage({ params }: { params: any }) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
   
-  const { products, categories, manufacturers } = initializeMockData();
+  const { products, categories, manufacturers } = await readServerData();
   
   let product: any = null;
   if (id !== "new") {
