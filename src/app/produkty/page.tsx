@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 import { auth } from "@/auth"
 import { AddToCartButton } from "@/components/ui/AddToCartButton"
+import type { CartItem } from "@/store/cartStore"
 
 export const metadata: Metadata = {
   title: "Katalog B2B",
@@ -20,14 +21,31 @@ export const metadata: Metadata = {
 export const revalidate = 0
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
+type CatalogCategory = string | { name?: string }
+type CatalogProduct = {
+  id?: string | number
+  sku?: string
+  name?: string
+  price?: number | string | null
+  priceHidden?: boolean
+  imageUrl?: string
+  specs?: string
+  manufacturer?: string
+  category?: CatalogCategory
+  categoryName?: string
+  subcategory?: CatalogCategory
+  subcategoryName?: string
+}
 
 const normalize = (value: unknown) => String(value ?? "").trim().toLowerCase()
 
-const getCategory = (product: any) =>
-  product.category?.name ||
+const getCategoryName = (value: CatalogCategory | undefined) =>
+  typeof value === "string" ? value : value?.name
+
+const getCategory = (product: CatalogProduct) =>
+  getCategoryName(product.category) ||
   product.categoryName ||
-  product.category ||
-  product.subcategory?.name ||
+  getCategoryName(product.subcategory) ||
   product.subcategoryName ||
   "Pozostałe"
 
@@ -42,12 +60,12 @@ export default async function ConsumerCatalogPage({
   const activeCategory = typeof params.category === "string" ? params.category.trim() : ""
 
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-  let products: any[] = []
+  let products: CatalogProduct[] = []
 
   try {
     const response = await fetch(`${baseUrl}/api/products`, { cache: "no-store" })
-    const payload = await response.json()
-    products = Array.isArray(payload) ? payload : []
+    const payload: unknown = await response.json()
+    products = Array.isArray(payload) ? (payload as CatalogProduct[]) : []
   } catch (error) {
     console.error("Błąd pobierania produktów:", error)
   }
@@ -157,9 +175,16 @@ export default async function ConsumerCatalogPage({
 
         <div className="mt-6 space-y-3">
           {visibleProducts.length > 0 ? (
-            visibleProducts.map((product: any) => {
+            visibleProducts.map((product: CatalogProduct) => {
               const price = Number(product.price ?? 0)
               const canShowPrice = !product.priceHidden && Number.isFinite(price) && price > 0
+              const cartProduct: CartItem = {
+                id: String(product.id ?? product.sku ?? product.name ?? "product"),
+                sku: String(product.sku ?? ""),
+                name: String(product.name ?? "Produkt"),
+                price: Number.isFinite(price) ? price : 0,
+                quantity: 1,
+              }
 
               return (
                 <article
@@ -213,7 +238,7 @@ export default async function ConsumerCatalogPage({
                           cena netto
                         </span>
                         <div className="mt-3 flex lg:justify-end">
-                          <AddToCartButton product={product} />
+                          <AddToCartButton product={cartProduct} />
                         </div>
                       </>
                     ) : (

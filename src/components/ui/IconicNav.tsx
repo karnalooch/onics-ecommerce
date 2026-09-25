@@ -23,6 +23,7 @@ import {
   Users,
   Wrench,
   X,
+  type LucideIcon,
 } from "lucide-react"
 
 export function IconicNav() {
@@ -33,7 +34,7 @@ export function IconicNav() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const isAuthenticated = status === "authenticated"
-  const isAdmin = isAuthenticated && (session?.user as any)?.role === "ADMIN"
+  const isAdmin = isAuthenticated && (session?.user as { role?: string } | undefined)?.role === "ADMIN"
 
   useEffect(() => setMounted(true), [])
   useEffect(() => setMobileOpen(false), [pathname])
@@ -64,7 +65,7 @@ export function IconicNav() {
     item,
     compact = false,
   }: {
-    item: { name: string; path: string; icon: any }
+    item: { name: string; path: string; icon: LucideIcon }
     compact?: boolean
   }) => (
     <Link

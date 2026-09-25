@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import { validateNip, calculatePasswordStrength, validateEmail } from "@/lib/validation"
 
-interface IOnboardingFormData {
+export interface OnboardingFormData {
   email: string
   password: string
   nip: string
@@ -25,13 +25,13 @@ interface IOnboardingFormData {
 }
 
 interface IOnboardingProps {
-  onSubmit: (data: IOnboardingFormData) => Promise<void>
+  onSubmit: (data: OnboardingFormData) => Promise<void>
   loading: boolean
 }
 
 export function OnboardingMissionControl({ onSubmit, loading }: IOnboardingProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [formData, setFormData] = useState<IOnboardingFormData>({
+  const [formData, setFormData] = useState<OnboardingFormData>({
     email: "",
     password: "",
     nip: "",

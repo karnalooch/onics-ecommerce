@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { CheckCircle2, Loader2 } from "lucide-react"
-import { OnboardingMissionControl } from "./_components/OnboardingMissionControl"
+import { OnboardingMissionControl, type OnboardingFormData } from "./_components/OnboardingMissionControl"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -12,7 +12,7 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleRegister = async (data: any) => {
+  const handleRegister = async (data: OnboardingFormData) => {
     setError("")
     setLoading(true)
 
