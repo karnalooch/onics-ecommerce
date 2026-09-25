@@ -48,6 +48,21 @@ If either path is missing while `NODE_ENV=production`, the application fails clo
 
 The configured locations must survive application restarts and deployments. Do not treat an ephemeral/serverless function filesystem as durable storage.
 
+### File-store lock tuning
+
+The single-instance file store serializes mutations with a lock file. Defaults are tuned for short critical sections:
+
+```bash
+CELTRONICS_DB_LOCK_RETRY_MS=25
+CELTRONICS_DB_LOCK_TIMEOUT_MS=15000
+CELTRONICS_DB_LOCK_STALE_MS=10000
+CELTRONICS_DB_LOCK_HEARTBEAT_MS=2000
+CELTRONICS_DB_LOCK_WARN_WAIT_MS=500
+CELTRONICS_DB_SLOW_TX_MS=1000
+```
+
+Invalid timing values fail closed. The heartbeat interval must remain lower than the stale-lock threshold. The server emits warnings when lock acquisition or a transaction exceeds the configured warning threshold.
+
 ### Important limitation
 
 The file-backed store is an interim persistence layer. It is suitable only for a deployment model that provides a durable writable volume and controlled application concurrency. A future database migration should replace it before horizontal scaling or multi-instance writes.
