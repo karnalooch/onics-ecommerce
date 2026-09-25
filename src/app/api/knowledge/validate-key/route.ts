@@ -35,13 +35,16 @@ export async function POST(req: Request) {
       )
     }
 
-    const url =
-      "https://generativelanguage.googleapis.com/v1beta/models?key=" +
-      encodeURIComponent(parsed.data.apiKey)
-    const response = await fetch(url, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(10000),
-    })
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models",
+      {
+        headers: {
+          "x-goog-api-key": parsed.data.apiKey,
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      }
+    )
     const data = (await response.json()) as GoogleModelsResponse
 
     if (!response.ok) {
