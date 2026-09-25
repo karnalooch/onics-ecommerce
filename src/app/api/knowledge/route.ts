@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { authorizeAPI } from "@/lib/authUtils"
 import { getKnowledge } from "@/lib/knowledge/parser"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData, readServerData } from "@/store/serverStore"
 
 type VirtualProduct = {
   isVirtual?: boolean
@@ -13,7 +13,7 @@ export async function GET() {
 
   try {
     const store = await getKnowledge()
-    const { categories, manufacturers } = initializeMockData()
+    const { categories, manufacturers } = await readServerData()
     const snippets = Object.entries(store.knowledge)
       .slice(0, 500)
       .map(([model, info], index) => ({
