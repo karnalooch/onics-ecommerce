@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData, readServerData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 
 export const dynamic = "force-dynamic"
@@ -42,7 +42,7 @@ function normalizeSubcategories(
 }
 
 export async function GET() {
-  const { categories } = initializeMockData()
+  const { categories } = await readServerData()
   return NextResponse.json(categories)
 }
 
