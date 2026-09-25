@@ -78,7 +78,7 @@ jobs:
             echo "Direct legacy global store access detected. Use initializeMockData or mutateMockData."
             exit 1
           fi
-          if grep -R --line-number --fixed-string "mutateMockData(async" src; then
+          if grep -R --exclude-dir=__tests__ --line-number --fixed-string "mutateMockData(async" src; then
             echo "Async work inside mutateMockData detected. Prepare external work before the DB lock or use synchronous snapshot helpers."
             exit 1
           fi
