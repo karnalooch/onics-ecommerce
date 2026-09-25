@@ -35,6 +35,15 @@ type CategoryRecord = {
   subcategories: Subcategory[]
 }
 
+type StoredUser = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+  discount?: number
+}
+
 const ImportItemSchema = z
   .object({
     sku: z.string().trim().optional(),
@@ -85,7 +94,7 @@ function normalize(value: unknown) {
 
 export async function GET() {
   const session = await auth()
-  const { products } = initializeMockData()
+  const { products, users } = initializeMockData()
   const productStore = products as ProductRecord[]
 
   let unifiedDevices: ProductRecord[]
@@ -133,11 +142,19 @@ export async function GET() {
   }
 
   const sessionUser = session?.user as
-    | { role?: string; isApproved?: boolean; discount?: number }
+    | { id?: string; email?: string | null }
     | undefined
-  const role = sessionUser?.role
+  const currentUser = sessionUser
+    ? (users as StoredUser[]).find(
+        (user) =>
+          (sessionUser.id && user.id === sessionUser.id) ||
+          (sessionUser.email &&
+            normalize(user.email) === normalize(sessionUser.email))
+      )
+    : undefined
+  const role = currentUser?.isBlocked ? undefined : currentUser?.roleType
   const canSeePrices =
-    role === "ADMIN" || (role === "BIZ" && Boolean(sessionUser?.isApproved))
+    role === "ADMIN" || (role === "BIZ" && Boolean(currentUser?.isApproved))
 
   if (!canSeePrices) {
     return NextResponse.json(
@@ -163,7 +180,7 @@ export async function GET() {
                 price: Number(product.price ?? 0),
                 stock: Number(product.stock ?? 0),
               },
-              { role: "BIZ", discount: Number(sessionUser?.discount ?? 0) }
+              { role: "BIZ", discount: Number(currentUser?.discount ?? 0) }
             )
           : Number(product.price ?? 0),
       priceHidden: false,
