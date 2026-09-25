@@ -19,6 +19,8 @@ jobs:
       NEXTAUTH_SECRET: "ci-platform-audit-only"
       NEXTAUTH_URL: "http://localhost:3000"
       ADMIN_BOOTSTRAP_PASSWORD: "ci-bootstrap-only"
+      CELTRONICS_DB_PATH: "./src/data/db.json"
+      CELTRONICS_UPLOAD_ROOT: "./.ci/celtronics-knowledge"
 
     steps:
       - name: Checkout
@@ -42,6 +44,7 @@ jobs:
           src/lib/authUtils.ts
           src/lib/jsonDb.ts
           src/lib/payments.ts
+          src/lib/storageConfig.ts
           src/lib/knowledge/files.ts
           src/lib/knowledge/KnowledgeContext.tsx
           src/app/api/register/route.ts
