@@ -3,7 +3,8 @@ import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
-import { initializeMockData } from "@/store/serverStore"
+import { moneyToMinorUnits } from "@/lib/payments"
+import { initializeMockData, saveMockData } from "@/store/serverStore"
 
 const CartSchema = z.object({
   items: z
@@ -26,6 +27,7 @@ type SessionUser = {
 type StoredUser = {
   id?: string
   email?: string
+  companyName?: string
   nip?: string | null
   roleType?: string
   isApproved?: boolean
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
     }
 
     const sessionUser = authCheck.user as SessionUser
-    const { users, products } = initializeMockData()
+    const { users, products, orders } = initializeMockData()
     const storedUser = (users as StoredUser[]).find(
       (user) =>
         (sessionUser.id && user.id === sessionUser.id) ||
@@ -90,12 +92,13 @@ export async function POST(req: Request) {
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin
+    const orderId = `ORD-${crypto.randomUUID()}`
 
     const session = await stripe.checkout.sessions.create({
       line_items: resolved.items.map((item) => ({
         price_data: {
           currency: "pln",
-          unit_amount: Math.round(item.price * 100),
+          unit_amount: moneyToMinorUnits(item.price),
           product_data: {
             name: item.name,
             metadata: {
@@ -112,12 +115,64 @@ export async function POST(req: Request) {
       client_reference_id: String(storedUser.id ?? ""),
       customer_email: storedUser.email,
       metadata: {
+        order_id: orderId,
         pl_nip: storedUser.nip || "",
         client_role: storedUser.roleType || "RETAIL",
       },
+      payment_intent_data: {
+        metadata: {
+          order_id: orderId,
+        },
+      },
     })
 
-    return NextResponse.json({ id: session.id, url: session.url })
+    if (!session.url) {
+      try {
+        await stripe.checkout.sessions.expire(session.id)
+      } catch (expireError) {
+        console.error("Nie udało się wygasić sesji Stripe bez URL:", expireError)
+      }
+      throw new Error("Stripe nie zwrócił adresu płatności.")
+    }
+
+    const newOrder = {
+      id: orderId,
+      orderType: "ORDER",
+      createdAt: new Date().toISOString(),
+      status: "PENDING_VERIFICATION",
+      estimatedDeliveryDays: null,
+      totalPriceOrig: resolved.total,
+      totalPriceFinal: resolved.total,
+      items: resolved.items,
+      user: {
+        id: storedUser.id,
+        email: storedUser.email,
+        companyName: storedUser.companyName,
+        nip: storedUser.nip ?? null,
+      },
+      paymentProvider: "STRIPE",
+      paymentStatus: "PENDING",
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId: null,
+      paidAt: null,
+    }
+
+    orders.unshift(newOrder)
+
+    if (!saveMockData()) {
+      try {
+        await stripe.checkout.sessions.expire(session.id)
+      } catch (expireError) {
+        console.error("Nie udało się wygasić osieroconej sesji Stripe:", expireError)
+      }
+      throw new Error("Nie udało się utrwalić zamówienia przed płatnością.")
+    }
+
+    return NextResponse.json({
+      id: session.id,
+      url: session.url,
+      orderId,
+    })
   } catch (error) {
     console.error("Błąd generowania bramki checkout:", error)
     return NextResponse.json(
