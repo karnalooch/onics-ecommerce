@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData, readServerData } from "@/store/serverStore"
 
 export const dynamic = "force-dynamic"
 
@@ -83,7 +83,7 @@ export async function GET() {
   if (!authCheck.authorized) return authCheck.response
 
   const sessionUser = authCheck.user as SessionUser
-  const { orders } = initializeMockData()
+  const { orders } = await readServerData()
   const orderStore = orders as StoredOrder[]
 
   if (authCheck.currentRole === "ADMIN") {
