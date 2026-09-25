@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
 import { authorizeAPI } from "@/lib/authUtils";
 import { initializeMockData, saveMockData } from "@/store/serverStore";
 
