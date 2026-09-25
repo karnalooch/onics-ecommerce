@@ -68,7 +68,8 @@ export async function saveProductAction(data: any): Promise<ActionState> {
   if (!validated.success) return { success: false, error: validated.error.issues[0].message };
 
   try {
-    const { products } = initializeMockData();
+    const { products: rawProducts } = initializeMockData();
+    const products = rawProducts as any[];
     const existingIdx = products.findIndex((p: any) => p.id === data.id);
 
     if (existingIdx !== -1) {
@@ -101,7 +102,8 @@ export async function deleteProductAction(id: string): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
   try {
-    const { products } = initializeMockData();
+    const { products: rawProducts } = initializeMockData();
+    const products = rawProducts as any[];
     const idx = products.findIndex((p: any) => p.id === id);
     if (idx !== -1) {
       products.splice(idx, 1);
@@ -123,7 +125,9 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
   try {
-    const { products, categories } = initializeMockData();
+    const { products: rawProducts, categories: rawCategories } = initializeMockData();
+    const products = rawProducts as any[];
+    const categories = rawCategories as any[];
     let updatedCount = 0;
     let addedCount = 0;
 
@@ -226,7 +230,8 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
   try {
     const store = await getKnowledge();
     
-    const { products } = initializeMockData();
+    const { products: rawProducts } = initializeMockData();
+    const products = rawProducts as any[];
     let autoAddedCount = 0;
     
     const enriched = items.map(item => {
@@ -310,7 +315,8 @@ export async function generateAiDescriptionAction(productId: string): Promise<Ac
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
   try {
-    const { products } = initializeMockData();
+    const { products: rawProducts } = initializeMockData();
+    const products = rawProducts as any[];
     const product = products.find((p: any) => p.id === productId);
     if (!product) return { success: false, error: "Nie znaleziono produktu" };
 
@@ -350,7 +356,8 @@ export async function syncProductWithIqAction(productId: string): Promise<Action
   if (accessError) return accessError;
   try {
     const store = await getKnowledge();
-    const { products } = initializeMockData();
+    const { products: rawProducts } = initializeMockData();
+    const products = rawProducts as any[];
     const product = products.find((p: any) => p.id === productId);
     
     if (!product) return { success: false, error: "Nie znaleziono produktu" };
@@ -391,7 +398,9 @@ export async function activateVirtualProductAction(sku: string): Promise<ActionS
     const entry = store.knowledge[sku];
     if (!entry) return { success: false, error: "Nie znaleziono wzorca w Bazie Wiedzy" };
 
-    const { products, categories: allCategories } = initializeMockData();
+    const { products: rawProducts, categories: rawCategories } = initializeMockData();
+    const products = rawProducts as any[];
+    const allCategories = rawCategories as any[];
     
     // Attempt to map category and subcategory names to IDs
     let mappedCatId = null;
@@ -440,7 +449,8 @@ export async function bulkAddProductsToInventoryAction(items: any[]): Promise<Ac
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
   try {
-    const { products } = initializeMockData();
+    const { products: rawProducts } = initializeMockData();
+    const products = rawProducts as any[];
     let added = 0;
 
     items.forEach(item => {
@@ -480,7 +490,10 @@ export async function manageStructureAction(
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
   try {
-    const { categories, manufacturers, products } = initializeMockData();
+    const { categories: rawCategories, manufacturers: rawManufacturers, products: rawProducts } = initializeMockData();
+    const categories = rawCategories as any[];
+    const manufacturers = rawManufacturers as any[];
+    const products = rawProducts as any[];
     
     // Logic for Manufacturers
     if (type === 'manufacturer') {
@@ -583,7 +596,10 @@ export async function autonomousProvisioningAction(extractions: any[]): Promise<
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
   try {
-    const { categories, manufacturers, products } = initializeMockData();
+    const { categories: rawCategories, manufacturers: rawManufacturers, products: rawProducts } = initializeMockData();
+    const categories = rawCategories as any[];
+    const manufacturers = rawManufacturers as any[];
+    const products = rawProducts as any[];
     let directCount = 0;
     let quarantined: any[] = [];
 
