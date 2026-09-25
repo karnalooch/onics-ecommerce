@@ -3,7 +3,7 @@ import path from "path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { auth } from "@/auth"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData, readServerData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
@@ -94,7 +94,7 @@ function normalize(value: unknown) {
 
 export async function GET() {
   const session = await auth()
-  const { products, users } = initializeMockData()
+  const { products, users } = await readServerData()
   const productStore = products as ProductRecord[]
 
   let unifiedDevices: ProductRecord[]
