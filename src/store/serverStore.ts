@@ -61,9 +61,13 @@ function normalizeDb(input: unknown): ServerDb {
 }
 
 /**
- * Pobiera najnowszy snapshot trwałej bazy.
+ * Asynchroniczna granica odczytu stanu serwerowego.
+ *
+ * Obecny backend plikowy czyta synchronicznie, ale publiczny kontrakt jest
+ * Promise-based, dzięki czemu backend może zostać później podmieniony na
+ * transakcyjną bazę bez ponownej migracji wszystkich call-site'ów.
  */
-export function initializeMockData() {
+export async function readServerData() {
   const db = normalizeDb(readDb())
   return {
     users: db.users,
