@@ -16,11 +16,33 @@ export default async function SklepPage() {
   const session = await auth();
   if (!session?.user) redirect("/logowanie");
 
-  const { products, categories } = initializeMockData();
-  const user = session.user as {
-    role?: string
+  const { products, categories, users } = initializeMockData();
+  const sessionUser = session.user as {
+    id?: string
+    email?: string | null
+  };
+  const currentUser = (users as Array<{
+    id?: string
+    email?: string
+    roleType?: string
     isApproved?: boolean
+    isBlocked?: boolean
     discount?: number
+  }>).find(
+    (user) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  );
+
+  if (!currentUser || currentUser.isBlocked) {
+    redirect("/logowanie");
+  }
+
+  const user = {
+    role: currentUser.roleType,
+    isApproved: Boolean(currentUser.isApproved),
+    discount: Number(currentUser.discount ?? 0),
   };
 
   // B2B Verification Check
