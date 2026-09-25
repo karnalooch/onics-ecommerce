@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   refresh-sheetjs:
-    if: github.event.head_commit.message == 'ci: refresh SheetJS dependency'
+    if: "github.event.head_commit.message == 'ci: fix SheetJS refresh workflow'"
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
