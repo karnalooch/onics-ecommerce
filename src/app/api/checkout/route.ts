@@ -115,9 +115,6 @@ export async function POST(req: Request) {
         pl_nip: storedUser.nip || "",
         client_role: storedUser.roleType || "RETAIL",
       },
-      automatic_payment_methods: {
-        enabled: true,
-      },
     })
 
     return NextResponse.json({ id: session.id, url: session.url })
