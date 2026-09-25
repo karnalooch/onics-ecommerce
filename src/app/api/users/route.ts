@@ -36,6 +36,14 @@ const UpdateUserSchema = z.object({
   address: z.string().trim().max(250).optional(),
 })
 
+function isActiveAdmin(user: UserRecord) {
+  return user.roleType === "ADMIN" && !user.isBlocked
+}
+
+function hasOtherActiveAdmin(users: UserRecord[], excludedIndex: number) {
+  return users.some((user, index) => index !== excludedIndex && isActiveAdmin(user))
+}
+
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
@@ -69,11 +77,38 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Nie znaleziono użytkownika." }, { status: 404 })
   }
 
-  userStore[index] = {
+  if (
+    parsed.data.email &&
+    userStore.some(
+      (user, userIndex) =>
+        userIndex !== index &&
+        user.email?.trim().toLowerCase() === parsed.data.email
+    )
+  ) {
+    return NextResponse.json(
+      { error: "Użytkownik z tym adresem e-mail już istnieje." },
+      { status: 409 }
+    )
+  }
+
+  const nextUser: UserRecord = {
     ...userStore[index],
     ...parsed.data,
     updatedAt: new Date().toISOString(),
   }
+
+  if (
+    isActiveAdmin(userStore[index]) &&
+    !isActiveAdmin(nextUser) &&
+    !hasOtherActiveAdmin(userStore, index)
+  ) {
+    return NextResponse.json(
+      { error: "Nie można wyłączyć ostatniego aktywnego administratora." },
+      { status: 409 }
+    )
+  }
+
+  userStore[index] = nextUser
 
   if (!saveMockData()) {
     return NextResponse.json(
@@ -102,6 +137,13 @@ export async function DELETE(req: Request) {
 
   if (index === -1) {
     return NextResponse.json({ error: "Nie znaleziono użytkownika." }, { status: 404 })
+  }
+
+  if (isActiveAdmin(userStore[index]) && !hasOtherActiveAdmin(userStore, index)) {
+    return NextResponse.json(
+      { error: "Nie można usunąć ostatniego aktywnego administratora." },
+      { status: 409 }
+    )
   }
 
   userStore.splice(index, 1)
