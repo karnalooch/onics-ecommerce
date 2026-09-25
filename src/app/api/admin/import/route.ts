@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import crypto from "crypto"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
 
 function safeEqual(candidate: string, expected: string) {
   const candidateBuffer = Buffer.from(candidate)
