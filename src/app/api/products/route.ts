@@ -65,13 +65,10 @@ const ProductInputSchema = z
   })
   .passthrough()
 
-const ProductPostSchema = z.union([
-  z.object({
-    action: z.literal("IMPORT_WFMAG"),
-    items: z.array(ImportItemSchema).max(10000),
-  }),
-  ProductInputSchema,
-])
+const ImportRequestSchema = z.object({
+  action: z.literal("IMPORT_WFMAG"),
+  items: z.array(ImportItemSchema).max(10000),
+})
 
 function logImport(message: string) {
   try {
@@ -178,10 +175,18 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = ProductPostSchema.safeParse(await req.json())
-  if (!parsed.success) {
+  const body: unknown = await req.json()
+  const isImportRequest =
+    typeof body === "object" &&
+    body !== null &&
+    "action" in body &&
+    (body as { action?: unknown }).action === "IMPORT_WFMAG"
+
+  const importRequest = isImportRequest ? ImportRequestSchema.safeParse(body) : null
+
+  if (importRequest && !importRequest.success) {
     return NextResponse.json(
-      { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane produktu." },
+      { error: importRequest.error.issues[0]?.message || "Nieprawidłowy import." },
       { status: 400 }
     )
   }
@@ -190,13 +195,13 @@ export async function POST(req: Request) {
   const productStore = products as ProductRecord[]
   const categoryStore = categories as CategoryRecord[]
 
-  if ("action" in parsed.data && parsed.data.action === "IMPORT_WFMAG") {
+  if (importRequest?.success) {
     let updatedCount = 0
     let addedCount = 0
 
-    logImport(`--- START IMPORT (${parsed.data.items.length} pozycji) ---`)
+    logImport(`--- START IMPORT (${importRequest.data.items.length} pozycji) ---`)
 
-    for (const item of parsed.data.items) {
+    for (const item of importRequest.data.items) {
       const sku = normalize(item.sku)
       if (!sku) continue
 
@@ -280,6 +285,14 @@ export async function POST(req: Request) {
       `--- KONIEC IMPORTU (Zaktualizowano: ${updatedCount}, Dodano: ${addedCount}) ---`
     )
     return NextResponse.json({ success: true, updatedCount, addedCount })
+  }
+
+  const parsed = ProductInputSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane produktu." },
+      { status: 400 }
+    )
   }
 
   const newProduct: ProductRecord = {
