@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 type SessionUser = { id?: string; email?: string | null; role?: string }
 type ProfileUser = {
@@ -68,27 +68,36 @@ export async function PUT(req: Request) {
     )
   }
 
-  const sessionUser = authCheck.user as SessionUser
-  const { users } = initializeMockData()
-  const user = findUser(users as ProfileUser[], sessionUser)
+  try {
+    const sessionUser = authCheck.user as SessionUser
+    const result = await mutateMockData((db) => {
+      const user = findUser(db.users as ProfileUser[], sessionUser)
+      if (!user) throw new Error("PROFILE_NOT_FOUND")
+      if (user.isBlocked) throw new Error("ACCOUNT_BLOCKED")
 
-  if (!user) {
-    return NextResponse.json({ error: "Nie znaleziono profilu." }, { status: 404 })
-  }
+      user.phone = parsed.data.phone
+      user.address = parsed.data.address
 
-  user.phone = parsed.data.phone
-  user.address = parsed.data.address
+      return {
+        success: true,
+        phone: user.phone,
+        address: user.address,
+      }
+    })
 
-  if (!saveMockData()) {
+    return NextResponse.json(result)
+  } catch (error) {
+    const code = error instanceof Error ? error.message : ""
+    if (code === "PROFILE_NOT_FOUND") {
+      return NextResponse.json({ error: "Nie znaleziono profilu." }, { status: 404 })
+    }
+    if (code === "ACCOUNT_BLOCKED") {
+      return NextResponse.json({ error: "Konto jest zablokowane." }, { status: 403 })
+    }
+
     return NextResponse.json(
       { error: "Nie udało się zapisać profilu." },
       { status: 500 }
     )
   }
-
-  return NextResponse.json({
-    success: true,
-    phone: user.phone,
-    address: user.address,
-  })
 }
