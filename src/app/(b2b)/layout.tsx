@@ -1,6 +1,7 @@
 import { auth, signOut } from '@/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { initializeMockData } from '@/store/serverStore';
 import { 
   Package, 
   Wrench, 
@@ -17,24 +18,51 @@ import {
 export default async function B2BLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
-  const user = session?.user as
+  const sessionUser = session?.user as
     | {
+        id?: string
+        email?: string | null
         name?: string | null
-        role?: string
-        isApproved?: boolean
-        nip?: string | null
-        discount?: number
-        tierName?: string
       }
     | undefined;
 
-  if (!session || !user || user.role !== 'BIZ') {
+  if (!sessionUser) {
     redirect('/logowanie');
   }
 
-  if (!user.isApproved) {
+  const { users } = initializeMockData();
+  const currentUser = users.find(
+    (user: {
+      id?: string
+      email?: string
+      companyName?: string
+      username?: string
+      roleType?: string
+      isApproved?: boolean
+      isBlocked?: boolean
+      nip?: string | null
+      discount?: number
+      tierName?: string
+    }) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  );
+
+  if (!currentUser || currentUser.isBlocked || currentUser.roleType !== 'BIZ') {
+    redirect('/logowanie');
+  }
+
+  if (!currentUser.isApproved) {
     redirect('/sklep');
   }
+
+  const user = {
+    name: currentUser.companyName || currentUser.username || sessionUser.name,
+    nip: currentUser.nip ?? null,
+    discount: Number(currentUser.discount ?? 0),
+    tierName: currentUser.tierName ?? 'BASIC',
+  };
 
   return (
     <div className="flex min-h-screen bg-white font-mono selection:bg-primary/20" suppressHydrationWarning>
