@@ -41,7 +41,11 @@ export async function GET() {
   if (!authCheck.authorized) return authCheck.response
 
   const { users } = initializeMockData()
-  const safeUsers = (users as UserRecord[]).map(({ passwordHash, ...user }) => user)
+  const safeUsers = (users as UserRecord[]).map((user) => {
+    const safeUser = { ...user }
+    delete safeUser.passwordHash
+    return safeUser
+  })
   return NextResponse.json(safeUsers)
 }
 
@@ -78,8 +82,8 @@ export async function PUT(req: Request) {
     )
   }
 
-  const { passwordHash: _passwordHash, ...safeUser } = userStore[index]
-  void _passwordHash
+  const safeUser = { ...userStore[index] }
+  delete safeUser.passwordHash
   return NextResponse.json(safeUser)
 }
 
