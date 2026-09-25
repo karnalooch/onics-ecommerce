@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
-import { initializeMockData, saveMockData } from "@/store/serverStore";
+import { mutateMockData } from "@/store/serverStore";
 
 const RepairSchema = z.object({
   client: z.string().min(2, "Nazwa klienta jest za krótka"),
@@ -13,9 +13,16 @@ const RepairSchema = z.object({
   description: z.string().max(3000).optional(),
 });
 
-export type ActionState = 
+type RepairRecord = {
+  id: string
+  status?: string
+  [key: string]: unknown
+}
+
+export type ActionState =
   | { success: true; message: string; data?: any }
   | { success: false; error: string };
+
 async function requireAdminAction() {
   const authCheck = await authorizeAPI(["ADMIN"]);
   if (!authCheck.authorized) {
@@ -24,13 +31,10 @@ async function requireAdminAction() {
   return null;
 }
 
-
-/**
- * Dodaje nowe zgłoszenie RMA
- */
 export async function addRepairAction(formData: FormData): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   const rawData = {
     client: formData.get("client"),
     item: formData.get("item"),
@@ -44,64 +48,65 @@ export async function addRepairAction(formData: FormData): Promise<ActionState> 
   }
 
   try {
-    const { repairs } = initializeMockData();
-    const newId = `RMA-${Math.floor(Math.random() * 9000) + 1000}`;
-    const date = new Date().toISOString().split('T')[0];
-    
-    const newRepair = {
-      ...validated.data,
-      id: newId,
-      date,
-      status: "WERYFIKACJA"
-    };
-    repairs.unshift(newRepair);
+    const newRepair = await mutateMockData((db) => {
+      const repairs = db.repairs as RepairRecord[]
+      const repair: RepairRecord = {
+        ...validated.data,
+        id: `RMA-${crypto.randomUUID()}`,
+        date: new Date().toISOString().split("T")[0],
+        status: "WERYFIKACJA"
+      }
+      repairs.unshift(repair)
+      return repair
+    })
 
-    if (!saveMockData()) return { success: false, error: "Nie udało się zapisać zgłoszenia." };
     revalidatePath("/admin/repairs");
     return { success: true, message: "Zgłoszenie zostało dodane.", data: newRepair };
-  } catch (e) {
+  } catch {
     return { success: false, error: "Wystąpił błąd podczas dodawania zgłoszenia." };
   }
 }
 
-/**
- * Usuwa zgłoszenie RMA
- */
 export async function deleteRepairAction(id: string): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   try {
-    const { repairs } = initializeMockData();
-    const index = repairs.findIndex((r: any) => r.id === id);
-    if (index !== -1) {
-      repairs.splice(index, 1);
-      if (!saveMockData()) return { success: false, error: "Nie udało się zapisać zmian." };
-      revalidatePath("/admin/repairs");
-      return { success: true, message: "Zgłoszenie usunięte." };
+    await mutateMockData((db) => {
+      const repairs = db.repairs as RepairRecord[]
+      const index = repairs.findIndex((repair) => repair.id === id)
+      if (index === -1) throw new Error("REPAIR_NOT_FOUND")
+      repairs.splice(index, 1)
+    })
+
+    revalidatePath("/admin/repairs");
+    return { success: true, message: "Zgłoszenie usunięte." };
+  } catch (error) {
+    if (error instanceof Error && error.message === "REPAIR_NOT_FOUND") {
+      return { success: false, error: "Nie znaleziono zgłoszenia." };
     }
-    return { success: false, error: "Nie znaleziono zgłoszenia." };
-  } catch (e) {
     return { success: false, error: "Błąd serwera." };
   }
 }
 
-/**
- * Aktualizuje status zgłoszenia RMA
- */
 export async function updateStatusAction(id: string, status: string): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   try {
-    const { repairs } = initializeMockData();
-    const repair = repairs.find((r: any) => r.id === id);
-    if (repair) {
-      repair.status = status;
-      if (!saveMockData()) return { success: false, error: "Nie udało się zapisać statusu." };
-      revalidatePath("/admin/repairs");
-      return { success: true, message: `Status zmieniony na ${status}` };
+    await mutateMockData((db) => {
+      const repairs = db.repairs as RepairRecord[]
+      const repair = repairs.find((entry) => entry.id === id)
+      if (!repair) throw new Error("REPAIR_NOT_FOUND")
+      repair.status = status
+    })
+
+    revalidatePath("/admin/repairs");
+    return { success: true, message: `Status zmieniony na ${status}` };
+  } catch (error) {
+    if (error instanceof Error && error.message === "REPAIR_NOT_FOUND") {
+      return { success: false, error: "Nie znaleziono zgłoszenia." };
     }
-    return { success: false, error: "Nie znaleziono zgłoszenia." };
-  } catch (e) {
     return { success: false, error: "Błąd serwera." };
   }
 }
