@@ -1,12 +1,14 @@
 import crypto from "crypto"
 import fs from "fs"
 import path from "path"
+import { resolvePersistentPath } from "@/lib/storageConfig"
 
-function getDbPath() {
-  const configuredPath = process.env.CELTRONICS_DB_PATH?.trim()
-  return configuredPath
-    ? path.resolve(configuredPath)
-    : path.join(process.cwd(), "src", "data", "db.json")
+export function getDbPath() {
+  return resolvePersistentPath({
+    envName: "CELTRONICS_DB_PATH",
+    configuredPath: process.env.CELTRONICS_DB_PATH,
+    developmentFallback: path.join(process.cwd(), "src", "data", "db.json"),
+  })
 }
 
 export function readDb() {
@@ -23,8 +25,8 @@ export function readDb() {
 
 /**
  * Zapis przez plik tymczasowy + rename ogranicza ryzyko pozostawienia
- * częściowo zapisanego JSON-a po przerwaniu procesu. CELTRONICS_DB_PATH
- * pozwala wskazać trwały, zapisywalny wolumen poza katalogiem aplikacji.
+ * częściowo zapisanego JSON-a po przerwaniu procesu. W produkcji
+ * CELTRONICS_DB_PATH jest wymagane i musi wskazywać trwały, zapisywalny wolumen.
  */
 export function writeDb(data: unknown) {
   const dbPath = getDbPath()
