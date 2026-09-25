@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { initializeMockData, saveMockData } from '@/store/serverStore';
 import { authorizeAPI } from '@/lib/authUtils';
 import { getKnowledge } from '@/lib/knowledge/parser';
+import { calculateCustomerUnitPrice } from "@/lib/commerce";
 import fs from 'fs';
 import path from 'path';
 
@@ -67,8 +68,12 @@ export async function GET() {
   }
 
   // Sprawdź rolę użytkownika
-  const role = (session?.user as any)?.role;
-  const isAuthorized = role === "ADMIN" || role === "BIZ";
+  const sessionUser = session?.user as
+    | { role?: string; isApproved?: boolean; discount?: number }
+    | undefined;
+  const role = sessionUser?.role;
+  const isAuthorized =
+    role === "ADMIN" || (role === "BIZ" && Boolean(sessionUser?.isApproved));
 
   if (!isAuthorized) {
     // Ukrywamy ceny przed detalistami i gośćmi
@@ -81,11 +86,27 @@ export async function GET() {
     return NextResponse.json(safeProducts);
   }
 
-  // Dla B2B/Admin zwracamy pełne dane z flagą widoczności
-  const fullProducts = unifiedDevices.map((p: any) => ({
-    ...p,
-    priceHidden: false
-  }));
+  const fullProducts = unifiedDevices.map((p: any) => {
+    const visiblePrice =
+      role === "BIZ"
+        ? calculateCustomerUnitPrice(
+            {
+              id: String(p.id),
+              sku: String(p.sku || ""),
+              name: String(p.name || ""),
+              price: Number(p.price ?? 0),
+              stock: Number(p.stock ?? 0),
+            },
+            { role: "BIZ", discount: Number(sessionUser?.discount ?? 0) }
+          )
+        : Number(p.price ?? 0);
+
+    return {
+      ...p,
+      price: visiblePrice,
+      priceHidden: false,
+    };
+  });
 
   return NextResponse.json(fullProducts);
 }

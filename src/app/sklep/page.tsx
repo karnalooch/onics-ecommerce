@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { initializeMockData } from "@/store/serverStore";
 import { ShopDashboardClient } from "./ShopDashboardClient";
 import { ShieldAlert, Clock, ArrowLeft } from "lucide-react";
+import { calculateCustomerUnitPrice } from "@/lib/commerce";
 import Link from "next/link";
 
 /**
@@ -16,7 +17,11 @@ export default async function SklepPage() {
   if (!session?.user) redirect("/logowanie");
 
   const { products, categories } = initializeMockData();
-  const user = session.user as any;
+  const user = session.user as {
+    role?: string
+    isApproved?: boolean
+    discount?: number
+  };
 
   // B2B Verification Check
   if (user.role === "BIZ" && !user.isApproved) {
@@ -39,10 +44,25 @@ export default async function SklepPage() {
           </div>
        </header>
        
-       <ShopDashboardClient 
-         initialProducts={products}
+       <ShopDashboardClient
+         initialProducts={products.map((product: any) => ({
+           ...product,
+           price:
+             user.role === "BIZ"
+               ? calculateCustomerUnitPrice(
+                   {
+                     id: String(product.id),
+                     sku: String(product.sku || ""),
+                     name: String(product.name || ""),
+                     price: Number(product.price ?? 0),
+                     stock: Number(product.stock ?? 0),
+                   },
+                   { role: "BIZ", discount: Number(user.discount ?? 0) }
+                 )
+               : Number(product.price ?? 0),
+         }))}
          categories={categories}
-         role={user.role}
+         role={user.role || "RETAIL"}
        />
     </div>
   );
