@@ -101,7 +101,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }
 
         sessionUser.role = typeof token.role === "string" ? token.role : undefined
-        sessionUser.id = typeof token.id === "string" ? token.id : undefined
+        if (typeof token.id === "string") {
+          sessionUser.id = token.id
+        }
         sessionUser.isApproved = Boolean(token.isApproved)
         sessionUser.nip = typeof token.nip === "string" ? token.nip : null
         sessionUser.discount = Number(token.discount ?? 0)
