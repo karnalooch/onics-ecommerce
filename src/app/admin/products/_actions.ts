@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
-import { initializeMockData, saveMockData } from "@/store/serverStore";
+import { initializeMockData, mutateMockData } from "@/store/serverStore";
 import { getKnowledge, saveKnowledge, checkQuality } from "@/lib/knowledge/parser";
 import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher";
 
@@ -15,16 +15,19 @@ import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher";
 export async function wipeRegistryAction(): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   try {
-    initializeMockData();
-    (global as any).mockProductsStore = []; // Absolute purge
-    saveMockData();
-    
+    await mutateMockData((db) => {
+      db.products.splice(0, db.products.length);
+    });
+
     revalidatePath("/admin/products");
     revalidatePath("/admin/catalog");
-    
-    return { success: true, message: "Centralny Rejestr Towarowy został całkowicie wyczyszczony." };
-  } catch (e) {
+    return {
+      success: true,
+      message: "Centralny Rejestr Towarowy został całkowicie wyczyszczony."
+    };
+  } catch {
     return { success: false, error: "Błąd podczas czyszczenia rejestru" };
   }
 }
@@ -64,33 +67,37 @@ async function requireAdminAction() {
 export async function saveProductAction(data: any): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   const validated = ProductSchema.safeParse(data);
-  if (!validated.success) return { success: false, error: validated.error.issues[0].message };
+  if (!validated.success) {
+    return { success: false, error: validated.error.issues[0].message };
+  }
 
   try {
-    const { products: rawProducts } = initializeMockData();
-    const products = rawProducts as any[];
-    const existingIdx = products.findIndex((p: any) => p.id === data.id);
+    const result = await mutateMockData((db) => {
+      const products = db.products as any[];
+      const existingIdx = products.findIndex((product) => product.id === data.id);
 
-    if (existingIdx !== -1) {
-      products[existingIdx] = { ...products[existingIdx], ...validated.data };
-      saveMockData(); // Persist to JSON
-      revalidatePath("/admin/products");
-      revalidatePath("/admin/catalog");
-      return { success: true, message: "Produkt zaktualizowany" };
-    } else {
+      if (existingIdx !== -1) {
+        products[existingIdx] = { ...products[existingIdx], ...validated.data };
+        return { created: false, product: products[existingIdx] };
+      }
+
       const newProduct = {
         ...validated.data,
-        id: `p${Date.now()}`,
+        id: `p_${crypto.randomUUID()}`,
         seoDescription: validated.data.seoDescription || ""
       };
       products.push(newProduct);
-      saveMockData(); // Persist to JSON
-      revalidatePath("/admin/products");
-      revalidatePath("/admin/catalog");
-      return { success: true, message: "Produkt dodany", data: newProduct };
-    }
-  } catch (e) {
+      return { created: true, product: newProduct };
+    });
+
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/catalog");
+    return result.created
+      ? { success: true, message: "Produkt dodany", data: result.product }
+      : { success: true, message: "Produkt zaktualizowany" };
+  } catch {
     return { success: false, error: "Błąd zapisu produktu" };
   }
 }
@@ -101,19 +108,22 @@ export async function saveProductAction(data: any): Promise<ActionState> {
 export async function deleteProductAction(id: string): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   try {
-    const { products: rawProducts } = initializeMockData();
-    const products = rawProducts as any[];
-    const idx = products.findIndex((p: any) => p.id === id);
-    if (idx !== -1) {
+    await mutateMockData((db) => {
+      const products = db.products as any[];
+      const idx = products.findIndex((product) => product.id === id);
+      if (idx === -1) throw new Error("PRODUCT_NOT_FOUND");
       products.splice(idx, 1);
-      saveMockData(); // Persist to JSON
-      revalidatePath("/admin/products");
-      revalidatePath("/admin/catalog");
-      return { success: true, message: "Produkt usunięty" };
+    });
+
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/catalog");
+    return { success: true, message: "Produkt usunięty" };
+  } catch (error) {
+    if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
+      return { success: false, error: "Nie znaleziono produktu" };
     }
-    return { success: false, error: "Nie znaleziono produktu" };
-  } catch (e) {
     return { success: false, error: "Błąd podczas usuwania" };
   }
 }
@@ -124,99 +134,118 @@ export async function deleteProductAction(id: string): Promise<ActionState> {
 export async function importProductsAction(items: any[]): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   try {
-    const { products: rawProducts, categories: rawCategories } = initializeMockData();
-    const products = rawProducts as any[];
-    const categories = rawCategories as any[];
-    let updatedCount = 0;
-    let addedCount = 0;
+    const result = await mutateMockData((db) => {
+      const products = db.products as any[];
+      const categories = db.categories as any[];
+      let updatedCount = 0;
+      let addedCount = 0;
 
-    const junkWords = ['NIEZNANY', 'INNE', 'NIESKLASYFIKOWANE', 'POZOSTAŁE', 'MISC', 'BRAK', 'PRODUKT', 'ARTYKUŁ', 'NIEZNANA'];
-    const normalize = (s: any) => String(s || "").replace(/\u00A0/g, " ").trim();
-    const isJunk = (str: string) => junkWords.includes(normalize(str).toUpperCase());
-
-    items.forEach((im: any) => {
-      const imSku = normalize(im.sku).toLowerCase();
-      if (!imSku) return;
-
-      const existing = products.find((p: any) => normalize(p.sku).toLowerCase() === imSku);
-
-      let finalCategoryId = im.categoryId;
-      let finalSubcategoryId = im.subcategoryId;
-
-      // DIRECT MATCH ONLY (V24 ATOMIC SYNC)
+      const junkWords = [
+        "NIEZNANY", "INNE", "NIESKLASYFIKOWANE", "POZOSTAŁE",
+        "MISC", "BRAK", "PRODUKT", "ARTYKUŁ", "NIEZNANA"
+      ];
+      const normalize = (value: any) =>
+        String(value || "").replace(/\u00A0/g, " ").trim();
+      const isJunk = (value: string) =>
+        junkWords.includes(normalize(value).toUpperCase());
       const getDirectMatch = (name: string, list: any[]) => {
-        const n = normalize(name).toLowerCase();
-        if (!n || isJunk(n)) return null;
-        return list.find(item => normalize(item.name).toLowerCase() === n);
+        const normalized = normalize(name).toLowerCase();
+        if (!normalized || isJunk(normalized)) return null;
+        return list.find(
+          (item) => normalize(item.name).toLowerCase() === normalized
+        );
       };
 
-      if (!finalCategoryId && im.xlsCategoryName && !isJunk(im.xlsCategoryName)) {
-        const cat = getDirectMatch(im.xlsCategoryName, categories);
-        if (cat) {
-          finalCategoryId = cat.id;
-        } else if (im.isNewCategory) {
-          const newCat = { 
-            id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, 
-            name: normalize(im.xlsCategoryName).toUpperCase(), 
-            iconName: "Layers", 
-            subcategories: [] 
-          };
-          categories.push(newCat);
-          finalCategoryId = newCat.id;
-        }
-      }
+      items.forEach((item: any) => {
+        const normalizedSku = normalize(item.sku).toLowerCase();
+        if (!normalizedSku) return;
 
-      if (!finalSubcategoryId && im.xlsSubcategoryName && finalCategoryId && !isJunk(im.xlsSubcategoryName)) {
-        const cat = categories.find((c: any) => c.id === finalCategoryId);
-        if (cat) {
-          const sub = getDirectMatch(im.xlsSubcategoryName, cat.subcategories);
-          if (sub) {
-            finalSubcategoryId = sub.id;
-          } else if (im.isNewSubcategory) {
-            const newSub = { 
-              id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, 
-              name: im.xlsSubcategoryName.trim() 
+        const existing = products.find(
+          (product) => normalize(product.sku).toLowerCase() === normalizedSku
+        );
+
+        let finalCategoryId = item.categoryId;
+        let finalSubcategoryId = item.subcategoryId;
+
+        if (
+          !finalCategoryId &&
+          item.xlsCategoryName &&
+          !isJunk(item.xlsCategoryName)
+        ) {
+          let category = getDirectMatch(item.xlsCategoryName, categories);
+          if (!category && item.isNewCategory) {
+            category = {
+              id: `cat_${crypto.randomUUID()}`,
+              name: normalize(item.xlsCategoryName).toUpperCase(),
+              iconName: "Layers",
+              subcategories: []
             };
-            cat.subcategories.push(newSub);
-            finalSubcategoryId = newSub.id;
+            categories.push(category);
+          }
+          if (category) finalCategoryId = category.id;
+        }
+
+        if (
+          !finalSubcategoryId &&
+          item.xlsSubcategoryName &&
+          finalCategoryId &&
+          !isJunk(item.xlsSubcategoryName)
+        ) {
+          const category = categories.find(
+            (candidate) => candidate.id === finalCategoryId
+          );
+          if (category) {
+            let subcategory = getDirectMatch(
+              item.xlsSubcategoryName,
+              category.subcategories || []
+            );
+            if (!subcategory && item.isNewSubcategory) {
+              subcategory = {
+                id: `sub_${crypto.randomUUID()}`,
+                name: normalize(item.xlsSubcategoryName)
+              };
+              category.subcategories ||= [];
+              category.subcategories.push(subcategory);
+            }
+            if (subcategory) finalSubcategoryId = subcategory.id;
           }
         }
-      }
 
-      if (existing) {
-        // UNIFIED FLOW (V17.0): Search in the master list first
-        existing.price = im.price;
-        existing.stock = im.stock;
-        existing.manufacturer = im.manufacturer || existing.manufacturer;
-        
-        if (im.specs) {
-          existing.specs = im.specs; // Use deduplicated field
+        if (existing) {
+          existing.price = item.price;
+          existing.stock = item.stock;
+          existing.manufacturer = item.manufacturer || existing.manufacturer;
+          if (item.specs) existing.specs = item.specs;
+          if (finalCategoryId) {
+            existing.categoryId = finalCategoryId;
+            existing.subcategoryId = finalSubcategoryId;
+          }
+          updatedCount += 1;
+        } else {
+          products.push({
+            id: `p_${crypto.randomUUID()}`,
+            ...item,
+            categoryId: finalCategoryId,
+            subcategoryId: finalSubcategoryId,
+            specs: item.specs || "",
+            isIqSynced: Boolean(item.specs)
+          });
+          addedCount += 1;
         }
-        
-        if (finalCategoryId) {
-          existing.categoryId = finalCategoryId;
-          existing.subcategoryId = finalSubcategoryId;
-        }
-        updatedCount++;
-      } else {
-        // NEW ENTRY
-        products.push({
-          id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-          ...im,
-          categoryId: finalCategoryId,
-          subcategoryId: finalSubcategoryId,
-          specs: im.specs || "", // Use deduplicated field
-          isIqSynced: !!im.specs
-        });
-        addedCount++;
-      }
+      });
+
+      return { updatedCount, addedCount };
     });
 
-    saveMockData(); // Persist to JSON
     revalidatePath("/admin/products");
-    return { success: true, message: `Unified Import zakończony. Zaktualizowano/Aktywowano: ${updatedCount}, Dodano nowych: ${addedCount}` };
-  } catch (e) {
+    return {
+      success: true,
+      message:
+        `Unified Import zakończony. Zaktualizowano/Aktywowano: ${result.updatedCount}, Dodano nowych: ${result.addedCount}`
+    };
+  } catch {
     return { success: false, error: "Błąd podczas masowego importu" };
   }
 }
