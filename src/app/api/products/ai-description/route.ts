@@ -44,8 +44,7 @@ export async function POST(req: Request) {
 
     if (process.env.GOOGLE_GEMINI_API_KEY) {
       const url =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" +
-        encodeURIComponent(process.env.GOOGLE_GEMINI_API_KEY)
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
       const prompt = [
         "Napisz po polsku maksymalnie 3 zdania opisu technicznego produktu B2B.",
@@ -58,7 +57,10 @@ export async function POST(req: Request) {
 
       const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GOOGLE_GEMINI_API_KEY,
+        },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0, maxOutputTokens: 300 },
