@@ -1,177 +1,264 @@
 import Link from "next/link"
-import { 
-  ShieldCheck, 
-  ChevronRight, 
-  Zap, 
-  Target, 
-  Cpu, 
-  Bell, 
-  Activity, 
-  ShieldAlert, 
+import {
   ArrowRight,
-  Database,
-  Lock,
-  Globe,
-  Settings,
-  LogOut
+  BellRing,
+  Camera,
+  Cable,
+  CheckCircle2,
+  DoorOpen,
+  Flame,
+  ShieldCheck,
+  Wrench,
 } from "lucide-react"
-import { auth } from "@/auth"
 
-export default async function Home() {
-  const session = await auth();
+const services = [
+  {
+    title: "Systemy alarmowe",
+    label: "SSWiN",
+    description:
+      "Projekt, montaż i rozbudowa systemów sygnalizacji włamania i napadu dla domów, firm i instytucji.",
+    icon: BellRing,
+  },
+  {
+    title: "Monitoring CCTV",
+    label: "CCTV",
+    description:
+      "Monitoring wizyjny, rejestracja i zdalny dostęp — od małych instalacji po rozbudowane obiekty.",
+    icon: Camera,
+  },
+  {
+    title: "Kontrola dostępu",
+    label: "KD / RCP",
+    description:
+      "Identyfikacja użytkowników, kontrola przejść i integracja z pozostałymi warstwami bezpieczeństwa.",
+    icon: DoorOpen,
+  },
+  {
+    title: "Systemy przeciwpożarowe",
+    label: "SSP / PPOŻ",
+    description:
+      "Systemy wykrywania pożaru i rozwiązania wspierające bezpieczną reakcję oraz ewakuację.",
+    icon: Flame,
+  },
+  {
+    title: "Instalacje teletechniczne",
+    label: "INFRASTRUKTURA",
+    description:
+      "Okablowanie, sieci strukturalne i infrastruktura techniczna przygotowana pod niezawodną eksploatację.",
+    icon: Cable,
+  },
+  {
+    title: "Serwis i modernizacje",
+    label: "OPIEKA",
+    description:
+      "Diagnostyka, naprawy, konserwacja i dostosowanie istniejących systemów do nowych potrzeb.",
+    icon: Wrench,
+  },
+]
+
+const process = [
+  {
+    index: "01",
+    title: "Analiza i projekt",
+    description:
+      "Poznajemy obiekt, sposób jego użytkowania, istniejącą infrastrukturę i wymagania bezpieczeństwa.",
+  },
+  {
+    index: "02",
+    title: "Montaż i uruchomienie",
+    description:
+      "Instalujemy, konfigurujemy i testujemy system tak, aby był czytelny, stabilny i serwisowalny.",
+  },
+  {
+    index: "03",
+    title: "Serwis i rozwój",
+    description:
+      "Zostajemy przy instalacji po uruchomieniu: diagnozujemy, konserwujemy i rozbudowujemy ją wraz z potrzebami obiektu.",
+  },
+]
+
+export default function Home() {
   return (
-    <div className="flex flex-col gap-10 w-full animate-in fade-in duration-500 overflow-hidden pb-20">
-      
-      {/* 1. FLUENT HERO SECTION (MICA CARD FOCUS) */}
-      <section className="relative min-h-[600px] flex items-center justify-center overflow-hidden pt-10">
-         {/* Background Orbs (Fluent Style) */}
-         <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse" />
-         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-blue-400/10 rounded-full blur-[100px] animate-pulse delay-700" />
-
-         <div className="container mx-auto px-6 relative z-10">
-            <div className="glass-mica p-12 lg:p-20 rounded-xl border-white/20 shadow-2xl max-w-5xl mx-auto text-center backdrop-blur-3xl">
-               <div className="flex items-center justify-center gap-3 mb-8">
-                  <span className="px-4 py-1 bg-primary text-white text-[11px] font-bold rounded-pill uppercase tracking-widest">
-                     Next-Gen B2B Platform
-                  </span>
-               </div>
-               
-               <h1 className="text-5xl lg:text-7xl font-extrabold leading-tight tracking-tight text-foreground mb-8">
-                  Bezpieczeństwo w wydaniu <br />
-                  <span className="text-primary">Premium</span>
-               </h1>
-               
-               <p className="text-muted-foreground text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed mb-12">
-                  Profesjonalna dystrybucja systemów Satel i Hikvision. <br />
-                  <span className="text-foreground font-semibold italic">Moc platformy stacjonarnej w oknie Twojej przeglądarki.</span>
-               </p>
-               
-               <div className="flex flex-wrap items-center justify-center gap-6">
-                  {session ? (
-                     <Link href="/admin" className="h-14 px-12 bg-primary text-white flex items-center justify-center font-bold text-[14px] rounded-lg transition-all active-press hover:brightness-110 shadow-xl shadow-primary/30">
-                        Przejdź do Pulpitu
-                     </Link>
-                  ) : (
-                     <Link href="/logowanie" className="h-14 px-12 bg-primary text-white flex items-center justify-center font-bold text-[14px] rounded-lg transition-all active-press hover:brightness-110 shadow-xl shadow-primary/30">
-                        Zaloguj do Panelu
-                     </Link>
-                  )}
-                  
-                  <Link href="/oferta" className="h-14 px-10 border border-black/10 dark:border-white/10 text-foreground flex items-center justify-center font-bold text-[14px] rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-all active-press">
-                     Eksploruj Ofertę
-                  </Link>
-               </div>
+    <div className="overflow-hidden">
+      <section className="relative px-2 pb-16 pt-8 sm:px-4 lg:pb-24 lg:pt-14">
+        <div className="absolute inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(circle_at_15%_10%,rgba(0,120,212,0.12),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,0.10),transparent_30%)]" />
+        <div className="mx-auto grid max-w-[1440px] items-center gap-12 lg:grid-cols-[1.08fr_.92fr] lg:gap-16">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-4 py-2 text-xs font-extrabold tracking-wide text-primary">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Siedlce i region · ponad 30 lat doświadczenia
             </div>
-         </div>
+
+            <h1 className="mt-7 max-w-4xl text-5xl font-extrabold leading-[1.02] tracking-[-0.045em] text-foreground sm:text-6xl lg:text-7xl">
+              Technologia, która chroni ludzi, obiekty i ciągłość działania.
+            </h1>
+
+            <p className="mt-7 max-w-3xl text-lg font-medium leading-8 text-muted-foreground sm:text-xl">
+              Projektujemy, wdrażamy i serwisujemy systemy zabezpieczeń elektronicznych —
+              od alarmów i monitoringu CCTV po kontrolę dostępu, systemy przeciwpożarowe,
+              sieci teletechniczne i instalacje elektryczne.
+            </p>
+
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/kontakt"
+                className="inline-flex h-14 items-center justify-center gap-3 rounded-xl bg-primary px-7 text-sm font-extrabold text-white shadow-xl shadow-primary/20 transition hover:brightness-110"
+              >
+                Porozmawiaj z nami
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/produkty"
+                className="inline-flex h-14 items-center justify-center rounded-xl border border-black/10 bg-white px-7 text-sm font-extrabold text-foreground transition hover:bg-black/[0.03] dark:border-white/10 dark:bg-white/5"
+              >
+                Przejdź do katalogu B2B
+              </Link>
+            </div>
+
+            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4 text-sm text-muted-foreground">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
+                <span>
+                  <strong className="block text-foreground">Projekt + montaż + serwis</strong>
+                  jeden zespół odpowiedzialny za całość
+                </span>
+              </div>
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
+                <span>
+                  <strong className="block text-foreground">Siedlce</strong>
+                  ul. Niklowa 22, 08-110
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0d1c2d] p-7 text-white shadow-2xl sm:p-10">
+            <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-500/30 blur-[90px]" />
+            <div className="relative">
+              <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-300">
+                Kompleksowe systemy bezpieczeństwa
+              </span>
+              <h2 className="mt-5 max-w-xl text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
+                Od projektu instalacji do wieloletniej opieki serwisowej.
+              </h2>
+
+              <div className="mt-9 grid grid-cols-2 gap-3">
+                {[
+                  ["SSWiN", "systemy alarmowe"],
+                  ["CCTV", "monitoring wizyjny"],
+                  ["KD / RCP", "kontrola dostępu"],
+                  ["SSP / PPOŻ", "sygnalizacja pożaru"],
+                  ["Teletechnika", "sieci i infrastruktura"],
+                  ["Serwis", "konserwacja i modernizacje"],
+                ].map(([name, description]) => (
+                  <div
+                    key={name}
+                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-5"
+                  >
+                    <strong className="block text-base">{name}</strong>
+                    <span className="mt-1 block text-xs font-medium leading-5 text-slate-300">
+                      {description}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      {/* 2. FLUENT CAPABILITY GRID (4 QUADRANTS) */}
-      <section className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-         {[
-            { 
-               title: "Systemy Alarmowe", 
-               sector: "Satel SSWiN", 
-               desc: "Pełna gama central INTEGRA i urządzeń ABAX 2. Bezkompromisowa ochrona.",
-               icon: <ShieldAlert className="w-6 h-6 text-primary" />
-            },
-            { 
-               title: "Monitoring Wizyjny", 
-               sector: "Hikvision CCTV", 
-               desc: "Kamery AcuSense, ColorVu i systemy termowizyjne. Obraz najwyższej próby.",
-               icon: <Target className="w-6 h-6 text-primary" />
-            },
-            { 
-               title: "Kontrola Dostępu", 
-               sector: "KD & RCP", 
-               desc: "Terminale biometryczne i zarządzanie personelem. Precyzyjna autoryzacja.",
-               icon: <Database className="w-6 h-6 text-primary" />
-            },
-            { 
-               title: "Ochrona PPOŻ", 
-               sector: "Fire Safety", 
-               desc: "Zautomatyzowane systemy oddymiania i wykrywania ognia. Ochrona życia.",
-               icon: <Zap className="w-6 h-6 text-primary" />
-            }
-         ].map((card, i) => (
-            <div key={i} className="fluent-card p-10 flex flex-col gap-6 group cursor-pointer border-white/10">
-               <div className="w-14 h-14 rounded-lg bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  {card.icon}
-               </div>
-               <div className="space-y-2">
-                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{card.sector}</span>
-                  <h3 className="text-2xl font-bold text-foreground leading-tight tracking-tight">{card.title}</h3>
-                  <p className="text-sm text-muted-foreground font-medium leading-relaxed">{card.desc}</p>
-               </div>
-               <button className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest hover:gap-4 transition-all mt-4">
-                  Szczegóły <ChevronRight className="w-4 h-4" />
-               </button>
+      <section id="uslugi" className="px-2 py-16 sm:px-4 lg:py-24">
+        <div className="mx-auto max-w-[1440px]">
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+            <div>
+              <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
+                Zakres usług
+              </span>
+              <h2 className="mt-3 max-w-3xl text-4xl font-extrabold tracking-[-0.035em] sm:text-5xl">
+                Bezpieczeństwo bez przypadkowych elementów.
+              </h2>
             </div>
-         ))}
+            <p className="max-w-2xl text-base font-medium leading-7 text-muted-foreground">
+              Dobieramy system do obiektu i sposobu jego użytkowania. Nie sprzedajemy
+              przypadkowego zestawu urządzeń — projektujemy rozwiązanie, które ma działać jako całość.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {services.map((service) => (
+              <article
+                key={service.title}
+                className="rounded-2xl border border-black/5 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-white/[0.04]"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <service.icon className="h-6 w-6" />
+                </div>
+                <span className="mt-7 block text-[11px] font-extrabold uppercase tracking-[0.16em] text-primary">
+                  {service.label}
+                </span>
+                <h3 className="mt-2 text-2xl font-extrabold tracking-tight">{service.title}</h3>
+                <p className="mt-4 text-sm font-medium leading-6 text-muted-foreground">
+                  {service.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
-      {/* 3. TECHNICAL DISPATCH (LATEST UPDATES) */}
-      <section className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-3 gap-12">
-         <div className="lg:col-span-2 space-y-8">
-            <h2 className="text-2xl font-bold text-foreground flex items-center gap-3">
-               <Activity className="w-6 h-6 text-primary" /> Aktualności Techniczne
+      <section className="bg-[#102033] px-2 py-16 text-white sm:px-4 lg:py-24">
+        <div className="mx-auto max-w-[1440px]">
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+            <div>
+              <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-300">
+                Jak pracujemy
+              </span>
+              <h2 className="mt-3 max-w-3xl text-4xl font-extrabold tracking-[-0.035em] sm:text-5xl">
+                Jedna odpowiedzialność od początku do końca.
+              </h2>
+            </div>
+            <p className="max-w-2xl text-base font-medium leading-7 text-slate-300">
+              Najpierw rozumiemy ryzyko i obiekt. Dopiero potem dobieramy technologię,
+              wykonujemy instalację i zostajemy przy niej serwisowo.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 lg:grid-cols-3">
+            {process.map((step) => (
+              <article key={step.index} className="rounded-2xl border border-white/10 p-7">
+                <span className="text-xs font-extrabold tracking-[0.16em] text-blue-300">
+                  {step.index}
+                </span>
+                <h3 className="mt-5 text-2xl font-extrabold">{step.title}</h3>
+                <p className="mt-4 text-sm font-medium leading-6 text-slate-300">
+                  {step.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="px-2 py-16 sm:px-4 lg:py-24">
+        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-8 rounded-[28px] bg-primary p-8 text-white shadow-2xl shadow-primary/20 sm:p-10 lg:flex-row lg:items-center">
+          <div>
+            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+              Masz obiekt, który wymaga dobrego projektu?
             </h2>
-            
-            <div className="space-y-4">
-               {[1, 2, 3].map(i => (
-                  <div key={i} className="fluent-card p-6 flex gap-8 items-start group hover:bg-black/5 dark:hover:bg-white/5 active-press">
-                     <div className="shrink-0 flex flex-col items-center justify-center w-16 h-16 bg-white dark:bg-white/5 rounded-lg shadow-sm border border-black/5 dark:border-white/10 font-bold">
-                        <span className="text-[10px] opacity-50 uppercase">APR</span>
-                        <span className="text-2xl">20</span>
-                     </div>
-                     <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                           <span className="px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-widest rounded-md">Update</span>
-                           <span className="text-[9px] text-muted-foreground font-bold uppercase">Standard: CRT-X</span>
-                        </div>
-                        <h4 className="text-xl font-bold text-foreground tracking-tight transition-colors group-hover:text-primary">Nowy Standard Certyfikacji SSWiN – Wytyczne 2026</h4>
-                        <p className="text-sm text-muted-foreground font-medium leading-relaxed">Zaktualizowane arkusze techniczne dla central serii mSR są już dostępne w Twoim panelu B2B.</p>
-                     </div>
-                  </div>
-               ))}
-            </div>
-         </div>
-
-         {/* 4. SIDEBAR TOOLS (B2B CTA) */}
-         <div className="space-y-8">
-            <div className="glass-mica p-10 border-blue-500/20 bg-gradient-to-br from-primary to-blue-600 text-white rounded-xl shadow-xl relative overflow-hidden active-press">
-               <Globe className="absolute -bottom-10 -right-10 w-48 h-48 opacity-10" />
-               <h3 className="text-xl font-bold mb-4">Integracja B2B</h3>
-               <p className="text-white/80 text-sm leading-relaxed mb-8 font-medium">
-                  Zautomatyzuj procesy handlowe i uzyskaj wsparcie inżynieryjne Celtronics.
-               </p>
-               <div className="space-y-4 mb-10 text-sm font-bold">
-                  {["Dynamiczne Macierze Cenowe", "Konfigurator Systemów", "Globalny Serwis RMA"].map(t => (
-                     <div key={t} className="flex items-center gap-3">
-                        <ShieldCheck className="w-4 h-4 text-white" />
-                        <span>{t}</span>
-                     </div>
-                  ))}
-               </div>
-               <Link href="/rejestracja" className="w-full h-12 bg-white text-primary rounded-lg flex items-center justify-center font-bold text-xs uppercase tracking-widest shadow-lg">
-                  Rozpocznij Integrację
-               </Link>
-            </div>
-
-            <div className="fluent-card p-10 group">
-               <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                     <Lock className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground">Dostęp Ekspercki</h3>
-               </div>
-               <p className="text-sm text-muted-foreground font-medium mb-6">Uzyskaj dostęp do dokumentacji CAD i certyfikatów bezpieczeństwa.</p>
-               <Link href="/logowanie" className="text-sm font-bold text-primary flex items-center gap-2 group-hover:gap-4 transition-all">
-                  Logowanie Systemowe <ArrowRight className="w-4 h-4" />
-               </Link>
-            </div>
-         </div>
+            <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-blue-100">
+              Opisz potrzeby. Wrócimy z konkretnymi pytaniami i propozycją dalszych kroków.
+            </p>
+          </div>
+          <Link
+            href="/kontakt"
+            className="inline-flex h-13 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-7 text-sm font-extrabold text-primary"
+          >
+            Skontaktuj się
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       </section>
-
     </div>
   )
 }
