@@ -26,7 +26,7 @@ export async function GET() {
   const sessionUser = authCheck.user as SessionUser
   const { repairs } = initializeMockData()
 
-  if (sessionUser.role === "ADMIN") {
+  if (authCheck.currentRole === "ADMIN") {
     return NextResponse.json(repairs)
   }
 
@@ -45,7 +45,8 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   const sessionUser = authCheck.user as SessionUser
-  if (sessionUser.role === "BIZ" && !sessionUser.isApproved) {
+  const currentUser = authCheck.currentUser
+  if (authCheck.currentRole === "BIZ" && !currentUser.isApproved) {
     return NextResponse.json(
       { error: "Konto B2B oczekuje na zatwierdzenie." },
       { status: 403 }
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
       user: {
         id: sessionUser.id,
         email: sessionUser.email,
-        companyName: sessionUser.name,
+        companyName: currentUser.companyName || currentUser.username || sessionUser.name,
       },
     }
 
