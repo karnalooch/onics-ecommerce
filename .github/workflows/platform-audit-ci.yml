@@ -68,6 +68,13 @@ jobs:
           src/app/api/knowledge/validate-key/route.ts
           src/app/admin/price-lists/_lib/priceLogic.ts
 
+      - name: Reject legacy file-store writers
+        run: |
+          if grep -R --line-number --fixed-string "saveMockData" src --exclude=serverStore.ts; then
+            echo "Legacy saveMockData caller detected. Use mutateMockData instead."
+            exit 1
+          fi
+
       - name: Run tests
         run: npm test -- --run
 
