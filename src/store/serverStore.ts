@@ -1,76 +1,67 @@
-import { readDb, writeDb } from "@/lib/jsonDb"
-
-type KnowledgeMeta = {
-  sources: unknown[]
-  processedSources: unknown[]
-  lastUpdated: string | null
-}
-
-type ServerState = {
-  users: unknown[]
-  categories: unknown[]
-  manufacturers: unknown[]
-  products: unknown[]
-  orders: unknown[]
-  repairs: unknown[]
-  knowledgeMeta: KnowledgeMeta
-}
-
-const EMPTY_KNOWLEDGE_META: KnowledgeMeta = {
-  sources: [],
-  processedSources: [],
-  lastUpdated: null,
-}
-
-let currentState: ServerState | null = null
-
-function normalizeState(value: unknown): ServerState {
-  const db =
-    value && typeof value === "object"
-      ? (value as Partial<ServerState>)
-      : {}
-
-  return {
-    users: Array.isArray(db.users) ? db.users : [],
-    categories: Array.isArray(db.categories) ? db.categories : [],
-    manufacturers: Array.isArray(db.manufacturers) ? db.manufacturers : [],
-    products: Array.isArray(db.products) ? db.products : [],
-    orders: Array.isArray(db.orders) ? db.orders : [],
-    repairs: Array.isArray(db.repairs) ? db.repairs : [],
-    knowledgeMeta:
-      db.knowledgeMeta && typeof db.knowledgeMeta === "object"
-        ? {
-            sources: Array.isArray(db.knowledgeMeta.sources)
-              ? db.knowledgeMeta.sources
-              : [],
-            processedSources: Array.isArray(db.knowledgeMeta.processedSources)
-              ? db.knowledgeMeta.processedSources
-              : [],
-            lastUpdated:
-              typeof db.knowledgeMeta.lastUpdated === "string"
-                ? db.knowledgeMeta.lastUpdated
-                : null,
-          }
-        : { ...EMPTY_KNOWLEDGE_META },
-  }
-}
+// src/store/serverStore.ts
+// Współdzielony stan serwerowy oparty na trwałym pliku JSON
+import { readDb, writeDb } from "@/lib/jsonDb";
 
 /**
- * Ładuje bieżący snapshot z trwałego pliku JSON.
- * Zwrócone tablice są tym samym stanem, który saveMockData() zapisze po mutacji.
+ * Inicjalizuje i pobiera dane z trwałej bazy danych.
+ * Wymuszamy przeładowanie z pliku, aby uniknąć problemów z cachem w pamięci RAM.
  */
 export function initializeMockData() {
-  currentState = normalizeState(readDb())
-  return currentState
+  const db = readDb();
+  
+  if (!db) {
+    return {
+      users: [],
+      orders: [],
+      repairs: [],
+      categories: [],
+      products: [],
+      knowledgeMeta: { sources: [], processedSources: [], lastUpdated: null }
+    };
+  }
+
+  // Wymuszamy nadpisanie globalnego stanu danymi z pliku
+  // dzięki temu "usuwamy" stare mocki z pamięci RAM przy każdym przeładowaniu strony
+  (global as any).mockUsersStore = db.users || [];
+  (global as any).mockCategoriesStore = db.categories || [];
+  (global as any).mockManufacturersStore = db.manufacturers || [];
+  (global as any).mockProductsStore = db.products || [];
+  (global as any).mockOrdersStore = db.orders || [];
+  (global as any).mockRepairsStore = db.repairs || [];
+  (global as any).mockKnowledgeMetaStore = db.knowledgeMeta || {
+    sources: [],
+    processedSources: [],
+    lastUpdated: null
+  };
+
+  return {
+    users: (global as any).mockUsersStore,
+    orders: (global as any).mockOrdersStore,
+    repairs: (global as any).mockRepairsStore,
+    categories: (global as any).mockCategoriesStore,
+    manufacturers: (global as any).mockManufacturersStore,
+    products: (global as any).mockProductsStore,
+    knowledgeMeta: (global as any).mockKnowledgeMetaStore
+  };
 }
 
 /**
- * Zapisuje ostatnio zainicjalizowany snapshot.
+ * Zapisuje aktualny stan globalny do trwałego pliku JSON
  */
 export function saveMockData() {
-  if (!currentState) {
-    return false
-  }
+  const db = {
+    users: (global as any).mockUsersStore || [],
+    categories: (global as any).mockCategoriesStore || [],
+    manufacturers: (global as any).mockManufacturersStore || [],
+    products: (global as any).mockProductsStore || [],
+    orders: (global as any).mockOrdersStore || [],
+    repairs: (global as any).mockRepairsStore || [],
+    knowledgeMeta: (global as any).mockKnowledgeMetaStore || {
+      sources: [],
+      processedSources: [],
+      lastUpdated: null
+    }
+  };
 
-  return writeDb(currentState)
+  return writeDb(db);
 }
