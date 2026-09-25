@@ -120,22 +120,3 @@ export async function mutateMockData<T>(
     return result
   })
 }
-
-/**
- * Legacy write path. Pozostaje tymczasowo dla modułów jeszcze nieprzeniesionych
- * na mutateMockData(). Nie używać w nowym kodzie.
- */
-export function saveMockData() {
-  const legacyGlobals = globalThis as LegacyGlobals
-  const db = normalizeDb({
-    users: legacyGlobals.mockUsersStore,
-    categories: legacyGlobals.mockCategoriesStore,
-    manufacturers: legacyGlobals.mockManufacturersStore,
-    products: legacyGlobals.mockProductsStore,
-    orders: legacyGlobals.mockOrdersStore,
-    repairs: legacyGlobals.mockRepairsStore,
-    knowledgeMeta: legacyGlobals.mockKnowledgeMetaStore,
-  })
-
-  return writeDb(db)
-}
