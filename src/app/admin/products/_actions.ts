@@ -3,6 +3,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { authorizeAPI } from "@/lib/authUtils";
 import { initializeMockData, saveMockData } from "@/store/serverStore";
 import { getKnowledge, saveKnowledge, checkQuality } from "@/lib/knowledge/parser";
 import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher";
@@ -12,6 +13,8 @@ import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher";
  * Usuwa wszystkie produkty (Ewidencja + Katalog AI)
  */
 export async function wipeRegistryAction(): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     initializeMockData();
     (global as any).mockProductsStore = []; // Absolute purge
@@ -46,11 +49,21 @@ const ProductSchema = z.object({
 export type ActionState = 
   | { success: true; message: string; data?: any }
   | { success: false; error: string };
+async function requireAdminAction() {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) {
+    return { success: false as const, error: "Brak uprawnień administratora." };
+  }
+  return null;
+}
+
 
 /**
  * Dodaje lub aktualizuje pojedynczy produkt
  */
 export async function saveProductAction(data: any): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   const validated = ProductSchema.safeParse(data);
   if (!validated.success) return { success: false, error: validated.error.issues[0].message };
 
@@ -85,6 +98,8 @@ export async function saveProductAction(data: any): Promise<ActionState> {
  * Usuwa produkt
  */
 export async function deleteProductAction(id: string): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { products } = initializeMockData();
     const idx = products.findIndex((p: any) => p.id === id);
@@ -105,6 +120,8 @@ export async function deleteProductAction(id: string): Promise<ActionState> {
  * Masowy import z WF-Mag (Biurko Klasyfikacyjne)
  */
 export async function importProductsAction(items: any[]): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { products, categories } = initializeMockData();
     let updatedCount = 0;
@@ -204,6 +221,8 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
  * Synchronizuje dane z importu z Bazą Wiedzy (Cennikami)
  */
 export async function syncImportWithCatalogAction(items: any[]): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const store = await getKnowledge();
     
@@ -288,6 +307,8 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
  * Generuje opis AI dla produktu
  */
 export async function generateAiDescriptionAction(productId: string): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { products } = initializeMockData();
     const product = products.find((p: any) => p.id === productId);
@@ -325,6 +346,8 @@ export async function generateAiDescriptionAction(productId: string): Promise<Ac
  * Ręczne parowanie produktu z Inteligencją IQ Hub
  */
 export async function syncProductWithIqAction(productId: string): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const store = await getKnowledge();
     const { products } = initializeMockData();
@@ -361,6 +384,8 @@ export async function syncProductWithIqAction(productId: string): Promise<Action
  * Promuje urządzenie wirtualne (z katalogu IQ) do fizycznej ewidencji
  */
 export async function activateVirtualProductAction(sku: string): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const store = await getKnowledge();
     const entry = store.knowledge[sku];
@@ -412,6 +437,8 @@ export async function activateVirtualProductAction(sku: string): Promise<ActionS
  * Masowe dodawanie produktów bezpośrednio do ewidencji (Baza produktów)
  */
 export async function bulkAddProductsToInventoryAction(items: any[]): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { products } = initializeMockData();
     let added = 0;
@@ -450,6 +477,8 @@ export async function manageStructureAction(
   id: string, 
   data?: any
 ): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { categories, manufacturers, products } = initializeMockData();
     
@@ -551,6 +580,8 @@ export async function manageStructureAction(
  * Automatycznie tworzy brakujące byty i decyduje: Baza czy Biurko.
  */
 export async function autonomousProvisioningAction(extractions: any[]): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { categories, manufacturers, products } = initializeMockData();
     let directCount = 0;

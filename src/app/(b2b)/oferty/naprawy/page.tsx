@@ -1,104 +1,201 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { FormEvent, useEffect, useState } from "react"
+import { Loader2, Plus, Wrench } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Wrench, ShieldAlert, Clock, ChevronRight } from "lucide-react"
+
+type Repair = {
+  id: string
+  item: string
+  serial: string
+  description?: string
+  date: string
+  status: string
+}
 
 export default function RmaInstallerPage() {
-  const [formOpen, setFormOpen] = useState(false);
+  const [repairs, setRepairs] = useState<Repair[]>([])
+  const [loading, setLoading] = useState(true)
+  const [formOpen, setFormOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const [item, setItem] = useState("")
+  const [serial, setSerial] = useState("")
+  const [description, setDescription] = useState("")
 
-  const MOCK_REPAIRS = [
-    { id: "RMA-0012", item: "Rejestrator 4CH", serial: "SN12345678", date: "2026-04-10", status: "W NAPRAWIE" },
-    { id: "RMA-0013", item: "Kamera IP 4MP", serial: "SN987654", date: "2026-04-12", status: "WERYFIKACJA" },
-  ];
+  const loadRepairs = async () => {
+    try {
+      const response = await fetch("/api/repairs", { cache: "no-store" })
+      if (!response.ok) throw new Error("Nie udało się pobrać zgłoszeń.")
+      const payload = await response.json()
+      setRepairs(Array.isArray(payload) ? payload : [])
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Błąd pobierania.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadRepairs()
+  }, [])
+
+  const submitRepair = async (event: FormEvent) => {
+    event.preventDefault()
+    setSaving(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/repairs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item, serial, description }),
+      })
+      const payload = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Nie udało się utworzyć zgłoszenia.")
+      }
+
+      setRepairs((current) => [payload, ...current])
+      setItem("")
+      setSerial("")
+      setDescription("")
+      setFormOpen(false)
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error ? submitError.message : "Błąd zapisu zgłoszenia."
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
-    <div className="container mx-auto py-10 px-6 max-w-7xl space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+    <div className="container mx-auto max-w-6xl space-y-8 px-6 py-10">
+      <div className="flex flex-col justify-between gap-5 md:flex-row md:items-center">
         <div>
-          <h2 className="text-4xl font-extrabold tracking-tight flex items-center gap-3 uppercase italic text-foreground">
-            <Wrench className="h-10 w-10 text-primary" /> Centrum <span className="text-primary tracking-tighter">RMA</span>
-          </h2>
-          <p className="text-muted-foreground font-medium mt-2">
-            Monitoruj postępy napraw i zgłaszaj nowe incydenty serwisowe Celtronics.
+          <h1 className="flex items-center gap-3 text-3xl font-extrabold">
+            <Wrench className="h-8 w-8 text-primary" />
+            Centrum RMA
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Zgłaszaj urządzenia do serwisu i śledź status własnych zgłoszeń.
           </p>
         </div>
-        <Button onClick={() => setFormOpen(!formOpen)} size="lg" className="rounded-2xl px-8 py-6 h-auto font-black uppercase tracking-widest gap-3 shadow-lg shadow-primary/20">
-          <ShieldAlert className="h-5 w-5" /> Zgłoś Naprawę
+        <Button onClick={() => setFormOpen((open) => !open)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Nowe zgłoszenie
         </Button>
       </div>
 
       {formOpen && (
-        <Card className="border-primary/20 bg-primary/5 shadow-2xl rounded-[2rem] overflow-hidden animate-in zoom-in-95 duration-200">
-          <CardHeader className="p-8">
-            <CardTitle className="text-2xl font-black uppercase italic tracking-tight">Nowy <span className="text-primary">Protokół</span> Usterki</CardTitle>
-            <CardDescription className="font-medium text-muted-foreground">Wprowadź dane urządzenia, aby wygenerować unikalny numer RMA w systemie.</CardDescription>
-          </CardHeader>
-          <CardContent className="px-8 pb-8 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-widest ml-1 text-muted-foreground">Model Urządzenia</label>
-                <input type="text" className="flex h-12 w-full rounded-2xl border border-border bg-background px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="np. IPOX 4MP Dome" />
-              </div>
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-widest ml-1 text-muted-foreground">Numer Seryjny (S/N)</label>
-                <input type="text" className="flex h-12 w-full rounded-2xl border border-border bg-background px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="SN..." />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest ml-1 text-muted-foreground">Charakterystyka błędu</label>
-              <textarea rows={4} className="flex min-h-[120px] w-full rounded-2xl border border-border bg-background px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Opisz dokładnie kiedy i w jakich okolicznościach wystąpił problem..." />
-            </div>
-          </CardContent>
-          <CardFooter className="px-8 py-6 bg-muted/30 border-t flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setFormOpen(false)} className="rounded-xl font-bold">Anuluj</Button>
-            <Button onClick={() => setFormOpen(false)} className="rounded-xl font-black px-8">Wyślij do Serwisu</Button>
-          </CardFooter>
-        </Card>
+        <form
+          onSubmit={submitRepair}
+          className="grid gap-5 rounded-3xl border border-border bg-card p-6"
+        >
+          <div className="grid gap-5 md:grid-cols-2">
+            <label>
+              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Model urządzenia
+              </span>
+              <input
+                required
+                minLength={2}
+                maxLength={200}
+                value={item}
+                onChange={(event) => setItem(event.target.value)}
+                className="h-12 w-full rounded-xl border border-border px-4"
+              />
+            </label>
+            <label>
+              <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Numer seryjny
+              </span>
+              <input
+                required
+                minLength={2}
+                maxLength={120}
+                value={serial}
+                onChange={(event) => setSerial(event.target.value)}
+                className="h-12 w-full rounded-xl border border-border px-4"
+              />
+            </label>
+          </div>
+          <label>
+            <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Opis usterki
+            </span>
+            <textarea
+              required
+              minLength={5}
+              maxLength={3000}
+              rows={4}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              className="w-full rounded-xl border border-border p-4"
+            />
+          </label>
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+              Anuluj
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Wyślij do serwisu
+            </Button>
+          </div>
+        </form>
       )}
 
-      <div className="bg-card border border-border rounded-[2rem] shadow-sm overflow-hidden">
-        <div className="p-8 border-b flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-primary" />
-                <h3 className="text-xl font-black uppercase tracking-tight">Aktywne <span className="text-primary italic">Zlecenia</span></h3>
-            </div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-50">Ostatnia synchronizacja: przed chwilą</span>
+      {error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 text-sm font-semibold text-red-600">
+          {error}
         </div>
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest px-8">ID RMA</TableHead>
-              <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest">Model</TableHead>
-              <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest">S/N</TableHead>
-              <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest">Data</TableHead>
-              <TableHead className="py-5 font-black uppercase text-[10px] tracking-widest text-right px-8">Aktualny Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {MOCK_REPAIRS.map(r => (
-              <TableRow key={r.id} className="hover:bg-primary/5 transition-colors group">
-                <TableCell className="font-mono font-black text-primary py-6 px-8">{r.id}</TableCell>
-                <TableCell className="font-bold">{r.item}</TableCell>
-                <TableCell className="text-muted-foreground text-xs font-bold leading-none">{r.serial}</TableCell>
-                <TableCell className="text-xs font-bold text-muted-foreground">
-                  {new Date(r.date).toLocaleDateString("pl-PL")}
-                </TableCell>
-                <TableCell className="text-right px-8">
-                  <div className="flex items-center justify-end gap-3">
-                    <Badge variant="outline" className={`rounded-lg px-3 py-1 font-black uppercase text-[10px] ${r.status === "W NAPRAWIE" ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground border-border"}`}>
-                        {r.status}
-                    </Badge>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
-                  </div>
-                </TableCell>
-              </TableRow>
+      )}
+
+      <div className="overflow-hidden rounded-3xl border border-border bg-card">
+        <div className="border-b border-border p-6">
+          <h2 className="text-lg font-extrabold">Twoje zgłoszenia</h2>
+        </div>
+
+        {loading ? (
+          <div className="flex h-48 items-center justify-center">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          </div>
+        ) : repairs.length === 0 ? (
+          <div className="p-12 text-center text-sm text-muted-foreground">
+            Nie masz jeszcze zgłoszeń serwisowych.
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {repairs.map((repair) => (
+              <div
+                key={repair.id}
+                className="grid gap-4 p-6 md:grid-cols-[1fr_180px_160px] md:items-center"
+              >
+                <div>
+                  <strong className="block">{repair.item}</strong>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {repair.id} · S/N {repair.serial}
+                  </span>
+                  {repair.description && (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      {repair.description}
+                    </p>
+                  )}
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {new Date(repair.date).toLocaleDateString("pl-PL")}
+                </span>
+                <Badge variant="outline" className="w-fit">
+                  {repair.status}
+                </Badge>
+              </div>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        )}
       </div>
     </div>
   )

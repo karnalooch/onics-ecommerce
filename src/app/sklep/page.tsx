@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { initializeMockData } from "@/store/serverStore";
 import { ShopDashboardClient } from "./ShopDashboardClient";
 import { ShieldAlert, Clock, ArrowLeft } from "lucide-react";
+import { calculateCustomerUnitPrice } from "@/lib/commerce";
 import Link from "next/link";
 
 /**
@@ -15,8 +16,34 @@ export default async function SklepPage() {
   const session = await auth();
   if (!session?.user) redirect("/logowanie");
 
-  const { products, categories } = initializeMockData();
-  const user = session.user as any;
+  const { products, categories, users } = initializeMockData();
+  const sessionUser = session.user as {
+    id?: string
+    email?: string | null
+  };
+  const currentUser = (users as Array<{
+    id?: string
+    email?: string
+    roleType?: string
+    isApproved?: boolean
+    isBlocked?: boolean
+    discount?: number
+  }>).find(
+    (user) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  );
+
+  if (!currentUser || currentUser.isBlocked) {
+    redirect("/logowanie");
+  }
+
+  const user = {
+    role: currentUser.roleType,
+    isApproved: Boolean(currentUser.isApproved),
+    discount: Number(currentUser.discount ?? 0),
+  };
 
   // B2B Verification Check
   if (user.role === "BIZ" && !user.isApproved) {
@@ -39,10 +66,25 @@ export default async function SklepPage() {
           </div>
        </header>
        
-       <ShopDashboardClient 
-         initialProducts={products}
+       <ShopDashboardClient
+         initialProducts={products.map((product: any) => ({
+           ...product,
+           price:
+             user.role === "BIZ"
+               ? calculateCustomerUnitPrice(
+                   {
+                     id: String(product.id),
+                     sku: String(product.sku || ""),
+                     name: String(product.name || ""),
+                     price: Number(product.price ?? 0),
+                     stock: Number(product.stock ?? 0),
+                   },
+                   { role: "BIZ", discount: Number(user.discount ?? 0) }
+                 )
+               : Number(product.price ?? 0),
+         }))}
          categories={categories}
-         role={user.role}
+         role={user.role || "RETAIL"}
        />
     </div>
   );
@@ -62,7 +104,7 @@ function PendingApprovalView() {
          <div className="flex flex-col gap-4">
             <div className="p-4 bg-slate-50 rounded-2xl flex items-center gap-4 border border-slate-100">
                <ShieldAlert className="w-5 h-5 text-slate-400" />
-               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Oczekiwany czas: Do 24h</span>
+               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Status: oczekuje na weryfikację administratora</span>
             </div>
             <Link href="/" className="inline-flex items-center justify-center gap-3 h-14 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10">
                <ArrowLeft className="w-4 h-4" /> Powrót do Strony Głównej

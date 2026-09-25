@@ -15,7 +15,8 @@ export function initializeMockData() {
       orders: [],
       repairs: [],
       categories: [],
-      products: []
+      products: [],
+      knowledgeMeta: { sources: [], processedSources: [], lastUpdated: null }
     };
   }
 
@@ -27,6 +28,11 @@ export function initializeMockData() {
   (global as any).mockProductsStore = db.products || [];
   (global as any).mockOrdersStore = db.orders || [];
   (global as any).mockRepairsStore = db.repairs || [];
+  (global as any).mockKnowledgeMetaStore = db.knowledgeMeta || {
+    sources: [],
+    processedSources: [],
+    lastUpdated: null
+  };
 
   return {
     users: (global as any).mockUsersStore,
@@ -34,7 +40,8 @@ export function initializeMockData() {
     repairs: (global as any).mockRepairsStore,
     categories: (global as any).mockCategoriesStore,
     manufacturers: (global as any).mockManufacturersStore,
-    products: (global as any).mockProductsStore
+    products: (global as any).mockProductsStore,
+    knowledgeMeta: (global as any).mockKnowledgeMetaStore
   };
 }
 
@@ -48,7 +55,12 @@ export function saveMockData() {
     manufacturers: (global as any).mockManufacturersStore || [],
     products: (global as any).mockProductsStore || [],
     orders: (global as any).mockOrdersStore || [],
-    repairs: (global as any).mockRepairsStore || []
+    repairs: (global as any).mockRepairsStore || [],
+    knowledgeMeta: (global as any).mockKnowledgeMetaStore || {
+      sources: [],
+      processedSources: [],
+      lastUpdated: null
+    }
   };
 
   return writeDb(db);

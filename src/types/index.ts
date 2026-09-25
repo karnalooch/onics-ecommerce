@@ -9,7 +9,8 @@ export interface User {
   isApproved: boolean;
   isBlocked: boolean;
   nip: string | null;
-  jwt: string;
+  passwordHash?: string;
+  jwt?: string;
   address?: string;
   phone?: string;
   createdAt: string;

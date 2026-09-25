@@ -1,77 +1,119 @@
-import { NextResponse } from 'next/server';
-import { GEMINI_PRICING, findBestRecommendation, sortModelsByRecommendation } from '@/lib/knowledge/aiPricing';
+import { NextResponse } from "next/server"
+import { z } from "zod"
+import {
+  GEMINI_PRICING,
+  findBestRecommendation,
+  sortModelsByRecommendation,
+} from "@/lib/knowledge/aiPricing"
+import { authorizeAPI } from "@/lib/authUtils"
+
+type GoogleModel = {
+  name?: string
+  supportedGenerationMethods?: string[]
+}
+
+type GoogleModelsResponse = {
+  models?: GoogleModel[]
+  error?: { message?: string }
+}
+
+const RequestSchema = z.object({
+  apiKey: z.string().trim().min(10).max(512),
+  isPDF: z.boolean().optional().default(false),
+})
 
 export async function POST(req: Request) {
-  try {
-    const { apiKey, isPDF } = await req.json();
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
-    if (!apiKey) {
-      return NextResponse.json({ error: "Brak klucza API do walidacji" }, { status: 400 });
+  try {
+    const parsed = RequestSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Nieprawidłowy klucz API." },
+        { status: 400 }
+      )
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-    const response = await fetch(url);
-    const data = await response.json();
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models",
+      {
+        headers: {
+          "x-goog-api-key": parsed.data.apiKey,
+        },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000),
+      }
+    )
+    const data = (await response.json()) as GoogleModelsResponse
 
     if (!response.ok) {
-      return NextResponse.json({ 
-        error: data.error?.message || "Klucz API jest nieprawidłowy lub nieaktywny" 
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          error:
+            data.error?.message ||
+            "Klucz API jest nieprawidłowy lub nieaktywny.",
+        },
+        { status: 401 }
+      )
     }
 
-    const models = data.models || [];
-    // Filtrujemy modele wspierające generowanie treści (szersze dopasowanie)
-    const validModels = models.filter((m: { name: string, supportedGenerationMethods?: string[] }) => {
-      const name = m.name.toLowerCase();
-      // Wspieramy najnowsze modele Gemini (w tym szerokodostępne 1.5)
-      const isModernGemini = name.includes('gemini-1.5') ||
-                             name.includes('gemini-2.0') || 
-                             name.includes('gemini-2.5') || 
-                             name.includes('gemini-3.') || 
-                             name.includes('gemini-3.0') ||
-                             name.includes('gemini-3.1');
+    const validModels = (data.models || []).filter((model) => {
+      const name = String(model.name || "").toLowerCase()
+      const isGemini =
+        name.includes("gemini-1.5") ||
+        name.includes("gemini-2.") ||
+        name.includes("gemini-3.")
+      const isSpecialized =
+        name.includes("tts") ||
+        name.includes("embedding") ||
+        name.includes("vision")
 
-      // Bezwzględne wykluczenie modeli specjalistycznych
-      const isSpecialized = name.includes('tts') || name.includes('embedding') || name.includes('vision');
-      
-      if (!isModernGemini || isSpecialized) return false;
+      return (
+        isGemini &&
+        !isSpecialized &&
+        model.supportedGenerationMethods?.some((method) =>
+          method.toLowerCase().includes("generatecontent")
+        )
+      )
+    })
 
-      return m.supportedGenerationMethods?.some((method: string) => 
-        method.toLowerCase().includes('generatecontent')
-      );
-    });
-    
-    const modelNames = validModels.map((m: any) => m.name.replace('models/', ''));
+    const modelNames = validModels
+      .map((model) => String(model.name || "").replace("models/", ""))
+      .filter(Boolean)
 
-    // Integrate Pricing & Recommendation Logic
-    const recommendedId = findBestRecommendation(modelNames, !!isPDF);
-    const cheapestId = findBestRecommendation(modelNames, false); // For the "Cheap" badge
-    
-    let modelsWithPricing = modelNames.map((id: string) => {
-      const pricing = GEMINI_PRICING[id];
-      return {
-        id,
-        name: pricing?.name || id,
-        inputPrice: pricing?.inputPrice || 0.50,
-        outputPrice: pricing?.outputPrice || 1.50,
-        tier: pricing?.tier || 'Flash'
-      };
-    });
-
-    // Sort to bring recommended to the TOP
-    modelsWithPricing = sortModelsByRecommendation(modelsWithPricing, recommendedId);
+    const recommendedId = findBestRecommendation(
+      modelNames,
+      parsed.data.isPDF
+    )
+    const cheapestId = findBestRecommendation(modelNames, false)
+    const modelsWithPricing = sortModelsByRecommendation(
+      modelNames.map((id) => {
+        const pricing = GEMINI_PRICING[id]
+        return {
+          id,
+          name: pricing?.name || id,
+          inputPrice: pricing?.inputPrice ?? 0.5,
+          outputPrice: pricing?.outputPrice ?? 1.5,
+          tier: pricing?.tier || "Flash",
+        }
+      }),
+      recommendedId
+    )
 
     return NextResponse.json({
       success: true,
       recommended: recommendedId,
-      cheapestId: cheapestId,
+      cheapestId,
       availableModels: modelsWithPricing,
-      isPDFRecommend: !!isPDF,
-      message: `Klucz zweryfikowany. Wykryto ${modelNames.length} modeli. ${isPDF ? 'Dla plików PDF rekomendujemy optymalną wersję Flash/Pro.' : 'Sugerowany model ekonomiczny.'}`
-    });
-
-  } catch (err: any) {
-    console.error("Key Validation error:", err);
-    return NextResponse.json({ error: "Błąd podczas walidacji klucza API" }, { status: 500 });
+      isPDFRecommend: parsed.data.isPDF,
+      message: `Klucz zweryfikowany. Wykryto ${modelNames.length} obsługiwanych modeli.`,
+    })
+  } catch (error) {
+    console.error("Key validation error:", error)
+    return NextResponse.json(
+      { error: "Błąd podczas walidacji klucza API." },
+      { status: 500 }
+    )
   }
 }

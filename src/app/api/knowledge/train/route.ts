@@ -1,58 +1,60 @@
-import { NextResponse } from 'next/server';
-import { parseExcel, parsePDFWithAI, getKnowledge, saveKnowledge } from '@/lib/knowledge/parser';
-import fs from 'fs';
-import path from 'path';
+import fs from "fs"
+import { NextResponse } from "next/server"
+import { z } from "zod"
+import { authorizeAPI } from "@/lib/authUtils"
+import { parseExcel, parsePDFWithAI } from "@/lib/knowledge/parser"
+import { validateKnowledgeFilename } from "@/lib/knowledge/files"
+
+export const runtime = "nodejs"
+
+const RequestSchema = z.object({
+  filename: z.string().min(1).max(255),
+  apiKey: z.string().max(512).optional().default(""),
+  modelId: z.string().trim().max(120).optional().default("internal-v9"),
+})
 
 export async function POST(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
+
   try {
-    const { filename, apiKey, modelId } = await req.json();
-    
-    if (!filename || !apiKey) {
-      return NextResponse.json({ error: "Brak nazwy pliku lub klucza API" }, { status: 400 });
+    const parsed = RequestSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane." },
+        { status: 400 }
+      )
     }
 
-    const filePath = path.join(process.cwd(), 'public/uploads/catalogs', filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ error: "Plik nie istnieje w archiwum" }, { status: 404 });
+    const fileInfo = validateKnowledgeFilename(parsed.data.filename)
+    if (!fs.existsSync(fileInfo.absolutePath)) {
+      return NextResponse.json({ error: "Plik nie istnieje." }, { status: 404 })
     }
 
-    const buffer = fs.readFileSync(filePath);
-    let addedCount = 0;
+    const buffer = fs.readFileSync(fileInfo.absolutePath)
+    const result = [".xlsx", ".xls", ".xlsm"].includes(fileInfo.extension)
+      ? await parseExcel(buffer, fileInfo.filename, undefined, {
+          apiKey: parsed.data.apiKey,
+          modelId: parsed.data.modelId,
+        })
+      : await parsePDFWithAI(
+          buffer,
+          fileInfo.filename,
+          parsed.data.apiKey || undefined,
+          parsed.data.modelId
+        )
 
-    // 1. Uruchamiamy proces nauki
-    if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-      const result = await parseExcel(buffer, filename);
-      addedCount = result.count;
-      
-      // 2. Oznaczamy plik jako „przetworzony” (tylko dla Excela, PDF robi to w tle)
-      const currentStore = await getKnowledge();
-      if (!currentStore.processedSources.includes(filename)) {
-        currentStore.processedSources.push(filename);
-      }
-      await saveKnowledge(currentStore);
-
-      return NextResponse.json({ 
-        success: true, 
-        count: addedCount,
-        message: `System pomyślnie nauczył się danych z pliku ${filename} (${addedCount} nowych modeli).`
-      });
-    } else if (filename.toLowerCase().endsWith('.pdf')) {
-      // PDF przetwarzamy w tle, aby uniknąć Timeoutu w przeglądarce
-      parsePDFWithAI(buffer, filename, apiKey, modelId).catch(err => {
-        console.error("Background PDF processing failed:", err);
-      });
-
-      return NextResponse.json({ 
-        success: true, 
-        isBackground: true,
-        message: `Rozpoczęto analizę PDF w tle. Ze względu na limity API zajmie to kilka minut. Dane będą pojawiać się sukcesywnie.`
-      });
-    } else {
-      return NextResponse.json({ error: "Nieobsługiwany format pliku dla AI" }, { status: 400 });
-    }
-  } catch (err: any) {
-    console.error("Training error:", err);
-    return NextResponse.json({ error: err.message || "Błąd podczas nauki AI" }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      count: result.count,
+      stats: result.stats,
+      message: `Przetworzono plik ${fileInfo.filename}.`,
+    })
+  } catch (error) {
+    console.error("Knowledge training error:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Błąd analizy." },
+      { status: 500 }
+    )
   }
 }

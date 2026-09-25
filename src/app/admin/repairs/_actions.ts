@@ -3,26 +3,39 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { initializeMockData } from "@/store/serverStore";
+import { authorizeAPI } from "@/lib/authUtils";
+import { initializeMockData, saveMockData } from "@/store/serverStore";
 
 const RepairSchema = z.object({
   client: z.string().min(2, "Nazwa klienta jest za krótka"),
   item: z.string().min(2, "Nazwa urządzenia jest za krótka"),
   serial: z.string().optional(),
+  description: z.string().max(3000).optional(),
 });
 
 export type ActionState = 
-  | { success: true; message: string }
+  | { success: true; message: string; data?: any }
   | { success: false; error: string };
+async function requireAdminAction() {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) {
+    return { success: false as const, error: "Brak uprawnień administratora." };
+  }
+  return null;
+}
+
 
 /**
  * Dodaje nowe zgłoszenie RMA
  */
 export async function addRepairAction(formData: FormData): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   const rawData = {
     client: formData.get("client"),
     item: formData.get("item"),
     serial: formData.get("serial") || "N/A",
+    description: formData.get("description") || "",
   };
 
   const validated = RepairSchema.safeParse(rawData);
@@ -35,15 +48,17 @@ export async function addRepairAction(formData: FormData): Promise<ActionState> 
     const newId = `RMA-${Math.floor(Math.random() * 9000) + 1000}`;
     const date = new Date().toISOString().split('T')[0];
     
-    repairs.unshift({
+    const newRepair = {
       ...validated.data,
       id: newId,
       date,
       status: "WERYFIKACJA"
-    });
+    };
+    repairs.unshift(newRepair);
 
+    if (!saveMockData()) return { success: false, error: "Nie udało się zapisać zgłoszenia." };
     revalidatePath("/admin/repairs");
-    return { success: true, message: "Zgłoszenie zostało dodane." };
+    return { success: true, message: "Zgłoszenie zostało dodane.", data: newRepair };
   } catch (e) {
     return { success: false, error: "Wystąpił błąd podczas dodawania zgłoszenia." };
   }
@@ -53,11 +68,14 @@ export async function addRepairAction(formData: FormData): Promise<ActionState> 
  * Usuwa zgłoszenie RMA
  */
 export async function deleteRepairAction(id: string): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { repairs } = initializeMockData();
     const index = repairs.findIndex((r: any) => r.id === id);
     if (index !== -1) {
       repairs.splice(index, 1);
+      if (!saveMockData()) return { success: false, error: "Nie udało się zapisać zmian." };
       revalidatePath("/admin/repairs");
       return { success: true, message: "Zgłoszenie usunięte." };
     }
@@ -71,11 +89,14 @@ export async function deleteRepairAction(id: string): Promise<ActionState> {
  * Aktualizuje status zgłoszenia RMA
  */
 export async function updateStatusAction(id: string, status: string): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { repairs } = initializeMockData();
     const repair = repairs.find((r: any) => r.id === id);
     if (repair) {
       repair.status = status;
+      if (!saveMockData()) return { success: false, error: "Nie udało się zapisać statusu." };
       revalidatePath("/admin/repairs");
       return { success: true, message: `Status zmieniony na ${status}` };
     }

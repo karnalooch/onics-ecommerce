@@ -1,56 +1,48 @@
-import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import * as XLSX from 'xlsx';
+import { NextResponse } from "next/server"
+import * as XLSX from "xlsx"
+import { authorizeAPI } from "@/lib/authUtils"
+import { getKnowledge } from "@/lib/knowledge/parser"
 
 export async function GET() {
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
+
   try {
-    const storePath = path.join(process.cwd(), 'src/store/catalogKnowledge.json');
-    if (!fs.existsSync(storePath)) {
-      return NextResponse.json({ error: 'Database not found' }, { status: 404 });
-    }
+    const store = await getKnowledge()
+    const rows = Object.entries(store.knowledge).map(([symbol, info]) => ({
+      "Model / Symbol": symbol,
+      Cena: info.price ?? "",
+      Specyfikacja: info.specs || "",
+      Producent: info.manufacturer || "",
+      Źródło: info.source || "Baza produktów",
+      "Ostatnia aktualizacja": info.lastUpdated || store.lastUpdated || "",
+    }))
 
-    const fileContent = fs.readFileSync(storePath, 'utf8');
-    const store = JSON.parse(fileContent);
-    const knowledge = store.knowledge || {};
+    const workbook = XLSX.utils.book_new()
+    const worksheet = XLSX.utils.json_to_sheet(rows)
+    worksheet["!cols"] = [
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 80 },
+      { wch: 24 },
+      { wch: 40 },
+      { wch: 24 },
+    ]
+    XLSX.utils.book_append_sheet(workbook, worksheet, "KnowledgeBase")
+    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" })
 
-    const rows = Object.entries(knowledge).map(([symbol, info]: [string, any]) => ({
-      'Model / Symbol': symbol,
-      'Cena': info.price || 'BRAK',
-      'Specyfikacja': info.specs || '',
-      'Źródło': info.source || 'Baza Universal Hub',
-      'Data Dodania': info.dateAdded || ''
-    }));
-
-    // Create workbook and worksheet
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
-
-    // Set column widths
-    const wscols = [
-      { wch: 25 }, // Model
-      { wch: 15 }, // Price
-      { wch: 80 }, // Specs
-      { wch: 40 }, // Source
-      { wch: 20 }  // Date
-    ];
-    ws['!cols'] = wscols;
-
-    XLSX.utils.book_append_sheet(wb, ws, 'KnowledgeBase');
-
-    // Generate buffer
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-    // Return as downloadable file
-    return new Response(buf, {
+    return new Response(buffer, {
       status: 200,
       headers: {
-        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': 'attachment; filename="Universal_Database_Export.xlsx"',
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition":
+          'attachment; filename="Celtronics_Knowledge_Export.xlsx"',
+        "Cache-Control": "no-store",
       },
-    });
+    })
   } catch (error) {
-    console.error('Export error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("Knowledge export error:", error)
+    return NextResponse.json({ error: "Błąd eksportu." }, { status: 500 })
   }
 }

@@ -1,32 +1,54 @@
-"use client"
-
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
 import { KnowledgeProvider } from "@/lib/knowledge/KnowledgeContext"
+import { initializeMockData } from "@/store/serverStore"
 import { CommandPalette } from "./_components/CommandPalette"
 import { SupportCard } from "./_components/SupportCard"
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await auth()
+  const sessionUser = session?.user as
+    | { id?: string; email?: string | null }
+    | undefined
+
+  if (!sessionUser) {
+    redirect("/logowanie")
+  }
+
+  const { users } = initializeMockData()
+  const userStore = users as Array<{
+    id?: string
+    email?: string
+    roleType?: string
+    isBlocked?: boolean
+  }>
+  const currentUser = userStore.find(
+    (user) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  )
+
+  if (!currentUser || currentUser.isBlocked || currentUser.roleType !== "ADMIN") {
+    redirect("/logowanie")
+  }
+
   return (
     <KnowledgeProvider>
       <div className="min-h-[calc(100vh-80px)] w-full bg-background selection:bg-primary/20">
         <CommandPalette />
-        
-        {/* ELITE LAYOUT GRID: CONTENT + CONTEXTUAL SUPPORT */}
         <div className="max-w-[1920px] mx-auto px-4 lg:px-8 py-6 flex flex-col xl:flex-row gap-8">
-          
-          {/* MAIN OPERATIONAL VIEWPORT (Fluid Grid Mandate) */}
           <main className="flex-1 min-w-0">
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
               {children}
             </div>
           </main>
-
           <SupportCard />
         </div>
-
       </div>
     </KnowledgeProvider>
   )

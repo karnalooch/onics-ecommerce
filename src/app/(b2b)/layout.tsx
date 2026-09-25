@@ -1,6 +1,7 @@
 import { auth, signOut } from '@/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { initializeMockData } from '@/store/serverStore';
 import { 
   Package, 
   Wrench, 
@@ -11,18 +12,58 @@ import {
   ChevronRight,
   Database,
   Activity,
-  User,
-  ExternalLink
+  User
 } from 'lucide-react';
 
 export default async function B2BLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
-  if (!session || (session.user as any)?.role !== 'BIZ') {
+  const sessionUser = session?.user as
+    | {
+        id?: string
+        email?: string | null
+        name?: string | null
+      }
+    | undefined;
+
+  if (!sessionUser) {
     redirect('/logowanie');
   }
 
-  const user = session.user as any;
+  const { users } = initializeMockData();
+  const userStore = users as Array<{
+    id?: string
+    email?: string
+    companyName?: string
+    username?: string
+    roleType?: string
+    isApproved?: boolean
+    isBlocked?: boolean
+    nip?: string | null
+    discount?: number
+    tierName?: string
+  }>;
+  const currentUser = userStore.find(
+    (user) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  );
+
+  if (!currentUser || currentUser.isBlocked || currentUser.roleType !== 'BIZ') {
+    redirect('/logowanie');
+  }
+
+  if (!currentUser.isApproved) {
+    redirect('/sklep');
+  }
+
+  const user = {
+    name: currentUser.companyName || currentUser.username || sessionUser.name,
+    nip: currentUser.nip ?? null,
+    discount: Number(currentUser.discount ?? 0),
+    tierName: currentUser.tierName ?? 'BASIC',
+  };
 
   return (
     <div className="flex min-h-screen bg-white font-mono selection:bg-primary/20" suppressHydrationWarning>
@@ -79,12 +120,16 @@ export default async function B2BLayout({ children }: { children: React.ReactNod
               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Identity_Verified</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-black text-slate-950 leading-none uppercase truncate italic">{user.companyName || "Partner B2B"}</p>
+              <p className="text-xs font-black text-slate-950 leading-none uppercase truncate italic">{user.name || "Partner B2B"}</p>
               <p className="text-[9px] text-slate-400 font-black tracking-widest mt-1">NIP: {user.nip || "N/A"}</p>
             </div>
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[9px] font-black text-white uppercase bg-slate-950 px-2 py-0.5 italic">STATUS: PRO</span>
-              <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest italic">LEVEL_A.1</span>
+              <span className="text-[9px] font-black text-white uppercase bg-slate-950 px-2 py-0.5 italic">
+                {user.tierName || "BASIC"}
+              </span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">
+                RABAT: {Number(user.discount || 0).toFixed(1)}%
+              </span>
             </div>
           </div>
 
@@ -117,12 +162,12 @@ export default async function B2BLayout({ children }: { children: React.ReactNod
         <footer className="relative z-10 p-8 border-t border-slate-50 flex justify-between items-center bg-white/80 backdrop-blur-sm print:hidden">
            <div className="flex items-center gap-4 text-slate-300">
               <Database className="w-4 h-4" />
-              <span className="text-[9px] font-black uppercase tracking-[0.4em] italic">Celtronics_Operational_Matrix_v9.2</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.25em] italic">CEL-TRONICS · STREFA PARTNERA B2B</span>
            </div>
            <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                  <div className="w-2 h-2 bg-status-success shadow-xl shadow-status-success/40" />
-                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Node_Sync: OK</span>
+                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Sesja zalogowana</span>
               </div>
            </div>
         </footer>

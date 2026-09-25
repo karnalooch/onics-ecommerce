@@ -1,61 +1,128 @@
-import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
+import { NextResponse } from "next/server"
+import Stripe from "stripe"
+import { z } from "zod"
+import { authorizeAPI } from "@/lib/authUtils"
+import { resolveCartItems } from "@/lib/commerce"
+import { initializeMockData } from "@/store/serverStore"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-10-16' as any, // Najnowsze stabilne API kompatybilne z webhooks
-});
+const CartSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        quantity: z.coerce.number().int().min(1).max(10000),
+      })
+    )
+    .min(1)
+    .max(250),
+})
+
+type SessionUser = {
+  id?: string
+  email?: string | null
+  role?: string
+}
+
+type StoredUser = {
+  id?: string
+  email?: string
+  nip?: string | null
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+  discount?: number
+}
 
 export async function POST(req: Request) {
+  const authCheck = await authorizeAPI([])
+  if (!authCheck.authorized) return authCheck.response
+
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json(
+      { error: "Płatności online nie są skonfigurowane." },
+      { status: 503 }
+    )
+  }
+
   try {
-    const body = await req.json();
-    const { items, role, nip } = body;
-
-    if (!items || items.length === 0) {
-      return NextResponse.json({ error: "Koszyk jest pusty" }, { status: 400 });
+    const parsed = CartSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Nieprawidłowy koszyk." },
+        { status: 400 }
+      )
     }
 
-    // Walidacja praw KSeF (NIP jest obligatoryjny dla ról BIZ i rabatów net)
-    if (role === 'BIZ' && !nip) {
-      return NextResponse.json({ error: "Podmiot biznesowy musi zweryfikować ważny NIP przed transakcją B2B." }, { status: 403 });
+    const sessionUser = authCheck.user as SessionUser
+    const { users, products } = initializeMockData()
+    const storedUser = (users as StoredUser[]).find(
+      (user) =>
+        (sessionUser.id && user.id === sessionUser.id) ||
+        (sessionUser.email &&
+          user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+    )
+
+    if (!storedUser || storedUser.isBlocked) {
+      return NextResponse.json({ error: "Konto jest niedostępne." }, { status: 403 })
     }
 
-    // Tworzenie "line_items" z asortymentu Koszyka (Zustand state)
-    const lineItems = items.map((item: any) => ({
-      price_data: {
-        currency: 'pln',
-        // Obliczenie ceny z groszami. Zakładamy, że item.price w B2C to Brutto, a B2B to Netto + mechanizmy w Webhooku
-        unit_amount: Math.round(item.price * 100), 
-        product_data: {
-          name: item.name,
-          metadata: {
-            sku: item.sku || 'UNKNOWN',
-            id: item.id
-          }
-        },
+    if (storedUser.roleType === "BIZ" && !storedUser.isApproved) {
+      return NextResponse.json(
+        { error: "Konto B2B oczekuje na zatwierdzenie." },
+        { status: 403 }
+      )
+    }
+
+    const resolved = resolveCartItems(
+      parsed.data.items,
+      products,
+      {
+        id: storedUser.id,
+        email: storedUser.email,
+        role: storedUser.roleType,
+        isApproved: storedUser.isApproved,
+        isBlocked: storedUser.isBlocked,
+        discount: storedUser.discount,
+        nip: storedUser.nip,
       },
-      quantity: item.quantity,
-    }));
+      { requirePriced: true, requireStock: true }
+    )
 
-    // Konfiguracja do płatności z możliwością Blik/P24 ustawianą w kokpicie Stripe (automatic_payment_methods)
-    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
-      payment_method_types: ['card', 'p24', 'blik'],
-      line_items: lineItems,
-      mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/zamowienie/sukces?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/koszyk`,
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin
+
+    const session = await stripe.checkout.sessions.create({
+      line_items: resolved.items.map((item) => ({
+        price_data: {
+          currency: "pln",
+          unit_amount: Math.round(item.price * 100),
+          product_data: {
+            name: item.name,
+            metadata: {
+              sku: item.sku,
+              product_id: item.id,
+            },
+          },
+        },
+        quantity: item.quantity,
+      })),
+      mode: "payment",
+      success_url: `${appUrl}/oferty/zamowienia?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/koszyk?payment=cancelled`,
+      client_reference_id: String(storedUser.id ?? ""),
+      customer_email: storedUser.email,
       metadata: {
-        pl_nip: nip || null,
-        client_role: role || 'RETAIL'
-      }
-    };
+        pl_nip: storedUser.nip || "",
+        client_role: storedUser.roleType || "RETAIL",
+      },
+    })
 
-    // Stwórz i zwróć sesję Stripe
-    const session = await stripe.checkout.sessions.create(sessionConfig);
-
-    return NextResponse.json({ id: session.id, url: session.url });
-
-  } catch (error: any) {
-    console.error("Błąd generowania bramki checkout:", error);
-    return NextResponse.json({ error: error.message || "Błąd serwera." }, { status: 500 });
+    return NextResponse.json({ id: session.id, url: session.url })
+  } catch (error) {
+    console.error("Błąd generowania bramki checkout:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Błąd serwera." },
+      { status: 500 }
+    )
   }
 }

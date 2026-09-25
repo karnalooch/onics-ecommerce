@@ -3,7 +3,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { initializeMockData } from "@/store/serverStore";
+import { authorizeAPI } from "@/lib/authUtils";
+import { initializeMockData, saveMockData } from "@/store/serverStore";
 
 const SubcategorySchema = z.object({
   id: z.string(),
@@ -20,11 +21,21 @@ const CategoryUpdateSchema = z.object({
 export type ActionState = 
   | { success: true; message: string; data?: any }
   | { success: false; error: string };
+async function requireAdminAction() {
+  const authCheck = await authorizeAPI(["ADMIN"]);
+  if (!authCheck.authorized) {
+    return { success: false as const, error: "Brak uprawnień administratora." };
+  }
+  return null;
+}
+
 
 /**
  * Dodaje nową kategorię główną
  */
 export async function addCategoryAction(name: string): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   if (!name.trim()) return { success: false, error: "Nazwa kategorii nie może być pusta" };
   
   try {
@@ -36,6 +47,7 @@ export async function addCategoryAction(name: string): Promise<ActionState> {
       subcategories: []
     };
     categories.push(newCat);
+    if (!saveMockData()) return { success: false, error: "Nie udało się zapisać kategorii" };
     revalidatePath("/admin/categories");
     return { success: true, message: "Kategoria została dodana", data: newCat };
   } catch (e) {
@@ -47,6 +59,8 @@ export async function addCategoryAction(name: string): Promise<ActionState> {
  * Aktualizuje dane kategorii (nazwa, ikona, subkategorie)
  */
 export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSchema>): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   const validated = CategoryUpdateSchema.safeParse(data);
   if (!validated.success) return { success: false, error: "Nieprawidłowe dane" };
 
@@ -62,6 +76,7 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
       name: validated.data.name ? validated.data.name.toUpperCase() : categories[idx].name
     };
 
+    if (!saveMockData()) return { success: false, error: "Nie udało się zapisać kategorii" };
     revalidatePath("/admin/categories");
     return { success: true, message: "Zmiany zostały zapisane" };
   } catch (e) {
@@ -73,12 +88,15 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
  * Usuwa kategorię główną
  */
 export async function deleteCategoryAction(id: string): Promise<ActionState> {
+  const accessError = await requireAdminAction();
+  if (accessError) return accessError;
   try {
     const { categories } = initializeMockData();
     const idx = categories.findIndex((c: any) => c.id === id);
     if (idx === -1) return { success: false, error: "Nie znaleziono kategorii" };
 
     categories.splice(idx, 1);
+    if (!saveMockData()) return { success: false, error: "Nie udało się zapisać zmian" };
     revalidatePath("/admin/categories");
     return { success: true, message: "Kategoria została usunięta" };
   } catch (e) {

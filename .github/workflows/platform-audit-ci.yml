@@ -1,0 +1,73 @@
+name: Platform Audit CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-platform-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: "true"
+      AUTH_SECRET: "ci-platform-audit-only"
+      NEXTAUTH_SECRET: "ci-platform-audit-only"
+      NEXTAUTH_URL: "http://localhost:3000"
+      ADMIN_BOOTSTRAP_PASSWORD: "ci-bootstrap-only"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint security and commerce core
+        run: >
+          npx eslint
+          src/auth.ts
+          src/lib/commerce.ts
+          src/lib/company.ts
+          src/lib/authUtils.ts
+          src/lib/jsonDb.ts
+          src/lib/knowledge/files.ts
+          src/lib/knowledge/KnowledgeContext.tsx
+          src/app/api/register/route.ts
+          src/app/api/orders/route.ts
+          src/app/api/checkout/route.ts
+          src/app/api/quotes/route.ts
+          src/app/api/webhooks/stripe/route.ts
+          src/app/api/admin/import/route.ts
+          src/app/api/products/route.ts
+          src/app/api/products/ai-description/route.ts
+          src/app/api/categories/route.ts
+          src/app/api/users/route.ts
+          src/app/api/users/discount/route.ts
+          src/app/api/repairs/route.ts
+          src/app/api/knowledge/route.ts
+          src/app/api/knowledge/export/route.ts
+          src/app/api/knowledge/upload/route.ts
+          src/app/api/knowledge/train/route.ts
+          src/app/api/knowledge/train/stream/route.ts
+          src/app/api/knowledge/validate-key/route.ts
+          src/app/admin/price-lists/_lib/priceLogic.ts
+
+      - name: Run tests
+        run: npm test -- --run
+
+      - name: Production build
+        run: npm run build
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high

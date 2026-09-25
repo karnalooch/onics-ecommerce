@@ -1,30 +1,37 @@
-"use client";
+"use client"
 
-import { Activity, Clock, CheckCircle2, ShieldAlert } from "lucide-react";
+import { Activity, CheckCircle2, Clock, ShieldAlert } from "lucide-react"
+import type { AdminRma } from "../RepairsDashboardClient"
 
-export function RmaStats({ rmas }: { rmas: any[] }) {
-  const pending = rmas.filter(r => r.status === "PENDING").length;
-  const inProgress = rmas.filter(r => ["DIAGNOSIS", "REPAIRING"].includes(r.status)).length;
-  const completed = rmas.filter(r => r.status === "COMPLETED").length;
+const completedStatuses = new Set(["COMPLETED", "DONE", "RETURNED"])
+const serviceStatuses = new Set(["DIAGNOSIS", "REPAIRING", "W NAPRAWIE"])
+const pendingStatuses = new Set(["PENDING", "WERYFIKACJA", "INQUIRY"])
+
+export function RmaStats({ rmas }: { rmas: AdminRma[] }) {
+  const pending = rmas.filter((rma) => pendingStatuses.has(rma.status)).length
+  const inProgress = rmas.filter((rma) => serviceStatuses.has(rma.status)).length
+  const completed = rmas.filter((rma) => completedStatuses.has(rma.status)).length
 
   const stats = [
-    { label: "W_KOLEJCE", value: pending, icon: Clock, color: "text-slate-400" },
-    { label: "W_SERWISIE", value: inProgress, icon: Activity, color: "text-primary" },
-    { label: "ZAKOŃCZONE", value: completed, icon: CheckCircle2, color: "text-status-success" },
-    { label: "TOTAL_RMA", value: rmas.length, icon: ShieldAlert, color: "text-slate-950" },
-  ];
+    { label: "W kolejce", value: pending, icon: Clock },
+    { label: "W serwisie", value: inProgress, icon: Activity },
+    { label: "Zakończone", value: completed, icon: CheckCircle2 },
+    { label: "Wszystkie", value: rmas.length, icon: ShieldAlert },
+  ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-      {stats.map((s, idx) => (
-        <div key={idx} className="fluent-card p-8 border-white/10 shadow-lg flex flex-col gap-4 group transition-all hover:bg-primary/5">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {stats.map((stat) => (
+        <div key={stat.label} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="flex items-center justify-between">
-            <s.icon className={`w-5 h-5 ${s.color} shadow-glow`} />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">{s.label}</span>
+            <stat.icon className="h-5 w-5 text-primary" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {stat.label}
+            </span>
           </div>
-          <span className="text-4xl font-extrabold text-foreground tabular-nums tracking-tighter group-hover:text-primary transition-colors">{s.value}</span>
+          <strong className="mt-4 block text-4xl">{stat.value}</strong>
         </div>
       ))}
     </div>
-  );
+  )
 }

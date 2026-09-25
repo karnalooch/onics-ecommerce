@@ -1,125 +1,206 @@
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { 
-  Bell, ShieldCheck, Wallet, Calendar, FileText, Zap, Wrench, 
-  HelpCircle, Database, Terminal, Activity, ArrowRight,
-  TrendingUp, Box
-} from "lucide-react";
-import { InstallerTier } from "@/components/ui/InstallerTier";
-import { initializeMockData } from "@/store/serverStore";
-import { StatCard } from "./_components/StatCard";
-import { QuickActionTerminal } from "./_components/QuickActionTerminal";
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import {
+  Activity,
+  Calendar,
+  FileText,
+  HelpCircle,
+  Package,
+  Percent,
+  ReceiptText,
+  ShieldCheck,
+  Wrench,
+  Zap,
+} from "lucide-react"
+import { InstallerTier } from "@/components/ui/InstallerTier"
+import { initializeMockData } from "@/store/serverStore"
+import { StatCard } from "./_components/StatCard"
+import { QuickActionTerminal } from "./_components/QuickActionTerminal"
+
+type DashboardUser = {
+  id?: string
+  email?: string | null
+  name?: string | null
+  role?: string
+  isApproved?: boolean
+  nip?: string | null
+  discount?: number
+  tierName?: string
+}
+
+type StoredUser = {
+  id?: string
+  email?: string
+  companyName?: string
+  nip?: string | null
+  discount?: number
+  tierName?: string
+}
+
+type OrderRecord = {
+  orderType?: string
+  status?: string
+  createdAt?: string
+  totalPriceFinal?: number
+  user?: { id?: string; email?: string }
+}
+
+type RepairRecord = {
+  status?: string
+  user?: { id?: string; email?: string }
+}
+
+function belongsTo(
+  recordUser: { id?: string; email?: string } | undefined,
+  sessionUser: DashboardUser
+) {
+  return Boolean(
+    (sessionUser.id && recordUser?.id === sessionUser.id) ||
+      (sessionUser.email &&
+        recordUser?.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  )
+}
 
 export default async function DashboardPage() {
-  const session = await auth();
-  if (!session || (session.user as any)?.role !== 'BIZ') redirect("/logowanie");
+  const session = await auth()
+  const sessionUser = session?.user as DashboardUser | undefined
 
-  const { repairs } = initializeMockData();
-  const activeRMA = repairs.filter((r: any) => r.status !== 'DONE').length;
-  const user = session.user as any;
+  if (!sessionUser || sessionUser.role !== "BIZ" || !sessionUser.isApproved) {
+    redirect("/logowanie")
+  }
+
+  const { users, orders, repairs } = initializeMockData()
+  const storedUser = (users as StoredUser[]).find(
+    (user) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  )
+
+  const ownOrders = (orders as OrderRecord[]).filter((order) =>
+    belongsTo(order.user, sessionUser)
+  )
+  const ownRepairs = (repairs as RepairRecord[]).filter((repair) =>
+    belongsTo(repair.user, sessionUser)
+  )
+  const activeRma = ownRepairs.filter(
+    (repair) => !["DONE", "COMPLETED", "RETURNED", "REJECTED"].includes(repair.status || "")
+  ).length
+
+  const currentYear = new Date().getFullYear()
+  const ytdTurnover = ownOrders
+    .filter((order) => {
+      if (order.orderType !== "ORDER" || order.status === "CANCELLED") return false
+      const date = order.createdAt ? new Date(order.createdAt) : null
+      return date && !Number.isNaN(date.getTime()) && date.getFullYear() === currentYear
+    })
+    .reduce((sum, order) => sum + Number(order.totalPriceFinal || 0), 0)
+
+  const discount = Number(storedUser?.discount ?? sessionUser.discount ?? 0)
+  const tierName = storedUser?.tierName || sessionUser.tierName || "BASIC"
+  const companyName = storedUser?.companyName || sessionUser.name || "Partner B2B"
+  const nip = storedUser?.nip || sessionUser.nip || "Brak NIP"
 
   return (
-    <div className="flex flex-col gap-16 animate-in fade-in duration-700 no-blur select-none" suppressHydrationWarning>
-       
-       {/* ELITE DASHBOARD HEADER (Technical Overview) */}
-       <header className="flex flex-col md:flex-row justify-between items-end md:items-center gap-10 border-b-2 border-slate-950 pb-12">
-          <div className="flex flex-col gap-2">
-             <div className="flex items-center gap-3">
-                <span className="text-[10px] font-black text-primary uppercase tracking-[0.4em] italic leading-none">TERMINAL_B2B_V4</span>
-                <div className="h-[1px] w-8 bg-slate-200" />
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em] leading-none">Session_Active</span>
-             </div>
-             <h1 className="text-6xl font-black tracking-tighter text-slate-950 uppercase italic leading-none mt-2">
-                STATUS: <span className="text-primary NOT-italic">{user.companyName.split(' ')[0]}</span>
-             </h1>
-             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic mt-2">Autoryzowany punkt dostępowy Celtronics Cloud.</p>
+    <div className="flex flex-col gap-10 animate-in fade-in duration-500">
+      <header className="flex flex-col justify-between gap-6 border-b border-border pb-8 md:flex-row md:items-end">
+        <div>
+          <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
+            Panel partnera B2B
+          </span>
+          <h1 className="mt-3 text-4xl font-extrabold tracking-[-0.04em] sm:text-5xl">
+            {companyName}
+          </h1>
+          <p className="mt-3 text-sm font-medium text-muted-foreground">
+            NIP: {nip}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4">
+          <ShieldCheck className="h-5 w-5 text-emerald-600" />
+          <div>
+            <span className="block text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              Status konta
+            </span>
+            <strong className="text-sm">Zweryfikowany partner B2B</strong>
           </div>
+        </div>
+      </header>
 
-          <div className="flex items-center gap-4">
-             <div className="bg-white border-2 border-slate-950 p-6 flex items-center gap-8 shadow-xl shadow-slate-900/5 relative group">
-                <div className="bg-slate-950 text-white p-3 rounded-none">
-                   <ShieldCheck className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1 italic">Identity_Verified (NIP)</span>
-                   <span className="text-slate-950 font-black text-2xl tabular-nums italic leading-none">{user.nip}</span>
-                </div>
-                <div className="absolute top-1 right-1 w-2 h-2 bg-status-success animate-ping" />
-             </div>
-             <button className="bg-slate-950 text-white h-full p-6 flex items-center justify-center hover:bg-primary transition-all active-press">
-                <Bell className="w-6 h-6" />
-             </button>
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="lg:col-span-8">
+          <div className="h-full rounded-3xl border border-border bg-card p-8 shadow-sm">
+            <InstallerTier currentLevel={tierName} discount={discount} />
           </div>
-       </header>
+        </div>
+        <div className="grid gap-6 lg:col-span-4">
+          <StatCard
+            label={`Obroty ${currentYear}`}
+            value={`${ytdTurnover.toFixed(2)} PLN`}
+            subValue="Zapisane zamówienia, bez anulowanych"
+            Icon={ReceiptText}
+          />
+          <StatCard
+            label="Aktywne RMA"
+            value={String(activeRma)}
+            subValue="Twoje zgłoszenia niezakończone"
+            Icon={Calendar}
+          />
+        </div>
+      </div>
 
-       {/* OPERATIONAL METRICS (High Density) */}
-       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch">
-          <div className="lg:col-span-8">
-             {/* Tier information is naturally raw, but we'll ensure it blends with the new dashboard */}
-             <div className="satel-card bg-white p-10 h-full border-none shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-2 h-full bg-primary" />
-                <InstallerTier 
-                  currentLevel={user.tierName || "PARTNER"} 
-                  discount={user.discount || 0} 
-                />
-             </div>
+      <section>
+        <h2 className="text-2xl font-extrabold tracking-tight">Najczęstsze działania</h2>
+        <div className="mt-6">
+          <QuickActionTerminal
+            actions={[
+              {
+                title: "Katalog B2B",
+                desc: "Aktualny katalog, ceny przypisane do konta i stany magazynowe.",
+                href: "/sklep",
+                Icon: FileText,
+                badge: "B2B",
+              },
+              {
+                title: "Zapytanie projektowe",
+                desc: "Kontakt w sprawie indywidualnej wyceny i warunków projektu.",
+                href: "/kontakt",
+                Icon: Zap,
+              },
+              {
+                title: "Serwis RMA",
+                desc: "Nowe zgłoszenie serwisowe i status bieżących napraw.",
+                href: "/oferty/naprawy",
+                Icon: Wrench,
+              },
+              {
+                title: "Pomoc techniczna",
+                desc: "Kontakt z zespołem CEL-TRONICS.",
+                href: "/kontakt",
+                Icon: HelpCircle,
+              },
+            ]}
+          />
+        </div>
+      </section>
+
+      <div className="grid gap-4 border-t border-border pt-8 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Poziom", value: tierName, icon: Package },
+          { label: "Rabat konta", value: `${discount.toFixed(1)}%`, icon: Percent },
+          { label: "Zamówienia", value: String(ownOrders.length), icon: ReceiptText },
+          { label: "Aktywne RMA", value: String(activeRma), icon: Activity },
+        ].map((item) => (
+          <div key={item.label} className="flex items-center gap-4 rounded-2xl bg-muted/30 p-4">
+            <item.icon className="h-5 w-5 text-primary" />
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {item.label}
+              </span>
+              <strong className="mt-1 block text-sm">{item.value}</strong>
+            </div>
           </div>
-          <div className="lg:col-span-4 flex flex-col gap-8">
-             <StatCard 
-               label="Obroty YTD_Registry" 
-               value="42 500,00 PLN" 
-               Icon={Wallet} 
-               trend="+12.4%" 
-             />
-             <StatCard 
-               label="Status_Link_Serwis" 
-               value={`${activeRMA} Zgłoszenia`} 
-               subValue="Naprawy w toku diagnostyki" 
-               Icon={Calendar} 
-             />
-          </div>
-       </div>
-
-       {/* COMMAND CENTER (Action Matrix) */}
-       <div className="space-y-12">
-          <div className="flex items-center gap-6">
-             <div className="flex items-center gap-3">
-                <Terminal className="w-5 h-5 text-slate-950" />
-                <h2 className="text-2xl font-black uppercase italic tracking-tighter text-slate-950">Centrum Operacyjne</h2>
-             </div>
-             <div className="h-[2px] bg-slate-950 flex-1 opacity-5" />
-             <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-primary" />
-                <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase italic font-mono">Stream: Live</span>
-             </div>
-          </div>
-          
-          <QuickActionTerminal actions={[
-            { title: "KATALOG_B2B", desc: "Dedykowana matryca cenowa i stany magazynowe.", href: "/sklep", Icon: FileText, badge: "PIM" },
-            { title: "ZŁÓŻ_PROJEKT", desc: "Szybka ścieżka wyceny dla inwestycji systemowych.", href: "/kontakt", Icon: Zap },
-            { title: "SERWIS_RMA", desc: "Portal zgłoszeń i monitoringu terminali technicznych.", href: "/oferty/naprawy", Icon: Wrench },
-            { title: "SUPPORT_NODE", desc: "Baza dokumentacji i czat z inżynierem projektowym.", href: "/kontakt", Icon: HelpCircle },
-          ]} />
-       </div>
-
-       {/* LOWER SYSTEM STATUS */}
-       <div className="grid grid-cols-1 md:grid-cols-4 gap-8 print:hidden pt-8 border-t border-slate-50">
-          {[
-            { label: "Uptime", val: "99.98%", icon: Activity },
-            { label: "Sync_Delay", val: "42ms", icon: Database },
-            { label: "Security_Level", val: "MSWiA_Grade", icon: ShieldCheck },
-            { label: "Active_Nodes", val: "128", icon: Box },
-          ].map((item, i) => (
-             <div key={i} className="flex items-center gap-4 opacity-40 hover:opacity-100 transition-opacity">
-                <item.icon className="w-4 h-4 text-slate-400" />
-                <div className="flex flex-col">
-                   <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{item.label}</span>
-                   <span className="text-[10px] font-black text-slate-950 uppercase italic font-mono">{item.val}</span>
-                </div>
-             </div>
-          ))}
-       </div>
-
+        ))}
+      </div>
     </div>
-  );
+  )
 }

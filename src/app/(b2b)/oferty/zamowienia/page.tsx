@@ -1,21 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, Package, Clock, Truck, ShieldCheck } from "lucide-react"
 
 export default function B2BClientOrdersPage() {
-  const { data: session } = useSession();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const email = session?.user?.email || "instalator@celtronics.pl"; // fallback test
-        const res = await fetch(`/api/orders?email=${email}`);
+        const res = await fetch("/api/orders", { cache: "no-store" });
         const data = await res.json();
         setOrders(data);
       } catch (err) {
@@ -25,7 +22,7 @@ export default function B2BClientOrdersPage() {
       }
     };
     fetchOrders();
-  }, [session]);
+  }, []);
 
   return (
     <div className="container mx-auto py-8">

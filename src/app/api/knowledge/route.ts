@@ -1,55 +1,76 @@
-import { NextResponse } from 'next/server';
-import { initializeMockData, saveMockData } from '@/store/serverStore';
+import { NextResponse } from "next/server"
+import { authorizeAPI } from "@/lib/authUtils"
+import { getKnowledge, saveKnowledge } from "@/lib/knowledge/parser"
+import { initializeMockData, saveMockData } from "@/store/serverStore"
+
+type VirtualProduct = {
+  isVirtual?: boolean
+}
 
 export async function GET() {
-  try {
-    const { products, categories, manufacturers } = initializeMockData();
-    
-    // Filter virtual products (The "Knowledge Hub" view)
-    const virtualProducts = products.filter((p: any) => p.isVirtual);
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
 
-    // Map virtual products to the snippets format used by the Knowledge UI
-    const snippets = virtualProducts.map((p: any, index: number) => {
-      return {
-        id: p.id || `s-${index}`,
-        source: "Baza produktów",
-        model: p.sku,
-        name: p.name,
-        specs: p.specs || "",
-        price: p.price || 0,
-        type: 'xls' as const,
-        date: p.lastUpdated || new Date().toISOString().split('T')[0]
-      };
-    });
+  try {
+    const store = await getKnowledge()
+    const { categories, manufacturers } = initializeMockData()
+    const snippets = Object.entries(store.knowledge)
+      .slice(0, 500)
+      .map(([model, info], index) => ({
+        id: `knowledge-${index}`,
+        source: info.source || "Baza produktów",
+        model,
+        name: info.model || model,
+        specs: info.specs || "",
+        price: info.price || 0,
+        type: "catalog" as const,
+        date: info.lastUpdated || store.lastUpdated,
+      }))
 
     return NextResponse.json({
-      sources: [], // Legacy sources handling shifted to actions
-      processedSources: [],
-      snippets: snippets.slice(0, 500), // Limit results for UI performance
-      totalKnowledge: virtualProducts.length,
-      registry: {
-        categories,
-        manufacturers
-      }
-    });
-  } catch (err) {
-    console.error("GET Knowledge API Error:", err);
-    return NextResponse.json({ error: "Błąd serwera" }, { status: 500 });
+      sources: store.sources,
+      processedSources: store.processedSources,
+      snippets,
+      totalKnowledge: Object.keys(store.knowledge).length,
+      registry: { categories, manufacturers },
+    })
+  } catch (error) {
+    console.error("GET Knowledge API Error:", error)
+    return NextResponse.json({ error: "Błąd serwera." }, { status: 500 })
   }
 }
 
 export async function DELETE() {
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
+
   try {
-    const db = initializeMockData();
-    
-    // SURGICAL WIPE: Remove only virtual items
-    db.products = db.products.filter((p: any) => !p.isVirtual);
-    
-    saveMockData();
-    
-    return NextResponse.json({ success: true, message: "Baza wiedzy (Modele Wirtualne) została wyczyszczona." });
-  } catch (err) {
-    console.error("DELETE Knowledge API Error:", err);
-    return NextResponse.json({ error: "Błąd podczas czyszczenia bazy" }, { status: 500 });
+    const { products } = initializeMockData()
+    const productStore = products as VirtualProduct[]
+
+    for (let index = productStore.length - 1; index >= 0; index -= 1) {
+      if (productStore[index].isVirtual) productStore.splice(index, 1)
+    }
+
+    const store = await getKnowledge()
+    store.sources = []
+    store.processedSources = []
+    store.lastUpdated = new Date().toISOString()
+    await saveKnowledge(store)
+
+    if (!saveMockData()) {
+      throw new Error("Nie udało się utrwalić zmian.")
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Metadane źródeł i wirtualne wpisy zostały wyczyszczone.",
+    })
+  } catch (error) {
+    console.error("DELETE Knowledge API Error:", error)
+    return NextResponse.json(
+      { error: "Błąd podczas czyszczenia bazy." },
+      { status: 500 }
+    )
   }
 }

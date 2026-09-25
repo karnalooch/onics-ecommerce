@@ -1,123 +1,152 @@
-import { NextResponse } from 'next/server';
-import { parseExcel, parsePDFWithAI, getKnowledge, saveKnowledge } from '@/lib/knowledge/parser';
-import { ProgressCallback } from '@/lib/knowledge/types';
-import fs from 'fs';
-import path from 'path';
+import fs from "fs"
+import { z } from "zod"
+import { authorizeAPI } from "@/lib/authUtils"
+import {
+  getKnowledge,
+  parseExcel,
+  parsePDFWithAI,
+  saveKnowledge,
+} from "@/lib/knowledge/parser"
+import { validateKnowledgeFilename } from "@/lib/knowledge/files"
+import type { ProgressCallback } from "@/lib/knowledge/types"
 
-// GET: Strumień postępu uczenia AI (Server-Sent Events)
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const filename = searchParams.get('filename');
-  const apiKey = searchParams.get('apiKey');
-  const modelId = searchParams.get('modelId');
+export const runtime = "nodejs"
 
-  if (!filename) {
-    return new Response('Brak parametru filename', { status: 400 });
+const RequestSchema = z.object({
+  filename: z.string().min(1).max(255),
+  apiKey: z.string().max(512).optional().default(""),
+  modelId: z.string().trim().max(120).optional().default("internal-v9"),
+  availableModels: z.array(z.string().trim().max(120)).max(50).optional().default([]),
+})
+
+export async function POST(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
+
+  const parsed = RequestSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return Response.json(
+      { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane analizy." },
+      { status: 400 }
+    )
   }
 
-  const filePath = path.join(process.cwd(), 'public/uploads/catalogs', filename);
-  if (!fs.existsSync(filePath)) {
-    return new Response('Plik nie istnieje', { status: 404 });
+  let fileInfo
+  try {
+    fileInfo = validateKnowledgeFilename(parsed.data.filename)
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Nieprawidłowy plik." },
+      { status: 400 }
+    )
   }
 
-  const buffer = fs.readFileSync(filePath);
-  const encoder = new TextEncoder();
+  if (!fs.existsSync(fileInfo.absolutePath)) {
+    return Response.json({ error: "Plik nie istnieje." }, { status: 404 })
+  }
+
+  const buffer = fs.readFileSync(fileInfo.absolutePath)
+  const encoder = new TextEncoder()
+  const abortSignal = { aborted: false }
 
   const stream = new ReadableStream({
     async start(controller) {
-      let isClosed = false;
-      const cancelSignal = { aborted: false };
-
-      const sendUpdate = (data: any) => {
-        if (isClosed) return;
+      let closed = false
+      const send = (payload: Record<string, unknown>) => {
+        if (closed) return
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-        } catch (e: any) {
-          // Toolkit Pattern: silent-connection-close
-          // Jeśli błąd to "Controller is already closed", ignorujemy go milcząco (to standard przy anulowaniu)
-          if (e.message?.includes('closed') || e.code === 'ERR_INVALID_STATE') return;
-          console.error("SSE Send Error:", e);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(payload)}\n\n`)
+          )
+        } catch {
+          closed = true
         }
-      };
+      }
 
-      const onProgress: ProgressCallback = (update: { type: 'log' | 'progress' | 'error'; message: string; count?: number; percent?: number; }) => {
-        sendUpdate({ ...update, timestamp: new Date().toLocaleTimeString() });
-      };
-
-      onProgress({ type: 'log', message: 'Utrzymywanie połączenia aktywne...' });
-      const heartbeat = setInterval(() => {
-        sendUpdate({ type: 'log', message: 'Silnik pracuje... (oczekiwanie na AI)', timestamp: new Date().toLocaleTimeString() });
-      }, 30000);
+      const onProgress: ProgressCallback = (update) => {
+        send({
+          ...update,
+          timestamp: new Date().toLocaleTimeString("pl-PL"),
+        })
+      }
 
       try {
-        const availableModelsRaw = searchParams.get('availableModels') || '';
-        const modelPool = availableModelsRaw ? availableModelsRaw.split(',') : [];
+        onProgress({
+          type: "log",
+          message: "Rozpoczynam analizę katalogu…",
+        })
 
-        if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
-          const result = await parseExcel(buffer, filename, onProgress, { 
-            apiKey: apiKey || '', 
-            modelId: modelId || 'gemini-1.5-flash',
-            availableModels: modelPool,
-            signal: cancelSignal
-          });
-          
-          const currentStore = await getKnowledge();
-          if (!currentStore.processedSources.includes(filename)) {
-            currentStore.processedSources.push(filename);
-            await saveKnowledge(currentStore);
-          }
-          sendUpdate({ 
-            type: 'done', 
-            message: 'Uczenie zakończone sukcesem.', 
-            count: result.count, 
-            stats: result.stats,
-            knowledge: result.sessionKnowledge 
-          });
-        } else if (filename.toLowerCase().endsWith('.pdf')) {
-          const result = await parsePDFWithAI(
-            buffer, 
-            filename, 
-            apiKey || undefined, 
-            modelId || 'gemini-1.5-flash',
-            modelPool,
+        let result:
+          | Awaited<ReturnType<typeof parseExcel>>
+          | Awaited<ReturnType<typeof parsePDFWithAI>>
+
+        if ([".xlsx", ".xls", ".xlsm"].includes(fileInfo.extension)) {
+          result = await parseExcel(buffer, fileInfo.filename, onProgress, {
+            apiKey: parsed.data.apiKey,
+            modelId: parsed.data.modelId,
+            availableModels: parsed.data.availableModels,
+            signal: abortSignal,
+          })
+        } else {
+          result = await parsePDFWithAI(
+            buffer,
+            fileInfo.filename,
+            parsed.data.apiKey || undefined,
+            parsed.data.modelId,
+            parsed.data.availableModels,
             onProgress,
-            cancelSignal
-          );
-          sendUpdate({ 
-            type: 'done', 
-            message: 'Uczenie zakończone sukcesem.', 
-            count: result.count, 
-            stats: result.stats,
-            knowledge: result.sessionKnowledge 
-          });
-        } else {
-          sendUpdate({ type: 'error', message: 'Nieobsługiwany format pliku.' });
+            abortSignal
+          )
         }
-      } catch (err: any) {
-        if (err.message === 'PROCES_PRZERWANY') {
-          console.log(`[AI-SIGNAL] Proces ${filename} przerwany przez użytkownika.`);
-        } else {
-          sendUpdate({ type: 'error', message: `Błąd: ${err.message}` });
+
+        const store = await getKnowledge()
+        if (!store.sources.includes(fileInfo.filename)) {
+          store.sources.push(fileInfo.filename)
+        }
+        if (!store.processedSources.includes(fileInfo.filename)) {
+          store.processedSources.push(fileInfo.filename)
+        }
+        store.lastUpdated = new Date().toISOString()
+        await saveKnowledge(store)
+
+        send({
+          type: "done",
+          message: "Analiza zakończona.",
+          count: result.count,
+          stats: result.stats,
+          knowledge: result.sessionKnowledge,
+          timestamp: new Date().toLocaleTimeString("pl-PL"),
+        })
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Błąd podczas analizy."
+        if (message !== "PROCES_PRZERWANY") {
+          send({
+            type: "error",
+            message,
+            timestamp: new Date().toLocaleTimeString("pl-PL"),
+          })
         }
       } finally {
-        clearInterval(heartbeat);
-        isClosed = true;
-        cancelSignal.aborted = true;
+        abortSignal.aborted = true
+        closed = true
         try {
-          controller.close();
-        } catch (e) {}
+          controller.close()
+        } catch {
+          // Client already closed the stream.
+        }
       }
     },
     cancel() {
-      // Wykryto rozłączenie klienta (np. zamknięcie zakładki)
-    }
-  });
+      abortSignal.aborted = true
+    },
+  })
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
     },
-  });
+  })
 }

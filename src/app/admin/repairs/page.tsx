@@ -19,7 +19,8 @@ export default async function AdminRmaPage() {
     item: r.item || r.device || "Nieznane Urządzenie",
     serial: r.serial || "N/A",
     date: r.date || (r.createdAt ? r.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
-    status: r.status || "WERYFIKACJA"
+    status: r.status || "WERYFIKACJA",
+    description: r.description || ""
   }));
 
   return (

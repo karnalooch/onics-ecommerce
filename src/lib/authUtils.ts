@@ -1,31 +1,99 @@
-import { auth } from "@/auth";
-import { NextResponse } from "next/server";
+import { auth } from "@/auth"
+import { NextResponse } from "next/server"
+import { initializeMockData } from "@/store/serverStore"
 
-export type UserRole = "ADMIN" | "BIZ" | "RETAIL";
+export type UserRole = "ADMIN" | "BIZ" | "RETAIL"
+
+type SessionUser = {
+  id?: string
+  email?: string | null
+}
+
+type StoredUser = {
+  id?: string
+  email?: string
+  companyName?: string
+  username?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+  nip?: string | null
+  discount?: number
+  tierName?: string
+}
+
+function normalizeEmail(value: unknown) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
+function isUserRole(value: unknown): value is UserRole {
+  return value === "ADMIN" || value === "BIZ" || value === "RETAIL"
+}
 
 /**
- * Weryfikuje sesję i uprawnienia użytkownika.
- * @param requiredRoles Lista dozwolonych ról (jeśli pusta, dopuszcza każdego zalogowanego)
- * @returns Zwraca sesję jeśli OK, lub NextResponse w przypadku błędu
+ * Weryfikuje sesję względem aktualnego serwerowego źródła prawdy.
+ * Rola i blokada konta są odczytywane z bieżącego rekordu użytkownika,
+ * a nie wyłącznie z JWT utworzonego podczas logowania.
  */
 export async function authorizeAPI(requiredRoles: UserRole[] = []) {
-  const session = await auth();
+  const session = await auth()
 
-  if (!session || !session.user) {
-    return { 
-      authorized: false, 
-      response: NextResponse.json({ error: "Nieautoryzowany dostęp (brak sesji)" }, { status: 401 }) 
-    };
+  if (!session?.user) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json(
+        { error: "Nieautoryzowany dostęp (brak sesji)" },
+        { status: 401 }
+      ),
+    }
   }
 
-  const userRole = (session.user as any).role as UserRole;
+  const sessionUser = session.user as SessionUser
+  const { users } = initializeMockData()
+  const storedUser = (users as StoredUser[]).find(
+    (user) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        normalizeEmail(user.email) === normalizeEmail(sessionUser.email))
+  )
 
-  if (requiredRoles.length > 0 && !requiredRoles.includes(userRole)) {
-    return { 
-      authorized: false, 
-      response: NextResponse.json({ error: `Brak uprawnień. Wymagana rola: ${requiredRoles.join(" lub ")}` }, { status: 403 }) 
-    };
+  if (!storedUser) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json(
+        { error: "Konto nie istnieje lub zostało usunięte." },
+        { status: 403 }
+      ),
+    }
   }
 
-  return { authorized: true, session, user: session.user as any };
+  if (storedUser.isBlocked) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json(
+        { error: "Konto jest zablokowane." },
+        { status: 403 }
+      ),
+    }
+  }
+
+  const currentRole = isUserRole(storedUser.roleType) ? storedUser.roleType : undefined
+
+  if (!currentRole || (requiredRoles.length > 0 && !requiredRoles.includes(currentRole))) {
+    return {
+      authorized: false as const,
+      response: NextResponse.json(
+        { error: `Brak uprawnień. Wymagana rola: ${requiredRoles.join(" lub ")}` },
+        { status: 403 }
+      ),
+    }
+  }
+
+  return {
+    authorized: true as const,
+    session,
+    user: session.user,
+    currentUser: storedUser,
+    currentRole,
+  }
 }

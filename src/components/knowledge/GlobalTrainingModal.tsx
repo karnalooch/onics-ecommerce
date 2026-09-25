@@ -269,7 +269,7 @@ export function GlobalTrainingModal() {
                         <div className="space-y-2">
                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Premium AI: Wybierz Modela</Label>
                            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
-                              {validationResult.availableModels.map((model: any) => (
+                              {(validationResult.availableModels ?? []).map((model: any) => (
                                 <div 
                                   key={model.id}
                                   onClick={() => setSelectedModelId(model.id)}

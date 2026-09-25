@@ -1,67 +1,59 @@
-import { NextResponse } from 'next/server';
-import crypto from 'crypto';
-
-// Tajny klucz webhoook ze Stripe (konfigurowany w .env)
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+import { NextResponse } from "next/server"
+import Stripe from "stripe"
 
 export async function POST(req: Request) {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+  if (!stripeSecretKey || !webhookSecret) {
+    return NextResponse.json(
+      { error: "Webhook Stripe nie jest skonfigurowany." },
+      { status: 503 }
+    )
+  }
+
+  const signature = req.headers.get("stripe-signature")
+  if (!signature) {
+    return NextResponse.json(
+      { error: "Brak nagłówka stripe-signature." },
+      { status: 400 }
+    )
+  }
+
   try {
-    const rawBody = await req.text();
-    const signature = req.headers.get('stripe-signature') as string;
+    const stripe = new Stripe(stripeSecretKey)
+    const rawBody = await req.text()
+    const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
 
-    if (!signature) {
-      return NextResponse.json({ error: 'Brak nagłówka stripe-signature' }, { status: 400 });
-    }
-
-    // Rekomendowane zjawisko walidacji podpisu z użyciem surowego body (Krypto-hash)
-    const sigHeaders = signature.split(',').reduce((acc, part) => {
-      const [key, value] = part.split('=');
-      acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>);
-
-    if (!sigHeaders.t || !sigHeaders.v1) {
-      return NextResponse.json({ error: 'Błędny nagłówek signature' }, { status: 400 });
-    }
-
-    const signedPayload = `${sigHeaders.t}.${rawBody}`;
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(signedPayload)
-      .digest('hex');
-
-    if (expectedSignature !== sigHeaders.v1) {
-      return NextResponse.json({ error: 'Nieprawidłowa sygnatura Webhooka Stripe' }, { status: 400 });
-    }
-
-    // Walidacja poprawna, parsujemy zdarzenie
-    const event = JSON.parse(rawBody);
-
-    // Weryfikacja typu zdarzenia Stripe
     switch (event.type) {
-      case 'checkout.session.completed':
-      case 'payment_intent.succeeded':
-      case 'payment_captured':
-        const session = event.data.object;
-        
-        // Wymuszenie parametru PL NIP na profilu dla systemów e-Faktur (KSeF)
-        const plNip = session.metadata?.pl_nip || session.customer_details?.tax_ids?.[0]?.value;
-        
-        if (!plNip && event.type === 'checkout.session.completed') {
-           console.warn('Brak NIP (pl_nip). Transakcja B2C.');
-        } else {
-           console.log(`Płatność zatwierdzona dla firmy z NIP: ${plNip}`);
-           // Tutaj można dodać logikę aktualizacji db.json o status zamówienia
-        }
-        break;
-      
+      case "checkout.session.completed": {
+        const session = event.data.object
+        console.info("Stripe checkout completed", {
+          id: session.id,
+          clientReferenceId: session.client_reference_id,
+          paymentStatus: session.payment_status,
+        })
+        break
+      }
+      case "payment_intent.succeeded": {
+        const paymentIntent = event.data.object
+        console.info("Stripe payment intent succeeded", {
+          id: paymentIntent.id,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+        })
+        break
+      }
       default:
-        console.log(`Nieobsługiwany typ zdarzenia webhooka: ${event.type}`);
+        break
     }
 
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ received: true })
   } catch (error) {
-    console.error('Błąd Webhooka Stripe:', error);
-    return NextResponse.json({ error: 'Błąd przetwarzania webhooka' }, { status: 500 });
+    console.error("Błąd Webhooka Stripe:", error)
+    return NextResponse.json(
+      { error: "Nieprawidłowy webhook Stripe." },
+      { status: 400 }
+    )
   }
 }

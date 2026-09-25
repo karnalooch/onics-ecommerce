@@ -1,6 +1,13 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 
 interface AnalysisStats {
   model: string
@@ -11,7 +18,7 @@ interface AnalysisStats {
 interface LogEntry {
   time: string
   msg: string
-  type: 'log' | 'progress' | 'error' | 'done'
+  type: "log" | "progress" | "error" | "done"
 }
 
 interface KnowledgeContextType {
@@ -23,26 +30,41 @@ interface KnowledgeContextType {
   progressPercent: number
   logs: LogEntry[]
   analysisStats: AnalysisStats | null
-  sessionResults: Record<string, any> | null
+  sessionResults: Record<string, unknown> | null
   selectedModelId: string | null
   isApproved: boolean
   tempApiKey: string
   isValidatingKey: boolean
-  validationResult: any | null
+  validationResult: {
+    success?: boolean
+    recommended?: string
+    cheapestId?: string
+    availableModels?: Array<string | { id: string }>
+    message?: string
+  } | null
   setSelectedModelId: (val: string | null) => void
   setIsApproved: (val: boolean) => void
   setTempApiKey: (val: string) => void
-  setValidationResult: (val: any | null) => void
+  setValidationResult: (
+    val: KnowledgeContextType["validationResult"]
+  ) => void
   setIsValidatingKey: (val: boolean) => void
-  setSessionResults: (val: Record<string, any> | null) => void
+  setSessionResults: (val: Record<string, unknown> | null) => void
   setIsMinimized: (val: boolean) => void
   setTrainingFile: (file: string | null) => void
-  startTraining: (filename: string, apiKey?: string, modelId?: string, availableModels?: any[]) => void
+  startTraining: (
+    filename: string,
+    apiKey?: string,
+    modelId?: string,
+    availableModels?: Array<string | { id: string }>
+  ) => void
   stopTraining: () => void
   resetState: () => void
 }
 
-const KnowledgeContext = createContext<KnowledgeContextType | undefined>(undefined)
+const KnowledgeContext = createContext<KnowledgeContextType | undefined>(
+  undefined
+)
 
 export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
   const [isTraining, setIsTraining] = useState(false)
@@ -53,65 +75,73 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
   const [progressPercent, setProgressPercent] = useState(0)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [analysisStats, setAnalysisStats] = useState<AnalysisStats | null>(null)
-  const [sessionResults, setSessionResults] = useState<Record<string, any> | null>(null)
-  const [activeEventSource, setActiveEventSource] = useState<EventSource | null>(null)
+  const [sessionResults, setSessionResults] =
+    useState<Record<string, unknown> | null>(null)
   const [tempApiKey, setTempApiKey] = useState("")
   const [isValidatingKey, setIsValidatingKey] = useState(false)
-  const [validationResult, setValidationResult] = useState<any | null>(null)
+  const [validationResult, setValidationResult] =
+    useState<KnowledgeContextType["validationResult"]>(null)
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null)
   const [isApproved, setIsApproved] = useState(false)
 
-  // Toolkit Pattern: synchronous-connection-guards
-  const eventSourceRef = React.useRef<EventSource | null>(null)
-  const isConnectingRef = React.useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Persistence: Restore state from sessionStorage on mount
   useEffect(() => {
-    const saved = sessionStorage.getItem('celtronics_ai_training')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setIsTraining(parsed.isTraining || false)
-        setIsDone(parsed.isDone || false)
-        setTrainingFile(parsed.trainingFile || null)
-        setFoundCount(parsed.foundCount || 0)
-        setProgressPercent(parsed.progressPercent || 0)
-        setLogs(parsed.logs || [])
-        setAnalysisStats(parsed.analysisStats || null)
-        setTempApiKey(parsed.tempApiKey || "")
-        setValidationResult(parsed.validationResult || null)
-        setIsMinimized(parsed.isMinimized ?? false)
-      } catch (e) {
-        console.error("Failed to restore training state", e)
-      }
+    const saved = sessionStorage.getItem("celtronics_ai_training")
+    if (!saved) return
+
+    try {
+      const parsed = JSON.parse(saved)
+      setIsDone(Boolean(parsed.isDone))
+      setTrainingFile(parsed.trainingFile || null)
+      setFoundCount(Number(parsed.foundCount || 0))
+      setProgressPercent(Number(parsed.progressPercent || 0))
+      setLogs(Array.isArray(parsed.logs) ? parsed.logs : [])
+      setAnalysisStats(parsed.analysisStats || null)
+      setValidationResult(parsed.validationResult || null)
+      setIsMinimized(Boolean(parsed.isMinimized))
+      // API keys are intentionally never restored from browser storage.
+    } catch {
+      sessionStorage.removeItem("celtronics_ai_training")
     }
   }, [])
 
-  // Persistence: Save state to sessionStorage on changes
   useEffect(() => {
-    const stateToSave = {
-      isTraining,
-      isDone,
-      trainingFile,
-      foundCount,
-      progressPercent,
-      logs,
-      analysisStats,
-      tempApiKey,
-      validationResult,
-      isMinimized
-    }
-    sessionStorage.setItem('celtronics_ai_training', JSON.stringify(stateToSave))
-  }, [isTraining, isDone, trainingFile, foundCount, progressPercent, logs, analysisStats, tempApiKey, validationResult, isMinimized])
+    sessionStorage.setItem(
+      "celtronics_ai_training",
+      JSON.stringify({
+        isDone,
+        trainingFile,
+        foundCount,
+        progressPercent,
+        logs,
+        analysisStats,
+        validationResult,
+        isMinimized,
+      })
+    )
+  }, [
+    isDone,
+    trainingFile,
+    foundCount,
+    progressPercent,
+    logs,
+    analysisStats,
+    validationResult,
+    isMinimized,
+  ])
 
   const stopTraining = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-      eventSourceRef.current = null
-    }
-    setActiveEventSource(null)
-    isConnectingRef.current = false
-    setLogs(prev => [...prev.slice(-100), { time: new Date().toLocaleTimeString(), msg: "Przerwano operację przez użytkownika.", type: 'error' }])
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    setLogs((previous) => [
+      ...previous.slice(-100),
+      {
+        time: new Date().toLocaleTimeString("pl-PL"),
+        msg: "Przerwano operację przez użytkownika.",
+        type: "error",
+      },
+    ])
     setIsTraining(false)
     setIsDone(false)
     setIsMinimized(false)
@@ -119,6 +149,8 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const resetState = useCallback(() => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
     setIsTraining(false)
     setIsDone(false)
     setIsMinimized(false)
@@ -127,137 +159,179 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
     setProgressPercent(0)
     setLogs([])
     setAnalysisStats(null)
+    setSessionResults(null)
     setValidationResult(null)
-    sessionStorage.removeItem('celtronics_ai_training')
-    if (activeEventSource) {
-      activeEventSource.close()
-      setActiveEventSource(null)
-    }
-  }, [activeEventSource])
+    setSelectedModelId(null)
+    setTempApiKey("")
+    sessionStorage.removeItem("celtronics_ai_training")
+  }, [])
 
-  const startTraining = useCallback((filename: string, apiKey?: string, modelId?: string, availableModels?: string[]) => {
-    // Force reset if starting a new session
-    if (!isTraining) {
+  const startTraining = useCallback(
+    (
+      filename: string,
+      apiKey = "",
+      modelId = "internal-v9",
+      availableModels: Array<string | { id: string }> = []
+    ) => {
+      if (abortControllerRef.current) return
+
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       setIsTraining(true)
       setIsDone(false)
       setIsMinimized(false)
       setTrainingFile(filename)
-      setLogs([{ time: new Date().toLocaleTimeString(), msg: "Inicjalizacja silnika...", type: 'log' }])
+      setLogs([
+        {
+          time: new Date().toLocaleTimeString("pl-PL"),
+          msg: "Inicjalizacja analizy…",
+          type: "log",
+        },
+      ])
       setProgressPercent(0)
       setFoundCount(0)
       setAnalysisStats(null)
       setSessionResults(null)
-    }
 
-    if (eventSourceRef.current || isConnectingRef.current) {
-      console.log("[SSE-GUARD] Zapobieganie powielaniu połączenia.");
-      return;
-    }
+      void (async () => {
+        try {
+          const response = await fetch("/api/knowledge/train/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filename,
+              apiKey,
+              modelId,
+              availableModels: availableModels.map((model) =>
+                typeof model === "string" ? model : model.id
+              ),
+            }),
+            signal: controller.signal,
+          })
 
-    isConnectingRef.current = true;
+          if (!response.ok || !response.body) {
+            const payload = await response.json().catch(() => ({}))
+            throw new Error(payload.error || "Nie udało się rozpocząć analizy.")
+          }
 
-    const params = new URLSearchParams({
-      filename,
-      apiKey: apiKey || '',
-      modelId: modelId || 'internal-v7',
-      availableModels: Array.isArray(availableModels) 
-        ? availableModels.map(m => typeof m === 'string' ? m : (m as any).id).join(',')
-        : ''
-    })
+          const reader = response.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ""
 
-    const eventSource = new EventSource(`/api/knowledge/train/stream?${params.toString()}`)
-    eventSourceRef.current = eventSource;
-    setActiveEventSource(eventSource)
+          while (true) {
+            const { value, done } = await reader.read()
+            if (done) break
 
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data)
-      
-      if (data.type === 'log') {
-        setLogs(prev => [...prev.slice(-100), { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'log' }])
-        if (data.percent !== undefined) setProgressPercent(data.percent)
-      } else if (data.type === 'progress') {
-        if (data.count !== undefined) setFoundCount(data.count)
-        setLogs(prev => [...prev.slice(-100), { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'progress' }])
-      } else if (data.type === 'error') {
-        setLogs(prev => [...prev, { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'error' }])
-        setIsMinimized(false)
-        eventSource.close()
-        setActiveEventSource(null)
-      } else if (data.type === 'done') {
-        if (data.count !== undefined) setFoundCount(data.count)
-        if (data.stats) setAnalysisStats(data.stats)
-        setLogs(prev => [...prev, { time: data.timestamp || new Date().toLocaleTimeString(), msg: data.message, type: 'done' }])
-        if (data.knowledge) setSessionResults(data.knowledge)
-        setIsMinimized(false)
-        setIsDone(true)
-        setIsTraining(false)
-        setProgressPercent(100)
-        eventSource.close()
-        setActiveEventSource(null)
-      }
-    }
+            buffer += decoder.decode(value, { stream: true })
+            const frames = buffer.split("\n\n")
+            buffer = frames.pop() || ""
 
-    eventSource.onerror = () => {
-      setLogs(prev => [...prev.slice(-100), { time: new Date().toLocaleTimeString(), msg: "Problemy z siecią... Czekam na stabilne połączenie.", type: 'log' }])
-      eventSource.close()
-      eventSourceRef.current = null;
-      setActiveEventSource(null)
-      isConnectingRef.current = false;
-    }
-  }, [isTraining, isDone])
+            for (const frame of frames) {
+              const line = frame
+                .split("\n")
+                .find((entry) => entry.startsWith("data: "))
+              if (!line) continue
 
-  // Automatic Re-attachment Logic
+              const data = JSON.parse(line.slice(6))
+              const timestamp =
+                data.timestamp || new Date().toLocaleTimeString("pl-PL")
+
+              if (data.type === "log") {
+                setLogs((previous) => [
+                  ...previous.slice(-100),
+                  { time: timestamp, msg: data.message, type: "log" },
+                ])
+                if (data.percent !== undefined) {
+                  setProgressPercent(Number(data.percent))
+                }
+              } else if (data.type === "progress") {
+                if (data.count !== undefined) setFoundCount(Number(data.count))
+                if (data.percent !== undefined) {
+                  setProgressPercent(Number(data.percent))
+                }
+                setLogs((previous) => [
+                  ...previous.slice(-100),
+                  { time: timestamp, msg: data.message, type: "progress" },
+                ])
+              } else if (data.type === "error") {
+                setLogs((previous) => [
+                  ...previous,
+                  { time: timestamp, msg: data.message, type: "error" },
+                ])
+                setIsMinimized(false)
+              } else if (data.type === "done") {
+                if (data.count !== undefined) setFoundCount(Number(data.count))
+                if (data.stats) setAnalysisStats(data.stats)
+                if (data.knowledge) setSessionResults(data.knowledge)
+                setLogs((previous) => [
+                  ...previous,
+                  { time: timestamp, msg: data.message, type: "done" },
+                ])
+                setIsDone(true)
+                setProgressPercent(100)
+              }
+            }
+          }
+        } catch (error) {
+          if (controller.signal.aborted) return
+          setLogs((previous) => [
+            ...previous,
+            {
+              time: new Date().toLocaleTimeString("pl-PL"),
+              msg:
+                error instanceof Error
+                  ? error.message
+                  : "Błąd połączenia podczas analizy.",
+              type: "error",
+            },
+          ])
+          setIsMinimized(false)
+        } finally {
+          if (abortControllerRef.current === controller) {
+            abortControllerRef.current = null
+          }
+          setIsTraining(false)
+        }
+      })()
+    },
+    []
+  )
+
   useEffect(() => {
-    // Sprawdzamy refa zamiast stanu, aby uniknąć wyścigów przy odświeżaniu
-    if (isTraining && !isDone && !eventSourceRef.current && !isConnectingRef.current && trainingFile && tempApiKey) {
-      const modelId = validationResult?.recommended || ''
-      const avModels = validationResult?.availableModels || []
-      
-      // Mały timeout, aby dać Reactowi czas na ustabilizowanie stanów
-      const timer = setTimeout(() => {
-        startTraining(trainingFile, tempApiKey, modelId, avModels)
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [isTraining, isDone, trainingFile, tempApiKey, validationResult, startTraining])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (activeEventSource) {
-        activeEventSource.close()
-      }
-    }
-  }, [activeEventSource])
+    return () => abortControllerRef.current?.abort()
+  }, [])
 
   return (
-    <KnowledgeContext.Provider value={{
-      isTraining,
-      isDone,
-      isMinimized,
-      trainingFile,
-      foundCount,
-      progressPercent,
-      logs,
-      analysisStats,
-      sessionResults,
-      tempApiKey,
-      isValidatingKey,
-      validationResult,
-      selectedModelId,
-      isApproved,
-      setSelectedModelId,
-      setIsApproved,
-      setTempApiKey,
-      setValidationResult,
-      setIsValidatingKey,
-      setSessionResults,
-      setIsMinimized,
-      setTrainingFile,
-      startTraining,
-      stopTraining,
-      resetState
-    }}>
+    <KnowledgeContext.Provider
+      value={{
+        isTraining,
+        isDone,
+        isMinimized,
+        trainingFile,
+        foundCount,
+        progressPercent,
+        logs,
+        analysisStats,
+        sessionResults,
+        tempApiKey,
+        isValidatingKey,
+        validationResult,
+        selectedModelId,
+        isApproved,
+        setSelectedModelId,
+        setIsApproved,
+        setTempApiKey,
+        setValidationResult,
+        setIsValidatingKey,
+        setSessionResults,
+        setIsMinimized,
+        setTrainingFile,
+        startTraining,
+        stopTraining,
+        resetState,
+      }}
+    >
       {children}
     </KnowledgeContext.Provider>
   )
@@ -265,8 +339,8 @@ export function KnowledgeProvider({ children }: { children: React.ReactNode }) {
 
 export function useKnowledge() {
   const context = useContext(KnowledgeContext)
-  if (context === undefined) {
-    throw new Error('useKnowledge must be used within a KnowledgeProvider')
+  if (!context) {
+    throw new Error("useKnowledge must be used within a KnowledgeProvider")
   }
   return context
 }

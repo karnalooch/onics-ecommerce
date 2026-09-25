@@ -1,76 +1,122 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
+import bcrypt from "bcrypt"
+import crypto from "crypto"
 
-// import { initializeMockData } from "@/store/serverStore";
+function normalizeEmail(value: unknown) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
+function safeSecretEqual(candidate: string, expected: string) {
+  const candidateBuffer = Buffer.from(candidate)
+  const expectedBuffer = Buffer.from(expected)
+
+  if (candidateBuffer.length !== expectedBuffer.length) return false
+  return crypto.timingSafeEqual(candidateBuffer, expectedBuffer)
+}
+
+type StoredAuthUser = {
+  id?: string
+  email?: string
+  companyName?: string
+  username?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+  nip?: string | null
+  discount?: number
+  tierName?: string
+  passwordHash?: string
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
-      name: "Logowanie Strapi",
+      name: "CEL-TRONICS B2B",
       credentials: {
         email: { label: "Email", type: "email", placeholder: "twoj-email@firma.pl" },
-        password: { label: "Hasło", type: "password" }
+        password: { label: "Hasło", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const email = normalizeEmail(credentials?.email)
+        const password = String(credentials?.password ?? "")
 
-        const { initializeMockData } = await import("@/store/serverStore");
-        const { users } = initializeMockData();
-        const mockUser = users.find((u: any) => u.email === credentials.email);
+        if (!email || !password) return null
 
-        if (credentials.password === "test" && mockUser) {
-           if (mockUser.isBlocked) {
-             console.log("Logowanie odrzucone - konto zablokowane:", mockUser.email);
-             return null; // Konto zablokowane
-           }
+        const { initializeMockData } = await import("@/store/serverStore")
+        const { users } = initializeMockData()
+        const user = (users as StoredAuthUser[]).find(
+          (entry) => normalizeEmail(entry.email) === email
+        )
 
-           return {
-              id: mockUser.id,
-              email: mockUser.email,
-              name: mockUser.companyName || mockUser.username,
-              jwt: mockUser.jwt,
-              role: mockUser.roleType,
-              isApproved: mockUser.isApproved,
-              nip: mockUser.nip,
-              discount: mockUser.discount,
-              tierName: mockUser.tierName
-           } as any;
+        if (!user || user.isBlocked) return null
+
+        let passwordValid = false
+
+        if (typeof user.passwordHash === "string" && user.passwordHash.length > 0) {
+          passwordValid = await bcrypt.compare(password, user.passwordHash)
+        } else if (user.roleType === "ADMIN") {
+          const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD
+          passwordValid = Boolean(
+            bootstrapPassword && safeSecretEqual(password, bootstrapPassword)
+          )
         }
 
-        return null;
-      }
-    })
+        if (!passwordValid) return null
+
+        return {
+          id: String(user.id),
+          email: user.email,
+          name: user.companyName || user.username || user.email,
+          role: user.roleType,
+          isApproved: Boolean(user.isApproved),
+          nip: user.nip ?? null,
+          discount: Number(user.discount ?? 0),
+          tierName: user.tierName ?? "BASIC",
+        }
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.jwt = (user as any).jwt;
-        token.role = (user as any).role;
-        token.id = user.id;
-        token.isApproved = (user as any).isApproved;
-        token.nip = (user as any).nip;
-        token.discount = (user as any).discount;
-        token.tierName = (user as any).tierName;
+        token.role = (user as { role?: string }).role
+        token.id = user.id
+        token.isApproved = (user as { isApproved?: boolean }).isApproved
+        token.nip = (user as { nip?: string | null }).nip
+        token.discount = (user as { discount?: number }).discount
+        token.tierName = (user as { tierName?: string }).tierName
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).jwt = token.jwt;
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id;
-        (session.user as any).isApproved = token.isApproved;
-        (session.user as any).nip = token.nip;
-        (session.user as any).discount = token.discount;
-        (session.user as any).tierName = token.tierName;
+        const sessionUser = session.user as typeof session.user & {
+          role?: string
+          id?: string
+          isApproved?: boolean
+          nip?: string | null
+          discount?: number
+          tierName?: string
+        }
+
+        sessionUser.role = typeof token.role === "string" ? token.role : undefined
+        if (typeof token.id === "string") {
+          sessionUser.id = token.id
+        }
+        sessionUser.isApproved = Boolean(token.isApproved)
+        sessionUser.nip = typeof token.nip === "string" ? token.nip : null
+        sessionUser.discount = Number(token.discount ?? 0)
+        sessionUser.tierName =
+          typeof token.tierName === "string" ? token.tierName : "BASIC"
       }
       return session
-    }
+    },
   },
   pages: {
     signIn: "/logowanie",
   },
   session: {
     strategy: "jwt",
-  }
+  },
 })
