@@ -1,0 +1,77 @@
+name: Aggregate CI gate
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  aggregate-ci-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Wait for required validation checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          required_checks=(
+            "validate-public-site"
+            "validate-platform-audit"
+          )
+
+          deadline=$((SECONDS + 1500))
+
+          while (( SECONDS < deadline )); do
+            checks_json="$(gh api               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${REPOSITORY}/commits/${TARGET_SHA}/check-runs?per_page=100")"
+
+            all_succeeded=true
+
+            for check_name in "${required_checks[@]}"; do
+              status="$(jq -r --arg name "${check_name}" '
+                [.check_runs[] | select(.name == $name)]
+                | sort_by(.started_at)
+                | last
+                | .status // "missing"
+              ' <<<"${checks_json}")"
+
+              conclusion="$(jq -r --arg name "${check_name}" '
+                [.check_runs[] | select(.name == $name)]
+                | sort_by(.started_at)
+                | last
+                | .conclusion // "pending"
+              ' <<<"${checks_json}")"
+
+              echo "${check_name}: status=${status}, conclusion=${conclusion}"
+
+              if [[ "${status}" == "completed" && "${conclusion}" != "success" ]]; then
+                echo "::error::${check_name} zakończył się wynikiem ${conclusion}."
+                exit 1
+              fi
+
+              if [[ "${status}" != "completed" || "${conclusion}" != "success" ]]; then
+                all_succeeded=false
+              fi
+            done
+
+            if [[ "${all_succeeded}" == "true" ]]; then
+              echo "All required validation checks passed for ${TARGET_SHA}."
+              exit 0
+            fi
+
+            sleep 15
+          done
+
+          echo "::error::Timed out waiting for required validation checks for ${TARGET_SHA}."
+          exit 1
