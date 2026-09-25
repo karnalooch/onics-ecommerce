@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { KnowledgeProvider } from "@/lib/knowledge/KnowledgeContext"
+import { initializeMockData } from "@/store/serverStore"
 import { CommandPalette } from "./_components/CommandPalette"
 import { SupportCard } from "./_components/SupportCard"
 
@@ -10,9 +11,23 @@ export default async function AdminLayout({
   children: React.ReactNode
 }) {
   const session = await auth()
-  const role = (session?.user as { role?: string } | undefined)?.role
+  const sessionUser = session?.user as
+    | { id?: string; email?: string | null }
+    | undefined
 
-  if (!session?.user || role !== "ADMIN") {
+  if (!sessionUser) {
+    redirect("/logowanie")
+  }
+
+  const { users } = initializeMockData()
+  const currentUser = users.find(
+    (user: { id?: string; email?: string; roleType?: string; isBlocked?: boolean }) =>
+      (sessionUser.id && user.id === sessionUser.id) ||
+      (sessionUser.email &&
+        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  )
+
+  if (!currentUser || currentUser.isBlocked || currentUser.roleType !== "ADMIN") {
     redirect("/logowanie")
   }
 
