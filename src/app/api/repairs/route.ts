@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData, readServerData } from "@/store/serverStore"
 
 export const dynamic = "force-dynamic"
 
@@ -42,7 +42,7 @@ export async function GET() {
   if (!authCheck.authorized) return authCheck.response
 
   const sessionUser = authCheck.user as SessionUser
-  const { repairs } = initializeMockData()
+  const { repairs } = await readServerData()
 
   if (authCheck.currentRole === "ADMIN") {
     return NextResponse.json(repairs)
