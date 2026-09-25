@@ -20,6 +20,10 @@ function normalizeEmail(value: unknown) {
   return String(value ?? "").trim().toLowerCase()
 }
 
+function isUserRole(value: unknown): value is UserRole {
+  return value === "ADMIN" || value === "BIZ" || value === "RETAIL"
+}
+
 /**
  * Weryfikuje sesję względem aktualnego serwerowego źródła prawdy.
  * Rola i blokada konta są odczytywane z bieżącego rekordu użytkownika,
@@ -67,7 +71,7 @@ export async function authorizeAPI(requiredRoles: UserRole[] = []) {
     }
   }
 
-  const currentRole = storedUser.roleType as UserRole | undefined
+  const currentRole = isUserRole(storedUser.roleType) ? storedUser.roleType : undefined
 
   if (!currentRole || (requiredRoles.length > 0 && !requiredRoles.includes(currentRole))) {
     return {
