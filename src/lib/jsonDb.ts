@@ -3,10 +3,80 @@ import fs from "fs"
 import path from "path"
 import { resolvePersistentPath } from "@/lib/storageConfig"
 
-const DB_LOCK_RETRY_MS = 25
-const DB_LOCK_TIMEOUT_MS = 5_000
-const DB_LOCK_STALE_MS = 30_000
-const DB_LOCK_HEARTBEAT_MS = 5_000
+const DEFAULT_DB_LOCK_RETRY_MS = 25
+const DEFAULT_DB_LOCK_TIMEOUT_MS = 15_000
+const DEFAULT_DB_LOCK_STALE_MS = 10_000
+const DEFAULT_DB_LOCK_HEARTBEAT_MS = 2_000
+const DEFAULT_DB_LOCK_WARN_WAIT_MS = 500
+const DEFAULT_DB_SLOW_TX_MS = 1_000
+
+function readDurationEnv(
+  name: string,
+  fallback: number,
+  min: number,
+  max: number
+) {
+  const raw = process.env[name]?.trim()
+  if (!raw) return fallback
+
+  const value = Number(raw)
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(
+      `${name} musi być liczbą całkowitą z zakresu ${min}-${max} ms.`
+    )
+  }
+
+  return value
+}
+
+export function getDbLockSettings() {
+  const settings = {
+    retryMs: readDurationEnv(
+      "CELTRONICS_DB_LOCK_RETRY_MS",
+      DEFAULT_DB_LOCK_RETRY_MS,
+      5,
+      1_000
+    ),
+    timeoutMs: readDurationEnv(
+      "CELTRONICS_DB_LOCK_TIMEOUT_MS",
+      DEFAULT_DB_LOCK_TIMEOUT_MS,
+      100,
+      120_000
+    ),
+    staleMs: readDurationEnv(
+      "CELTRONICS_DB_LOCK_STALE_MS",
+      DEFAULT_DB_LOCK_STALE_MS,
+      1_000,
+      300_000
+    ),
+    heartbeatMs: readDurationEnv(
+      "CELTRONICS_DB_LOCK_HEARTBEAT_MS",
+      DEFAULT_DB_LOCK_HEARTBEAT_MS,
+      250,
+      60_000
+    ),
+    warnWaitMs: readDurationEnv(
+      "CELTRONICS_DB_LOCK_WARN_WAIT_MS",
+      DEFAULT_DB_LOCK_WARN_WAIT_MS,
+      50,
+      60_000
+    ),
+    slowTxMs: readDurationEnv(
+      "CELTRONICS_DB_SLOW_TX_MS",
+      DEFAULT_DB_SLOW_TX_MS,
+      50,
+      120_000
+    ),
+  }
+
+  if (settings.heartbeatMs >= settings.staleMs) {
+    throw new Error(
+      "CELTRONICS_DB_LOCK_HEARTBEAT_MS musi być mniejsze niż CELTRONICS_DB_LOCK_STALE_MS."
+    )
+  }
+
+  return settings
+}
 
 type DbLockMetadata = {
   owner: string
@@ -119,10 +189,11 @@ function ownsLock(lockPath: string, owner: string) {
   return readLockMetadata(lockPath)?.owner === owner
 }
 
-async function acquireDbLock() {
+async function acquireDbLock(settings: ReturnType<typeof getDbLockSettings>) {
   const dbPath = getDbPath()
   const lockPath = `${dbPath}.lock`
-  const deadline = Date.now() + DB_LOCK_TIMEOUT_MS
+  const waitStartedAt = Date.now()
+  const deadline = waitStartedAt + settings.timeoutMs
   const owner = crypto.randomUUID()
 
   fs.mkdirSync(path.dirname(dbPath), { recursive: true })
@@ -145,18 +216,21 @@ async function acquireDbLock() {
         } catch {
           // The lock may already be released or replaced.
         }
-      }, DB_LOCK_HEARTBEAT_MS)
+      }, settings.heartbeatMs)
       heartbeat.unref()
 
-      return () => {
-        clearInterval(heartbeat)
-        try {
-          fs.closeSync(handle)
-        } finally {
-          if (ownsLock(lockPath, owner)) {
-            fs.rmSync(lockPath, { force: true })
+      return {
+        waitedMs: Date.now() - waitStartedAt,
+        release: () => {
+          clearInterval(heartbeat)
+          try {
+            fs.closeSync(handle)
+          } finally {
+            if (ownsLock(lockPath, owner)) {
+              fs.rmSync(lockPath, { force: true })
+            }
           }
-        }
+        },
       }
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code
@@ -164,7 +238,7 @@ async function acquireDbLock() {
 
       try {
         const stat = fs.statSync(lockPath)
-        if (Date.now() - stat.mtimeMs > DB_LOCK_STALE_MS) {
+        if (Date.now() - stat.mtimeMs > settings.staleMs) {
           const observed = readLockMetadata(lockPath)
           if (
             observed &&
@@ -180,20 +254,37 @@ async function acquireDbLock() {
         if (statCode !== "ENOENT") throw statError
       }
 
-      await sleep(DB_LOCK_RETRY_MS)
+      await sleep(settings.retryMs)
     }
   }
 
-  throw new Error("Przekroczono czas oczekiwania na blokadę bazy danych.")
+  throw new Error(
+    `Przekroczono czas oczekiwania na blokadę bazy danych (${settings.timeoutMs} ms).`
+  )
 }
 
 export async function withDbWriteLock<T>(
   operation: () => Promise<T> | T
 ): Promise<T> {
-  const release = await acquireDbLock()
+  const settings = getDbLockSettings()
+  const lease = await acquireDbLock(settings)
+  const transactionStartedAt = Date.now()
+
   try {
     return await operation()
   } finally {
-    release()
+    const heldMs = Date.now() - transactionStartedAt
+    lease.release()
+
+    if (lease.waitedMs >= settings.warnWaitMs) {
+      console.warn(
+        `[DB_LOCK] Oczekiwanie na lock trwało ${lease.waitedMs} ms (limit ${settings.timeoutMs} ms).`
+      )
+    }
+    if (heldMs >= settings.slowTxMs) {
+      console.warn(
+        `[DB_LOCK] Transakcja trzymała lock przez ${heldMs} ms.`
+      )
+    }
   }
 }
