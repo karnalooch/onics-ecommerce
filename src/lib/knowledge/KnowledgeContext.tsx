@@ -38,6 +38,7 @@ interface KnowledgeContextType {
   validationResult: {
     success?: boolean
     recommended?: string
+    cheapestId?: string
     availableModels?: Array<string | { id: string }>
     message?: string
   } | null
