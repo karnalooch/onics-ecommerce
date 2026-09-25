@@ -2,50 +2,83 @@
 // Współdzielony stan serwerowy oparty na trwałym pliku JSON
 import { readDb, withDbWriteLock, writeDb } from "@/lib/jsonDb"
 
-type ServerDb = {
-  users: any[]
-  orders: any[]
-  repairs: any[]
-  categories: any[]
-  manufacturers: any[]
-  products: any[]
-  knowledgeMeta: {
-    sources: string[]
-    processedSources: string[]
-    lastUpdated: string | null
-  }
-  [key: string]: any
+type JsonRecord = Record<string, unknown>
+
+type KnowledgeMeta = {
+  sources: string[]
+  processedSources: string[]
+  lastUpdated: string | null
 }
 
-function normalizeDb(input: any): ServerDb {
+type ServerDb = {
+  users: JsonRecord[]
+  orders: JsonRecord[]
+  repairs: JsonRecord[]
+  categories: JsonRecord[]
+  manufacturers: JsonRecord[]
+  products: JsonRecord[]
+  knowledgeMeta: KnowledgeMeta
+  [key: string]: unknown
+}
+
+type LegacyGlobals = typeof globalThis & {
+  mockUsersStore?: JsonRecord[]
+  mockCategoriesStore?: JsonRecord[]
+  mockManufacturersStore?: JsonRecord[]
+  mockProductsStore?: JsonRecord[]
+  mockOrdersStore?: JsonRecord[]
+  mockRepairsStore?: JsonRecord[]
+  mockKnowledgeMetaStore?: KnowledgeMeta
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function recordArray(value: unknown): JsonRecord[] {
+  return Array.isArray(value) ? value.filter(isRecord) : []
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : []
+}
+
+function normalizeDb(input: unknown): ServerDb {
+  const source = isRecord(input) ? input : {}
+  const knowledgeMeta = isRecord(source.knowledgeMeta)
+    ? source.knowledgeMeta
+    : {}
+
   return {
-    ...(input || {}),
-    users: Array.isArray(input?.users) ? input.users : [],
-    orders: Array.isArray(input?.orders) ? input.orders : [],
-    repairs: Array.isArray(input?.repairs) ? input.repairs : [],
-    categories: Array.isArray(input?.categories) ? input.categories : [],
-    manufacturers: Array.isArray(input?.manufacturers) ? input.manufacturers : [],
-    products: Array.isArray(input?.products) ? input.products : [],
+    ...source,
+    users: recordArray(source.users),
+    orders: recordArray(source.orders),
+    repairs: recordArray(source.repairs),
+    categories: recordArray(source.categories),
+    manufacturers: recordArray(source.manufacturers),
+    products: recordArray(source.products),
     knowledgeMeta: {
-      sources: Array.isArray(input?.knowledgeMeta?.sources)
-        ? input.knowledgeMeta.sources
-        : [],
-      processedSources: Array.isArray(input?.knowledgeMeta?.processedSources)
-        ? input.knowledgeMeta.processedSources
-        : [],
-      lastUpdated: input?.knowledgeMeta?.lastUpdated ?? null,
+      sources: stringArray(knowledgeMeta.sources),
+      processedSources: stringArray(knowledgeMeta.processedSources),
+      lastUpdated:
+        typeof knowledgeMeta.lastUpdated === "string"
+          ? knowledgeMeta.lastUpdated
+          : null,
     },
   }
 }
 
 function hydrateGlobals(db: ServerDb) {
-  ;(global as any).mockUsersStore = db.users
-  ;(global as any).mockCategoriesStore = db.categories
-  ;(global as any).mockManufacturersStore = db.manufacturers
-  ;(global as any).mockProductsStore = db.products
-  ;(global as any).mockOrdersStore = db.orders
-  ;(global as any).mockRepairsStore = db.repairs
-  ;(global as any).mockKnowledgeMetaStore = db.knowledgeMeta
+  const legacyGlobals = globalThis as LegacyGlobals
+  legacyGlobals.mockUsersStore = db.users
+  legacyGlobals.mockCategoriesStore = db.categories
+  legacyGlobals.mockManufacturersStore = db.manufacturers
+  legacyGlobals.mockProductsStore = db.products
+  legacyGlobals.mockOrdersStore = db.orders
+  legacyGlobals.mockRepairsStore = db.repairs
+  legacyGlobals.mockKnowledgeMetaStore = db.knowledgeMeta
 }
 
 /**
@@ -93,14 +126,15 @@ export async function mutateMockData<T>(
  * na mutateMockData(). Nie używać w nowym kodzie.
  */
 export function saveMockData() {
+  const legacyGlobals = globalThis as LegacyGlobals
   const db = normalizeDb({
-    users: (global as any).mockUsersStore,
-    categories: (global as any).mockCategoriesStore,
-    manufacturers: (global as any).mockManufacturersStore,
-    products: (global as any).mockProductsStore,
-    orders: (global as any).mockOrdersStore,
-    repairs: (global as any).mockRepairsStore,
-    knowledgeMeta: (global as any).mockKnowledgeMetaStore,
+    users: legacyGlobals.mockUsersStore,
+    categories: legacyGlobals.mockCategoriesStore,
+    manufacturers: legacyGlobals.mockManufacturersStore,
+    products: legacyGlobals.mockProductsStore,
+    orders: legacyGlobals.mockOrdersStore,
+    repairs: legacyGlobals.mockRepairsStore,
+    knowledgeMeta: legacyGlobals.mockKnowledgeMetaStore,
   })
 
   return writeDb(db)
