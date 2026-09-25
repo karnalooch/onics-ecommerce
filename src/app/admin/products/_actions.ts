@@ -157,14 +157,27 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
           (item) => normalize(item.name).toLowerCase() === normalized
         );
       };
+      const productBySku = new Map(
+        products.map((product) => [
+          normalize(product.sku).toLowerCase(),
+          product
+        ] as const)
+      );
+      const categoryById = new Map(
+        categories.map((category) => [String(category.id), category] as const)
+      );
+      const categoryByName = new Map(
+        categories.map((category) => [
+          normalize(category.name).toLowerCase(),
+          category
+        ] as const)
+      );
 
       items.forEach((item: any) => {
         const normalizedSku = normalize(item.sku).toLowerCase();
         if (!normalizedSku) return;
 
-        const existing = products.find(
-          (product) => normalize(product.sku).toLowerCase() === normalizedSku
-        );
+        const existing = productBySku.get(normalizedSku);
 
         let finalCategoryId = item.categoryId;
         let finalSubcategoryId = item.subcategoryId;
@@ -174,7 +187,8 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
           item.xlsCategoryName &&
           !isJunk(item.xlsCategoryName)
         ) {
-          let category = getDirectMatch(item.xlsCategoryName, categories);
+          const normalizedCategoryName = normalize(item.xlsCategoryName).toLowerCase();
+          let category = categoryByName.get(normalizedCategoryName);
           if (!category && item.isNewCategory) {
             category = {
               id: `cat_${crypto.randomUUID()}`,
@@ -183,6 +197,8 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
               subcategories: []
             };
             categories.push(category);
+            categoryById.set(String(category.id), category);
+            categoryByName.set(normalizedCategoryName, category);
           }
           if (category) finalCategoryId = category.id;
         }
@@ -193,9 +209,7 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
           finalCategoryId &&
           !isJunk(item.xlsSubcategoryName)
         ) {
-          const category = categories.find(
-            (candidate) => candidate.id === finalCategoryId
-          );
+          const category = categoryById.get(String(finalCategoryId));
           if (category) {
             let subcategory = getDirectMatch(
               item.xlsSubcategoryName,
@@ -224,14 +238,16 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
           }
           updatedCount += 1;
         } else {
-          products.push({
+          const newProduct = {
             id: `p_${crypto.randomUUID()}`,
             ...item,
             categoryId: finalCategoryId,
             subcategoryId: finalSubcategoryId,
             specs: item.specs || "",
             isIqSynced: Boolean(item.specs)
-          });
+          };
+          products.push(newProduct);
+          productBySku.set(normalizedSku, newProduct);
           addedCount += 1;
         }
       });
@@ -261,6 +277,12 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
     const result = await mutateMockData((db) => {
       const store = buildKnowledgeFromDb(db);
       const products = db.products as any[];
+      const productIndexBySku = new Map(
+        products.map((product, index) => [
+          String(product.sku || "").trim().toLowerCase(),
+          index
+        ] as const)
+      );
       let autoAddedCount = 0;
 
       const enriched = items
@@ -298,10 +320,7 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
 
           if (quality.isClean && !priceMismatch) {
             const normalizedSku = String(item.sku || "").trim().toLowerCase();
-            const existingIdx = products.findIndex(
-              (product) =>
-                String(product.sku || "").trim().toLowerCase() === normalizedSku
-            );
+            const existingIdx = productIndexBySku.get(normalizedSku);
             const iqData = {
               catalogPrice: match?.entry.price || 0,
               catalogSpecs: match?.entry.specs || "",
@@ -309,7 +328,7 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
               isIqSynced: true
             };
 
-            if (existingIdx !== -1) {
+            if (existingIdx !== undefined) {
               products[existingIdx] = {
                 ...products[existingIdx],
                 ...enrichedItem,
@@ -317,12 +336,14 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
                 isAutoSynced: true
               };
             } else {
+              const newIndex = products.length;
               products.push({
                 id: `p_auto_${crypto.randomUUID()}`,
                 ...enrichedItem,
                 ...iqData,
                 isAutoSynced: true
               });
+              productIndexBySku.set(normalizedSku, newIndex);
             }
             autoAddedCount += 1;
             return null;
@@ -544,17 +565,18 @@ export async function bulkAddProductsToInventoryAction(items: any[]): Promise<Ac
   try {
     const added = await mutateMockData((db) => {
       const products = db.products as any[];
+      const existingSkus = new Set(
+        products.map((product) =>
+          String(product.sku || "").trim().toLowerCase()
+        )
+      );
       let count = 0;
 
       items.forEach((item) => {
         const sku = String(item.sku || "").trim().toLowerCase();
         if (!sku) return;
 
-        const exists = products.find(
-          (product) =>
-            String(product.sku || "").trim().toLowerCase() === sku
-        );
-        if (exists) return;
+        if (existingSkus.has(sku)) return;
 
         products.push({
           id: `p_direct_${crypto.randomUUID()}`,
@@ -563,6 +585,7 @@ export async function bulkAddProductsToInventoryAction(items: any[]): Promise<Ac
           price: item.price || 0,
           seoDescription: item.seoDescription || item.catalogSpecs || ""
         });
+        existingSkus.add(sku);
         count += 1;
       });
 
