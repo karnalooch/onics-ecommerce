@@ -71,7 +71,7 @@ export async function GET() {
   const sessionUser = authCheck.user as SessionUser
   const { orders } = initializeMockData()
 
-  if (sessionUser.role === "ADMIN") {
+  if (authCheck.currentRole === "ADMIN") {
     return NextResponse.json(orders)
   }
 
