@@ -1,5 +1,89 @@
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
+import {
+  nextPaymentStatus,
+  verifyCheckoutPayment,
+} from "@/lib/payments"
+import { initializeMockData, saveMockData } from "@/store/serverStore"
+
+type StoredOrder = {
+  id: string
+  totalPriceFinal?: number
+  paymentStatus?: string | null
+  stripeCheckoutSessionId?: string | null
+  stripePaymentIntentId?: string | null
+  stripeLastEventId?: string | null
+  paidAt?: string | null
+  paymentUpdatedAt?: string | null
+}
+
+function getPaymentIntentId(session: Stripe.Checkout.Session) {
+  if (typeof session.payment_intent === "string") return session.payment_intent
+  return session.payment_intent?.id ?? null
+}
+
+function applyCheckoutStatus(
+  eventId: string,
+  session: Stripe.Checkout.Session,
+  incomingStatus: "PAID" | "FAILED" | "EXPIRED"
+) {
+  const { orders } = initializeMockData()
+  const orderId = session.metadata?.order_id || null
+  const order = (orders as StoredOrder[]).find(
+    (candidate) =>
+      (orderId && candidate.id === orderId) ||
+      candidate.stripeCheckoutSessionId === session.id
+  )
+
+  if (!order) {
+    throw new Error(`Nie znaleziono zamówienia dla sesji Stripe ${session.id}.`)
+  }
+
+  const verification = verifyCheckoutPayment(
+    {
+      id: order.id,
+      totalPriceFinal: Number(order.totalPriceFinal ?? 0),
+      stripeCheckoutSessionId: order.stripeCheckoutSessionId,
+      paymentStatus: order.paymentStatus,
+    },
+    {
+      orderId,
+      sessionId: session.id,
+      amountTotal: session.amount_total,
+      currency: session.currency,
+      paymentStatus: session.payment_status,
+    }
+  )
+
+  if (!verification.ok) {
+    throw new Error(verification.reason)
+  }
+
+  const paymentStatus = nextPaymentStatus(order.paymentStatus, incomingStatus)
+  const alreadyApplied =
+    order.paymentStatus === paymentStatus &&
+    order.stripeLastEventId === eventId
+
+  if (alreadyApplied) {
+    return { order, duplicate: true }
+  }
+
+  order.paymentStatus = paymentStatus
+  order.stripePaymentIntentId =
+    getPaymentIntentId(session) || order.stripePaymentIntentId || null
+  order.stripeLastEventId = eventId
+  order.paymentUpdatedAt = new Date().toISOString()
+
+  if (paymentStatus === "PAID" && !order.paidAt) {
+    order.paidAt = new Date().toISOString()
+  }
+
+  if (!saveMockData()) {
+    throw new Error("Nie udało się utrwalić statusu płatności Stripe.")
+  }
+
+  return { order, duplicate: false }
+}
 
 export async function POST(req: Request) {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY
@@ -20,28 +104,39 @@ export async function POST(req: Request) {
     )
   }
 
-  try {
-    const stripe = new Stripe(stripeSecretKey)
-    const rawBody = await req.text()
-    const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
+  const stripe = new Stripe(stripeSecretKey)
+  const rawBody = await req.text()
 
+  let event: Stripe.Event
+  try {
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
+  } catch (error) {
+    console.error("Nieprawidłowy podpis webhooka Stripe:", error)
+    return NextResponse.json(
+      { error: "Nieprawidłowy webhook Stripe." },
+      { status: 400 }
+    )
+  }
+
+  try {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object
-        console.info("Stripe checkout completed", {
-          id: session.id,
-          clientReferenceId: session.client_reference_id,
-          paymentStatus: session.payment_status,
-        })
+        if (session.payment_status === "paid") {
+          applyCheckoutStatus(event.id, session, "PAID")
+        }
         break
       }
-      case "payment_intent.succeeded": {
-        const paymentIntent = event.data.object
-        console.info("Stripe payment intent succeeded", {
-          id: paymentIntent.id,
-          amount: paymentIntent.amount,
-          currency: paymentIntent.currency,
-        })
+      case "checkout.session.async_payment_succeeded": {
+        applyCheckoutStatus(event.id, event.data.object, "PAID")
+        break
+      }
+      case "checkout.session.async_payment_failed": {
+        applyCheckoutStatus(event.id, event.data.object, "FAILED")
+        break
+      }
+      case "checkout.session.expired": {
+        applyCheckoutStatus(event.id, event.data.object, "EXPIRED")
         break
       }
       default:
@@ -50,10 +145,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ received: true })
   } catch (error) {
-    console.error("Błąd Webhooka Stripe:", error)
+    console.error("Błąd obsługi webhooka Stripe:", error)
     return NextResponse.json(
-      { error: "Nieprawidłowy webhook Stripe." },
-      { status: 400 }
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Nie udało się przetworzyć webhooka Stripe.",
+      },
+      { status: 500 }
     )
   }
 }
