@@ -1,31 +1,36 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { 
-  Building2, Mail, Lock, ShieldCheck, 
-  ChevronRight, ChevronLeft, CheckCircle2,
-  Building, Zap, FileText
-} from "lucide-react";
-import { validateNip, calculatePasswordStrength, validateEmail } from "@/lib/validation";
+import { useState } from "react"
+import {
+  Building2,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Mail,
+  Phone,
+  ShieldCheck,
+} from "lucide-react"
+import { validateNip, calculatePasswordStrength, validateEmail } from "@/lib/validation"
 
 interface IOnboardingFormData {
-  email: string;
-  password: string;
-  nip: string;
-  companyName: string;
-  phone: string;
-  address: string;
-  consentVat: boolean;
-  consentReg: boolean;
+  email: string
+  password: string
+  nip: string
+  companyName: string
+  phone: string
+  address: string
+  consentVat: boolean
+  consentReg: boolean
 }
 
 interface IOnboardingProps {
-  onSubmit: (data: IOnboardingFormData) => Promise<void>;
-  loading: boolean;
+  onSubmit: (data: IOnboardingFormData) => Promise<void>
+  loading: boolean
 }
 
 export function OnboardingMissionControl({ onSubmit, loading }: IOnboardingProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [formData, setFormData] = useState<IOnboardingFormData>({
     email: "",
     password: "",
@@ -34,227 +39,287 @@ export function OnboardingMissionControl({ onSubmit, loading }: IOnboardingProps
     phone: "",
     address: "",
     consentVat: false,
-    consentReg: false
-  });
+    consentReg: false,
+  })
 
-  const nextStep = () => setStep(s => (s + 1) as 1 | 2 | 3);
-  const prevStep = () => setStep(s => (s - 1) as 1 | 2 | 3);
+  const nextStep = () => setStep((current) => Math.min(3, current + 1) as 1 | 2 | 3)
+  const prevStep = () => setStep((current) => Math.max(1, current - 1) as 1 | 2 | 3)
 
-  const isStep1Valid = validateEmail(formData.email) && calculatePasswordStrength(formData.password) >= 1;
-  const isStep2Valid = validateNip(formData.nip) && formData.companyName.length > 3;
-  const isStep3Valid = formData.consentReg;
+  const isStep1Valid =
+    validateEmail(formData.email) && calculatePasswordStrength(formData.password) >= 1
+  const isStep2Valid = validateNip(formData.nip) && formData.companyName.trim().length > 3
+  const isStep3Valid = formData.consentReg
 
-  const handleFinalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isStep3Valid) {
-      await onSubmit(formData);
-    }
-  };
+  const handleFinalSubmit = async () => {
+    if (isStep3Valid) await onSubmit(formData)
+  }
+
+  const steps = [
+    ["Dane logowania", 1],
+    ["Dane firmy", 2],
+    ["Zgody i wysłanie", 3],
+  ] as const
 
   return (
-    <div className="flex flex-col bg-white overflow-hidden">
-      {/* COMPACT MISSION CONTROL STEPPER - V4 ERGONOMIC */}
-      <div className="flex items-center justify-between px-6 py-3 bg-secondary/10 border-b border-border">
-         <div className="flex items-center gap-8">
-            <TechnicalStep active={step >= 1} label="Auth" index={1} />
-            <TechnicalStep active={step >= 2} label="Entity" index={2} />
-            <TechnicalStep active={step >= 3} label="Legal" index={3} />
-         </div>
-         <div className="flex items-center gap-3">
-            <div className="h-1.5 w-24 bg-border rounded-full overflow-hidden">
-               <div className="h-full bg-primary transition-all duration-500 ease-snap" style={{ width: `${(step / 3) * 100}%` }} />
+    <div>
+      <div className="grid border-b border-black/5 bg-black/[0.018] sm:grid-cols-3 dark:border-white/10 dark:bg-white/[0.025]">
+        {steps.map(([label, index]) => {
+          const active = step >= index
+          return (
+            <div
+              key={index}
+              className={`flex items-center gap-3 px-5 py-4 text-xs font-extrabold ${
+                active ? "text-foreground" : "text-muted-foreground/55"
+              }`}
+            >
+              <span
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs ${
+                  active ? "bg-primary text-white" : "bg-black/5 dark:bg-white/10"
+                }`}
+              >
+                {index}
+              </span>
+              {label}
             </div>
-            <span className="text-[10px] font-black text-muted-foreground uppercase opacity-40 tabular-nums">Step 0{step}</span>
-         </div>
+          )
+        })}
       </div>
 
-      <div className="p-8">
+      <div className="p-6 sm:p-8">
         {step === 1 && (
-           <div className="space-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <TechnicalInput 
-                  label="E-Mail Protocol" 
-                  icon={<Mail className="w-3 h-3"/>} 
-                  type="email" 
-                  placeholder="name@provider.com"
-                  value={formData.email}
-                  onChange={(v) => setFormData(s => ({ ...s, email: v }))}
-                />
-                <TechnicalInput 
-                  label="Secure Access Key" 
-                  icon={<Lock className="w-3 h-3"/>} 
-                  type="password" 
-                  placeholder="Minimum 8 characters"
-                  value={formData.password}
-                  onChange={(v) => setFormData(s => ({ ...s, password: v }))}
-                />
-              </div>
-              
-              <div className="p-4 bg-primary/5 border-l-2 border-primary rounded-r flex gap-4">
-                 <Zap className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                 <div className="space-y-1">
-                    <h4 className="text-[10px] font-black uppercase text-primary">Identity Verification</h4>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight leading-tight opacity-70">
-                       Konta B2B wymagają weryfikacji ręcznej przez administratora Celtronics.
-                    </p>
-                 </div>
-              </div>
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight">Zacznij od danych do konta</h2>
+            <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">
+              Podaj służbowy adres e-mail oraz hasło, którego będziesz używać do logowania.
+            </p>
 
-              <div className="flex justify-end pt-4">
-                 <button 
-                   disabled={!isStep1Valid}
-                   onClick={nextStep}
-                   className="h-8 px-6 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-sm shadow-lg shadow-primary/10 hover:shadow-primary/30 disabled:opacity-20 transition-all flex items-center gap-2"
-                 >
-                   Continuum <ChevronRight className="w-3 h-3" />
-                 </button>
-              </div>
-           </div>
+            <div className="mt-7 grid gap-5 md:grid-cols-2">
+              <Field
+                label="Adres e-mail"
+                icon={<Mail className="h-4 w-4" />}
+                type="email"
+                autoComplete="email"
+                placeholder="imie@firma.pl"
+                value={formData.email}
+                onChange={(value) => setFormData((state) => ({ ...state, email: value }))}
+              />
+              <Field
+                label="Hasło"
+                icon={<Lock className="h-4 w-4" />}
+                type="password"
+                autoComplete="new-password"
+                placeholder="Minimum 8 znaków"
+                value={formData.password}
+                onChange={(value) => setFormData((state) => ({ ...state, password: value }))}
+              />
+            </div>
+
+            <InfoBox>
+              Konto B2B jest aktywowane po sprawdzeniu danych firmy. Jeśli masz już konto
+              albo potrzebujesz pomocy, skontaktuj się z nami.
+            </InfoBox>
+
+            <div className="mt-7 flex justify-end">
+              <button
+                type="button"
+                disabled={!isStep1Valid}
+                onClick={nextStep}
+                className="inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                Dalej
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         )}
 
         {step === 2 && (
-           <div className="space-y-6 animate-in fade-in slide-in-from-right-2 duration-300">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <TechnicalInput 
-                  label="NIP / TAX Identifier" 
-                  icon={<ShieldCheck className="w-3 h-3"/>} 
-                  type="text" 
-                  placeholder="123-456-78-90"
-                  maxLength={10}
-                  value={formData.nip}
-                  onChange={(v) => setFormData(s => ({ ...s, nip: v.replace(/\D/g, '') }))}
-                />
-                <div className="md:col-span-2">
-                  <TechnicalInput 
-                    label="Business Entity Name" 
-                    icon={<Building className="w-3 h-3"/>} 
-                    type="text" 
-                    placeholder="Wpisz oficjalną nazwę firmy"
-                    value={formData.companyName}
-                    onChange={(v) => setFormData(s => ({ ...s, companyName: v }))}
-                  />
-                </div>
-              </div>
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight">Dane firmy</h2>
+            <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">
+              Dane są potrzebne do identyfikacji kontrahenta i obsługi konta B2B.
+            </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <TechnicalInput 
-                  label="Technical Contact" 
-                  icon={<Zap className="w-3 h-3"/>} 
-                  type="text" 
-                  placeholder="Numer telefonu"
-                  value={formData.phone}
-                  onChange={(v) => setFormData(s => ({ ...s, phone: v }))}
-                />
-                <TechnicalInput 
-                  label="Registered Address" 
-                  icon={<Building2 className="w-3 h-3"/>} 
-                  type="text" 
-                  placeholder="Ulica, Miasto, Kod"
-                  value={formData.address}
-                  onChange={(v) => setFormData(s => ({ ...s, address: v }))}
-                />
-              </div>
+            <div className="mt-7 grid gap-5 md:grid-cols-2">
+              <Field
+                label="NIP"
+                icon={<ShieldCheck className="h-4 w-4" />}
+                type="text"
+                inputMode="numeric"
+                placeholder="1234567890"
+                maxLength={10}
+                value={formData.nip}
+                onChange={(value) =>
+                  setFormData((state) => ({ ...state, nip: value.replace(/\D/g, "") }))
+                }
+              />
+              <Field
+                label="Nazwa firmy"
+                icon={<Building2 className="h-4 w-4" />}
+                type="text"
+                placeholder="Pełna nazwa firmy"
+                value={formData.companyName}
+                onChange={(value) => setFormData((state) => ({ ...state, companyName: value }))}
+              />
+              <Field
+                label="Telefon"
+                icon={<Phone className="h-4 w-4" />}
+                type="tel"
+                autoComplete="tel"
+                placeholder="+48 000 000 000"
+                value={formData.phone}
+                onChange={(value) => setFormData((state) => ({ ...state, phone: value }))}
+              />
+              <Field
+                label="Adres firmy"
+                icon={<Building2 className="h-4 w-4" />}
+                type="text"
+                autoComplete="street-address"
+                placeholder="Ulica, kod pocztowy, miejscowość"
+                value={formData.address}
+                onChange={(value) => setFormData((state) => ({ ...state, address: value }))}
+              />
+            </div>
 
-              <div className="flex items-center justify-between pt-4">
-                 <button onClick={prevStep} className="text-muted-foreground text-[10px] font-black uppercase tracking-widest hover:text-foreground transition-all flex items-center gap-2">
-                    <ChevronLeft className="w-3 h-3" /> Back
-                 </button>
-                 <button 
-                   onClick={nextStep}
-                   disabled={!isStep2Valid}
-                   className="h-8 px-8 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-sm transition-all flex items-center gap-2"
-                 >
-                   Establish Profile <ChevronRight className="w-3 h-3" />
-                 </button>
-              </div>
-           </div>
+            <div className="mt-7 flex items-center justify-between">
+              <BackButton onClick={prevStep} />
+              <button
+                type="button"
+                onClick={nextStep}
+                disabled={!isStep2Valid}
+                className="inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                Dalej
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         )}
 
         {step === 3 && (
-           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="space-y-4">
-                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-50 border-b border-border pb-2">Legal Declarations</h3>
-                 
-                 <ConsentBox 
-                    label="Akceptuję regulamin platformy B2B Celtronics"
-                    checked={formData.consentReg}
-                    onChange={(v) => setFormData(s => ({ ...s, consentReg: v }))}
-                 />
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight">Zgody i wysłanie</h2>
+            <p className="mt-2 text-sm font-medium leading-6 text-muted-foreground">
+              Sprawdź dane i zaakceptuj wymagane warunki przed wysłaniem zgłoszenia.
+            </p>
 
-                 <ConsentBox 
-                    label="Zgadzam się na otrzymywanie faktur drogą elektroniczną (e-Faktura)"
-                    checked={formData.consentVat}
-                    onChange={(v) => setFormData(s => ({ ...s, consentVat: v }))}
-                 />
+            <div className="mt-7 space-y-3">
+              <Consent
+                label="Akceptuję regulamin platformy B2B CEL-TRONICS"
+                checked={formData.consentReg}
+                onChange={(value) => setFormData((state) => ({ ...state, consentReg: value }))}
+              />
+              <Consent
+                label="Zgadzam się na otrzymywanie faktur drogą elektroniczną"
+                checked={formData.consentVat}
+                onChange={(value) => setFormData((state) => ({ ...state, consentVat: value }))}
+              />
+            </div>
 
-                 <div className="p-4 bg-action/5 border border-action/20 rounded flex gap-4 mt-6">
-                    <FileText className="w-4 h-4 text-action shrink-0 mt-0.5" />
-                    <p className="text-[9px] font-bold text-action-foreground uppercase tracking-tight leading-relaxed">
-                       Po wysłaniu zgłoszenia nasi specjaliści zweryfikują Twoje uprawnienia instalatorskie. Dostęp do cen hurtowych zostanie przyznany w ciągu 24h.
-                    </p>
-                 </div>
-              </div>
+            <InfoBox>
+              Po wysłaniu zgłoszenia dane firmy trafią do weryfikacji. Informację o aktywacji
+              konta otrzymasz zgodnie z procesem obsługi CEL-TRONICS.
+            </InfoBox>
 
-              <div className="flex items-center justify-between pt-6">
-                 <button onClick={prevStep} className="text-muted-foreground text-[10px] font-black uppercase tracking-widest hover:text-foreground transition-all flex items-center gap-2">
-                    <ChevronLeft className="w-3 h-3" /> Revisio
-                 </button>
-                 <button 
-                   onClick={handleFinalSubmit}
-                   disabled={!isStep3Valid || loading}
-                   className="h-10 px-10 bg-action text-action-foreground text-[11px] font-black uppercase tracking-[0.3em] rounded-sm shadow-xl shadow-action/10 hover:shadow-action/30 disabled:opacity-20 transition-all flex items-center gap-3 active:scale-95"
-                 >
-                   {loading ? "Transmitting..." : "Synchronize Database"} <CheckCircle2 className="w-4 h-4" />
-                 </button>
-              </div>
-           </div>
+            <div className="mt-7 flex items-center justify-between">
+              <BackButton onClick={prevStep} />
+              <button
+                type="button"
+                onClick={handleFinalSubmit}
+                disabled={!isStep3Valid || loading}
+                className="inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                {loading ? "Wysyłanie…" : "Wyślij zgłoszenie"}
+                <CheckCircle2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
-  );
+  )
 }
 
-function TechnicalStep({ active, label, index }: { active: boolean; label: string; index: number }) {
+function Field({
+  label,
+  icon,
+  type,
+  placeholder,
+  value,
+  onChange,
+  maxLength,
+  autoComplete,
+  inputMode,
+}: {
+  label: string
+  icon: React.ReactNode
+  type: string
+  placeholder: string
+  value: string
+  onChange: (value: string) => void
+  maxLength?: number
+  autoComplete?: string
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
+}) {
   return (
-    <div className="flex items-center gap-3">
-       <div className={`w-5 h-5 rounded-sm flex items-center justify-center text-[10px] font-black transition-all ${active ? 'bg-primary text-white scale-110 shadow-lg shadow-primary/20' : 'bg-secondary text-muted-foreground opacity-40'}`}>
-          {index}
-       </div>
-       <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${active ? 'text-foreground' : 'text-muted-foreground opacity-20 hover:opacity-40 transition-opacity'}`}>
-         {label}
-       </span>
-    </div>
-  );
-}
-
-function TechnicalInput({ label, icon, type, placeholder, value, onChange, maxLength }: { label: string; icon: React.ReactNode; type: string; placeholder: string; value: string; onChange: (v: string) => void; maxLength?: number }) {
-  return (
-    <div className="flex flex-col gap-2 group">
-      <label className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 flex items-center gap-2 px-0.5 group-focus-within:text-primary transition-colors">
-        {icon} {label}
-      </label>
-      <input 
+    <label className="block">
+      <span className="mb-2 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
+        {icon}
+        {label}
+      </span>
+      <input
         type={type}
         placeholder={placeholder}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         maxLength={maxLength}
-        className="w-full h-9 px-3 bg-secondary/10 border border-border rounded-sm text-[11px] font-bold placeholder:text-muted-foreground/20 focus:outline-none focus:border-primary focus:bg-white inner-shadow-technical transition-all tracking-tight"
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        className="h-13 w-full rounded-xl border border-black/10 bg-black/[0.02] px-4 text-sm font-semibold outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-white/[0.04]"
       />
-    </div>
-  );
+    </label>
+  )
 }
 
-function ConsentBox({ label, checked, onChange }: { label: string, checked: boolean, onChange: (v: boolean) => void }) {
-   return (
-      <label className="flex items-center gap-3 p-3 bg-secondary/5 border border-transparent hover:border-border transition-all cursor-pointer rounded-sm group">
-         <div className={`w-4 h-4 rounded-sm border border-border flex items-center justify-center transition-all ${checked ? 'bg-primary border-primary' : 'bg-white'}`}>
-            {checked && <CheckCircle2 className="w-3 h-3 text-white" />}
-         </div>
-         <input type="checkbox" className="hidden" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-         <span className={`text-[10px] font-bold uppercase tracking-tight transition-all ${checked ? 'text-foreground' : 'text-muted-foreground opacity-60 group-hover:opacity-100'}`}>
-            {label}
-         </span>
-      </label>
-   );
+function Consent({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string
+  checked: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-black/5 p-4 dark:border-white/10">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-0.5 h-4 w-4 accent-[var(--color-primary)]"
+      />
+      <span className="text-sm font-semibold leading-5">{label}</span>
+    </label>
+  )
+}
+
+function InfoBox({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-6 rounded-xl border border-primary/10 bg-primary/[0.055] p-4 text-sm font-medium leading-6 text-muted-foreground">
+      {children}
+    </div>
+  )
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-extrabold text-muted-foreground transition hover:text-foreground"
+    >
+      <ChevronLeft className="h-4 w-4" />
+      Wstecz
+    </button>
+  )
 }
