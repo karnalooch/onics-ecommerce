@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "db:verify": "node scripts/storage/verify-db.mjs",
+    "db:backup": "node scripts/storage/backup-db.mjs",
+    "db:restore": "node scripts/storage/restore-db.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

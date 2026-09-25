@@ -89,6 +89,36 @@ jobs:
       - name: Run tests
         run: npm test -- --run
 
+      - name: File-store recovery drill
+        run: |
+          set -euo pipefail
+          mkdir -p .ci/recovery/backups
+          cp src/data/db.json .ci/recovery/live.json
+          export CELTRONICS_DB_PATH="$PWD/.ci/recovery/live.json"
+          export CELTRONICS_DB_BACKUP_DIR="$PWD/.ci/recovery/backups"
+
+          npm run db:verify
+          npm run db:backup
+          BACKUP_PATH="$(find "$CELTRONICS_DB_BACKUP_DIR" -maxdepth 1 -type f -name 'db-*.json' | head -n 1)"
+          test -n "$BACKUP_PATH"
+
+          printf '{ intentionally-broken-json' > "$CELTRONICS_DB_PATH"
+          if npm run db:verify; then
+            echo "db:verify unexpectedly accepted malformed JSON."
+            exit 1
+          fi
+
+          printf '{"owner":"ci-lock"}' > "$CELTRONICS_DB_PATH.lock"
+          if npm run db:restore -- --from "$BACKUP_PATH" --confirm; then
+            echo "db:restore unexpectedly ignored an active lock."
+            exit 1
+          fi
+          rm "$CELTRONICS_DB_PATH.lock"
+
+          npm run db:restore -- --from "$BACKUP_PATH" --confirm
+          npm run db:verify
+          cmp src/data/db.json "$CELTRONICS_DB_PATH"
+
       - name: Production build
         run: npm run build
 

@@ -63,6 +63,22 @@ CELTRONICS_DB_SLOW_TX_MS=1000
 
 Invalid timing values fail closed. The heartbeat interval must remain lower than the stale-lock threshold. The server emits warnings when lock acquisition or a transaction exceeds the configured warning threshold.
 
+### Backup and recovery
+
+The file-backed store includes explicit maintenance commands:
+
+```bash
+npm run db:verify
+npm run db:backup
+npm run db:restore -- --from /persistent/celtronics/backups/db-YYYY-MM-DDTHH-MM-SS-sssZ.json --confirm
+```
+
+`db:backup` validates the current JSON before copying it and writes backups with restrictive file permissions. By default backups go to a `backups/` directory next to `CELTRONICS_DB_PATH`; set `CELTRONICS_DB_BACKUP_DIR` to use another durable location.
+
+Before restore, stop application writers. `db:restore` refuses to run while the database lock file exists, validates the selected backup, preserves the current database as a `pre-restore-*.json` safety copy when present, replaces the live database atomically, and verifies the restored checksum.
+
+The Platform Audit CI runs a recovery drill that backs up the development seed, corrupts a disposable live copy, verifies detection, proves restore is blocked by an active lock, restores the backup, and compares the recovered file byte-for-byte with the original.
+
 ### Important limitation
 
 The file-backed store is an interim persistence layer. It is suitable only for a deployment model that provides a durable writable volume and controlled application concurrency. A future database migration should replace it before horizontal scaling or multi-instance writes.
