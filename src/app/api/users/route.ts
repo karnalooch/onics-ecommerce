@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { initializeMockData } from '@/store/serverStore';
+import { initializeMockData, saveMockData } from '@/store/serverStore';
 import { authorizeAPI } from '@/lib/authUtils';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,11 @@ export async function PUT(req: Request) {
   const idx = users.findIndex((u: any) => u.id === body.id);
   
   if (idx !== -1) {
-    users[idx] = { ...users[idx], ...body, updatedAt: new Date().toISOString() };
+    const { passwordHash: _ignoredPasswordHash, ...safeBody } = body;
+    users[idx] = { ...users[idx], ...safeBody, updatedAt: new Date().toISOString() };
+    if (!saveMockData()) {
+      return NextResponse.json({ error: "Nie udało się zapisać użytkownika." }, { status: 500 });
+    }
     return NextResponse.json(users[idx]);
   }
   return NextResponse.json({error: "Not Found"}, {status: 404});
@@ -39,6 +43,9 @@ export async function DELETE(req: Request) {
   const idx = users.findIndex((u: any) => u.id === id);
   if (idx !== -1) {
     users.splice(idx, 1);
+    if (!saveMockData()) {
+      return NextResponse.json({ error: "Nie udało się zapisać zmian." }, { status: 500 });
+    }
     return NextResponse.json({ success: true });
   }
   return NextResponse.json({error: "Not Found"}, {status: 404});

@@ -18,11 +18,20 @@ import {
 export default async function B2BLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
-  if (!session || (session.user as any)?.role !== 'BIZ') {
+  const user = session?.user as (typeof session.user & {
+    role?: string
+    isApproved?: boolean
+    companyName?: string
+    nip?: string | null
+  }) | undefined;
+
+  if (!session || !user || user.role !== 'BIZ') {
     redirect('/logowanie');
   }
 
-  const user = session.user as any;
+  if (!user.isApproved) {
+    redirect('/sklep');
+  }
 
   return (
     <div className="flex min-h-screen bg-white font-mono selection:bg-primary/20" suppressHydrationWarning>

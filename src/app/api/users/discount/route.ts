@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { authorizeAPI } from "@/lib/authUtils";
-import { initializeMockData } from "@/store/serverStore";
+import { initializeMockData, saveMockData } from "@/store/serverStore";
 
 export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"]);
@@ -28,6 +28,10 @@ export async function PUT(req: Request) {
     // Update in mock store
     users[userIndex].discount = numDiscount;
     users[userIndex].tierName = cleanTierStr;
+
+    if (!saveMockData()) {
+      return NextResponse.json({ error: "Nie udało się zapisać rabatu." }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, user: users[userIndex] });
   } catch (e) {

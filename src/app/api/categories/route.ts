@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { initializeMockData } from '@/store/serverStore';
+import { initializeMockData, saveMockData } from '@/store/serverStore';
 import { authorizeAPI } from '@/lib/authUtils';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,10 @@ export async function POST(req: Request) {
     subcategories: body.subcategories || []
   };
   categories.push(newCat);
-  return NextResponse.json(newCat);
+  if (!saveMockData()) {
+    return NextResponse.json({ error: "Nie udało się zapisać kategorii." }, { status: 500 });
+  }
+  return NextResponse.json(newCat, { status: 201 });
 }
 
 export async function PUT(req: Request) {
@@ -55,6 +58,9 @@ export async function PUT(req: Request) {
     categories[idx] = updatedCategory;
     
     console.log(`[API] Zaktualizowano kategorię ${body.id}. Liczba subkategorii: ${updatedCategory.subcategories?.length}`);
+    if (!saveMockData()) {
+      return NextResponse.json({ error: "Nie udało się zapisać kategorii." }, { status: 500 });
+    }
     return NextResponse.json(updatedCategory);
   }
   return NextResponse.json({error: "Not Found"}, {status: 404});
@@ -71,6 +77,9 @@ export async function DELETE(req: Request) {
   const idx = categories.findIndex((c: any) => c.id === id);
   if (idx !== -1) {
     categories.splice(idx, 1);
+    if (!saveMockData()) {
+      return NextResponse.json({ error: "Nie udało się zapisać zmian." }, { status: 500 });
+    }
     return NextResponse.json({ success: true });
   }
   return NextResponse.json({error: "Not Found"}, {status: 404});

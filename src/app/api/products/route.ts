@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
-import { initializeMockData } from '@/store/serverStore';
+import { initializeMockData, saveMockData } from '@/store/serverStore';
 import { authorizeAPI } from '@/lib/authUtils';
 import { getKnowledge } from '@/lib/knowledge/parser';
 import fs from 'fs';
@@ -194,6 +194,9 @@ export async function POST(req: Request) {
     });
 
     logImport(`--- KONIEC IMPORTU (Zaktualizowano: ${updatedCount}, Dodano: ${addedCount}, Suma w bazie: ${products.length}) ---`);
+    if (!saveMockData()) {
+      return NextResponse.json({ error: "Nie udało się utrwalić importu." }, { status: 500 });
+    }
     return NextResponse.json({ success: true, updatedCount, addedCount });
   }
 
@@ -203,7 +206,10 @@ export async function POST(req: Request) {
     ...body
   };
   products.push(newProduct);
-  return NextResponse.json(newProduct);
+  if (!saveMockData()) {
+    return NextResponse.json({ error: "Nie udało się zapisać produktu." }, { status: 500 });
+  }
+  return NextResponse.json(newProduct, { status: 201 });
 }
 
 export async function PUT(req: Request) {
@@ -216,6 +222,9 @@ export async function PUT(req: Request) {
   const idx = products.findIndex((p: any) => p.id === body.id);
   if (idx !== -1) {
     products[idx] = { ...products[idx], ...body };
+    if (!saveMockData()) {
+      return NextResponse.json({ error: "Nie udało się zapisać produktu." }, { status: 500 });
+    }
     return NextResponse.json(products[idx]);
   }
   return NextResponse.json({error: "Not Found"}, {status: 404});
@@ -232,6 +241,9 @@ export async function DELETE(req: Request) {
   const idx = products.findIndex((p: any) => p.id === id);
   if (idx !== -1) {
     products.splice(idx, 1);
+    if (!saveMockData()) {
+      return NextResponse.json({ error: "Nie udało się zapisać zmian." }, { status: 500 });
+    }
     return NextResponse.json({ success: true });
   }
   return NextResponse.json({error: "Not Found"}, {status: 404});

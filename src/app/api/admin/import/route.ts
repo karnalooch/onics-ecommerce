@@ -1,47 +1,45 @@
-import { NextResponse } from 'next/server';
-import { initializeMockData, saveMockData } from "@/store/serverStore";
+import { NextResponse } from "next/server"
+import crypto from "crypto"
+import { initializeMockData, saveMockData } from "@/store/serverStore"
+
+function safeEqual(candidate: string, expected: string) {
+  const candidateBuffer = Buffer.from(candidate)
+  const expectedBuffer = Buffer.from(expected)
+  if (candidateBuffer.length !== expectedBuffer.length) return false
+  return crypto.timingSafeEqual(candidateBuffer, expectedBuffer)
+}
 
 export async function POST(req: Request) {
+  const secret = process.env.WF_MAG_SECRET
+  if (!secret) {
+    return NextResponse.json(
+      { error: "Import WF-Mag nie jest skonfigurowany." },
+      { status: 503 }
+    )
+  }
+
+  const authHeader = req.headers.get("authorization") || ""
+  const expectedHeader = `Bearer ${secret}`
+
+  if (!safeEqual(authHeader, expectedHeader)) {
+    return NextResponse.json({ error: "Nieautoryzowany dostęp." }, { status: 401 })
+  }
+
   try {
-    const rawData = await req.text();
-    
-    const authHeader = req.headers.get('Authorization');
-    // Używamy klucza z .env lub domyślnego dla testów
-    if (authHeader !== `Bearer ${process.env.WF_MAG_SECRET || 'dev-secret'}`) {
-      return NextResponse.json({ error: 'Nieautoryzowany dostęp' }, { status: 401 });
+    const rawData = await req.text()
+    if (!rawData.trim()) {
+      return NextResponse.json({ error: "Brak danych do importu." }, { status: 400 })
     }
 
-    if (!rawData) {
-      return NextResponse.json({ error: 'Brak danych do importu.' }, { status: 400 });
-    }
-
-    // W rzeczywistym systemie tutaj parsujemy XML/XLSX
-    // Na potrzeby "Porządku" symulujemy dodanie produktu do bazy JSON
-    const { products } = initializeMockData();
-    
-    const importedProduct = {
-      id: `p_import_${Date.now()}`,
-      sku: "WF-" + Math.floor(Math.random() * 1000),
-      name: "Produkt z Importu WF-Mag",
-      price: 99.99,
-      stock: 10,
-      description: "Automatyczny import z systemu ERP",
-      importedAt: new Date().toISOString()
-    };
-
-    (global as any).mockProductsStore.push(importedProduct);
-    saveMockData();
-
-    console.log("Pomyślnie zaimportowano produkt do db.json");
-
-    return NextResponse.json({
-      success: true,
-      message: 'Dane z ERP pomyślnie zapisane w db.json.',
-      timestamp: new Date().toISOString()
-    });
-
+    return NextResponse.json(
+      {
+        error:
+          "Legacy endpoint nie importuje jeszcze rzeczywistych danych WF-Mag. Użyj importera w panelu administracyjnym.",
+      },
+      { status: 501 }
+    )
   } catch (error) {
-    console.error("Błąd podczas importu:", error);
-    return NextResponse.json({ error: "Błąd serwera podczas zapisu w db.json" }, { status: 500 });
+    console.error("Błąd podczas importu WF-Mag:", error)
+    return NextResponse.json({ error: "Błąd serwera." }, { status: 500 })
   }
 }
