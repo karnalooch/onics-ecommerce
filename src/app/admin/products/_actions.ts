@@ -256,83 +256,94 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
 export async function syncImportWithCatalogAction(items: any[]): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   try {
-    const store = await getKnowledge();
-    
-    const { products: rawProducts } = initializeMockData();
-    const products = rawProducts as any[];
-    let autoAddedCount = 0;
-    
-    const enriched = items.map(item => {
-      const match = findBestKnowledgeMatch(item.name || '', item.sku, store);
-      let quality: { isClean: boolean; reason?: string } = { isClean: false, reason: "Brak danych w katalogu" };
-      let catalogPrice = 0;
-      let catalogSpecs = "";
-      let priceMismatch = false;
+    const result = await mutateMockData(async (db) => {
+      const store = await getKnowledge();
+      const products = db.products as any[];
+      let autoAddedCount = 0;
 
-      if (match) {
-        catalogPrice = match.entry.price || 0;
-        catalogSpecs = match.entry.specs || "";
-        const wfMagPrice = Number(item.price || 0);
-        priceMismatch = Math.abs(wfMagPrice - catalogPrice) > 0.01;
-        
-        // Quality check based on extracted metadata or current item state
-        quality = checkQuality({
-          manufacturer: item.manufacturer || match.entry.manufacturer,
-          category: item.xlsCategoryName || match.entry.category,
-          subcategory: item.xlsSubcategoryName || match.entry.subcategory
-        });
-      }
+      const enriched = items
+        .map((item) => {
+          const match = findBestKnowledgeMatch(item.name || "", item.sku, store);
+          let quality: { isClean: boolean; reason?: string } = {
+            isClean: false,
+            reason: "Brak danych w katalogu"
+          };
+          let catalogPrice = 0;
+          let catalogSpecs = "";
+          let priceMismatch = false;
 
-      const enrichedItem = {
-        ...item,
-        catalogPrice,
-        catalogSpecs,
-        priceMismatch,
-        qualityLevel: quality.isClean ? 'HIGH' : 'LOW',
-        qualityReason: quality.reason || "",
-        manufacturer: item.manufacturer || (match?.entry.manufacturer || ""),
-      };
+          if (match) {
+            catalogPrice = match.entry.price || 0;
+            catalogSpecs = match.entry.specs || "";
+            const wfMagPrice = Number(item.price || 0);
+            priceMismatch = Math.abs(wfMagPrice - catalogPrice) > 0.01;
+            quality = checkQuality({
+              manufacturer: item.manufacturer || match.entry.manufacturer,
+              category: item.xlsCategoryName || match.entry.category,
+              subcategory: item.xlsSubcategoryName || match.entry.subcategory
+            });
+          }
 
-      // AUTO-COMMIT LOGIC (Shield V9.6)
-      if (quality.isClean && !priceMismatch) {
-        const imSku = String(item.sku || '').trim().toLowerCase();
-        const existingIdx = products.findIndex((p: any) => String(p.sku || '').trim().toLowerCase() === imSku);
-        
-        const iqData = {
-          catalogPrice: match?.entry.price || 0,
-          catalogSpecs: match?.entry.specs || "",
-          manufacturer: item.manufacturer || match?.entry.manufacturer,
-          isIqSynced: true
-        };
+          const enrichedItem = {
+            ...item,
+            catalogPrice,
+            catalogSpecs,
+            priceMismatch,
+            qualityLevel: quality.isClean ? "HIGH" : "LOW",
+            qualityReason: quality.reason || "",
+            manufacturer: item.manufacturer || match?.entry.manufacturer || ""
+          };
 
-        if (existingIdx !== -1) {
-          products[existingIdx] = { ...products[existingIdx], ...enrichedItem, ...iqData, isAutoSynced: true };
-        } else {
-          products.push({ 
-            id: `p_auto_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-            ...enrichedItem,
-            ...iqData,
-            isAutoSynced: true 
-          });
-        }
-        autoAddedCount++;
-        return null; // Remove from staging payload
-      }
+          if (quality.isClean && !priceMismatch) {
+            const normalizedSku = String(item.sku || "").trim().toLowerCase();
+            const existingIdx = products.findIndex(
+              (product) =>
+                String(product.sku || "").trim().toLowerCase() === normalizedSku
+            );
+            const iqData = {
+              catalogPrice: match?.entry.price || 0,
+              catalogSpecs: match?.entry.specs || "",
+              manufacturer: item.manufacturer || match?.entry.manufacturer,
+              isIqSynced: true
+            };
 
-      return enrichedItem;
-    }).filter(Boolean); // Filter out auto-committed items
+            if (existingIdx !== -1) {
+              products[existingIdx] = {
+                ...products[existingIdx],
+                ...enrichedItem,
+                ...iqData,
+                isAutoSynced: true
+              };
+            } else {
+              products.push({
+                id: `p_auto_${crypto.randomUUID()}`,
+                ...enrichedItem,
+                ...iqData,
+                isAutoSynced: true
+              });
+            }
+            autoAddedCount += 1;
+            return null;
+          }
 
-    saveMockData(); // Persist to JSON
-    
-    return { 
-      success: true, 
-      message: autoAddedCount > 0 
-        ? `Zsynchronizowano. Dodano/Zaktualizowano automatycznie: ${autoAddedCount}. Reszta (${enriched.length}) wymaga uwagi na Biurku.` 
-        : "Synchronizacja zakończona. Wszystkie pozycje wymagają weryfikacji.", 
-      data: enriched 
+          return enrichedItem;
+        })
+        .filter(Boolean);
+
+      return { autoAddedCount, enriched };
+    });
+
+    return {
+      success: true,
+      message:
+        result.autoAddedCount > 0
+          ? `Zsynchronizowano. Dodano/Zaktualizowano automatycznie: ${result.autoAddedCount}. Reszta (${result.enriched.length}) wymaga uwagi na Biurku.`
+          : "Synchronizacja zakończona. Wszystkie pozycje wymagają weryfikacji.",
+      data: result.enriched
     };
-  } catch (e) {
+  } catch {
     return { success: false, error: "Błąd podczas synchronizacji z katalogiem" };
   }
 }
@@ -343,36 +354,47 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
 export async function generateAiDescriptionAction(productId: string): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   try {
-    const { products: rawProducts } = initializeMockData();
-    const products = rawProducts as any[];
-    const product = products.find((p: any) => p.id === productId);
-    if (!product) return { success: false, error: "Nie znaleziono produktu" };
+    const result = await mutateMockData(async (db) => {
+      const products = db.products as any[];
+      const product = products.find((entry) => entry.id === productId);
+      if (!product) throw new Error("PRODUCT_NOT_FOUND");
 
-    const GEMINI_API_KEY = process.env.GOOGLE_GEMINI_API_KEY;
-    let technicalContext = "";
+      let technicalContext = "";
+      try {
+        const localStore = await getKnowledge();
+        const match = findBestKnowledgeMatch(
+          String(product.name || ""),
+          String(product.sku || ""),
+          localStore
+        );
+        if (match) technicalContext = match.entry.specs;
+      } catch {}
 
-    try {
-      const localStore = await getKnowledge();
-      const match = findBestKnowledgeMatch(product.name, product.sku, localStore);
-      if (match) technicalContext = match.entry.specs;
-    } catch (e) {}
+      const generatedDescription =
+        technicalContext || String(product.seoDescription || "");
+      if (!generatedDescription) throw new Error("KNOWLEDGE_NOT_FOUND");
 
-    let generatedDescription = product.seoDescription;
-    
-    // If we have technical context, use it as the description base
-    if (technicalContext) {
-       generatedDescription = technicalContext;
-    }
+      product.seoDescription = generatedDescription;
+      product.isIqSynced = true;
+      return generatedDescription;
+    });
 
-    product.seoDescription = generatedDescription;
-    product.isIqSynced = true; // Mark as synced
-    saveMockData(); // Persist to JSON
     revalidatePath("/admin/products");
     revalidatePath("/admin/catalog");
-    
-    return { success: true, message: "Opis został zaimportowany z Bazy Wiedzy IQ", data: generatedDescription };
-  } catch (e) {
+    return {
+      success: true,
+      message: "Opis został zaimportowany z Bazy Wiedzy IQ",
+      data: result
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
+      return { success: false, error: "Nie znaleziono produktu" };
+    }
+    if (error instanceof Error && error.message === "KNOWLEDGE_NOT_FOUND") {
+      return { success: false, error: "Brak opisu w Bazie Wiedzy IQ" };
+    }
     return { success: false, error: "Błąd generatora AI" };
   }
 }
@@ -383,35 +405,49 @@ export async function generateAiDescriptionAction(productId: string): Promise<Ac
 export async function syncProductWithIqAction(productId: string): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
+
   try {
-    const store = await getKnowledge();
-    const { products: rawProducts } = initializeMockData();
-    const products = rawProducts as any[];
-    const product = products.find((p: any) => p.id === productId);
-    
-    if (!product) return { success: false, error: "Nie znaleziono produktu" };
+    const product = await mutateMockData(async (db) => {
+      const products = db.products as any[];
+      const current = products.find((entry) => entry.id === productId);
+      if (!current) throw new Error("PRODUCT_NOT_FOUND");
 
-    const match = findBestKnowledgeMatch(product.name, product.sku, store);
-    if (!match) return { success: false, error: "Brak wzorca technicznego w IQ Hub dla tego urządzenia" };
+      const store = await getKnowledge();
+      const match = findBestKnowledgeMatch(
+        String(current.name || ""),
+        String(current.sku || ""),
+        store
+      );
+      if (!match) throw new Error("IQ_NOT_FOUND");
 
-    // Update product with intelligence data
-    product.catalogPrice = match.entry.price || 0;
-    product.catalogSpecs = match.entry.specs || "";
-    product.description = match.entry.specs || "";
-    product.seoDescription = match.entry.specs || "";
-    product.manufacturer = product.manufacturer || (match.entry.manufacturer || "");
-    product.isIqSynced = true;
+      current.catalogPrice = match.entry.price || 0;
+      current.catalogSpecs = match.entry.specs || "";
+      current.description = match.entry.specs || "";
+      current.seoDescription = match.entry.specs || "";
+      current.manufacturer =
+        current.manufacturer || match.entry.manufacturer || "";
+      current.isIqSynced = true;
+      return { ...current };
+    });
 
-    saveMockData();
     revalidatePath("/admin/products");
     revalidatePath("/admin/catalog");
-
-    return { 
-      success: true, 
-      message: `Produkt zsynchronizowany z IQ Hub. Wykryto MSRP: ${product.catalogPrice} PLN.`,
-      data: product 
+    return {
+      success: true,
+      message:
+        `Produkt zsynchronizowany z IQ Hub. Wykryto MSRP: ${product.catalogPrice} PLN.`,
+      data: product
     };
-  } catch (e) {
+  } catch (error) {
+    if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
+      return { success: false, error: "Nie znaleziono produktu" };
+    }
+    if (error instanceof Error && error.message === "IQ_NOT_FOUND") {
+      return {
+        success: false,
+        error: "Brak wzorca technicznego w IQ Hub dla tego urządzenia"
+      };
+    }
     return { success: false, error: "Błąd podczas synchronizacji IQ" };
   }
 }
