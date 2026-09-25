@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
-import { initializeMockData, mutateMockData } from "@/store/serverStore";
+import { mutateMockData } from "@/store/serverStore";
 import { getKnowledge, saveKnowledge, checkQuality } from "@/lib/knowledge/parser";
 import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher";
 
