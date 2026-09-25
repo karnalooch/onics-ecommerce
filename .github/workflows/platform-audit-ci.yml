@@ -47,6 +47,7 @@ jobs:
           src/lib/storageConfig.ts
           src/store/serverStore.ts
           src/lib/knowledge/files.ts
+          src/lib/knowledge/parser.ts
           src/lib/knowledge/KnowledgeContext.tsx
           src/app/api/register/route.ts
           src/app/api/orders/route.ts
@@ -76,6 +77,10 @@ jobs:
           fi
           if grep -R --line-number -E "mock(Users|Categories|Manufacturers|Products|Orders|Repairs|KnowledgeMeta)Store" src; then
             echo "Direct legacy global store access detected. Use initializeMockData or mutateMockData."
+            exit 1
+          fi
+          if grep -R --line-number --fixed-string "mutateMockData(async" src; then
+            echo "Async work inside mutateMockData detected. Prepare external work before the DB lock or use synchronous snapshot helpers."
             exit 1
           fi
 
