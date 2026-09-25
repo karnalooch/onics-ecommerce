@@ -70,8 +70,12 @@ jobs:
 
       - name: Reject legacy file-store writers
         run: |
-          if grep -R --line-number --fixed-string "saveMockData" src --exclude=serverStore.ts; then
-            echo "Legacy saveMockData caller detected. Use mutateMockData instead."
+          if grep -R --line-number --fixed-string "saveMockData" src; then
+            echo "Legacy saveMockData detected. Use mutateMockData instead."
+            exit 1
+          fi
+          if grep -R --line-number -E "mock(Users|Categories|Manufacturers|Products|Orders|Repairs|KnowledgeMeta)Store" src --exclude=serverStore.ts; then
+            echo "Direct legacy global store access detected. Use initializeMockData or mutateMockData."
             exit 1
           fi
 
