@@ -177,8 +177,14 @@ export default function LoginPage() {
           <div className="mt-8 border-t border-black/5 pt-6 text-sm font-medium leading-6 text-muted-foreground dark:border-white/10">
             <strong className="text-foreground">Nie masz dostępu?</strong>
             <p className="mt-2">
-              Skontaktuj się z CEL-TRONICS, jeśli potrzebujesz konta B2B lub pomocy z logowaniem.
+              Skontaktuj się z CEL-TRONICS, jeśli potrzebujesz pomocy z logowaniem, albo złóż wniosek o nowe konto partnera.
             </p>
+            <Link
+              href="/rejestracja"
+              className="mt-4 inline-flex items-center gap-2 font-extrabold text-primary hover:underline"
+            >
+              Złóż wniosek o konto B2B
+            </Link>
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 font-bold">
               <a href="tel:+48256336800" className="text-primary hover:underline">25 633 68 00</a>
               <a href="mailto:serwis@celtronics.pl" className="text-primary hover:underline">
