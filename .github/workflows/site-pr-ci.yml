@@ -1,0 +1,51 @@
+name: Site PR CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-public-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      AUTH_SECRET: "ci-public-site-validation-only"
+      NEXTAUTH_SECRET: "ci-public-site-validation-only"
+      NEXTAUTH_URL: "http://localhost:3000"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint public site changes
+        run: >
+          npx eslint
+          src/app/page.tsx
+          src/app/layout.tsx
+          src/app/kontakt/page.tsx
+          src/app/logowanie/page.tsx
+          src/app/produkty/page.tsx
+          src/app/rejestracja/page.tsx
+          src/app/rejestracja/_components/OnboardingMissionControl.tsx
+          src/components/ui/IconicNav.tsx
+
+      - name: Run tests
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
