@@ -4,7 +4,6 @@ on:
   pull_request:
     branches:
       - main
-      - feat/celtronics-public-site-next
   workflow_dispatch:
 
 permissions:
@@ -70,6 +69,5 @@ jobs:
       - name: Production build
         run: npm run build
 
-      - name: Dependency audit snapshot
-        continue-on-error: true
+      - name: Dependency audit
         run: npm audit --audit-level=high
