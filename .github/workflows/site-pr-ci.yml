@@ -18,6 +18,8 @@ jobs:
       AUTH_SECRET: "ci-public-site-validation-only"
       NEXTAUTH_SECRET: "ci-public-site-validation-only"
       NEXTAUTH_URL: "http://localhost:3000"
+      CELTRONICS_DB_PATH: "${{ github.workspace }}/src/data/db.json"
+      CELTRONICS_UPLOAD_ROOT: "${{ runner.temp }}/celtronics-knowledge"
 
     steps:
       - name: Checkout
