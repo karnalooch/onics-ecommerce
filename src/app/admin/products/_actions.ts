@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
 import { mutateMockData } from "@/store/serverStore";
-import { getKnowledge, saveKnowledge, checkQuality } from "@/lib/knowledge/parser";
+import { buildKnowledgeFromDb, saveKnowledge, checkQuality } from "@/lib/knowledge/parser";
 import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher";
 
 /**
@@ -258,8 +258,8 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
   if (accessError) return accessError;
 
   try {
-    const result = await mutateMockData(async (db) => {
-      const store = await getKnowledge();
+    const result = await mutateMockData((db) => {
+      const store = buildKnowledgeFromDb(db);
       const products = db.products as any[];
       let autoAddedCount = 0;
 
@@ -356,14 +356,14 @@ export async function generateAiDescriptionAction(productId: string): Promise<Ac
   if (accessError) return accessError;
 
   try {
-    const result = await mutateMockData(async (db) => {
+    const result = await mutateMockData((db) => {
       const products = db.products as any[];
       const product = products.find((entry) => entry.id === productId);
       if (!product) throw new Error("PRODUCT_NOT_FOUND");
 
       let technicalContext = "";
       try {
-        const localStore = await getKnowledge();
+        const localStore = buildKnowledgeFromDb(db);
         const match = findBestKnowledgeMatch(
           String(product.name || ""),
           String(product.sku || ""),
@@ -407,12 +407,12 @@ export async function syncProductWithIqAction(productId: string): Promise<Action
   if (accessError) return accessError;
 
   try {
-    const product = await mutateMockData(async (db) => {
+    const product = await mutateMockData((db) => {
       const products = db.products as any[];
       const current = products.find((entry) => entry.id === productId);
       if (!current) throw new Error("PRODUCT_NOT_FOUND");
 
-      const store = await getKnowledge();
+      const store = buildKnowledgeFromDb(db);
       const match = findBestKnowledgeMatch(
         String(current.name || ""),
         String(current.sku || ""),
@@ -460,8 +460,8 @@ export async function activateVirtualProductAction(sku: string): Promise<ActionS
   if (accessError) return accessError;
 
   try {
-    const newProduct = await mutateMockData(async (db) => {
-      const store = await getKnowledge();
+    const newProduct = await mutateMockData((db) => {
+      const store = buildKnowledgeFromDb(db);
       const entry = store.knowledge[sku];
       if (!entry) throw new Error("IQ_NOT_FOUND");
 
