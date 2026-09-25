@@ -6,6 +6,13 @@ import { resolvePersistentPath } from "@/lib/storageConfig"
 const DB_LOCK_RETRY_MS = 25
 const DB_LOCK_TIMEOUT_MS = 5_000
 const DB_LOCK_STALE_MS = 30_000
+const DB_LOCK_HEARTBEAT_MS = 5_000
+
+type DbLockMetadata = {
+  owner: string
+  pid: number
+  acquiredAt: string
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -63,26 +70,75 @@ export function writeDb(data: unknown) {
   }
 }
 
+function readLockMetadata(lockPath: string): DbLockMetadata | null {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(lockPath, "utf-8")) as Partial<DbLockMetadata>
+    if (
+      typeof parsed.owner !== "string" ||
+      typeof parsed.pid !== "number" ||
+      typeof parsed.acquiredAt !== "string"
+    ) {
+      return null
+    }
+    return parsed as DbLockMetadata
+  } catch {
+    return null
+  }
+}
+
+function isProcessAlive(pid: number) {
+  if (!Number.isInteger(pid) || pid <= 0) return false
+
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    return code !== "ESRCH"
+  }
+}
+
+function ownsLock(lockPath: string, owner: string) {
+  return readLockMetadata(lockPath)?.owner === owner
+}
+
 async function acquireDbLock() {
   const dbPath = getDbPath()
   const lockPath = `${dbPath}.lock`
   const deadline = Date.now() + DB_LOCK_TIMEOUT_MS
+  const owner = crypto.randomUUID()
 
   fs.mkdirSync(path.dirname(dbPath), { recursive: true })
 
   while (Date.now() < deadline) {
     try {
       const handle = fs.openSync(lockPath, "wx", 0o600)
-      fs.writeFileSync(
-        handle,
-        JSON.stringify({ pid: process.pid, acquiredAt: new Date().toISOString() })
-      )
+      const metadata: DbLockMetadata = {
+        owner,
+        pid: process.pid,
+        acquiredAt: new Date().toISOString(),
+      }
+      fs.writeFileSync(handle, JSON.stringify(metadata))
+
+      const heartbeat = setInterval(() => {
+        try {
+          if (!ownsLock(lockPath, owner)) return
+          const now = new Date()
+          fs.utimesSync(lockPath, now, now)
+        } catch {
+          // The lock may already be released or replaced.
+        }
+      }, DB_LOCK_HEARTBEAT_MS)
+      heartbeat.unref()
 
       return () => {
+        clearInterval(heartbeat)
         try {
           fs.closeSync(handle)
         } finally {
-          fs.rmSync(lockPath, { force: true })
+          if (ownsLock(lockPath, owner)) {
+            fs.rmSync(lockPath, { force: true })
+          }
         }
       }
     } catch (error) {
@@ -92,8 +148,15 @@ async function acquireDbLock() {
       try {
         const stat = fs.statSync(lockPath)
         if (Date.now() - stat.mtimeMs > DB_LOCK_STALE_MS) {
-          fs.rmSync(lockPath, { force: true })
-          continue
+          const observed = readLockMetadata(lockPath)
+          if (
+            observed &&
+            !isProcessAlive(observed.pid) &&
+            ownsLock(lockPath, observed.owner)
+          ) {
+            fs.rmSync(lockPath, { force: true })
+            continue
+          }
         }
       } catch (statError) {
         const statCode = (statError as NodeJS.ErrnoException).code
