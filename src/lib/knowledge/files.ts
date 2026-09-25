@@ -1,11 +1,16 @@
 import path from "path"
+import { resolvePersistentPath } from "@/lib/storageConfig"
 
-export const KNOWLEDGE_UPLOAD_ROOT = path.join(
-  process.cwd(),
-  "public",
-  "uploads",
-  "catalogs"
-)
+export const KNOWLEDGE_UPLOAD_ROOT = resolvePersistentPath({
+  envName: "CELTRONICS_UPLOAD_ROOT",
+  configuredPath: process.env.CELTRONICS_UPLOAD_ROOT,
+  developmentFallback: path.join(
+    process.cwd(),
+    "public",
+    "uploads",
+    "catalogs"
+  ),
+})
 
 export const ALLOWED_KNOWLEDGE_EXTENSIONS = new Set([
   ".pdf",
