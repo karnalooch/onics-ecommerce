@@ -31,19 +31,20 @@ export default async function B2BLayout({ children }: { children: React.ReactNod
   }
 
   const { users } = initializeMockData();
-  const currentUser = users.find(
-    (user: {
-      id?: string
-      email?: string
-      companyName?: string
-      username?: string
-      roleType?: string
-      isApproved?: boolean
-      isBlocked?: boolean
-      nip?: string | null
-      discount?: number
-      tierName?: string
-    }) =>
+  const userStore = users as Array<{
+    id?: string
+    email?: string
+    companyName?: string
+    username?: string
+    roleType?: string
+    isApproved?: boolean
+    isBlocked?: boolean
+    nip?: string | null
+    discount?: number
+    tierName?: string
+  }>;
+  const currentUser = userStore.find(
+    (user) =>
       (sessionUser.id && user.id === sessionUser.id) ||
       (sessionUser.email &&
         user.email?.toLowerCase() === sessionUser.email.toLowerCase())
