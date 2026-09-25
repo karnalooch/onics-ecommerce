@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
-import { initializeMockData, saveMockData } from "@/store/serverStore";
+import { mutateMockData } from "@/store/serverStore";
 
 const SubcategorySchema = z.object({
   id: z.string(),
@@ -18,9 +18,18 @@ const CategoryUpdateSchema = z.object({
   subcategories: z.array(SubcategorySchema).optional()
 });
 
-export type ActionState = 
+type CategoryRecord = {
+  id: string
+  name: string
+  iconName?: string
+  subcategories?: Array<{ id: string; name: string }>
+  [key: string]: unknown
+}
+
+export type ActionState =
   | { success: true; message: string; data?: any }
   | { success: false; error: string };
+
 async function requireAdminAction() {
   const authCheck = await authorizeAPI(["ADMIN"]);
   if (!authCheck.authorized) {
@@ -29,35 +38,31 @@ async function requireAdminAction() {
   return null;
 }
 
-
-/**
- * Dodaje nową kategorię główną
- */
 export async function addCategoryAction(name: string): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
   if (!name.trim()) return { success: false, error: "Nazwa kategorii nie może być pusta" };
-  
+
   try {
-    const { categories } = initializeMockData();
-    const newCat = {
-      id: `c${Date.now()}`,
-      name: name.trim().toUpperCase(),
-      iconName: "Folder",
-      subcategories: []
-    };
-    categories.push(newCat);
-    if (!saveMockData()) return { success: false, error: "Nie udało się zapisać kategorii" };
+    const newCat = await mutateMockData((db) => {
+      const categories = db.categories as CategoryRecord[]
+      const category: CategoryRecord = {
+        id: `c${Date.now()}`,
+        name: name.trim().toUpperCase(),
+        iconName: "Folder",
+        subcategories: []
+      }
+      categories.push(category)
+      return category
+    })
+
     revalidatePath("/admin/categories");
     return { success: true, message: "Kategoria została dodana", data: newCat };
-  } catch (e) {
+  } catch {
     return { success: false, error: "Błąd podczas dodawania kategorii" };
   }
 }
 
-/**
- * Aktualizuje dane kategorii (nazwa, ikona, subkategorie)
- */
 export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSchema>): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
@@ -65,41 +70,48 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
   if (!validated.success) return { success: false, error: "Nieprawidłowe dane" };
 
   try {
-    const { categories } = initializeMockData();
-    const idx = categories.findIndex((c: any) => c.id === validated.data.id);
-    if (idx === -1) return { success: false, error: "Nie znaleziono kategorii" };
+    await mutateMockData((db) => {
+      const categories = db.categories as CategoryRecord[]
+      const idx = categories.findIndex((category) => category.id === validated.data.id)
+      if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
 
-    categories[idx] = { 
-      ...categories[idx], 
-      ...validated.data,
-      // Jeśli nazwa jest aktualizowana, upewnij się że jest UPPERCASE dla kategorii głównej
-      name: validated.data.name ? validated.data.name.toUpperCase() : categories[idx].name
-    };
+      categories[idx] = {
+        ...categories[idx],
+        ...validated.data,
+        name: validated.data.name
+          ? validated.data.name.toUpperCase()
+          : categories[idx].name
+      }
+    })
 
-    if (!saveMockData()) return { success: false, error: "Nie udało się zapisać kategorii" };
     revalidatePath("/admin/categories");
     return { success: true, message: "Zmiany zostały zapisane" };
-  } catch (e) {
+  } catch (error) {
+    if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
+      return { success: false, error: "Nie znaleziono kategorii" };
+    }
     return { success: false, error: "Błąd podczas aktualizacji" };
   }
 }
 
-/**
- * Usuwa kategorię główną
- */
 export async function deleteCategoryAction(id: string): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
-  try {
-    const { categories } = initializeMockData();
-    const idx = categories.findIndex((c: any) => c.id === id);
-    if (idx === -1) return { success: false, error: "Nie znaleziono kategorii" };
 
-    categories.splice(idx, 1);
-    if (!saveMockData()) return { success: false, error: "Nie udało się zapisać zmian" };
+  try {
+    await mutateMockData((db) => {
+      const categories = db.categories as CategoryRecord[]
+      const idx = categories.findIndex((category) => category.id === id)
+      if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
+      categories.splice(idx, 1)
+    })
+
     revalidatePath("/admin/categories");
     return { success: true, message: "Kategoria została usunięta" };
-  } catch (e) {
+  } catch (error) {
+    if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
+      return { success: false, error: "Nie znaleziono kategorii" };
+    }
     return { success: false, error: "Błąd podczas usuwania" };
   }
 }

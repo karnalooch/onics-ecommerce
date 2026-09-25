@@ -16,7 +16,7 @@ interface AIItem {
   price?: number | null;
 }
 
-import { initializeMockData, saveMockData as saveToDb } from '@/store/serverStore';
+import { initializeMockData, mutateMockData } from '@/store/serverStore';
 
 export async function getKnowledge(): Promise<KnowledgeStore> {
   try {
@@ -104,53 +104,51 @@ function resolveCategoryIds(categoryName: string | undefined, subcategoryName: s
 }
 
 export async function saveKnowledge(data: KnowledgeStore) {
-  const db = initializeMockData();
+  await mutateMockData((db) => {
+    const products = db.products as any[];
 
-  (global as any).mockKnowledgeMetaStore = {
-    sources: Array.from(new Set(data.sources || [])),
-    processedSources: Array.from(new Set(data.processedSources || [])),
-    lastUpdated: data.lastUpdated || new Date().toISOString()
-  };
-  
-  // Merge knowledge back into products
-  Object.entries(data.knowledge).forEach(([sku, entry]) => {
-    const existingIdx = db.products.findIndex((p: any) => p.sku === sku);
-    
-    // Rozwiąż ID kategorii i podkategorii
-    const { categoryId, subcategoryId } = resolveCategoryIds(entry.category, entry.subcategory, db);
+    db.knowledgeMeta = {
+      sources: Array.from(new Set(data.sources || [])),
+      processedSources: Array.from(new Set(data.processedSources || [])),
+      lastUpdated: data.lastUpdated || new Date().toISOString()
+    };
 
-    if (existingIdx !== -1) {
-      // Update existing
-      db.products[existingIdx] = {
-        ...db.products[existingIdx],
-        name: entry.model || db.products[existingIdx].name,
-        specs: entry.specs || db.products[existingIdx].specs,
-        price: entry.price || db.products[existingIdx].price,
-        manufacturer: entry.manufacturer || db.products[existingIdx].manufacturer,
-        // Nowe pola ID
-        categoryId: categoryId || db.products[existingIdx].categoryId,
-        subcategoryId: subcategoryId || db.products[existingIdx].subcategoryId,
-        lastUpdated: new Date().toISOString()
-      };
-    } else {
-      // Add new product to registry (Unified Pattern)
-      db.products.push({
-        id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        sku: sku,
-        name: entry.model || sku,
-        manufacturer: entry.manufacturer || "Nieznany",
-        price: entry.price || 0,
-        stock: 0,
-        specs: entry.specs || "",
-        categoryId: categoryId,
-        subcategoryId: subcategoryId,
-        isIqSynced: true,
-        lastUpdated: new Date().toISOString()
-      });
-    }
+    Object.entries(data.knowledge).forEach(([sku, entry]) => {
+      const existingIdx = products.findIndex((p: any) => p.sku === sku);
+      const { categoryId, subcategoryId } = resolveCategoryIds(
+        entry.category,
+        entry.subcategory,
+        db
+      );
+
+      if (existingIdx !== -1) {
+        products[existingIdx] = {
+          ...products[existingIdx],
+          name: entry.model || products[existingIdx].name,
+          specs: entry.specs || products[existingIdx].specs,
+          price: entry.price || products[existingIdx].price,
+          manufacturer: entry.manufacturer || products[existingIdx].manufacturer,
+          categoryId: categoryId || products[existingIdx].categoryId,
+          subcategoryId: subcategoryId || products[existingIdx].subcategoryId,
+          lastUpdated: new Date().toISOString()
+        };
+      } else {
+        products.push({
+          id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          sku,
+          name: entry.model || sku,
+          manufacturer: entry.manufacturer || "Nieznany",
+          price: entry.price || 0,
+          stock: 0,
+          specs: entry.specs || "",
+          categoryId,
+          subcategoryId,
+          isIqSynced: true,
+          lastUpdated: new Date().toISOString()
+        });
+      }
+    });
   });
-
-  saveToDb();
 }
 
 // --- CONFIG & UTILS ---

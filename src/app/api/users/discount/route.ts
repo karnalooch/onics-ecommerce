@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { mutateMockData } from "@/store/serverStore"
 
 type DiscountUser = {
   id: string
@@ -29,31 +29,28 @@ export async function PUT(req: Request) {
       )
     }
 
-    const { users } = initializeMockData()
-    const userStore = users as DiscountUser[]
-    const userIndex = userStore.findIndex(
-      (user) => user.id === parsed.data.id
-    )
+    const user = await mutateMockData((db) => {
+      const userStore = db.users as DiscountUser[]
+      const userIndex = userStore.findIndex(
+        (candidate) => candidate.id === parsed.data.id
+      )
 
-    if (userIndex === -1) {
+      if (userIndex === -1) throw new Error("USER_NOT_FOUND")
+
+      userStore[userIndex].discount = parsed.data.discount
+      userStore[userIndex].tierName = parsed.data.tierName.toUpperCase()
+      return { ...userStore[userIndex] }
+    })
+
+    return NextResponse.json({ success: true, user })
+  } catch (error) {
+    if (error instanceof Error && error.message === "USER_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono użytkownika." },
         { status: 404 }
       )
     }
 
-    userStore[userIndex].discount = parsed.data.discount
-    userStore[userIndex].tierName = parsed.data.tierName.toUpperCase()
-
-    if (!saveMockData()) {
-      return NextResponse.json(
-        { error: "Nie udało się zapisać rabatu." },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ success: true, user: userStore[userIndex] })
-  } catch (error) {
     console.error("Discount update error:", error)
     return NextResponse.json({ error: "Błąd serwera." }, { status: 500 })
   }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 export const dynamic = "force-dynamic"
 
@@ -55,6 +55,20 @@ type StoredUser = {
   discount?: number
 }
 
+type StoredOrder = {
+  id?: string
+  status?: string
+  estimatedDeliveryDays?: number | null
+  items?: Array<z.infer<typeof AdminOrderItemSchema>>
+  user?: {
+    id?: string
+    email?: string
+    companyName?: string
+    nip?: string | null
+  }
+  [key: string]: unknown
+}
+
 function findStoredUser(users: StoredUser[], sessionUser: SessionUser) {
   return users.find(
     (user) =>
@@ -70,13 +84,14 @@ export async function GET() {
 
   const sessionUser = authCheck.user as SessionUser
   const { orders } = initializeMockData()
+  const orderStore = orders as StoredOrder[]
 
   if (authCheck.currentRole === "ADMIN") {
-    return NextResponse.json(orders)
+    return NextResponse.json(orderStore)
   }
 
-  const ownOrders = orders.filter(
-    (order: { user?: { id?: string; email?: string } }) =>
+  const ownOrders = orderStore.filter(
+    (order) =>
       (sessionUser.id && order.user?.id === sessionUser.id) ||
       (sessionUser.email &&
         order.user?.email?.toLowerCase() === sessionUser.email.toLowerCase())
@@ -99,78 +114,68 @@ export async function POST(req: Request) {
     }
 
     const sessionUser = authCheck.user as SessionUser
-    const { users, products, orders } = initializeMockData()
-    const storedUser = findStoredUser(users as StoredUser[], sessionUser)
+    const newOrder = await mutateMockData((db) => {
+      const storedUser = findStoredUser(db.users as StoredUser[], sessionUser)
 
-    if (!storedUser) {
-      return NextResponse.json({ error: "Konto nie istnieje." }, { status: 401 })
-    }
-
-    if (storedUser.isBlocked) {
-      return NextResponse.json({ error: "Konto jest zablokowane." }, { status: 403 })
-    }
-
-    if (storedUser.roleType === "BIZ" && !storedUser.isApproved) {
-      return NextResponse.json(
-        { error: "Konto B2B oczekuje na zatwierdzenie." },
-        { status: 403 }
-      )
-    }
-
-    const isHardOrder = parsed.data.orderType === "ORDER"
-    const resolved = resolveCartItems(
-      parsed.data.items,
-      products,
-      {
-        id: String(storedUser.id ?? ""),
-        email: storedUser.email,
-        role: storedUser.roleType,
-        isApproved: storedUser.isApproved,
-        isBlocked: storedUser.isBlocked,
-        discount: storedUser.discount,
-        nip: storedUser.nip,
-      },
-      {
-        requirePriced: isHardOrder,
-        requireStock: isHardOrder,
+      if (!storedUser) throw new Error("Konto nie istnieje.")
+      if (storedUser.isBlocked) throw new Error("Konto jest zablokowane.")
+      if (storedUser.roleType === "BIZ" && !storedUser.isApproved) {
+        throw new Error("Konto B2B oczekuje na zatwierdzenie.")
       }
-    )
 
-    const newOrder = {
-      id: `ORD-${crypto.randomUUID()}`,
-      orderType: parsed.data.orderType,
-      createdAt: new Date().toISOString(),
-      status: isHardOrder ? "PENDING_VERIFICATION" : "INQUIRY",
-      estimatedDeliveryDays: null,
-      totalPriceOrig: resolved.total,
-      totalPriceFinal: resolved.total,
-      items: resolved.items,
-      user: {
-        id: storedUser.id,
-        email: storedUser.email,
-        companyName: storedUser.companyName,
-        nip: storedUser.nip ?? null,
-      },
-    }
+      const isHardOrder = parsed.data.orderType === "ORDER"
+      const resolved = resolveCartItems(
+        parsed.data.items,
+        db.products as Parameters<typeof resolveCartItems>[1],
+        {
+          id: String(storedUser.id ?? ""),
+          email: storedUser.email,
+          role: storedUser.roleType,
+          isApproved: storedUser.isApproved,
+          isBlocked: storedUser.isBlocked,
+          discount: storedUser.discount,
+          nip: storedUser.nip,
+        },
+        {
+          requirePriced: isHardOrder,
+          requireStock: isHardOrder,
+        }
+      )
 
-    orders.unshift(newOrder)
+      const order = {
+        id: `ORD-${crypto.randomUUID()}`,
+        orderType: parsed.data.orderType,
+        createdAt: new Date().toISOString(),
+        status: isHardOrder ? "PENDING_VERIFICATION" : "INQUIRY",
+        estimatedDeliveryDays: null,
+        totalPriceOrig: resolved.total,
+        totalPriceFinal: resolved.total,
+        items: resolved.items,
+        user: {
+          id: storedUser.id,
+          email: storedUser.email,
+          companyName: storedUser.companyName,
+          nip: storedUser.nip ?? null,
+        },
+      }
 
-    if (!saveMockData()) {
-      throw new Error("Nie udało się utrwalić zamówienia.")
-    }
+      db.orders.unshift(order)
+      return order
+    })
 
     return NextResponse.json(newOrder, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Błąd serwera."
-    const isBusinessError =
-      /Nieprawidłowa ilość|nie istnieje|nie ma aktywnej ceny|Brak wymaganej ilości/.test(
-        message
-      )
+    const status =
+      message === "Konto nie istnieje."
+        ? 401
+        : /zablokowane|oczekuje na zatwierdzenie/.test(message)
+          ? 403
+          : /Nieprawidłowa ilość|nie istnieje w aktualnym katalogu|nie ma aktywnej ceny|Brak wymaganej ilości/.test(message)
+            ? 409
+            : 500
 
-    return NextResponse.json(
-      { error: message },
-      { status: isBusinessError ? 409 : 500 }
-    )
+    return NextResponse.json({ error: message }, { status })
   }
 }
 
@@ -187,43 +192,46 @@ export async function PUT(req: Request) {
       )
     }
 
-    const { orders } = initializeMockData()
-    const index = orders.findIndex(
-      (order: { id?: string }) => order.id === parsed.data.id
-    )
+    const updatedOrder = await mutateMockData((db) => {
+      const orderStore = db.orders as StoredOrder[]
+      const index = orderStore.findIndex((order) => order.id === parsed.data.id)
 
-    if (index === -1) {
+      if (index === -1) throw new Error("ORDER_NOT_FOUND")
+
+      const currentOrder = orderStore[index]
+      const items = parsed.data.items ?? currentOrder.items ?? []
+      const totalPriceFinal =
+        Math.round(
+          (items.reduce(
+            (sum, item) => sum + item.price * item.quantity,
+            0
+          ) +
+            Number.EPSILON) *
+            100
+        ) / 100
+
+      const nextOrder: StoredOrder = {
+        ...currentOrder,
+        status: parsed.data.status,
+        estimatedDeliveryDays:
+          parsed.data.estimatedDeliveryDays ??
+          currentOrder.estimatedDeliveryDays ??
+          null,
+        items,
+        totalPriceFinal,
+        updatedAt: new Date().toISOString(),
+      }
+
+      orderStore[index] = nextOrder
+      return nextOrder
+    })
+
+    return NextResponse.json(updatedOrder)
+  } catch (error) {
+    if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 })
     }
 
-    const currentOrder = orders[index]
-    const items = parsed.data.items ?? currentOrder.items ?? []
-    const totalPriceFinal = Math.round(
-      (items.reduce(
-        (sum: number, item: { price: number; quantity: number }) =>
-          sum + item.price * item.quantity,
-        0
-      ) +
-        Number.EPSILON) *
-        100
-    ) / 100
-
-    orders[index] = {
-      ...currentOrder,
-      status: parsed.data.status,
-      estimatedDeliveryDays:
-        parsed.data.estimatedDeliveryDays ?? currentOrder.estimatedDeliveryDays ?? null,
-      items,
-      totalPriceFinal,
-      updatedAt: new Date().toISOString(),
-    }
-
-    if (!saveMockData()) {
-      throw new Error("Nie udało się utrwalić aktualizacji.")
-    }
-
-    return NextResponse.json(orders[index])
-  } catch (error) {
     const message = error instanceof Error ? error.message : "Błąd serwera."
     return NextResponse.json({ error: message }, { status: 500 })
   }

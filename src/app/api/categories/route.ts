@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 
 export const dynamic = "force-dynamic"
@@ -58,23 +58,27 @@ export async function POST(req: Request) {
     )
   }
 
-  const { categories } = initializeMockData()
-  const categoryStore = categories as Category[]
-  const newCategory: Category = {
-    id: `c_${crypto.randomUUID()}`,
-    name: parsed.data.name.toUpperCase(),
-    iconName: parsed.data.iconName || "Folder",
-    subcategories: normalizeSubcategories(parsed.data.subcategories),
-  }
+  try {
+    const newCategory = await mutateMockData((db) => {
+      const categoryStore = db.categories as Category[]
+      const category: Category = {
+        id: `c_${crypto.randomUUID()}`,
+        name: parsed.data.name.toUpperCase(),
+        iconName: parsed.data.iconName || "Folder",
+        subcategories: normalizeSubcategories(parsed.data.subcategories),
+      }
 
-  categoryStore.push(newCategory)
-  if (!saveMockData()) {
+      categoryStore.push(category)
+      return category
+    })
+
+    return NextResponse.json(newCategory, { status: 201 })
+  } catch {
     return NextResponse.json(
       { error: "Nie udało się zapisać kategorii." },
       { status: 500 }
     )
   }
-  return NextResponse.json(newCategory, { status: 201 })
 }
 
 export async function PUT(req: Request) {
@@ -92,35 +96,43 @@ export async function PUT(req: Request) {
     )
   }
 
-  const { categories } = initializeMockData()
-  const categoryStore = categories as Category[]
-  const index = categoryStore.findIndex(
-    (category) => category.id === parsed.data.id
-  )
+  try {
+    const updated = await mutateMockData((db) => {
+      const categoryStore = db.categories as Category[]
+      const index = categoryStore.findIndex(
+        (category) => category.id === parsed.data.id
+      )
 
-  if (index === -1) {
-    return NextResponse.json({ error: "Nie znaleziono kategorii." }, { status: 404 })
-  }
+      if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
 
-  const current = categoryStore[index]
-  const updated: Category = {
-    ...current,
-    name: parsed.data.name.toUpperCase(),
-    iconName: parsed.data.iconName || current.iconName || "Folder",
-    subcategories: parsed.data.subcategories
-      ? normalizeSubcategories(parsed.data.subcategories)
-      : current.subcategories,
-  }
+      const current = categoryStore[index]
+      const nextCategory: Category = {
+        ...current,
+        name: parsed.data.name.toUpperCase(),
+        iconName: parsed.data.iconName || current.iconName || "Folder",
+        subcategories: parsed.data.subcategories
+          ? normalizeSubcategories(parsed.data.subcategories)
+          : current.subcategories,
+      }
 
-  categoryStore[index] = updated
-  if (!saveMockData()) {
+      categoryStore[index] = nextCategory
+      return nextCategory
+    })
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
+      return NextResponse.json(
+        { error: "Nie znaleziono kategorii." },
+        { status: 404 }
+      )
+    }
+
     return NextResponse.json(
       { error: "Nie udało się zapisać kategorii." },
       { status: 500 }
     )
   }
-
-  return NextResponse.json(updated)
 }
 
 export async function DELETE(req: Request) {
@@ -132,21 +144,27 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Brak ID kategorii." }, { status: 400 })
   }
 
-  const { categories } = initializeMockData()
-  const categoryStore = categories as Category[]
-  const index = categoryStore.findIndex((category) => category.id === id)
+  try {
+    await mutateMockData((db) => {
+      const categoryStore = db.categories as Category[]
+      const index = categoryStore.findIndex((category) => category.id === id)
 
-  if (index === -1) {
-    return NextResponse.json({ error: "Nie znaleziono kategorii." }, { status: 404 })
-  }
+      if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
+      categoryStore.splice(index, 1)
+    })
 
-  categoryStore.splice(index, 1)
-  if (!saveMockData()) {
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
+      return NextResponse.json(
+        { error: "Nie znaleziono kategorii." },
+        { status: 404 }
+      )
+    }
+
     return NextResponse.json(
       { error: "Nie udało się zapisać zmian." },
       { status: 500 }
     )
   }
-
-  return NextResponse.json({ success: true })
 }

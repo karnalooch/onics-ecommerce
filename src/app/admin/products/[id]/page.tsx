@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { initializeMockData, saveMockData } from "@/store/serverStore";
+import { initializeMockData, mutateMockData } from "@/store/serverStore";
 
 export default async function EditProductPage({ params }: { params: any }) {
   const session = await auth();
@@ -32,27 +32,12 @@ export default async function EditProductPage({ params }: { params: any }) {
     const description = formData.get("description") as string;
     const manufacturerId = formData.get("manufacturerId") as string;
 
-    // Pobieramy świeże dane przed zapisem
-    const { products } = initializeMockData();
-    
-    if (id === "new") {
-      const newProduct = {
-        id: `p_${Date.now()}`,
-        name,
-        sku,
-        price,
-        stock,
-        categoryId,
-        description,
-        manufacturerId,
-        createdAt: new Date().toISOString()
-      };
-      (global as any).mockProductsStore.push(newProduct);
-    } else {
-      const index = products.findIndex((p: any) => String(p.id) === id);
-      if (index !== -1) {
-        products[index] = {
-          ...products[index],
+    await mutateMockData((db) => {
+      const products = db.products as any[];
+
+      if (id === "new") {
+        products.push({
+          id: `p_${crypto.randomUUID()}`,
           name,
           sku,
           price,
@@ -60,12 +45,28 @@ export default async function EditProductPage({ params }: { params: any }) {
           categoryId,
           description,
           manufacturerId,
-          updatedAt: new Date().toISOString()
-        };
+          createdAt: new Date().toISOString()
+        });
+        return;
       }
-    }
 
-    saveMockData();
+      const index = products.findIndex((product) => String(product.id) === id);
+      if (index === -1) {
+        throw new Error("PRODUCT_NOT_FOUND");
+      }
+
+      products[index] = {
+        ...products[index],
+        name,
+        sku,
+        price,
+        stock,
+        categoryId,
+        description,
+        manufacturerId,
+        updatedAt: new Date().toISOString()
+      };
+    });
     
     revalidatePath("/admin/products");
     revalidatePath("/admin/catalog");

@@ -3,7 +3,7 @@ import path from "path"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { auth } from "@/auth"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
@@ -208,100 +208,107 @@ export async function POST(req: Request) {
     )
   }
 
-  const { products, categories } = initializeMockData()
-  const productStore = products as ProductRecord[]
-  const categoryStore = categories as CategoryRecord[]
-
   if (importRequest?.success) {
-    let updatedCount = 0
-    let addedCount = 0
-
     logImport(`--- START IMPORT (${importRequest.data.items.length} pozycji) ---`)
 
-    for (const item of importRequest.data.items) {
-      const sku = normalize(item.sku)
-      if (!sku) continue
+    try {
+      const result = await mutateMockData((db) => {
+        const productStore = db.products as ProductRecord[]
+        const categoryStore = db.categories as CategoryRecord[]
+        let updatedCount = 0
+        let addedCount = 0
 
-      let existing = productStore.find((product) => normalize(product.sku) === sku)
-      if (!existing && item.name) {
-        existing = productStore.find(
-          (product) => normalize(product.name) === normalize(item.name)
-        )
-      }
+        for (const item of importRequest.data.items) {
+          const sku = normalize(item.sku)
+          if (!sku) continue
 
-      let categoryId = item.categoryId ?? null
-      let subcategoryId = item.subcategoryId ?? null
-
-      if (item.isNewCategory && item.xlsCategoryName) {
-        let category = categoryStore.find(
-          (candidate) => normalize(candidate.name) === normalize(item.xlsCategoryName)
-        )
-        if (!category) {
-          category = {
-            id: `c_auto_${crypto.randomUUID()}`,
-            name: item.xlsCategoryName.toUpperCase(),
-            iconName: "Layers",
-            subcategories: [],
-          }
-          categoryStore.push(category)
-        }
-        categoryId = category.id
-      }
-
-      if (item.isNewSubcategory && item.xlsSubcategoryName && categoryId) {
-        const category = categoryStore.find(
-          (candidate) => candidate.id === categoryId
-        )
-        if (category) {
-          let subcategory = category.subcategories.find(
-            (candidate) =>
-              normalize(candidate.name) === normalize(item.xlsSubcategoryName)
+          let existing = productStore.find(
+            (product) => normalize(product.sku) === sku
           )
-          if (!subcategory) {
-            subcategory = {
-              id: `s_auto_${crypto.randomUUID()}`,
-              name: item.xlsSubcategoryName,
-            }
-            category.subcategories.push(subcategory)
+          if (!existing && item.name) {
+            existing = productStore.find(
+              (product) => normalize(product.name) === normalize(item.name)
+            )
           }
-          subcategoryId = subcategory.id
-        }
-      }
 
-      if (existing) {
-        if (item.price !== undefined) existing.price = item.price
-        if (item.stock !== undefined) existing.stock = item.stock
-        if (item.manufacturer) existing.manufacturer = item.manufacturer
-        if (categoryId) {
-          existing.categoryId = categoryId
-          existing.subcategoryId = subcategoryId
-        }
-        updatedCount += 1
-      } else {
-        productStore.push({
-          ...item,
-          id: `p_${crypto.randomUUID()}`,
-          sku: item.sku || "",
-          name: item.name || item.sku || "Produkt",
-          categoryId,
-          subcategoryId,
-          seoDescription: "",
-        } as ProductRecord)
-        addedCount += 1
-      }
-    }
+          let categoryId = item.categoryId ?? null
+          let subcategoryId = item.subcategoryId ?? null
 
-    if (!saveMockData()) {
+          if (item.isNewCategory && item.xlsCategoryName) {
+            let category = categoryStore.find(
+              (candidate) =>
+                normalize(candidate.name) === normalize(item.xlsCategoryName)
+            )
+            if (!category) {
+              category = {
+                id: `c_auto_${crypto.randomUUID()}`,
+                name: item.xlsCategoryName.toUpperCase(),
+                iconName: "Layers",
+                subcategories: [],
+              }
+              categoryStore.push(category)
+            }
+            categoryId = category.id
+          }
+
+          if (item.isNewSubcategory && item.xlsSubcategoryName && categoryId) {
+            const category = categoryStore.find(
+              (candidate) => candidate.id === categoryId
+            )
+            if (category) {
+              let subcategory = category.subcategories.find(
+                (candidate) =>
+                  normalize(candidate.name) ===
+                  normalize(item.xlsSubcategoryName)
+              )
+              if (!subcategory) {
+                subcategory = {
+                  id: `s_auto_${crypto.randomUUID()}`,
+                  name: item.xlsSubcategoryName,
+                }
+                category.subcategories.push(subcategory)
+              }
+              subcategoryId = subcategory.id
+            }
+          }
+
+          if (existing) {
+            if (item.price !== undefined) existing.price = item.price
+            if (item.stock !== undefined) existing.stock = item.stock
+            if (item.manufacturer) existing.manufacturer = item.manufacturer
+            if (categoryId) {
+              existing.categoryId = categoryId
+              existing.subcategoryId = subcategoryId
+            }
+            updatedCount += 1
+          } else {
+            productStore.push({
+              ...item,
+              id: `p_${crypto.randomUUID()}`,
+              sku: item.sku || "",
+              name: item.name || item.sku || "Produkt",
+              categoryId,
+              subcategoryId,
+              seoDescription: "",
+            } as ProductRecord)
+            addedCount += 1
+          }
+        }
+
+        return { updatedCount, addedCount }
+      })
+
+      logImport(
+        `--- KONIEC IMPORTU (Zaktualizowano: ${result.updatedCount}, Dodano: ${result.addedCount}) ---`
+      )
+      return NextResponse.json({ success: true, ...result })
+    } catch (error) {
+      console.error("WF-Mag import persistence error:", error)
       return NextResponse.json(
         { error: "Nie udało się utrwalić importu." },
         { status: 500 }
       )
     }
-
-    logImport(
-      `--- KONIEC IMPORTU (Zaktualizowano: ${updatedCount}, Dodano: ${addedCount}) ---`
-    )
-    return NextResponse.json({ success: true, updatedCount, addedCount })
   }
 
   const parsed = ProductInputSchema.safeParse(body)
@@ -312,20 +319,25 @@ export async function POST(req: Request) {
     )
   }
 
-  const newProduct: ProductRecord = {
-    ...parsed.data,
-    id: `p_${crypto.randomUUID()}`,
-  } as ProductRecord
+  try {
+    const newProduct = await mutateMockData((db) => {
+      const productStore = db.products as ProductRecord[]
+      const product: ProductRecord = {
+        ...parsed.data,
+        id: `p_${crypto.randomUUID()}`,
+      } as ProductRecord
+      productStore.push(product)
+      return product
+    })
 
-  productStore.push(newProduct)
-  if (!saveMockData()) {
+    return NextResponse.json(newProduct, { status: 201 })
+  } catch (error) {
+    console.error("Product create persistence error:", error)
     return NextResponse.json(
       { error: "Nie udało się zapisać produktu." },
       { status: 500 }
     )
   }
-
-  return NextResponse.json(newProduct, { status: 201 })
 }
 
 export async function PUT(req: Request) {
@@ -343,29 +355,36 @@ export async function PUT(req: Request) {
     )
   }
 
-  const { products } = initializeMockData()
-  const productStore = products as ProductRecord[]
-  const index = productStore.findIndex(
-    (product) => product.id === parsed.data.id
-  )
+  try {
+    const updated = await mutateMockData((db) => {
+      const productStore = db.products as ProductRecord[]
+      const index = productStore.findIndex(
+        (product) => product.id === parsed.data.id
+      )
 
-  if (index === -1) {
-    return NextResponse.json({ error: "Nie znaleziono produktu." }, { status: 404 })
-  }
+      if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
 
-  productStore[index] = {
-    ...productStore[index],
-    ...parsed.data,
-  }
+      productStore[index] = {
+        ...productStore[index],
+        ...parsed.data,
+      }
+      return productStore[index]
+    })
 
-  if (!saveMockData()) {
+    return NextResponse.json(updated)
+  } catch (error) {
+    if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
+      return NextResponse.json(
+        { error: "Nie znaleziono produktu." },
+        { status: 404 }
+      )
+    }
+
     return NextResponse.json(
       { error: "Nie udało się zapisać produktu." },
       { status: 500 }
     )
   }
-
-  return NextResponse.json(productStore[index])
 }
 
 export async function DELETE(req: Request) {
@@ -377,21 +396,26 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Brak ID produktu." }, { status: 400 })
   }
 
-  const { products } = initializeMockData()
-  const productStore = products as ProductRecord[]
-  const index = productStore.findIndex((product) => product.id === id)
+  try {
+    await mutateMockData((db) => {
+      const productStore = db.products as ProductRecord[]
+      const index = productStore.findIndex((product) => product.id === id)
+      if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
+      productStore.splice(index, 1)
+    })
 
-  if (index === -1) {
-    return NextResponse.json({ error: "Nie znaleziono produktu." }, { status: 404 })
-  }
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
+      return NextResponse.json(
+        { error: "Nie znaleziono produktu." },
+        { status: 404 }
+      )
+    }
 
-  productStore.splice(index, 1)
-  if (!saveMockData()) {
     return NextResponse.json(
       { error: "Nie udało się zapisać zmian." },
       { status: 500 }
     )
   }
-
-  return NextResponse.json({ success: true })
 }

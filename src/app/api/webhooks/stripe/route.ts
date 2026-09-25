@@ -4,7 +4,7 @@ import {
   nextPaymentStatus,
   verifyCheckoutPayment,
 } from "@/lib/payments"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { mutateMockData } from "@/store/serverStore"
 
 type StoredOrder = {
   id: string
@@ -22,67 +22,64 @@ function getPaymentIntentId(session: Stripe.Checkout.Session) {
   return session.payment_intent?.id ?? null
 }
 
-function applyCheckoutStatus(
+async function applyCheckoutStatus(
   eventId: string,
   session: Stripe.Checkout.Session,
   incomingStatus: "PAID" | "FAILED" | "EXPIRED"
 ) {
-  const { orders } = initializeMockData()
-  const orderId = session.metadata?.order_id || null
-  const order = (orders as StoredOrder[]).find(
-    (candidate) =>
-      (orderId && candidate.id === orderId) ||
-      candidate.stripeCheckoutSessionId === session.id
-  )
+  return mutateMockData((db) => {
+    const orderId = session.metadata?.order_id || null
+    const order = (db.orders as StoredOrder[]).find(
+      (candidate) =>
+        (orderId && candidate.id === orderId) ||
+        candidate.stripeCheckoutSessionId === session.id
+    )
 
-  if (!order) {
-    throw new Error(`Nie znaleziono zamówienia dla sesji Stripe ${session.id}.`)
-  }
-
-  const verification = verifyCheckoutPayment(
-    {
-      id: order.id,
-      totalPriceFinal: Number(order.totalPriceFinal ?? 0),
-      stripeCheckoutSessionId: order.stripeCheckoutSessionId,
-      paymentStatus: order.paymentStatus,
-    },
-    {
-      orderId,
-      sessionId: session.id,
-      amountTotal: session.amount_total,
-      currency: session.currency,
-      paymentStatus: session.payment_status,
+    if (!order) {
+      throw new Error(`Nie znaleziono zamówienia dla sesji Stripe ${session.id}.`)
     }
-  )
 
-  if (!verification.ok) {
-    throw new Error(verification.reason)
-  }
+    const verification = verifyCheckoutPayment(
+      {
+        id: order.id,
+        totalPriceFinal: Number(order.totalPriceFinal ?? 0),
+        stripeCheckoutSessionId: order.stripeCheckoutSessionId,
+        paymentStatus: order.paymentStatus,
+      },
+      {
+        orderId,
+        sessionId: session.id,
+        amountTotal: session.amount_total,
+        currency: session.currency,
+        paymentStatus: session.payment_status,
+      }
+    )
 
-  const paymentStatus = nextPaymentStatus(order.paymentStatus, incomingStatus)
-  const alreadyApplied =
-    order.paymentStatus === paymentStatus &&
-    order.stripeLastEventId === eventId
+    if (!verification.ok) {
+      throw new Error(verification.reason)
+    }
 
-  if (alreadyApplied) {
-    return { order, duplicate: true }
-  }
+    const paymentStatus = nextPaymentStatus(order.paymentStatus, incomingStatus)
+    const alreadyApplied =
+      order.paymentStatus === paymentStatus &&
+      order.stripeLastEventId === eventId
 
-  order.paymentStatus = paymentStatus
-  order.stripePaymentIntentId =
-    getPaymentIntentId(session) || order.stripePaymentIntentId || null
-  order.stripeLastEventId = eventId
-  order.paymentUpdatedAt = new Date().toISOString()
+    if (alreadyApplied) {
+      return { order, duplicate: true }
+    }
 
-  if (paymentStatus === "PAID" && !order.paidAt) {
-    order.paidAt = new Date().toISOString()
-  }
+    order.paymentStatus = paymentStatus
+    order.stripePaymentIntentId =
+      getPaymentIntentId(session) || order.stripePaymentIntentId || null
+    order.stripeLastEventId = eventId
+    order.paymentUpdatedAt = new Date().toISOString()
 
-  if (!saveMockData()) {
-    throw new Error("Nie udało się utrwalić statusu płatności Stripe.")
-  }
+    if (paymentStatus === "PAID" && !order.paidAt) {
+      order.paidAt = new Date().toISOString()
+    }
 
-  return { order, duplicate: false }
+    return { order, duplicate: false }
+  })
 }
 
 export async function POST(req: Request) {
@@ -123,20 +120,20 @@ export async function POST(req: Request) {
       case "checkout.session.completed": {
         const session = event.data.object
         if (session.payment_status === "paid") {
-          applyCheckoutStatus(event.id, session, "PAID")
+          await applyCheckoutStatus(event.id, session, "PAID")
         }
         break
       }
       case "checkout.session.async_payment_succeeded": {
-        applyCheckoutStatus(event.id, event.data.object, "PAID")
+        await applyCheckoutStatus(event.id, event.data.object, "PAID")
         break
       }
       case "checkout.session.async_payment_failed": {
-        applyCheckoutStatus(event.id, event.data.object, "FAILED")
+        await applyCheckoutStatus(event.id, event.data.object, "FAILED")
         break
       }
       case "checkout.session.expired": {
-        applyCheckoutStatus(event.id, event.data.object, "EXPIRED")
+        await applyCheckoutStatus(event.id, event.data.object, "EXPIRED")
         break
       }
       default:

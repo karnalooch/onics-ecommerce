@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 
 export const dynamic = "force-dynamic"
@@ -44,17 +44,18 @@ function hasOtherActiveAdmin(users: UserRecord[], excludedIndex: number) {
   return users.some((user, index) => index !== excludedIndex && isActiveAdmin(user))
 }
 
+function publicUser(user: UserRecord) {
+  const safeUser = { ...user }
+  delete safeUser.passwordHash
+  return safeUser
+}
+
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
   const { users } = initializeMockData()
-  const safeUsers = (users as UserRecord[]).map((user) => {
-    const safeUser = { ...user }
-    delete safeUser.passwordHash
-    return safeUser
-  })
-  return NextResponse.json(safeUsers)
+  return NextResponse.json((users as UserRecord[]).map(publicUser))
 }
 
 export async function PUT(req: Request) {
@@ -69,57 +70,66 @@ export async function PUT(req: Request) {
     )
   }
 
-  const { users } = initializeMockData()
-  const userStore = users as UserRecord[]
-  const index = userStore.findIndex((user) => user.id === parsed.data.id)
+  try {
+    const updated = await mutateMockData((db) => {
+      const userStore = db.users as UserRecord[]
+      const index = userStore.findIndex((user) => user.id === parsed.data.id)
 
-  if (index === -1) {
-    return NextResponse.json({ error: "Nie znaleziono użytkownika." }, { status: 404 })
-  }
+      if (index === -1) throw new Error("USER_NOT_FOUND")
 
-  if (
-    parsed.data.email &&
-    userStore.some(
-      (user, userIndex) =>
-        userIndex !== index &&
-        user.email?.trim().toLowerCase() === parsed.data.email
-    )
-  ) {
-    return NextResponse.json(
-      { error: "Użytkownik z tym adresem e-mail już istnieje." },
-      { status: 409 }
-    )
-  }
+      if (
+        parsed.data.email &&
+        userStore.some(
+          (user, userIndex) =>
+            userIndex !== index &&
+            user.email?.trim().toLowerCase() === parsed.data.email
+        )
+      ) {
+        throw new Error("EMAIL_EXISTS")
+      }
 
-  const nextUser: UserRecord = {
-    ...userStore[index],
-    ...parsed.data,
-    updatedAt: new Date().toISOString(),
-  }
+      const nextUser: UserRecord = {
+        ...userStore[index],
+        ...parsed.data,
+        updatedAt: new Date().toISOString(),
+      }
 
-  if (
-    isActiveAdmin(userStore[index]) &&
-    !isActiveAdmin(nextUser) &&
-    !hasOtherActiveAdmin(userStore, index)
-  ) {
-    return NextResponse.json(
-      { error: "Nie można wyłączyć ostatniego aktywnego administratora." },
-      { status: 409 }
-    )
-  }
+      if (
+        isActiveAdmin(userStore[index]) &&
+        !isActiveAdmin(nextUser) &&
+        !hasOtherActiveAdmin(userStore, index)
+      ) {
+        throw new Error("LAST_ACTIVE_ADMIN")
+      }
 
-  userStore[index] = nextUser
+      userStore[index] = nextUser
+      return publicUser(nextUser)
+    })
 
-  if (!saveMockData()) {
+    return NextResponse.json(updated)
+  } catch (error) {
+    const code = error instanceof Error ? error.message : ""
+    if (code === "USER_NOT_FOUND") {
+      return NextResponse.json({ error: "Nie znaleziono użytkownika." }, { status: 404 })
+    }
+    if (code === "EMAIL_EXISTS") {
+      return NextResponse.json(
+        { error: "Użytkownik z tym adresem e-mail już istnieje." },
+        { status: 409 }
+      )
+    }
+    if (code === "LAST_ACTIVE_ADMIN") {
+      return NextResponse.json(
+        { error: "Nie można wyłączyć ostatniego aktywnego administratora." },
+        { status: 409 }
+      )
+    }
+
     return NextResponse.json(
       { error: "Nie udało się zapisać użytkownika." },
       { status: 500 }
     )
   }
-
-  const safeUser = { ...userStore[index] }
-  delete safeUser.passwordHash
-  return NextResponse.json(safeUser)
 }
 
 export async function DELETE(req: Request) {
@@ -131,28 +141,36 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Brak ID użytkownika." }, { status: 400 })
   }
 
-  const { users } = initializeMockData()
-  const userStore = users as UserRecord[]
-  const index = userStore.findIndex((user) => user.id === id)
+  try {
+    await mutateMockData((db) => {
+      const userStore = db.users as UserRecord[]
+      const index = userStore.findIndex((user) => user.id === id)
 
-  if (index === -1) {
-    return NextResponse.json({ error: "Nie znaleziono użytkownika." }, { status: 404 })
-  }
+      if (index === -1) throw new Error("USER_NOT_FOUND")
 
-  if (isActiveAdmin(userStore[index]) && !hasOtherActiveAdmin(userStore, index)) {
-    return NextResponse.json(
-      { error: "Nie można usunąć ostatniego aktywnego administratora." },
-      { status: 409 }
-    )
-  }
+      if (isActiveAdmin(userStore[index]) && !hasOtherActiveAdmin(userStore, index)) {
+        throw new Error("LAST_ACTIVE_ADMIN")
+      }
 
-  userStore.splice(index, 1)
-  if (!saveMockData()) {
+      userStore.splice(index, 1)
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    const code = error instanceof Error ? error.message : ""
+    if (code === "USER_NOT_FOUND") {
+      return NextResponse.json({ error: "Nie znaleziono użytkownika." }, { status: 404 })
+    }
+    if (code === "LAST_ACTIVE_ADMIN") {
+      return NextResponse.json(
+        { error: "Nie można usunąć ostatniego aktywnego administratora." },
+        { status: 409 }
+      )
+    }
+
     return NextResponse.json(
       { error: "Nie udało się zapisać zmian." },
       { status: 500 }
     )
   }
-
-  return NextResponse.json({ success: true })
 }

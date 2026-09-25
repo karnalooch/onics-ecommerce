@@ -45,6 +45,7 @@ jobs:
           src/lib/jsonDb.ts
           src/lib/payments.ts
           src/lib/storageConfig.ts
+          src/store/serverStore.ts
           src/lib/knowledge/files.ts
           src/lib/knowledge/KnowledgeContext.tsx
           src/app/api/register/route.ts
@@ -66,6 +67,17 @@ jobs:
           src/app/api/knowledge/train/stream/route.ts
           src/app/api/knowledge/validate-key/route.ts
           src/app/admin/price-lists/_lib/priceLogic.ts
+
+      - name: Reject legacy file-store writers
+        run: |
+          if grep -R --line-number --fixed-string "saveMockData" src; then
+            echo "Legacy saveMockData detected. Use mutateMockData instead."
+            exit 1
+          fi
+          if grep -R --line-number -E "mock(Users|Categories|Manufacturers|Products|Orders|Repairs|KnowledgeMeta)Store" src; then
+            echo "Direct legacy global store access detected. Use initializeMockData or mutateMockData."
+            exit 1
+          fi
 
       - name: Run tests
         run: npm test -- --run

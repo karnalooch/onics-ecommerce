@@ -1,67 +1,98 @@
 // src/store/serverStore.ts
 // Współdzielony stan serwerowy oparty na trwałym pliku JSON
-import { readDb, writeDb } from "@/lib/jsonDb";
+import { readDb, readDbOrThrow, withDbWriteLock, writeDb } from "@/lib/jsonDb"
 
-/**
- * Inicjalizuje i pobiera dane z trwałej bazy danych.
- * Wymuszamy przeładowanie z pliku, aby uniknąć problemów z cachem w pamięci RAM.
- */
-export function initializeMockData() {
-  const db = readDb();
-  
-  if (!db) {
-    return {
-      users: [],
-      orders: [],
-      repairs: [],
-      categories: [],
-      products: [],
-      knowledgeMeta: { sources: [], processedSources: [], lastUpdated: null }
-    };
-  }
+type JsonRecord = Record<string, unknown>
 
-  // Wymuszamy nadpisanie globalnego stanu danymi z pliku
-  // dzięki temu "usuwamy" stare mocki z pamięci RAM przy każdym przeładowaniu strony
-  (global as any).mockUsersStore = db.users || [];
-  (global as any).mockCategoriesStore = db.categories || [];
-  (global as any).mockManufacturersStore = db.manufacturers || [];
-  (global as any).mockProductsStore = db.products || [];
-  (global as any).mockOrdersStore = db.orders || [];
-  (global as any).mockRepairsStore = db.repairs || [];
-  (global as any).mockKnowledgeMetaStore = db.knowledgeMeta || {
-    sources: [],
-    processedSources: [],
-    lastUpdated: null
-  };
+type KnowledgeMeta = {
+  sources: string[]
+  processedSources: string[]
+  lastUpdated: string | null
+}
+
+type ServerDb = {
+  users: JsonRecord[]
+  orders: JsonRecord[]
+  repairs: JsonRecord[]
+  categories: JsonRecord[]
+  manufacturers: JsonRecord[]
+  products: JsonRecord[]
+  knowledgeMeta: KnowledgeMeta
+  [key: string]: unknown
+}
+
+function isRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function recordArray(value: unknown): JsonRecord[] {
+  return Array.isArray(value) ? value.filter(isRecord) : []
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : []
+}
+
+function normalizeDb(input: unknown): ServerDb {
+  const source = isRecord(input) ? input : {}
+  const knowledgeMeta = isRecord(source.knowledgeMeta)
+    ? source.knowledgeMeta
+    : {}
 
   return {
-    users: (global as any).mockUsersStore,
-    orders: (global as any).mockOrdersStore,
-    repairs: (global as any).mockRepairsStore,
-    categories: (global as any).mockCategoriesStore,
-    manufacturers: (global as any).mockManufacturersStore,
-    products: (global as any).mockProductsStore,
-    knowledgeMeta: (global as any).mockKnowledgeMetaStore
-  };
+    ...source,
+    users: recordArray(source.users),
+    orders: recordArray(source.orders),
+    repairs: recordArray(source.repairs),
+    categories: recordArray(source.categories),
+    manufacturers: recordArray(source.manufacturers),
+    products: recordArray(source.products),
+    knowledgeMeta: {
+      sources: stringArray(knowledgeMeta.sources),
+      processedSources: stringArray(knowledgeMeta.processedSources),
+      lastUpdated:
+        typeof knowledgeMeta.lastUpdated === "string"
+          ? knowledgeMeta.lastUpdated
+          : null,
+    },
+  }
 }
 
 /**
- * Zapisuje aktualny stan globalny do trwałego pliku JSON
+ * Pobiera najnowszy snapshot trwałej bazy.
  */
-export function saveMockData() {
-  const db = {
-    users: (global as any).mockUsersStore || [],
-    categories: (global as any).mockCategoriesStore || [],
-    manufacturers: (global as any).mockManufacturersStore || [],
-    products: (global as any).mockProductsStore || [],
-    orders: (global as any).mockOrdersStore || [],
-    repairs: (global as any).mockRepairsStore || [],
-    knowledgeMeta: (global as any).mockKnowledgeMetaStore || {
-      sources: [],
-      processedSources: [],
-      lastUpdated: null
-    }
-  };
+export function initializeMockData() {
+  const db = normalizeDb(readDb())
+  return {
+    users: db.users,
+    orders: db.orders,
+    repairs: db.repairs,
+    categories: db.categories,
+    manufacturers: db.manufacturers,
+    products: db.products,
+    knowledgeMeta: db.knowledgeMeta,
+  }
+}
 
-  return writeDb(db);
+/**
+ * Atomowa ścieżka mutacji dla file-backed store.
+ *
+ * Blokada obejmuje fresh read -> mutation -> atomic rename, więc równoległe
+ * requesty nie zapisują snapshotów zbudowanych na przestarzałym stanie.
+ */
+export async function mutateMockData<T>(
+  mutator: (db: ServerDb) => Promise<T> | T
+): Promise<T> {
+  return withDbWriteLock(async () => {
+    const db = normalizeDb(readDbOrThrow())
+    const result = await mutator(db)
+
+    if (!writeDb(db)) {
+      throw new Error("Nie udało się utrwalić atomowej mutacji bazy danych.")
+    }
+
+    return result
+  })
 }
