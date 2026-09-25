@@ -18,37 +18,49 @@ interface AIItem {
 
 import { initializeMockData, mutateMockData } from '@/store/serverStore';
 
+type KnowledgeDbSnapshot = {
+  products: any[];
+  knowledgeMeta?: {
+    sources?: unknown;
+    processedSources?: unknown;
+    lastUpdated?: unknown;
+  };
+}
+
+export function buildKnowledgeFromDb(db: KnowledgeDbSnapshot): KnowledgeStore {
+  const knowledgeMap: Record<string, KnowledgeEntry> = {};
+
+  db.products.forEach((product: any) => {
+    if (!product.sku) return;
+
+    knowledgeMap[product.sku] = {
+      model: product.name,
+      specs: product.specs || product.seoDescription || "",
+      price: product.catalogPrice || product.price || 0,
+      manufacturer: product.manufacturer,
+      currency: "PLN",
+      lastUpdated: product.lastUpdated || new Date().toISOString()
+    };
+  });
+
+  const meta = db.knowledgeMeta || {};
+
+  return {
+    lastUpdated:
+      typeof meta.lastUpdated === "string"
+        ? meta.lastUpdated
+        : new Date().toISOString(),
+    sources: Array.isArray(meta.sources) ? meta.sources.filter((entry): entry is string => typeof entry === "string") : [],
+    processedSources: Array.isArray(meta.processedSources)
+      ? meta.processedSources.filter((entry): entry is string => typeof entry === "string")
+      : [],
+    knowledge: knowledgeMap
+  };
+}
+
 export async function getKnowledge(): Promise<KnowledgeStore> {
   try {
-    const db = initializeMockData();
-    // V18.9: Treat ALL products as potential knowledge sources
-    const knowledgeMap: Record<string, KnowledgeEntry> = {};
-    
-    db.products.forEach((p: any) => {
-      if (p.sku) {
-        knowledgeMap[p.sku] = {
-          model: p.name,
-          specs: p.specs || p.seoDescription || "",
-          price: p.catalogPrice || p.price || 0,
-          manufacturer: p.manufacturer,
-          currency: 'PLN',
-          lastUpdated: p.lastUpdated || new Date().toISOString()
-        };
-      }
-    });
-
-    const meta = db.knowledgeMeta || {
-      sources: [],
-      processedSources: [],
-      lastUpdated: null
-    };
-
-    return {
-      lastUpdated: meta.lastUpdated || new Date().toISOString(),
-      sources: Array.isArray(meta.sources) ? meta.sources : [],
-      processedSources: Array.isArray(meta.processedSources) ? meta.processedSources : [],
-      knowledge: knowledgeMap
-    };
+    return buildKnowledgeFromDb(initializeMockData());
   } catch (e) {
     console.error("[KNOWLEDGE-BRIDGE] Bridge failure:", e);
     return { lastUpdated: null, sources: [], processedSources: [], knowledge: {} };
