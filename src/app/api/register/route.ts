@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import bcrypt from "bcrypt"
 import { z } from "zod"
 import { validateNip } from "@/lib/validation"
-import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { mutateMockData } from "@/store/serverStore"
 
 const RegistrationSchema = z.object({
   email: z.string().trim().email("Nieprawidłowy adres e-mail").transform((value) => value.toLowerCase()),
@@ -32,20 +32,6 @@ export async function POST(req: Request) {
     }
 
     const data = parsed.data
-    const { users } = initializeMockData()
-
-    if (
-      users.some(
-        (user: { email?: string }) =>
-          String(user.email ?? "").trim().toLowerCase() === data.email
-      )
-    ) {
-      return NextResponse.json(
-        { error: "Użytkownik o tym adresie e-mail już istnieje." },
-        { status: 409 }
-      )
-    }
-
     const passwordHash = await bcrypt.hash(data.password, 12)
     const newUser = {
       id: `u_${crypto.randomUUID()}`,
@@ -65,11 +51,18 @@ export async function POST(req: Request) {
       tierName: "BASIC",
     }
 
-    users.push(newUser)
+    await mutateMockData((db) => {
+      if (
+        db.users.some(
+          (user: { email?: string }) =>
+            String(user.email ?? "").trim().toLowerCase() === data.email
+        )
+      ) {
+        throw new Error("EMAIL_EXISTS")
+      }
 
-    if (!saveMockData()) {
-      throw new Error("Nie udało się utrwalić nowego konta.")
-    }
+      db.users.push(newUser)
+    })
 
     return NextResponse.json(
       {
@@ -84,6 +77,13 @@ export async function POST(req: Request) {
       { status: 201 }
     )
   } catch (error) {
+    if (error instanceof Error && error.message === "EMAIL_EXISTS") {
+      return NextResponse.json(
+        { error: "Użytkownik o tym adresie e-mail już istnieje." },
+        { status: 409 }
+      )
+    }
+
     console.error("Błąd rejestracji:", error)
     return NextResponse.json(
       { error: "Wystąpił błąd podczas zapisu konta." },
