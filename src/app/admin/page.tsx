@@ -26,9 +26,8 @@ import { initializeMockData } from "@/store/serverStore";
 export default async function AdminDashboard() {
   const session = await auth();
 
-  if (!session?.user || (session.user as any).role !== "ADMIN") {
-    // Development bypass for UI/UX testing
-    // redirect("/");
+  if (!session?.user || (session.user as { role?: string }).role !== "ADMIN") {
+    redirect("/logowanie");
   }
 
   const { users, orders, repairs, products } = initializeMockData();
@@ -76,7 +75,6 @@ export default async function AdminDashboard() {
           value={registeredUsers.length} 
           subText="Zatwierdzone konta" 
           icon={<Users className="w-5 h-5" />}
-          trend="+2"
           sector="Sprzedaż"
         />
         <StatCard 

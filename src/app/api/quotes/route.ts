@@ -3,6 +3,7 @@ import nodemailer from "nodemailer"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { initializeMockData, saveMockData } from "@/store/serverStore"
+import { calculateCustomerUnitPrice, roundMoney } from "@/lib/commerce"
 
 const QuoteSchema = z.object({
   productId: z.string().min(1),
@@ -134,6 +135,113 @@ export async function POST(req: Request) {
     )
   } catch (error) {
     console.error("Błąd zapytania ofertowego:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Błąd serwera." },
+      { status: 500 }
+    )
+  }
+}
+
+
+const AdminQuoteUpdateSchema = z.object({
+  id: z.string().min(1),
+  status: z.enum(["QUOTED", "REJECTED"]),
+  deliveryTimeDays: z.coerce.number().int().min(1).max(365).nullable().optional(),
+  additionalDiscount: z.coerce.number().min(0).max(100).default(0),
+})
+
+export async function PUT(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
+
+  try {
+    const parsed = AdminQuoteUpdateSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Nieprawidłowa aktualizacja wyceny." },
+        { status: 400 }
+      )
+    }
+
+    const { orders, products, users } = initializeMockData()
+    const quoteIndex = orders.findIndex(
+      (entry: { id?: string }) => entry.id === parsed.data.id
+    )
+
+    if (quoteIndex === -1) {
+      return NextResponse.json({ error: "Nie znaleziono zapytania." }, { status: 404 })
+    }
+
+    const quote = orders[quoteIndex] as {
+      id: string
+      user?: { id?: string; email?: string }
+      productId?: string
+      quantity?: number
+      items?: Array<{ id?: string; quantity?: number; price?: number }>
+      [key: string]: unknown
+    }
+
+    let totalPriceFinal = Number(quote.totalPriceFinal || 0)
+
+    if (parsed.data.status === "QUOTED") {
+      const customer = users.find(
+        (user: { id?: string; email?: string }) =>
+          (quote.user?.id && user.id === quote.user.id) ||
+          (quote.user?.email &&
+            user.email?.toLowerCase() === quote.user.email.toLowerCase())
+      )
+
+      if (quote.productId) {
+        const product = products.find(
+          (entry: { id?: string }) => String(entry.id) === quote.productId
+        )
+
+        if (product) {
+          const unitPrice = calculateCustomerUnitPrice(
+            {
+              id: String(product.id),
+              sku: String(product.sku || ""),
+              name: String(product.name || ""),
+              price: Number(product.price ?? 0),
+              stock: Number(product.stock ?? 0),
+            },
+            {
+              role: customer?.roleType,
+              discount: Number(customer?.discount ?? 0),
+            }
+          )
+          const quantity = Math.max(1, Number(quote.quantity || 1))
+          totalPriceFinal = roundMoney(
+            unitPrice * quantity * (1 - parsed.data.additionalDiscount / 100)
+          )
+        }
+      }
+    }
+
+    orders[quoteIndex] = {
+      ...quote,
+      status: parsed.data.status,
+      deliveryTimeDays:
+        parsed.data.status === "QUOTED"
+          ? parsed.data.deliveryTimeDays ?? null
+          : null,
+      additionalDiscount:
+        parsed.data.status === "QUOTED"
+          ? parsed.data.additionalDiscount
+          : 0,
+      totalPriceFinal,
+      quotedAt:
+        parsed.data.status === "QUOTED" ? new Date().toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    }
+
+    if (!saveMockData()) {
+      throw new Error("Nie udało się utrwalić wyceny.")
+    }
+
+    return NextResponse.json(orders[quoteIndex])
+  } catch (error) {
+    console.error("Quote update error:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Błąd serwera." },
       { status: 500 }

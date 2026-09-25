@@ -1,117 +1,145 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Check, X, MessageSquare, Trash2 } from "lucide-react";
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Check, MessageSquare, Trash2, X } from "lucide-react"
 
-export default function AdminActions({ actionType, userId, quoteId, currentStatus }: any) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
+type AdminActionProps = {
+  actionType: "approveUser" | "deleteUser" | "processQuote"
+  userId?: string
+  quoteId?: string
+  currentStatus?: string
+}
 
-  if (actionType === "approveUser") {
-    const handleApprove = async () => {
-      setLoading(true);
-      await fetch("/api/users", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: userId, isApproved: true })
-      });
-      router.refresh();
-      setLoading(false);
-    };
+export default function AdminActions({
+  actionType,
+  userId,
+  quoteId,
+  currentStatus,
+}: AdminActionProps) {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
 
-    return (
-      <button 
-        onClick={handleApprove} 
-        disabled={loading} 
-        className="pill-action bg-status-success text-white hover:brightness-110 active-press flex items-center gap-2"
-      >
-        <Check className="w-3.5 h-3.5" /> {loading ? "..." : "Zatwierdź"}
-      </button>
-    );
+  const run = async (
+    input: RequestInfo | URL,
+    init: RequestInit,
+    successMessage?: string
+  ) => {
+    setLoading(true)
+    try {
+      const response = await fetch(input, init)
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        window.alert(payload.error || "Operacja nie powiodła się.")
+        return
+      }
+      if (successMessage) window.alert(successMessage)
+      router.refresh()
+    } finally {
+      setLoading(false)
+    }
   }
 
-  if (actionType === "deleteUser") {
-    const handleDelete = async () => {
-      if (!confirm("Czy na pewno chcesz trwale usunąć tego instalatora?")) return;
-      setLoading(true);
-      await fetch(`/api/users?id=${userId}`, {
-        method: "DELETE",
-      });
-      router.refresh();
-      setLoading(false);
-    };
-
+  if (actionType === "approveUser" && userId) {
     return (
-      <button 
-        onClick={handleDelete} 
-        disabled={loading} 
-        className="w-8 h-8 flex items-center justify-center text-slate-200 hover:text-status-error hover:bg-slate-50 transition-all rounded-none active-press" 
+      <button
+        onClick={() =>
+          void run("/api/users", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: userId, isApproved: true }),
+          })
+        }
+        disabled={loading}
+        className="pill-action flex items-center gap-2 bg-status-success text-white"
+      >
+        <Check className="h-3.5 w-3.5" /> {loading ? "..." : "Zatwierdź"}
+      </button>
+    )
+  }
+
+  if (actionType === "deleteUser" && userId) {
+    return (
+      <button
+        onClick={() => {
+          if (!window.confirm("Trwale usunąć konto partnera?")) return
+          void run(`/api/users?id=${encodeURIComponent(userId)}`, {
+            method: "DELETE",
+          })
+        }}
+        disabled={loading}
+        className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-red-600"
         title="Usuń"
       >
-        {loading ? "..." : <Trash2 className="w-3.5 h-3.5" />}
+        {loading ? "..." : <Trash2 className="h-3.5 w-3.5" />}
       </button>
-    );
+    )
   }
 
-  if (actionType === "processQuote") {
-    const handleSendQuote = async () => {
-      const deliveryDays = prompt("Czas realizacji w dniach roboczych (np. 5):");
-      if (deliveryDays === null) return;
-      const discount = prompt("Dodatkowy rabat % dla klienta (np. 10, lub 0 jeśli brak):");
-      if (discount === null) return;
+  if (actionType === "processQuote" && quoteId) {
+    if (!["PENDING", "INQUIRY"].includes(currentStatus || "")) {
+      return (
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          {currentStatus || "ARCHIWUM"}
+        </span>
+      )
+    }
 
-      setLoading(true);
-      await fetch("/api/quotes", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: quoteId,
-          status: "QUOTED",
-          deliveryTimeDays: parseInt(deliveryDays) || null,
-          additionalDiscount: parseFloat(discount) || 0
-        })
-      });
-      alert("✅ Wycena wysłana! Klient zostanie powiadomiony e-mailem.");
-      router.refresh();
-      setLoading(false);
-    };
+    const quote = async () => {
+      const delivery = window.prompt("Czas realizacji w dniach roboczych:")
+      if (delivery === null) return
+      const discount = window.prompt("Dodatkowy rabat % (0-100):", "0")
+      if (discount === null) return
 
-    const handleReject = async () => {
-      if (!confirm("Czy na pewno chcesz odrzucić to zapytanie?")) return;
-      setLoading(true);
-      await fetch("/api/quotes", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: quoteId, status: "REJECTED", deliveryTimeDays: null, additionalDiscount: 0 })
-      });
-      router.refresh();
-      setLoading(false);
-    };
-
-    if (currentStatus !== "PENDING") {
-      return <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">ARCHIVE</span>;
+      await run(
+        "/api/quotes",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: quoteId,
+            status: "QUOTED",
+            deliveryTimeDays: Number(delivery),
+            additionalDiscount: Number(discount),
+          }),
+        },
+        "Wycena została zapisana."
+      )
     }
 
     return (
       <div className="flex items-center gap-2">
-        <button 
-          onClick={handleSendQuote} 
-          disabled={loading} 
-          className="pill-action bg-primary text-white hover:brightness-110 active-press flex items-center gap-2"
+        <button
+          onClick={() => void quote()}
+          disabled={loading}
+          className="pill-action flex items-center gap-2 bg-primary text-white"
         >
-          <MessageSquare className="w-3.5 h-3.5" /> {loading ? "..." : "Wyceń"}
+          <MessageSquare className="h-3.5 w-3.5" />
+          {loading ? "..." : "Wyceń"}
         </button>
-        <button 
-          onClick={handleReject} 
-          disabled={loading} 
-          className="w-8 h-8 flex items-center justify-center text-slate-200 hover:text-status-error hover:bg-slate-50 transition-all active-press"
+        <button
+          onClick={() => {
+            if (!window.confirm("Odrzucić to zapytanie?")) return
+            void run("/api/quotes", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: quoteId,
+                status: "REJECTED",
+                deliveryTimeDays: null,
+                additionalDiscount: 0,
+              }),
+            })
+          }}
+          disabled={loading}
+          className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-red-600"
+          aria-label="Odrzuć zapytanie"
         >
-          <X className="w-4 h-4" />
+          <X className="h-4 w-4" />
         </button>
       </div>
-    );
+    )
   }
 
-  return null;
+  return null
 }

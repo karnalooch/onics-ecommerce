@@ -29,7 +29,7 @@ export default function AdminClientsPage() {
       const data = await res.json();
       setUsers(Array.isArray(data) ? data : []);
     } catch (e) {
-      toast.error("FAULT: Błąd synchronizacji rejestru partnerów.");
+      toast.error("Błąd synchronizacji rejestru partnerów.");
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ export default function AdminClientsPage() {
         })
       });
       if (res.ok) {
-        toast.success(`LOG: Zmodernizowano warunki handlowe dla ${selectedUser.username}`);
+        toast.success(`Zapisano warunki handlowe dla ${selectedUser.username}`);
         setIsDialogOpen(false);
         loadUsers();
       }
@@ -99,6 +99,28 @@ export default function AdminClientsPage() {
       setSaving(false);
     }
   };
+
+  const exportCsv = () => {
+    const rows = filteredUsers.map((user) => ({
+      Firma: user.companyName || user.username || "",
+      Email: user.email,
+      NIP: user.nip || "",
+      Rola: user.roleType,
+      Rabat: user.discount || 0,
+      Poziom: user.tierName || "BASIC",
+      Status: user.isBlocked ? "ZABLOKOWANY" : user.isApproved ? "AKTYWNY" : "OCZEKUJE",
+    }))
+    const headers = Object.keys(rows[0] || { Firma: "", Email: "", NIP: "", Rola: "", Rabat: "", Poziom: "", Status: "" })
+    const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`
+    const csv = [headers.join(";"), ...rows.map((row) => headers.map((header) => escape(row[header as keyof typeof row])).join(";"))].join("\n")
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `celtronics-partnerzy-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -155,11 +177,12 @@ export default function AdminClientsPage() {
               </div>
               
               <div className="flex items-center gap-3 w-full lg:w-auto">
-                 <button className="h-14 px-8 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl text-muted-foreground hover:text-foreground font-bold uppercase text-[11px] tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-sm">
-                    <FileText className="w-4 h-4" /> Eksportuj Logi
-                 </button>
-                 <button className="h-14 px-10 bg-primary text-white font-bold uppercase text-[11px] tracking-widest flex items-center gap-4 active:scale-95 transition-all hover:brightness-110 shadow-xl shadow-primary/20 rounded-xl flex-1 lg:flex-none">
-                    DODAJ NOWY PODMIOT
+                 <button
+                    type="button"
+                    onClick={exportCsv}
+                    className="h-14 px-8 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl text-muted-foreground hover:text-foreground font-bold uppercase text-[11px] tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-sm"
+                 >
+                    <FileText className="w-4 h-4" /> Eksportuj CSV
                  </button>
               </div>
            </div>
@@ -276,7 +299,7 @@ export default function AdminClientsPage() {
               <div className="px-10 py-5 bg-black/5 dark:bg-white/5 border-t border-black/5 dark:border-white/10 flex justify-between items-center">
                  <div className="flex items-center gap-3">
                     <ShieldCheck className="w-4 h-4 text-green-500" />
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Integrity_Control: SECURE</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Dane zapisane w rejestrze partnerów</span>
                  </div>
                  <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     <span>Strona: 1 / 1</span>
