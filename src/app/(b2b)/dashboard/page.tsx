@@ -13,7 +13,7 @@ import {
   Zap,
 } from "lucide-react"
 import { InstallerTier } from "@/components/ui/InstallerTier"
-import { initializeMockData } from "@/store/serverStore"
+import { readServerData } from "@/store/serverStore"
 import { StatCard } from "./_components/StatCard"
 import { QuickActionTerminal } from "./_components/QuickActionTerminal"
 
@@ -69,7 +69,7 @@ export default async function DashboardPage() {
     redirect("/logowanie")
   }
 
-  const { users, orders, repairs } = initializeMockData()
+  const { users, orders, repairs } = await readServerData()
   const storedUser = (users as StoredUser[]).find(
     (user) =>
       (sessionUser.id && user.id === sessionUser.id) ||
