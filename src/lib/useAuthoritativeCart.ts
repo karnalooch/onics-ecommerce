@@ -20,6 +20,7 @@ export function useAuthoritativeCart(options: {
 
   useEffect(() => {
     if (!options.enabled || items.length === 0) {
+      lastPreviewKeyRef.current = ""
       setRefreshingCart(false)
       return
     }
