@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { appendPaymentAudit } from "@/lib/paymentAudit"
 import {
   describePaymentControl,
   describePaymentMethods,
@@ -10,6 +11,7 @@ import {
 import {
   initializeMockData,
   mutateMockData,
+  type PaymentAuditEntry,
   type PaymentControlSettings,
   type PaymentMethodSettings,
 } from "@/store/serverStore"
@@ -35,6 +37,9 @@ export async function GET() {
   return NextResponse.json({
     control: describePaymentControl(snapshot.paymentControl),
     methods: describePaymentMethods(snapshot.paymentMethods),
+    ...(authCheck.currentRole === "ADMIN"
+      ? { audit: snapshot.paymentAudit.slice(0, 20) }
+      : {}),
   })
 }
 
@@ -52,19 +57,42 @@ export async function PUT(req: Request) {
 
   if (parsed.data.scope === "GLOBAL") {
     const globalUpdate = parsed.data
-    const control = await mutateMockData((db) => {
+    const result = await mutateMockData((db) => {
       const paymentControl = db.paymentControl as PaymentControlSettings
-      paymentControl.enabled = globalUpdate.enabled
-      paymentControl.maintenanceMessage =
+      const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
+      const nextMaintenanceMessage =
         globalUpdate.maintenanceMessage?.trim() || null
-      paymentControl.updatedAt = new Date().toISOString()
-      return paymentControl
+      const previousEnabled = paymentControl.enabled
+      const previousMaintenanceMessage =
+        paymentControl.maintenanceMessage
+
+      paymentControl.enabled = globalUpdate.enabled
+      paymentControl.maintenanceMessage = nextMaintenanceMessage
+
+      const auditEntry = appendPaymentAudit(
+        paymentAudit,
+        authCheck.user,
+        {
+          target: "GLOBAL",
+          previousEnabled,
+          nextEnabled: globalUpdate.enabled,
+          previousMaintenanceMessage,
+          nextMaintenanceMessage,
+        }
+      )
+
+      if (auditEntry) {
+        paymentControl.updatedAt = auditEntry.createdAt
+      }
+
+      return { paymentControl, auditEntry }
     })
 
     const snapshot = initializeMockData()
     return NextResponse.json({
-      control: describePaymentControl(control),
+      control: describePaymentControl(result.paymentControl),
       methods: describePaymentMethods(snapshot.paymentMethods),
+      audit: snapshot.paymentAudit.slice(0, 20),
     })
   }
 
@@ -83,19 +111,35 @@ export async function PUT(req: Request) {
     }
   }
 
-  const settings = await mutateMockData((db) => {
+  const result = await mutateMockData((db) => {
     const paymentMethods = db.paymentMethods as PaymentMethodSettings
+    const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
+    const previousEnabled = paymentMethods[method].enabled
+
+    const auditEntry = appendPaymentAudit(
+      paymentAudit,
+      authCheck.user,
+      {
+        target: method,
+        previousEnabled,
+        nextEnabled: methodUpdate.enabled,
+      }
+    )
+
     paymentMethods[method] = {
       ...paymentMethods[method],
       enabled: methodUpdate.enabled,
-      updatedAt: new Date().toISOString(),
+      updatedAt:
+        auditEntry?.createdAt ?? paymentMethods[method].updatedAt,
     }
-    return paymentMethods
+
+    return { paymentMethods, auditEntry }
   })
 
   const snapshot = initializeMockData()
   return NextResponse.json({
     control: describePaymentControl(snapshot.paymentControl),
-    methods: describePaymentMethods(settings),
+    methods: describePaymentMethods(result.paymentMethods),
+    audit: snapshot.paymentAudit.slice(0, 20),
   })
 }
