@@ -27,7 +27,7 @@ export type PaymentProviderContractHarness = {
   sensitiveRuntimeValues?: string[]
   legacyOrder?: PaymentProviderOrderIdentity
   checkoutResult: PaymentCheckoutResult
-  assertIdempotency: () => void
+  assertIdempotency?: () => void
 }
 
 function orderFor(
@@ -212,8 +212,21 @@ export function definePaymentProviderContract(
       )
     })
 
-    it("keeps cancellation/refund lifecycle mutations idempotent", () => {
-      harness.assertIdempotency()
+    it("keeps supported lifecycle mutations idempotent", () => {
+      const provider = getPaymentProviderDefinition(harness.id)
+      const hasLifecycleMutation =
+        provider.capabilities.cancel ||
+        provider.capabilities.refund ||
+        provider.capabilities.rma ||
+        provider.capabilities.manualSettlement
+
+      if (!hasLifecycleMutation) {
+        expect(harness.assertIdempotency).toBeUndefined()
+        return
+      }
+
+      expect(harness.assertIdempotency).toBeTypeOf("function")
+      harness.assertIdempotency?.()
     })
   })
 }

@@ -51,9 +51,11 @@ const requiredCapabilities: Record<
   CONFIRM_RETURN_REFUND: ["rma", "refund", "manualSettlement"],
 }
 
-const providerTargets: Record<
-  PaymentProviderId,
-  Partial<Record<PaymentAdminAction, PaymentAdminActionTarget>>
+const providerTargets: Partial<
+  Record<
+    PaymentProviderId,
+    Partial<Record<PaymentAdminAction, PaymentAdminActionTarget>>
+  >
 > = {
   STRIPE: {
     CANCEL: { handler: "STRIPE_CANCEL" },
@@ -95,7 +97,7 @@ export function resolvePaymentAdminActionTarget(
   provider: PaymentProviderId,
   action: PaymentAdminAction
 ): PaymentAdminActionTarget {
-  const target = providerTargets[provider][action]
+  const target = providerTargets[provider]?.[action]
   if (!target) throw new Error("PAYMENT_ADMIN_ACTION_UNSUPPORTED")
 
   for (const capability of requiredCapabilities[action]) {
