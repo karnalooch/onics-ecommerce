@@ -12,7 +12,7 @@ import {
   type StripeReturnOrder,
 } from "@/lib/returns"
 import type { InventoryProduct } from "@/lib/inventoryReservations"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData } from "@/store/serverStore"
 
 const ReturnOrderSchema = z.object({
   id: z.string().min(1),
@@ -46,13 +46,6 @@ function refundStatus(value: unknown): StripeRefundStatus {
     return value
   }
   throw new Error("STRIPE_REFUND_UNKNOWN_STATUS")
-}
-
-function findOrder(id: string) {
-  const snapshot = initializeMockData()
-  return (snapshot.orders as StripeReturnOrder[]).find(
-    (candidate) => candidate.id === id
-  )
 }
 
 export async function POST(req: Request) {
@@ -141,6 +134,7 @@ export async function POST(req: Request) {
     if (!intentId) {
       throw new Error("RETURN_PAYMENT_INTENT_MISSING")
     }
+    const resolvedIntentId = intentId
 
     const previousRefundFailed =
       received.refundStatus === "failed" ||
@@ -151,7 +145,7 @@ export async function POST(req: Request) {
         ? await stripe.refunds.retrieve(received.stripeRefundId)
         : await stripe.refunds.create(
             {
-              payment_intent: intentId,
+              payment_intent: resolvedIntentId,
               reason: "requested_by_customer",
               metadata: {
                 order_id: String(received.id),
@@ -185,7 +179,7 @@ export async function POST(req: Request) {
         {
           orderId: refund.metadata?.order_id || String(order.id),
           refundId: refund.id,
-          paymentIntentId: refundPaymentIntentId(refund) || intentId,
+          paymentIntentId: refundPaymentIntentId(refund) || resolvedIntentId,
           amount: refund.amount,
           currency: refund.currency,
           status,
