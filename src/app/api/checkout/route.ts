@@ -6,6 +6,7 @@ import { resolveCartItems } from "@/lib/commerce"
 import { moneyToMinorUnits, resolveStripeCheckoutConfig } from "@/lib/payments"
 import { reserveInventory } from "@/lib/inventoryReservations"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
 const CartSchema = z.object({
   items: z
@@ -36,15 +37,6 @@ type StoredUser = {
   discount?: number
 }
 
-function findStoredUser(users: StoredUser[], sessionUser: SessionUser) {
-  return users.find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
-  )
-}
-
 function assertCheckoutUser(user: StoredUser | undefined) {
   if (!user || user.isBlocked) {
     throw new Error("Konto jest niedostępne.")
@@ -63,7 +55,9 @@ function resolveCheckout(
   sessionUser: SessionUser,
   items: z.infer<typeof CartSchema>["items"]
 ) {
-  const storedUser = assertCheckoutUser(findStoredUser(users, sessionUser))
+  const storedUser = assertCheckoutUser(
+    findStoredUserBySession(users, sessionUser)
+  )
   const resolved = resolveCartItems(
     items,
     products,
