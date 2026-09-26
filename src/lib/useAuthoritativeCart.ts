@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useCartStore, type CartItem } from "@/store/cartStore"
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
 
 export type CartStockByProduct = Partial<Record<string, number>>
 
@@ -24,7 +25,7 @@ function parsePreviewItem(value: unknown): AuthoritativeCartPreviewItem {
   if (!Number.isFinite(price) || price < 0) {
     throw new Error("Serwer zwrócił nieprawidłową cenę koszyka.")
   }
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) {
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > CART_ITEM_QUANTITY_MAX) {
     throw new Error("Serwer zwrócił nieprawidłową ilość produktu.")
   }
   if (!Number.isInteger(availableStock) || availableStock < 0) {

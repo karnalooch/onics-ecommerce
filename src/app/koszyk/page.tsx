@@ -11,6 +11,7 @@ import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
 import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart";
 import { buildCartOwnerKey } from "@/lib/cartIdentity";
 import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding";
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";
 
 type CheckoutPaymentMethod = {
   id: string;
@@ -270,19 +271,36 @@ export default function CartPage() {
   const applyOrderImportPreview = () => {
     if (!importPreview?.accepted.length) return;
 
+    let addedCount = 0;
+    let skippedCount = 0;
+
     for (const item of importPreview.accepted) {
-      addItem({
+      const added = addItem({
         id: item.id,
         sku: item.sku,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
       });
+
+      if (added) {
+        addedCount += 1;
+      } else {
+        skippedCount += 1;
+      }
     }
 
-    toast.success(
-      `Dodano ${importPreview.accepted.length} pozycji z importu do koszyka.`
-    );
+    if (addedCount > 0) {
+      toast.success(
+        `Dodano ${addedCount} pozycji z importu do koszyka.`
+      );
+    }
+    if (skippedCount > 0) {
+      toast.warning(
+        `Pominięto ${skippedCount} pozycji: po połączeniu z koszykiem przekroczyłyby limit ${CART_ITEM_QUANTITY_MAX} szt. dla jednego produktu.`
+      );
+    }
+
     setImportPreview(null);
   };
 
@@ -703,18 +721,21 @@ export default function CartPage() {
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         disabled={
-                          hasActiveCartPrice(item.price) &&
-                          availableStockById[item.id] !== undefined &&
-                          item.quantity >=
-                            (availableStockById[item.id] ?? Number.POSITIVE_INFINITY)
+                          item.quantity >= CART_ITEM_QUANTITY_MAX ||
+                          (hasActiveCartPrice(item.price) &&
+                            availableStockById[item.id] !== undefined &&
+                            item.quantity >=
+                              (availableStockById[item.id] ?? Number.POSITIVE_INFINITY))
                         }
                         title={
-                          hasActiveCartPrice(item.price) &&
-                          availableStockById[item.id] !== undefined &&
-                          item.quantity >=
-                            (availableStockById[item.id] ?? Number.POSITIVE_INFINITY)
-                            ? `Dostępne obecnie: ${availableStockById[item.id]} szt.`
-                            : "Zwiększ ilość"
+                          item.quantity >= CART_ITEM_QUANTITY_MAX
+                            ? `Maksymalna ilość: ${CART_ITEM_QUANTITY_MAX} szt.`
+                            : hasActiveCartPrice(item.price) &&
+                                availableStockById[item.id] !== undefined &&
+                                item.quantity >=
+                                  (availableStockById[item.id] ?? Number.POSITIVE_INFINITY)
+                              ? `Dostępne obecnie: ${availableStockById[item.id]} szt.`
+                              : "Zwiększ ilość"
                         }
                         className="w-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
                       >

@@ -1,3 +1,5 @@
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
+
 export type CommerceUser = {
   id?: string
   email?: string | null
@@ -70,13 +72,13 @@ export function resolveCartItems(
 
   for (const input of inputs) {
     const quantity = Number(input.quantity)
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) {
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > CART_ITEM_QUANTITY_MAX) {
       throw new Error("Nieprawidłowa ilość produktu.")
     }
 
     const productId = String(input.id)
     const totalQuantity = (quantitiesByProduct.get(productId) ?? 0) + quantity
-    if (!Number.isSafeInteger(totalQuantity) || totalQuantity > 10000) {
+    if (!Number.isSafeInteger(totalQuantity) || totalQuantity > CART_ITEM_QUANTITY_MAX) {
       throw new Error("Nieprawidłowa ilość produktu.")
     }
     quantitiesByProduct.set(productId, totalQuantity)

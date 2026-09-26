@@ -127,6 +127,7 @@ Właściwości:
 - brak DTD/ENTITY/CDATA/comments/namespaces/rozszerzeń,
 - ceny/nazwy/rabaty/stock zawsze pochodzą z serwera,
 - preview pokazuje accepted/rejected przed zmianą koszyka,
+- klient nie scala importu z istniejącą pozycją, jeśli łączna ilość przekroczyłaby wspólny limit 10000 szt.; pominięcie jest jawnie raportowane,
 - finalny checkout ponownie waliduje połączony koszyk.
 
 Szczegóły: `docs/order-import-xml-v1.md`.

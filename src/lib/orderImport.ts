@@ -4,6 +4,7 @@ import {
   type CommerceUser,
   type ResolvedCartItem,
 } from "@/lib/commerce"
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
 
 export const ORDER_IMPORT_FORMAT = "CELTRONICS_ORDER_XML_V1" as const
 export const ORDER_IMPORT_MAX_BYTES = 256 * 1024
@@ -255,10 +256,10 @@ export function parseCeltronicsOrderXml(xml: string): ParsedOrderImport {
     }
 
     const quantity = Number(quantityText)
-    if (quantity > 10000) {
+    if (quantity > CART_ITEM_QUANTITY_MAX) {
       throw new OrderImportError(
         "XML_INVALID_QUANTITY",
-        `Ilość w linii ${lineNumberAt(source, token.index)} przekracza 10000.`
+        `Ilość w linii ${lineNumberAt(source, token.index)} przekracza ${CART_ITEM_QUANTITY_MAX}.`
       )
     }
 
@@ -330,12 +331,12 @@ export function buildOrderImportPreview(
   const rejected: OrderImportRejectedItem[] = []
 
   for (const [sku, group] of grouped) {
-    if (!Number.isSafeInteger(group.quantity) || group.quantity > 10000) {
+    if (!Number.isSafeInteger(group.quantity) || group.quantity > CART_ITEM_QUANTITY_MAX) {
       rejected.push({
         sku,
         quantity: group.quantity,
         sourceLines: group.sourceLines,
-        reason: "Łączna ilość dla SKU przekracza dozwolony limit 10000.",
+        reason: `Łączna ilość dla SKU przekracza dozwolony limit ${CART_ITEM_QUANTITY_MAX}.`,
       })
       continue
     }

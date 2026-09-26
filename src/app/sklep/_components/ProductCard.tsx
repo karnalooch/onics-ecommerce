@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/store/cartStore";
 import { toast } from "sonner";
 import { hasActiveCartPrice } from "@/lib/cartPricing";
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";
 
 interface IProductCardProps {
   product: any;
@@ -20,7 +21,14 @@ export function ProductCard({ product, isB2B }: IProductCardProps) {
   const canAdd = isB2B && (hasActivePrice ? available : true);
 
   const handleAddToCart = () => {
-    addItem({ ...product, quantity: 1 });
+    const added = addItem({ ...product, quantity: 1 });
+    if (!added) {
+      toast.error(
+        `Maksymalna ilość jednego produktu w koszyku to ${CART_ITEM_QUANTITY_MAX} szt.`
+      );
+      return;
+    }
+
     toast.success(
       hasActivePrice
         ? `Dodano do koszyka: ${product.name}`
