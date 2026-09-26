@@ -4,6 +4,7 @@ import {
   findRemovedReferencedSubcategoryIds,
   hasCategoryProductReference,
   hasSkuConflict,
+  validateCatalogClassification,
 } from "@/lib/catalog"
 
 describe("catalog SKU uniqueness", () => {
@@ -82,6 +83,37 @@ describe("catalog category references", () => {
     expect(
       findRemovedReferencedSubcategoryIds(products, "c2", ["s1"])
     ).toEqual([])
+  })
+})
+
+describe("catalog product classification", () => {
+  const categories = [
+    {
+      id: "c1",
+      subcategories: [{ id: "s1" }, { id: "s2" }],
+    },
+    {
+      id: "c2",
+      subcategories: [{ id: "s3" }],
+    },
+  ]
+
+  it("accepts empty or valid category assignments", () => {
+    expect(validateCatalogClassification(categories, null, null)).toBeNull()
+    expect(validateCatalogClassification(categories, "c1", null)).toBeNull()
+    expect(validateCatalogClassification(categories, "c1", "s2")).toBeNull()
+  })
+
+  it("rejects dangling or cross-category assignments", () => {
+    expect(
+      validateCatalogClassification(categories, null, "s1")
+    ).toBe("SUBCATEGORY_WITHOUT_CATEGORY")
+    expect(
+      validateCatalogClassification(categories, "missing", null)
+    ).toBe("CATEGORY_NOT_FOUND")
+    expect(
+      validateCatalogClassification(categories, "c1", "s3")
+    ).toBe("SUBCATEGORY_NOT_FOUND")
   })
 })
 
