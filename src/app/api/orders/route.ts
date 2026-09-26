@@ -3,8 +3,9 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
 import {
-  canReplaceOrderItems,
+  canReplacePaymentOrderItems,
   resolveEstimatedDeliveryDays,
+  validateBankTransferOrderStatusTransition,
   validateReservedOrderStatusTransition,
   validateStripeOrderStatusTransition,
 } from "@/lib/orders"
@@ -74,6 +75,7 @@ type StoredOrder = InventoryReservationOrder & {
   estimatedDeliveryDays?: number | null
   items?: Array<z.infer<typeof AdminOrderItemSchema>>
   stripeCheckoutSessionId?: string | null
+  paymentProvider?: string | null
   paymentStatus?: string | null
   refundStatus?: string | null
   user?: {
@@ -247,6 +249,21 @@ export async function PUT(req: Request) {
         throw new Error(`ORDER_STATUS_${statusTransition.toUpperCase().replaceAll("-", "_")}`)
       }
 
+      const bankTransferTransition =
+        validateBankTransferOrderStatusTransition(
+          currentOrder.paymentProvider,
+          currentOrder.paymentStatus,
+          currentOrder.status,
+          parsed.data.status
+        )
+      if (bankTransferTransition !== "ok") {
+        throw new Error(
+          `ORDER_BANK_TRANSFER_${bankTransferTransition
+            .toUpperCase()
+            .replaceAll("-", "_")}`
+        )
+      }
+
       const reservedStatusTransition =
         validateReservedOrderStatusTransition(
           currentOrder.inventoryReservationSource,
@@ -258,13 +275,14 @@ export async function PUT(req: Request) {
       }
 
       if (
-        !canReplaceOrderItems(
+        !canReplacePaymentOrderItems(
+          currentOrder.paymentProvider,
           currentOrder.stripeCheckoutSessionId,
           parsed.data.items,
           currentOrder.items
         )
       ) {
-        throw new Error("STRIPE_ORDER_ITEMS_IMMUTABLE")
+        throw new Error("PAYMENT_ORDER_ITEMS_IMMUTABLE")
       }
 
       const items = parsed.data.items ?? currentOrder.items ?? []
@@ -316,6 +334,45 @@ export async function PUT(req: Request) {
         {
           error:
             "Zamówienie Stripe musi być opłacone przed potwierdzeniem lub wysyłką.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_BANK_TRANSFER_PAYMENT_REQUIRED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Przelew bankowy musi zostać zaksięgowany przez administratora przed przekazaniem zamówienia do logistyki.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_BANK_TRANSFER_MANUAL_REFUND_REQUIRED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Opłaconego przelewu nie można anulować samą zmianą statusu. Najpierw wykonaj zwrot środków, a następnie potwierdź go w dedykowanej akcji płatniczej.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_BANK_TRANSFER_INVALID_BANK_TRANSFER_STATUS"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Zamówienia z przelewem bankowym nie można zmienić na zapytanie.",
         },
         { status: 409 }
       )
@@ -417,12 +474,12 @@ export async function PUT(req: Request) {
 
     if (
       error instanceof Error &&
-      error.message === "STRIPE_ORDER_ITEMS_IMMUTABLE"
+      error.message === "PAYMENT_ORDER_ITEMS_IMMUTABLE"
     ) {
       return NextResponse.json(
         {
           error:
-            "Pozycje zamówienia powiązanego z płatnością Stripe nie mogą być zmieniane.",
+            "Pozycje i kwoty zamówienia powiązanego z checkoutem płatniczym nie mogą być zmieniane po jego utworzeniu.",
         },
         { status: 409 }
       )
