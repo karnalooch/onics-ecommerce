@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
+  describePaymentControl,
   describePaymentMethods,
   stripeOperationalStatus,
   type PaymentMethodId,
@@ -9,13 +10,22 @@ import {
 import {
   initializeMockData,
   mutateMockData,
+  type PaymentControlSettings,
   type PaymentMethodSettings,
 } from "@/store/serverStore"
 
-const UpdatePaymentMethodSchema = z.object({
-  id: z.enum(["STRIPE"]),
-  enabled: z.boolean(),
-})
+const UpdatePaymentSettingsSchema = z.union([
+  z.object({
+    scope: z.literal("GLOBAL"),
+    enabled: z.boolean(),
+    maintenanceMessage: z.string().trim().max(160).nullable().optional(),
+  }),
+  z.object({
+    scope: z.literal("METHOD").optional(),
+    id: z.enum(["STRIPE"]),
+    enabled: z.boolean(),
+  }),
+])
 
 export async function GET() {
   const authCheck = await authorizeAPI([])
@@ -23,6 +33,7 @@ export async function GET() {
 
   const snapshot = initializeMockData()
   return NextResponse.json({
+    control: describePaymentControl(snapshot.paymentControl),
     methods: describePaymentMethods(snapshot.paymentMethods),
   })
 }
@@ -31,12 +42,29 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = UpdatePaymentMethodSchema.safeParse(await req.json())
+  const parsed = UpdatePaymentSettingsSchema.safeParse(await req.json())
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Nieprawidłowe ustawienie płatności." },
       { status: 400 }
     )
+  }
+
+  if (parsed.data.scope === "GLOBAL") {
+    const control = await mutateMockData((db) => {
+      const paymentControl = db.paymentControl as PaymentControlSettings
+      paymentControl.enabled = parsed.data.enabled
+      paymentControl.maintenanceMessage =
+        parsed.data.maintenanceMessage?.trim() || null
+      paymentControl.updatedAt = new Date().toISOString()
+      return paymentControl
+    })
+
+    const snapshot = initializeMockData()
+    return NextResponse.json({
+      control: describePaymentControl(control),
+      methods: describePaymentMethods(snapshot.paymentMethods),
+    })
   }
 
   const method = parsed.data.id as PaymentMethodId
@@ -63,7 +91,9 @@ export async function PUT(req: Request) {
     return paymentMethods
   })
 
+  const snapshot = initializeMockData()
   return NextResponse.json({
+    control: describePaymentControl(snapshot.paymentControl),
     methods: describePaymentMethods(settings),
   })
 }
