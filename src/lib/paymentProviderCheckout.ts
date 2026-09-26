@@ -176,6 +176,26 @@ function assertPaymentStillAvailable(
   }
 }
 
+async function cancelFailedPrzelewy24Registration(orderId: string) {
+  await mutateMockData((db) => {
+    const order = (db.orders as Array<Record<string, unknown>>).find(
+      (candidate) =>
+        candidate.id === orderId &&
+        candidate.paymentProvider === "PRZELEWY24"
+    )
+    if (!order || order.status === "CANCELLED") return
+
+    applyOrderInventoryTransition(
+      db.products as InventoryProduct[],
+      order as Parameters<typeof applyOrderInventoryTransition>[1],
+      order.items as Parameters<typeof applyOrderInventoryTransition>[2],
+      "CANCELLED"
+    )
+    order.status = "CANCELLED"
+    order.paymentStatus = "EXPIRED"
+  })
+}
+
 async function createPrzelewy24Checkout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
