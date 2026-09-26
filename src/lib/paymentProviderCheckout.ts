@@ -24,6 +24,7 @@ import {
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   assertPaymentProviderCapability,
+  getPaymentProviderDefinition,
 } from "@/lib/paymentProviders"
 import {
   registerPrzelewy24Transaction,
