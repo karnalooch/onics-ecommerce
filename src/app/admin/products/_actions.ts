@@ -11,6 +11,10 @@ import {
   preserveSalePriceForKnowledgeUpdate,
   pricingForKnowledgeCreatedProduct,
 } from "@/lib/knowledge/pricingBoundary";
+import {
+  hasInventoryLifecycleDependencyForProduct,
+  type InventoryReservationOrder,
+} from "@/lib/inventoryReservations";
 
 /**
  * Całkowite wyczyszczenie Centralnego Rejestru Towarowego
@@ -22,6 +26,17 @@ export async function wipeRegistryAction(): Promise<ActionState> {
 
   try {
     await mutateMockData((db) => {
+      const orders = db.orders as InventoryReservationOrder[];
+      const protectedProduct = db.products.find((product) =>
+        hasInventoryLifecycleDependencyForProduct(
+          orders,
+          String(product.id ?? "")
+        )
+      );
+      if (protectedProduct) {
+        throw new Error("REGISTRY_HAS_INVENTORY_LIFECYCLE");
+      }
+
       db.products.splice(0, db.products.length);
       db.knowledgeEntries = {};
       db.knowledgeMeta = {
@@ -37,7 +52,17 @@ export async function wipeRegistryAction(): Promise<ActionState> {
       success: true,
       message: "Centralny Rejestr Towarowy został całkowicie wyczyszczony."
     };
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "REGISTRY_HAS_INVENTORY_LIFECYCLE"
+    ) {
+      return {
+        success: false,
+        error:
+          "Nie można wyczyścić rejestru, gdy istnieją zamówienia wymagające jeszcze produktu do release/refund/RMA magazynu."
+      };
+    }
     return { success: false, error: "Błąd podczas czyszczenia rejestru" };
   }
 }
@@ -124,6 +149,14 @@ export async function deleteProductAction(id: string): Promise<ActionState> {
       const products = db.products as any[];
       const idx = products.findIndex((product) => product.id === id);
       if (idx === -1) throw new Error("PRODUCT_NOT_FOUND");
+      if (
+        hasInventoryLifecycleDependencyForProduct(
+          db.orders as InventoryReservationOrder[],
+          id
+        )
+      ) {
+        throw new Error("PRODUCT_HAS_INVENTORY_LIFECYCLE");
+      }
       products.splice(idx, 1);
     });
 
@@ -133,6 +166,16 @@ export async function deleteProductAction(id: string): Promise<ActionState> {
   } catch (error) {
     if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono produktu" };
+    }
+    if (
+      error instanceof Error &&
+      error.message === "PRODUCT_HAS_INVENTORY_LIFECYCLE"
+    ) {
+      return {
+        success: false,
+        error:
+          "Nie można usunąć produktu, dopóki istniejące zamówienie może jeszcze wymagać release/refund/RMA magazynu."
+      };
     }
     return { success: false, error: "Błąd podczas usuwania" };
   }
@@ -646,6 +689,16 @@ export async function manageStructureAction(
           const orphanedProducts = products.filter(
             (product) => product.manufacturer === manufacturerName
           );
+          if (
+            orphanedProducts.some((product) =>
+              hasInventoryLifecycleDependencyForProduct(
+                db.orders as InventoryReservationOrder[],
+                String(product.id)
+              )
+            )
+          ) {
+            throw new Error("STRUCTURE_HAS_INVENTORY_LIFECYCLE");
+          }
           const orphanedIds = new Set(
             orphanedProducts.map((product) => product.id)
           );
@@ -697,6 +750,16 @@ export async function manageStructureAction(
           const orphanedProducts = products.filter(
             (product) => product.categoryId === id
           );
+          if (
+            orphanedProducts.some((product) =>
+              hasInventoryLifecycleDependencyForProduct(
+                db.orders as InventoryReservationOrder[],
+                String(product.id)
+              )
+            )
+          ) {
+            throw new Error("STRUCTURE_HAS_INVENTORY_LIFECYCLE");
+          }
           const orphanedIds = new Set(
             orphanedProducts.map((product) => product.id)
           );
@@ -746,6 +809,16 @@ export async function manageStructureAction(
     }
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
+    }
+    if (
+      error instanceof Error &&
+      error.message === "STRUCTURE_HAS_INVENTORY_LIFECYCLE"
+    ) {
+      return {
+        success: false,
+        error:
+          "Nie można usunąć tej struktury, ponieważ powiązany produkt jest nadal potrzebny przez lifecycle magazynowy istniejącego zamówienia."
+      };
     }
     if (
       error instanceof Error &&

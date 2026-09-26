@@ -86,6 +86,30 @@ export function hasActiveReservationForProduct(
   )
 }
 
+export function hasInventoryLifecycleDependencyForProduct(
+  orders: InventoryReservationOrder[],
+  productId: string
+) {
+  return orders.some((order) => {
+    const referencesProduct = (order.items ?? []).some(
+      (item) => String(item.id) === String(productId)
+    )
+    if (!referencesProduct) return false
+
+    // Once a refund/return has already restored inventory, no later inventory
+    // transition is allowed to touch stock for this order.
+    if (order.inventoryRefundRestockedAt) return false
+
+    const status = order.inventoryReservationStatus
+    if (!status || status === "RELEASED") return false
+
+    // RESERVED may still finalize/release. FINALIZED may still be refunded/RMA.
+    // Unknown managed states fail closed so catalog deletion cannot make
+    // recovery impossible.
+    return true
+  })
+}
+
 export function shouldDeferProductStockWrite(
   orders: InventoryReservationOrder[],
   productId: string,

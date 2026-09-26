@@ -10,7 +10,7 @@ import { calculateCustomerUnitPrice } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { hasSkuConflict } from "@/lib/catalog"
 import {
-  hasActiveReservationForProduct,
+  hasInventoryLifecycleDependencyForProduct,
   shouldDeferProductStockWrite,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
@@ -469,12 +469,12 @@ export async function DELETE(req: Request) {
       const index = productStore.findIndex((product) => product.id === id)
       if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
       if (
-        hasActiveReservationForProduct(
+        hasInventoryLifecycleDependencyForProduct(
           db.orders as InventoryReservationOrder[],
           id
         )
       ) {
-        throw new Error("PRODUCT_HAS_ACTIVE_RESERVATION")
+        throw new Error("PRODUCT_HAS_INVENTORY_LIFECYCLE")
       }
       productStore.splice(index, 1)
     })
@@ -489,12 +489,12 @@ export async function DELETE(req: Request) {
     }
     if (
       error instanceof Error &&
-      error.message === "PRODUCT_HAS_ACTIVE_RESERVATION"
+      error.message === "PRODUCT_HAS_INVENTORY_LIFECYCLE"
     ) {
       return NextResponse.json(
         {
           error:
-            "Nie można usunąć produktu z aktywną rezerwacją płatności Stripe.",
+            "Nie można usunąć produktu, dopóki istniejące zamówienie może jeszcze wymagać release/refund/RMA magazynu.",
         },
         { status: 409 }
       )
