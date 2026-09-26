@@ -76,6 +76,16 @@ export async function POST(req: Request) {
     )
   }
 
+  if (order.status === "SHIPPED") {
+    return NextResponse.json(
+      {
+        error:
+          "Wysłanego zamówienia nie można automatycznie anulować i zwrócić na stan. Wymagany jest osobny proces zwrotu towaru.",
+      },
+      { status: 409 }
+    )
+  }
+
   if (
     order.status === "CANCELLED" &&
     (order.paymentStatus === "REFUNDED" || order.paymentStatus === "EXPIRED")
