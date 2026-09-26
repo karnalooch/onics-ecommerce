@@ -8,6 +8,7 @@ import {
   validateStripeOrderStatusTransition,
 } from "@/lib/orders"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
 export const dynamic = "force-dynamic"
 
@@ -76,15 +77,6 @@ type StoredOrder = {
   [key: string]: unknown
 }
 
-function findStoredUser(users: StoredUser[], sessionUser: SessionUser) {
-  return users.find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
-  )
-}
-
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
   if (!authCheck.authorized) return authCheck.response
@@ -97,11 +89,10 @@ export async function GET() {
     return NextResponse.json(orderStore)
   }
 
-  const ownOrders = orderStore.filter(
-    (order) =>
-      (sessionUser.id && order.user?.id === sessionUser.id) ||
-      (sessionUser.email &&
-        order.user?.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  const ownOrders = orderStore.filter((order) =>
+    order.user
+      ? Boolean(findStoredUserBySession([order.user], sessionUser))
+      : false
   )
 
   return NextResponse.json(ownOrders)
@@ -122,7 +113,10 @@ export async function POST(req: Request) {
 
     const sessionUser = authCheck.user as SessionUser
     const newOrder = await mutateMockData((db) => {
-      const storedUser = findStoredUser(db.users as StoredUser[], sessionUser)
+      const storedUser = findStoredUserBySession(
+        db.users as StoredUser[],
+        sessionUser
+      )
 
       if (!storedUser) throw new Error("Konto nie istnieje.")
       if (storedUser.isBlocked) throw new Error("Konto jest zablokowane.")
