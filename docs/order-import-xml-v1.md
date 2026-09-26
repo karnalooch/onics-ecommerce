@@ -38,6 +38,8 @@ Attribute order inside `item` is not significant, but attribute names are
 fixed to `sku` and `quantity`.
 
 The import endpoint only creates a preview. The cart is mutated in the browser
-only after the user reviews and explicitly accepts the preview. Final checkout
-and order creation still repeat the normal server-side catalog, pricing and
-stock validation.
+only after the user reviews and explicitly accepts the preview. If an imported
+SKU already exists in the browser cart, quantities are added together. Final
+checkout and order creation repeat the normal server-side catalog, pricing and
+stock validation for the combined cart, so the preview is never treated as a
+stock reservation or final order validation.
