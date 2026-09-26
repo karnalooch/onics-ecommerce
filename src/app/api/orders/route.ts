@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
 import {
   canReplacePaymentOrderItems,
   resolveEstimatedDeliveryDays,
@@ -24,7 +25,7 @@ export const dynamic = "force-dynamic"
 
 const OrderItemInputSchema = z.object({
   id: z.string().min(1),
-  quantity: z.coerce.number().int().min(1).max(10000),
+  quantity: z.coerce.number().int().min(1).max(CART_ITEM_QUANTITY_MAX),
 })
 
 const CreateOrderSchema = z.object({
@@ -36,7 +37,7 @@ const AdminOrderItemSchema = z.object({
   id: z.string().min(1),
   sku: z.string().min(1),
   name: z.string().min(1),
-  quantity: z.coerce.number().int().min(1).max(10000),
+  quantity: z.coerce.number().int().min(1).max(CART_ITEM_QUANTITY_MAX),
   price: z.coerce.number().min(0).max(100000000),
 })
 
