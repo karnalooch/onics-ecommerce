@@ -106,7 +106,7 @@ export const StructureApprovalModal = memo(function StructureApprovalModal({
           <div className="bg-amber-50 dark:bg-amber-900/20 p-5 rounded-[1.5rem] border border-amber-100 dark:border-amber-900/30 flex items-start gap-4">
              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-1" />
              <p className="text-[10px] font-bold text-amber-700 dark:text-amber-500 leading-relaxed uppercase tracking-tighter">
-                Uwaga: Klikając zatwierdź, dodasz te elementy do Centralnego Rejestru. Pozycje oznaczone jako "Inne" lub "Nieznany" zostały automatycznie wysłane do kwarantanny w Buforze i nie są tu wyświetlane.
+                Uwaga: Ta akceptacja potwierdza proponowane mapowanie w Buforze. Zapis kategorii, podkategorii i producentów do Centralnego Rejestru nastąpi dopiero przy jawnej autoryzacji transferu produktów.
              </p>
           </div>
 
@@ -122,7 +122,7 @@ export const StructureApprovalModal = memo(function StructureApprovalModal({
                 onClick={onApprove}
                 className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase italic tracking-tighter shadow-xl shadow-emerald-500/20"
              >
-                <Check className="w-5 h-5 mr-2" /> Zatwierdź Strukturę
+                <Check className="w-5 h-5 mr-2" /> Przejdź do Weryfikacji
              </Button>
           </div>
         </div>

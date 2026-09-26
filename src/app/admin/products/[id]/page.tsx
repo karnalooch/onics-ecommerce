@@ -2,7 +2,24 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { initializeMockData, mutateMockData } from "@/store/serverStore";
+import { hasSkuConflict } from "@/lib/catalog";
+import {
+  shouldDeferProductStockWrite,
+  type InventoryReservationOrder,
+} from "@/lib/inventoryReservations";
+
+const ProductFormSchema = z.object({
+  name: z.string().trim().min(2).max(240),
+  sku: z.string().trim().min(1).max(120),
+  price: z.coerce.number().finite().min(0).max(100_000_000),
+  stock: z.coerce.number().int().min(0).max(100_000_000),
+  manufacturer: z.string().trim().max(160).optional().default(""),
+  categoryId: z.string().trim().max(160).nullable().optional(),
+  subcategoryId: z.string().trim().max(160).nullable().optional(),
+  description: z.string().max(10_000).optional().default(""),
+});
 
 export default async function EditProductPage({ params }: { params: any }) {
   const session = await auth();
@@ -13,155 +30,217 @@ export default async function EditProductPage({ params }: { params: any }) {
 
   const resolvedParams = await params;
   const { id } = resolvedParams;
-  
   const { products, categories, manufacturers } = initializeMockData();
-  
+
   let product: any = null;
   if (id !== "new") {
-    product = products.find((p: any) => String(p.id) === id);
-    if (!product) return <div className="p-20 text-center">Nie znaleziono produktu o ID: {id}</div>;
+    product = products.find((candidate: any) => String(candidate.id) === id);
+    if (!product) {
+      return (
+        <div className="p-20 text-center">
+          Nie znaleziono produktu o ID: {id}
+        </div>
+      );
+    }
   }
 
   async function saveProduct(formData: FormData) {
     "use server";
-    const name = formData.get("name") as string;
-    const sku = formData.get("sku") as string;
-    const price = parseFloat(formData.get("price") as string) || 0;
-    const stock = parseInt(formData.get("stock") as string) || 0;
-    const categoryId = formData.get("categoryId") as string;
-    const description = formData.get("description") as string;
-    const manufacturerId = formData.get("manufacturerId") as string;
+
+    const actionSession = await auth();
+    if (
+      !actionSession?.user ||
+      (actionSession.user as any).role !== "ADMIN"
+    ) {
+      throw new Error("Brak uprawnień administratora.");
+    }
+
+    const parsed = ProductFormSchema.safeParse({
+      name: formData.get("name"),
+      sku: formData.get("sku"),
+      price: formData.get("price"),
+      stock: formData.get("stock"),
+      manufacturer: formData.get("manufacturer"),
+      categoryId: String(formData.get("categoryId") || "").trim() || null,
+      subcategoryId: String(formData.get("subcategoryId") || "").trim() || null,
+      description: formData.get("description"),
+    });
+
+    if (!parsed.success) {
+      throw new Error(
+        parsed.error.issues[0]?.message || "Nieprawidłowe dane produktu."
+      );
+    }
 
     await mutateMockData((db) => {
-      const products = db.products as any[];
+      const productStore = db.products as any[];
+      const categoryStore = db.categories as any[];
+      const input = parsed.data;
+
+      if (input.categoryId) {
+        const category = categoryStore.find(
+          (candidate) => String(candidate.id) === input.categoryId
+        );
+        if (!category) throw new Error("CATEGORY_NOT_FOUND");
+
+        if (
+          input.subcategoryId &&
+          !(category.subcategories || []).some(
+            (candidate: any) =>
+              String(candidate.id) === input.subcategoryId
+          )
+        ) {
+          throw new Error("SUBCATEGORY_NOT_FOUND");
+        }
+      } else if (input.subcategoryId) {
+        throw new Error("SUBCATEGORY_WITHOUT_CATEGORY");
+      }
 
       if (id === "new") {
-        products.push({
+        if (hasSkuConflict(productStore, input.sku)) {
+          throw new Error("SKU_EXISTS");
+        }
+
+        productStore.push({
           id: `p_${crypto.randomUUID()}`,
-          name,
-          sku,
-          price,
-          stock,
-          categoryId,
-          description,
-          manufacturerId,
-          createdAt: new Date().toISOString()
+          ...input,
+          seoDescription: input.description,
+          createdAt: new Date().toISOString(),
         });
         return;
       }
 
-      const index = products.findIndex((product) => String(product.id) === id);
-      if (index === -1) {
-        throw new Error("PRODUCT_NOT_FOUND");
+      const index = productStore.findIndex(
+        (candidate) => String(candidate.id) === id
+      );
+      if (index === -1) throw new Error("PRODUCT_NOT_FOUND");
+      if (hasSkuConflict(productStore, input.sku, id)) {
+        throw new Error("SKU_EXISTS");
+      }
+      if (
+        shouldDeferProductStockWrite(
+          db.orders as InventoryReservationOrder[],
+          id,
+          productStore[index].stock,
+          input.stock
+        )
+      ) {
+        throw new Error("PRODUCT_STOCK_RESERVED");
       }
 
-      products[index] = {
-        ...products[index],
-        name,
-        sku,
-        price,
-        stock,
-        categoryId,
-        description,
-        manufacturerId,
-        updatedAt: new Date().toISOString()
+      productStore[index] = {
+        ...productStore[index],
+        ...input,
+        seoDescription:
+          input.description || productStore[index].seoDescription || "",
+        updatedAt: new Date().toISOString(),
       };
     });
-    
+
     revalidatePath("/admin/products");
     revalidatePath("/admin/catalog");
     revalidatePath("/sklep");
-    redirect("/admin/catalog?tab=products");
+    redirect("/admin/products");
   }
+
+  const selectedCategoryId = product?.categoryId || "";
+  const selectedSubcategoryId = product?.subcategoryId || "";
 
   return (
     <div className="admin-layout" style={{ display: "flex", minHeight: "100vh" }}>
-      {/* Sidebar - Uproszczony dla czystości */}
       <div className="admin-sidebar" style={{ width: "260px", background: "#0f172a", color: "#fff", padding: "2rem 1rem" }}>
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <img src="/assets/logo.png" alt="CEL-TRONICS" style={{ height: "36px", filter: "brightness(0) invert(1)" }} />
         </div>
         <div className="admin-sidebar-title" style={{ fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748b", fontWeight: 700, marginBottom: "1rem", paddingLeft: "1rem" }}>System Zarządzania</div>
         <nav className="admin-nav" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <Link href="/admin/catalog" style={{ padding: "0.8rem 1rem", borderRadius: "6px", color: "#94a3b8", textDecoration: "none" }}>📊 Katalog Hybrydowy</Link>
-          <Link href="/admin/catalog?tab=products" style={{ padding: "0.8rem 1rem", borderRadius: "6px", color: "#fff", background: "#1e293b", textDecoration: "none" }}>📦 Baza Produktów</Link>
+          <Link href="/admin/products" style={{ padding: "0.8rem 1rem", borderRadius: "6px", color: "#fff", background: "#1e293b", textDecoration: "none" }}>📦 Baza Produktów</Link>
           <Link href="/admin/catalog?tab=import" style={{ padding: "0.8rem 1rem", borderRadius: "6px", color: "#94a3b8", textDecoration: "none" }}>📥 Import WF-Mag</Link>
         </nav>
       </div>
 
       <div className="admin-content" style={{ flex: 1, padding: "2rem 3rem", background: "#f8fafc" }}>
         <div className="admin-header" style={{ marginBottom: "2rem" }}>
-          <Link href="/admin/catalog?tab=products" style={{ color: "#3b82f6", fontSize: "0.85rem", fontWeight: 600, display: "inline-block", marginBottom: "0.5rem", textDecoration: "none" }}>
+          <Link href="/admin/products" style={{ color: "#3b82f6", fontSize: "0.85rem", fontWeight: 600, display: "inline-block", marginBottom: "0.5rem", textDecoration: "none" }}>
             ← Powrót do listy
           </Link>
           <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#1e293b" }}>{product ? `Edycja: ${product.name}` : "Nowy produkt"}</h1>
-          <p style={{ color: "#64748b" }}>Zapis bezpośrednio do trwałej bazy JSON (`db.json`)</p>
+          <p style={{ color: "#64748b" }}>Zmiany są walidowane po stronie serwera i respektują lifecycle magazynowy.</p>
         </div>
 
         <div className="admin-section" style={{ background: "#fff", padding: "2rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           <form action={saveProduct} style={{ maxWidth: "800px", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-              <div className="form-field">
+              <div>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Nazwa Produktu</label>
-                <input type="text" name="name" defaultValue={product?.name || ""} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
+                <input type="text" name="name" defaultValue={product?.name || ""} required minLength={2} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
               </div>
-              <div className="form-field">
+              <div>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Kod SKU / Indeks</label>
                 <input type="text" name="sku" defaultValue={product?.sku || ""} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
               </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.5rem" }}>
-              <div className="form-field">
+              <div>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Cena Netto (PLN)</label>
-                <input type="number" step="0.01" name="price" defaultValue={product?.price || 0} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
+                <input type="number" step="0.01" min="0" name="price" defaultValue={product?.price ?? 0} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
               </div>
-              <div className="form-field">
+              <div>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Stan Magazynowy</label>
-                <input type="number" name="stock" defaultValue={product?.stock || 0} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
+                <input type="number" min="0" name="stock" defaultValue={product?.stock ?? 0} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
               </div>
-              <div className="form-field">
+              <div>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Producent</label>
-                <select name="manufacturerId" defaultValue={product?.manufacturerId || ""} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff" }}>
+                <select name="manufacturer" defaultValue={product?.manufacturer || ""} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff" }}>
                   <option value="">-- Wybierz --</option>
-                  {manufacturers.map((m: any) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
+                  {manufacturers.map((manufacturer: any) => (
+                    <option key={manufacturer.id} value={manufacturer.name}>{manufacturer.name}</option>
                   ))}
                 </select>
               </div>
             </div>
 
-            <div className="form-field">
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Kategoria</label>
-              <select name="categoryId" defaultValue={product?.categoryId || ""} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff" }}>
-                <option value="">-- Wybierz --</option>
-                {categories.map((c: any) => (
-                  <optgroup key={c.id} label={c.name}>
-                    {c.subcategories?.map((s: any) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Kategoria</label>
+                <select name="categoryId" defaultValue={selectedCategoryId} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff" }}>
+                  <option value="">-- Brak --</option>
+                  {categories.map((category: any) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Podkategoria</label>
+                <select name="subcategoryId" defaultValue={selectedSubcategoryId} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff" }}>
+                  <option value="">-- Brak --</option>
+                  {categories.flatMap((category: any) =>
+                    (category.subcategories || []).map((subcategory: any) => (
+                      <option key={subcategory.id} value={subcategory.id}>
+                        {category.name} — {subcategory.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
             </div>
 
-            <div className="form-field">
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Opis Techniczny (HTML)</label>
-              <textarea 
-                name="description" 
-                defaultValue={product?.description || ""} 
-                rows={10} 
+            <div>
+              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Opis Techniczny</label>
+              <textarea
+                name="description"
+                defaultValue={product?.description || product?.seoDescription || ""}
+                rows={10}
                 style={{ width: "100%", padding: "1rem", border: "1px solid #cbd5e1", borderRadius: "6px", fontFamily: "monospace", fontSize: "0.9rem" }}
               />
             </div>
 
             <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "1.5rem", display: "flex", justifyContent: "flex-end" }}>
               <button type="submit" style={{ padding: "0.75rem 2rem", background: "#3b82f6", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer" }}>
-                Zapisz w db.json
+                Zapisz produkt
               </button>
             </div>
-            
           </form>
         </div>
       </div>

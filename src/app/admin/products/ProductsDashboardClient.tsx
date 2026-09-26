@@ -6,17 +6,9 @@ import { ProductTable } from "./_components/ProductTable";
 import { StagingDashboard } from "./_components/StagingDashboard";
 import { AICommandCenter } from "./_components/AICommandCenter";
 import { StructureApprovalModal } from "./_components/StructureApprovalModal";
-import { 
-  importProductsAction, 
-  deleteProductAction, 
-  generateAiDescriptionAction, 
-  syncProductWithIqAction,
-  activateVirtualProductAction,
-  wipeRegistryAction
-} from "./_actions";
 import { toast } from "sonner";
 import { useCatalogStore } from "@/store/catalogStore";
-import { ShieldCheck, LayoutGrid, Activity, Package, HardDrive } from "lucide-react";
+import { ShieldCheck, Activity, Package, HardDrive } from "lucide-react";
 import { useKnowledge } from "@/lib/knowledge/KnowledgeContext";
 import { useRouter } from "next/navigation";
 import { IProduct, ICategory, IManufacturer } from "./_lib/types";
@@ -49,11 +41,10 @@ export function ProductsDashboardClient({
   const { stagingPayload, setStagingPayload, clearStaging, updateStagingItem, removeStagingItem } = useCatalogStore();
   const { isDone, sessionResults, isTraining, progressPercent, setTrainingFile } = useKnowledge();
 
-  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(true);
   const [knowledgeSources, setKnowledgeSources] = useState<string[]>([]);
   const [processedSources, setProcessedSources] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   const fetchKnowledgeData = useCallback(async () => {
     const res = await fetch('/api/knowledge');
@@ -99,6 +90,171 @@ export function ProductsDashboardClient({
       setIsStructureModalOpen(true);
     }
     toast.success(`Przetworzono ${staging.length} pozycji.`);
+  };
+
+  const readResponseError = async (response: Response, fallback: string) => {
+    const payload = await response.json().catch(() => ({}));
+    return typeof payload?.error === "string" ? payload.error : fallback;
+  };
+
+  const commitStagingItems = (items: any[]) => {
+    if (items.length === 0) return;
+
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "IMPORT_WFMAG", items }),
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            await readResponseError(response, "Nie udało się zapisać produktów.")
+          );
+        }
+
+        const result = await response.json();
+        const committedIds = new Set(items.map((item) => item.tempId));
+        setStagingPayload(
+          stagingPayload.filter((item) => !committedIds.has(item.tempId))
+        );
+        await refreshAllData();
+
+        const deferred = Number(result.deferredStockCount || 0);
+        if (deferred > 0) {
+          toast.warning(
+            `Import zapisany. ${deferred} zmian stanu odroczono z powodu aktywnego lifecycle magazynowego.`
+          );
+        } else {
+          toast.success(
+            `Import zapisany: ${Number(result.updatedCount || 0)} zaktualizowano, ${Number(result.addedCount || 0)} dodano.`
+          );
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Błąd zapisu produktów."
+        );
+      }
+    });
+  };
+
+  const handleCommitAll = () => commitStagingItems(stagingPayload);
+
+  const handleCommitItem = (tempId: string) => {
+    const item = stagingPayload.find((candidate) => candidate.tempId === tempId);
+    if (item) commitStagingItems([item]);
+  };
+
+  const handleBatchCommit = (ids: string[]) => {
+    const selected = new Set(ids);
+    commitStagingItems(
+      stagingPayload.filter((item) => selected.has(item.tempId))
+    );
+  };
+
+  const handleBatchUpdate = (ids: string[], field: string, value: any) => {
+    const selected = new Set(ids);
+    setStagingPayload(
+      stagingPayload.map((item) =>
+        selected.has(item.tempId) ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const isStagingItemConfirmed = (item: any) => {
+    const price = Number(item.price);
+    const stock = Number(item.stock);
+    const hasCategory =
+      Boolean(item.categoryId) || Boolean(String(item.xlsCategoryName || "").trim());
+
+    return (
+      Boolean(String(item.sku || "").trim()) &&
+      Boolean(String(item.name || "").trim()) &&
+      Boolean(String(item.manufacturer || "").trim()) &&
+      hasCategory &&
+      Number.isFinite(price) &&
+      price >= 0 &&
+      Number.isFinite(stock) &&
+      stock >= 0
+    );
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!window.confirm("Usunąć ten produkt z katalogu?")) return;
+
+    try {
+      const response = await fetch(
+        `/api/products?id=${encodeURIComponent(id)}`,
+        { method: "DELETE" }
+      );
+      if (!response.ok) {
+        throw new Error(
+          await readResponseError(response, "Nie udało się usunąć produktu.")
+        );
+      }
+      setProducts((previous) => previous.filter((product) => product.id !== id));
+      toast.success("Produkt usunięty.");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Błąd usuwania produktu."
+      );
+    }
+  };
+
+  const handleKnowledgeUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+
+      const response = await fetch("/api/knowledge/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error(
+          await readResponseError(response, "Nie udało się wgrać katalogu.")
+        );
+      }
+
+      const result = await response.json();
+      await fetchKnowledgeData();
+      toast.success(result.message || "Katalog został zapisany.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Błąd wgrywania katalogu."
+      );
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleClearKnowledge = async () => {
+    if (!window.confirm("Wyczyścić bazę wiedzy i listę źródeł?")) return;
+
+    try {
+      const response = await fetch("/api/knowledge", { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error(
+          await readResponseError(response, "Nie udało się wyczyścić bazy wiedzy.")
+        );
+      }
+      setKnowledgeSources([]);
+      setProcessedSources([]);
+      toast.success("Baza wiedzy została wyczyszczona.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Błąd czyszczenia bazy wiedzy."
+      );
+    }
   };
 
   const [pageSize, setPageSize] = useState(25);
@@ -155,10 +311,46 @@ export function ProductsDashboardClient({
   if (activeView === "verify") {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
-        <AICommandCenter isOpen={isAiPanelOpen} onToggle={() => setIsAiPanelOpen(prev => !prev)} sources={knowledgeSources} processedSources={processedSources} isUploading={isUploading} isTraining={isTraining} progressPercent={progressPercent} onUpload={() => {}} onDeleteSource={() => {}} onTrainSource={setTrainingFile} onClearAll={() => {}} knowledgeCount={knowledgeSources.length} onExcelParsed={handleProcessExcelData} categories={localCategories} manufacturers={localManufacturers} onRefreshStructure={refreshAllData} />
-        <StructureApprovalModal isOpen={isStructureModalOpen} onClose={() => setIsStructureModalOpen(false)} onApprove={() => setIsStructureModalOpen(false)} newCategories={pendingStructure.categories} newSubcategories={pendingStructure.subcategories} newManufacturers={pendingStructure.manufacturers} />
+        <AICommandCenter
+          isOpen={isAiPanelOpen}
+          onToggle={() => setIsAiPanelOpen((previous) => !previous)}
+          sources={knowledgeSources}
+          processedSources={processedSources}
+          isUploading={isUploading}
+          isTraining={isTraining}
+          progressPercent={progressPercent}
+          onUpload={handleKnowledgeUpload}
+          onTrainSource={setTrainingFile}
+          onClearAll={handleClearKnowledge}
+          knowledgeCount={knowledgeSources.length}
+          onExcelParsed={handleProcessExcelData}
+          categories={localCategories}
+          manufacturers={localManufacturers}
+          onRefreshStructure={refreshAllData}
+        />
+        <StructureApprovalModal
+          isOpen={isStructureModalOpen}
+          onClose={() => setIsStructureModalOpen(false)}
+          onApprove={() => setIsStructureModalOpen(false)}
+          newCategories={pendingStructure.categories}
+          newSubcategories={pendingStructure.subcategories}
+          newManufacturers={pendingStructure.manufacturers}
+        />
         {stagingPayload.length > 0 ? (
-          <StagingDashboard payload={stagingPayload} importing={isPending} onClear={clearStaging} onCommitAll={() => {}} onUpdateItem={updateStagingItem} onRemoveItem={removeStagingItem} onBatchUpdate={() => {}} onBatchCommit={() => {}} onCommitItem={() => {}} categories={localCategories} manufacturers={manufacturersList} isItemConfirmed={() => true} />
+          <StagingDashboard
+            payload={stagingPayload}
+            importing={isPending}
+            onClear={clearStaging}
+            onCommitAll={handleCommitAll}
+            onUpdateItem={updateStagingItem}
+            onRemoveItem={(id) => removeStagingItem(id)}
+            onBatchUpdate={handleBatchUpdate}
+            onBatchCommit={handleBatchCommit}
+            onCommitItem={handleCommitItem}
+            categories={localCategories}
+            manufacturers={manufacturersList}
+            isItemConfirmed={isStagingItemConfirmed}
+          />
         ) : (
           <div className="py-32 text-center fluent-card border-white/10 group cursor-pointer active-press">
             <ShieldCheck className="w-16 h-16 text-primary/20 mx-auto mb-6 group-hover:scale-110 transition-transform" />
@@ -224,11 +416,7 @@ export function ProductsDashboardClient({
         <main className="w-full">
            <ProductTable 
              products={paginated} 
-             onEdit={() => {}} 
-             onDelete={() => {}} 
-             onGenerateAI={() => {}} 
-             onSyncIQ={() => {}} 
-             generatingId={generatingId} 
+             onDelete={handleDeleteProduct}
              currentPage={currentPage} 
              totalPages={Math.ceil(filtered.length / pageSize)} 
              onPageChange={setCurrentPage} 

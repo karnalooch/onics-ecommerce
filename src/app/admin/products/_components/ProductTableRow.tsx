@@ -1,20 +1,16 @@
 "use client";
 
-import { Edit2 as EditIcon, Trash2 as TrashIcon, Package as PackageIcon, Info, ChevronRight, CheckCircle2, AlertTriangle, Zap } from "lucide-react";
+import { Trash2 as TrashIcon, Package as PackageIcon } from "lucide-react";
 import Link from "next/link";
 import { TableCell, TableRow } from "@/components/ui/table";
 
 interface IProductTableRowProps {
   p: any;
-  onEdit: (p: any) => void;
   onDelete: (id: string) => void;
-  onGenerateAI: (id: string) => void;
-  onSyncIQ: (id: string) => void;
-  isGenerating: boolean;
   categories: any[];
 }
 
-export function ProductTableRow({ p, onEdit, onDelete, onGenerateAI, onSyncIQ, isGenerating, categories }: IProductTableRowProps) {
+export function ProductTableRow({ p, onDelete, categories }: IProductTableRowProps) {
   const category = categories.find(c => c.id === p.categoryId);
   const isOutofStock = p.stock <= 0;
 
@@ -73,20 +69,27 @@ export function ProductTableRow({ p, onEdit, onDelete, onGenerateAI, onSyncIQ, i
       {/* 5. INTERACTION HUB (FLUENT GHOST ACTIONS) */}
       <TableCell className="py-5 pr-8 text-right w-[160px]">
          <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity duration-200">
-            <button 
-              onClick={() => onEdit(p)}
-              className="h-9 px-4 bg-primary/10 text-primary font-bold text-[11px] uppercase tracking-wider rounded-lg hover:bg-primary hover:text-white transition-all active-press flex items-center gap-2"
-            >
-               Edytuj
-            </button>
-
-            <button 
-              onClick={() => onDelete(p.id)}
-              className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all active-press"
-              title="Delete"
-            >
-               <TrashIcon className="w-4 h-4" />
-            </button>
+            {!p.isVirtual ? (
+              <>
+                <Link
+                  href={`/admin/products/${encodeURIComponent(p.id)}`}
+                  className="h-9 px-4 bg-primary/10 text-primary font-bold text-[11px] uppercase tracking-wider rounded-lg hover:bg-primary hover:text-white transition-all active-press flex items-center gap-2"
+                >
+                  Edytuj
+                </Link>
+                <button 
+                  onClick={() => onDelete(p.id)}
+                  className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all active-press"
+                  title="Usuń produkt"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Tylko baza wiedzy
+              </span>
+            )}
          </div>
       </TableCell>
 
