@@ -45,6 +45,27 @@ export type CatalogManufacturerRecord = {
   name: string
 }
 
+export type CatalogManufacturerReference = {
+  manufacturer?: string | null
+}
+
+function normalizeManufacturerReference(value: unknown) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
+export function hasManufacturerProductReference(
+  products: CatalogManufacturerReference[],
+  manufacturerName: unknown
+) {
+  const normalizedName = normalizeManufacturerReference(manufacturerName)
+  if (!normalizedName) return false
+
+  return products.some(
+    (product) =>
+      normalizeManufacturerReference(product.manufacturer) === normalizedName
+  )
+}
+
 export function ensureManufacturerRecord(
   manufacturers: CatalogManufacturerRecord[],
   name: unknown,

@@ -3,6 +3,7 @@ import {
   ensureManufacturerRecord,
   findRemovedReferencedSubcategoryIds,
   hasCategoryProductReference,
+  hasManufacturerProductReference,
   hasSkuConflict,
   indexCatalogProductsBySku,
   validateCatalogClassification,
@@ -77,6 +78,22 @@ describe("catalog manufacturer registry", () => {
       ensureManufacturerRecord(manufacturers, "   ", "m1")
     ).toBeNull()
     expect(manufacturers).toEqual([])
+  })
+})
+
+
+describe("catalog manufacturer references", () => {
+  const products = [
+    { id: "p1", manufacturer: "SATEL" },
+    { id: "p2", manufacturer: "Hikvision" },
+    { id: "p3", manufacturer: null },
+  ]
+
+  it("detects manufacturer references case-insensitively", () => {
+    expect(hasManufacturerProductReference(products, " satel ")).toBe(true)
+    expect(hasManufacturerProductReference(products, "HIKVISION")).toBe(true)
+    expect(hasManufacturerProductReference(products, "Dahua")).toBe(false)
+    expect(hasManufacturerProductReference(products, "")).toBe(false)
   })
 })
 
