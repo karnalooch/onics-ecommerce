@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { describe, expect, it } from "vitest"
 import {
   applyPrzelewy24RefundNotification,
+  applyReconciledPrzelewy24Payment,
   applyVerifiedPrzelewy24Payment,
   calculatePrzelewy24Sign,
   describePrzelewy24Runtime,
@@ -172,6 +173,59 @@ describe("Przelewy24 production protocol", () => {
         notification({ amount: 999 })
       )
     ).toThrow("PRZELEWY24_AMOUNT_MISMATCH")
+  })
+
+  it("recovers a paid transaction from authoritative transaction details", () => {
+    const products: InventoryProduct[] = [{ id: "p1", stock: 9 }]
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-RECOVER",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PENDING",
+      p24SessionId: "ORD-P24-RECOVER",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+      items: [{ id: "p1", quantity: 1 }],
+    }
+
+    expect(
+      applyReconciledPrzelewy24Payment(
+        products,
+        order,
+        {
+          orderId: 987654321,
+          sessionId: "ORD-P24-RECOVER",
+          status: 1,
+          amount: 12345,
+          currency: "PLN",
+        },
+        "2026-09-26T10:45:00.000Z"
+      )
+    ).toBe("paid")
+
+    expect(order).toMatchObject({
+      paymentStatus: "PAID",
+      p24OrderId: 987654321,
+      inventoryReservationStatus: "FINALIZED",
+      paymentReconciledAt: "2026-09-26T10:45:00.000Z",
+    })
+    expect(products[0].stock).toBe(9)
+
+    expect(
+      applyReconciledPrzelewy24Payment(
+        products,
+        order,
+        {
+          orderId: 987654321,
+          sessionId: "ORD-P24-RECOVER",
+          status: 1,
+          amount: 12345,
+          currency: "PLN",
+        },
+        "2026-09-26T10:50:00.000Z"
+      )
+    ).toBe("unchanged")
+    expect(products[0].stock).toBe(9)
   })
 
   it("durably stages the notification before provider verification", () => {
