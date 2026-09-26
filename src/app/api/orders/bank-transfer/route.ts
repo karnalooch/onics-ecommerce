@@ -13,6 +13,11 @@ import {
   requestBankTransferReturn,
   type BankTransferReturnOrder,
 } from "@/lib/manualReturns"
+import {
+  assertPaymentProviderCapability,
+  resolveOrderPaymentProvider,
+  type PaymentProviderCapability,
+} from "@/lib/paymentProviders"
 import { mutateMockData } from "@/store/serverStore"
 
 const BankTransferActionSchema = z.object({
@@ -25,6 +30,24 @@ const BankTransferActionSchema = z.object({
     "CONFIRM_RETURN_REFUND",
   ]),
 })
+
+type BankTransferAction = z.infer<typeof BankTransferActionSchema>["action"]
+
+function requiredCapabilities(
+  action: BankTransferAction
+): PaymentProviderCapability[] {
+  switch (action) {
+    case "CONFIRM_PAYMENT":
+      return ["manualSettlement"]
+    case "CONFIRM_REFUND":
+      return ["cancel", "refund", "manualSettlement"]
+    case "REQUEST_RETURN":
+    case "RECEIVE_RETURN":
+      return ["rma"]
+    case "CONFIRM_RETURN_REFUND":
+      return ["rma", "refund", "manualSettlement"]
+  }
+}
 
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
@@ -44,6 +67,14 @@ export async function POST(req: Request) {
         (candidate) => candidate.id === parsed.data.id
       )
       if (!order) throw new Error("ORDER_NOT_FOUND")
+
+      const provider = resolveOrderPaymentProvider(order)
+      if (provider !== "BANK_TRANSFER") {
+        throw new Error("BANK_TRANSFER_REQUIRED")
+      }
+      for (const capability of requiredCapabilities(parsed.data.action)) {
+        assertPaymentProviderCapability(provider, capability)
+      }
 
       let outcome:
         | ReturnType<typeof confirmBankTransferPayment>
@@ -134,6 +165,8 @@ export async function POST(req: Request) {
         "Stan rezerwacji magazynowej nie pozwala bezpiecznie anulować zamówienia.",
       INVENTORY_RESERVATION_MISSING_ITEMS:
         "Brak pozycji potrzebnych do rozliczenia rezerwacji magazynowej.",
+      PAYMENT_PROVIDER_CAPABILITY_UNSUPPORTED:
+        "Ten operator płatności nie obsługuje wymaganej operacji.",
     }
 
     if (code in conflicts) {
