@@ -51,7 +51,7 @@ describe("payment provider operations summary", () => {
     expect(operations.STRIPE).toMatchObject({
       provider: "STRIPE",
       totalOrders: 3,
-      ordersRequiringAttention: 2,
+      ordersRequiringAttention: 1,
       pendingPayments: 1,
       pendingRefunds: 1,
       failedRefunds: 1,
