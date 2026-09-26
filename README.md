@@ -88,19 +88,20 @@ The file-backed store is an interim persistence layer. It is suitable only for a
 The application exposes two uncached operational endpoints:
 
 - `GET /api/health/live` — process liveness only; returns HTTP 200 while the Next.js server can answer requests.
-- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required secrets and lock settings are valid, the JSON database is readable/writable and valid, and the private upload root exists and is readable/writable. Otherwise it returns HTTP 503.
+- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required session secrets and lock settings are valid, the JSON database is readable/writable and valid, the private upload root exists and is readable/writable, and any unsealed active admin still has a bootstrap secret available. Otherwise it returns HTTP 503.
 
 The readiness payload reports only coarse check states (`ok` / `error`) and does not expose filesystem paths, secrets or raw exception messages.
 
 ## Authentication
 
-Required secrets include:
+Required session secrets include:
 
 ```bash
 AUTH_SECRET=...
 NEXTAUTH_SECRET=...
-ADMIN_BOOTSTRAP_PASSWORD=...
 ```
+
+`ADMIN_BOOTSTRAP_PASSWORD` is a controlled one-time bootstrap secret. It is required only while an active ADMIN record has no `passwordHash`. On the first successful bootstrap login, the application bcrypt-hashes the supplied password outside the database lock and atomically persists the hash. Subsequent logins use only the stored hash, so the bootstrap environment variable can then be removed. If sealing cannot be persisted safely, authentication fails closed.
 
 Do not commit real secrets. `.env.example` contains placeholders only.
 
