@@ -205,22 +205,34 @@ export async function POST(req: Request) {
     const eventType = event.type as string
     switch (eventType) {
       case "checkout.session.completed": {
-        const session = event.data.object
+        const session = event.data.object as Stripe.Checkout.Session
         if (session.payment_status === "paid") {
           await applyCheckoutStatus(event.id, session, "PAID")
         }
         break
       }
       case "checkout.session.async_payment_succeeded": {
-        await applyCheckoutStatus(event.id, event.data.object, "PAID")
+        await applyCheckoutStatus(
+          event.id,
+          event.data.object as Stripe.Checkout.Session,
+          "PAID"
+        )
         break
       }
       case "checkout.session.async_payment_failed": {
-        await applyCheckoutStatus(event.id, event.data.object, "FAILED")
+        await applyCheckoutStatus(
+          event.id,
+          event.data.object as Stripe.Checkout.Session,
+          "FAILED"
+        )
         break
       }
       case "checkout.session.expired": {
-        await applyCheckoutStatus(event.id, event.data.object, "EXPIRED")
+        await applyCheckoutStatus(
+          event.id,
+          event.data.object as Stripe.Checkout.Session,
+          "EXPIRED"
+        )
         break
       }
       case "refund.created":
