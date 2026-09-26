@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { hasSkuConflict } from "@/lib/catalog"
+import {
+  ensureManufacturerRecord,
+  hasSkuConflict,
+} from "@/lib/catalog"
 
 describe("catalog SKU uniqueness", () => {
   const products = [
@@ -17,5 +20,36 @@ describe("catalog SKU uniqueness", () => {
 
   it("detects conflicts when editing to another product's SKU", () => {
     expect(hasSkuConflict(products, "xyz-999", "p1")).toBe(true)
+  })
+})
+
+
+describe("catalog manufacturer registry", () => {
+  it("creates a missing manufacturer exactly once", () => {
+    const manufacturers = [{ id: "m1", name: "SATEL" }]
+
+    const created = ensureManufacturerRecord(
+      manufacturers,
+      "Hikvision",
+      "m2"
+    )
+    const existing = ensureManufacturerRecord(
+      manufacturers,
+      " hikvision ",
+      "m3"
+    )
+
+    expect(created).toEqual({ id: "m2", name: "Hikvision" })
+    expect(existing).toBe(created)
+    expect(manufacturers).toHaveLength(2)
+  })
+
+  it("ignores blank manufacturer names", () => {
+    const manufacturers: Array<{ id: string; name: string }> = []
+
+    expect(
+      ensureManufacturerRecord(manufacturers, "   ", "m1")
+    ).toBeNull()
+    expect(manufacturers).toEqual([])
   })
 })

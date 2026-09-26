@@ -21,3 +21,29 @@ export function hasSkuConflict(
       normalizeSku(product.sku) === normalizedSku
   )
 }
+
+
+export type CatalogManufacturerRecord = {
+  id: string
+  name: string
+}
+
+export function ensureManufacturerRecord(
+  manufacturers: CatalogManufacturerRecord[],
+  name: unknown,
+  id: string
+) {
+  const displayName = String(name ?? "").trim()
+  if (!displayName) return null
+
+  const normalizedName = displayName.toLowerCase()
+  const existing = manufacturers.find(
+    (manufacturer) =>
+      String(manufacturer.name || "").trim().toLowerCase() === normalizedName
+  )
+  if (existing) return existing
+
+  const created = { id, name: displayName }
+  manufacturers.push(created)
+  return created
+}

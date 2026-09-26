@@ -8,7 +8,11 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
-import { hasSkuConflict } from "@/lib/catalog"
+import {
+  ensureManufacturerRecord,
+  hasSkuConflict,
+  type CatalogManufacturerRecord,
+} from "@/lib/catalog"
 import {
   hasInventoryLifecycleDependencyForProduct,
   shouldDeferProductStockWrite,
@@ -217,6 +221,8 @@ export async function POST(req: Request) {
       const result = await mutateMockData((db) => {
         const productStore = db.products as ProductRecord[]
         const categoryStore = db.categories as CategoryRecord[]
+        const manufacturerStore =
+          db.manufacturers as CatalogManufacturerRecord[]
         const productBySku = new Map(
           productStore.map((product) => [normalize(product.sku), product] as const)
         )
@@ -244,6 +250,14 @@ export async function POST(req: Request) {
 
           let categoryId = item.categoryId ?? null
           let subcategoryId = item.subcategoryId ?? null
+
+          if (item.manufacturer) {
+            ensureManufacturerRecord(
+              manufacturerStore,
+              item.manufacturer,
+              `m_auto_${crypto.randomUUID()}`
+            )
+          }
 
           if (item.isNewCategory && item.xlsCategoryName) {
             const normalizedCategoryName = normalize(item.xlsCategoryName)
