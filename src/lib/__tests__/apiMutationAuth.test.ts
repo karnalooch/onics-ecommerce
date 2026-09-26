@@ -8,6 +8,7 @@ type MutationMethod = (typeof MUTATING_METHODS)[number]
 
 type ExplicitMutationGuard = {
   markers: string[]
+  fileMarkers?: string[]
   beforeMutationMarker?: string
 }
 
@@ -16,8 +17,9 @@ const EXPLICIT_NON_SESSION_GUARDS: Record<string, ExplicitMutationGuard> = {
     markers: [
       "process.env.WF_MAG_SECRET",
       'req.headers.get("authorization")',
-      "timingSafeEqual",
+      "safeEqual(",
     ],
+    fileMarkers: ["crypto.timingSafeEqual("],
   },
   "src/app/api/register/route.ts:POST": {
     markers: [
@@ -148,6 +150,16 @@ describe("API mutation authorization boundary", () => {
         if (missingMarkers.length > 0) {
           offenders.push(
             `${key} is missing guard marker(s): ${missingMarkers.join(", ")}`
+          )
+          continue
+        }
+
+        const missingFileMarkers = (explicitGuard.fileMarkers || []).filter(
+          (marker) => !source.includes(marker)
+        )
+        if (missingFileMarkers.length > 0) {
+          offenders.push(
+            `${key} is missing file guard marker(s): ${missingFileMarkers.join(", ")}`
           )
           continue
         }
