@@ -55,6 +55,7 @@ function paymentErrorResponse(
     code === "PAYMENT_METHOD_DISABLED" ||
     code === "PAYMENT_PROVIDER_NOT_CONFIGURED"
   const checkoutForbidden = code === "CHECKOUT_ROLE_NOT_ALLOWED"
+  const checkoutConflict = code === "CHECKOUT_STATE_CHANGED" || inventoryConflict
 
   const message =
     code === "CHECKOUT_ROLE_NOT_ALLOWED"
@@ -81,7 +82,7 @@ function paymentErrorResponse(
         ? 403
         : paymentUnavailable
           ? 503
-          : inventoryConflict
+          : checkoutConflict
             ? 409
             : 500,
     }
