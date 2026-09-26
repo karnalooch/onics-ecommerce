@@ -11,6 +11,7 @@ import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { hasSkuConflict } from "@/lib/catalog"
 import {
   hasActiveReservationForProduct,
+  shouldDeferProductStockWrite,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
 
@@ -230,6 +231,7 @@ export async function POST(req: Request) {
         )
         let updatedCount = 0
         let addedCount = 0
+        let deferredStockCount = 0
 
         for (const item of importRequest.data.items) {
           const sku = normalize(item.sku)
@@ -281,7 +283,20 @@ export async function POST(req: Request) {
 
           if (existing) {
             if (item.price !== undefined) existing.price = item.price
-            if (item.stock !== undefined) existing.stock = item.stock
+            if (item.stock !== undefined) {
+              if (
+                shouldDeferProductStockWrite(
+                  db.orders as InventoryReservationOrder[],
+                  String(existing.id),
+                  existing.stock,
+                  item.stock
+                )
+              ) {
+                deferredStockCount += 1
+              } else {
+                existing.stock = item.stock
+              }
+            }
             if (item.manufacturer) existing.manufacturer = item.manufacturer
             if (categoryId) {
               existing.categoryId = categoryId
@@ -305,11 +320,11 @@ export async function POST(req: Request) {
           }
         }
 
-        return { updatedCount, addedCount }
+        return { updatedCount, addedCount, deferredStockCount }
       })
 
       logImport(
-        `--- KONIEC IMPORTU (Zaktualizowano: ${result.updatedCount}, Dodano: ${result.addedCount}) ---`
+        `--- KONIEC IMPORTU (Zaktualizowano: ${result.updatedCount}, Dodano: ${result.addedCount}, Stock odroczony: ${result.deferredStockCount}) ---`
       )
       return NextResponse.json({ success: true, ...result })
     } catch (error) {
@@ -387,6 +402,16 @@ export async function PUT(req: Request) {
       if (hasSkuConflict(productStore, parsed.data.sku, parsed.data.id)) {
         throw new Error("SKU_EXISTS")
       }
+      if (
+        shouldDeferProductStockWrite(
+          db.orders as InventoryReservationOrder[],
+          parsed.data.id,
+          productStore[index].stock,
+          parsed.data.stock
+        )
+      ) {
+        throw new Error("PRODUCT_STOCK_RESERVED")
+      }
 
       productStore[index] = {
         ...productStore[index],
@@ -406,6 +431,18 @@ export async function PUT(req: Request) {
     if (error instanceof Error && error.message === "SKU_EXISTS") {
       return NextResponse.json(
         { error: "Produkt z tym SKU już istnieje." },
+        { status: 409 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "PRODUCT_STOCK_RESERVED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nie można zmienić stanu produktu podczas aktywnej rezerwacji płatności Stripe.",
+        },
         { status: 409 }
       )
     }
