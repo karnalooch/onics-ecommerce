@@ -790,7 +790,7 @@ export async function manageStructureAction(
 
           manufacturers.splice(idx, 1);
           return {
-            revalidateProducts: false,
+            revalidateProducts: true,
             state: {
               success: true as const,
               message: `Producent ${manufacturerName} usunięty.`
@@ -828,7 +828,7 @@ export async function manageStructureAction(
 
           categories.splice(idx, 1);
           return {
-            revalidateProducts: false,
+            revalidateProducts: true,
             state: {
               success: true as const,
               message: `Kategoria ${categoryName} usunięta.`
@@ -872,16 +872,6 @@ export async function manageStructureAction(
         success: false,
         error:
           "Nie można usunąć kategorii przypisanej do produktów. Najpierw przenieś produkty do innej kategorii."
-      };
-    }
-    if (
-      error instanceof Error &&
-      error.message === "STRUCTURE_HAS_INVENTORY_LIFECYCLE"
-    ) {
-      return {
-        success: false,
-        error:
-          "Nie można usunąć tej struktury, ponieważ powiązany produkt jest nadal potrzebny przez lifecycle magazynowy istniejącego zamówienia."
       };
     }
     if (
