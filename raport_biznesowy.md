@@ -1,56 +1,75 @@
-# Raport z Wdrożenia Modułu Inteligencji Biznesowej (AI) 🚀
+# Raport wdrożenia — Knowledge Hub
 
-![Inteligentny Rdzeń Celtronics](/public/docs/intelligence-hero.png)
+Stan referencyjny: **26.09.2026**
 
-## 1. Wstęp i Podsumowanie
-Z sukcesem zakończyliśmy kluczowy etap cyfryzacji platformy **Celtronics B2B**. Wdrożyliśmy zaawansowany "cyfrowy mózg" projektu – moduł **Inteligentnej Analizy**, który pozwala na automatyczną komunikację pomiędzy dokumentacją techniczną (PDF/XLS) a bazą danych produktów.
+## Cel modułu
 
-### Kluczowe cele osiągnięte:
-- **Automatyzacja wiedzy**: System sam "czyta" i rozumie katalogi dostawców.
-- **Efektywność kosztowa**: Redukcja czasu potrzebnego na wprowadzanie danych o ponad 90%.
-- **Design Premium**: Nowoczesny interfejs budujący prestiż marki u klientów biznesowych.
+Knowledge Hub służy do ekstrakcji danych technicznych z katalogów dostawców i przygotowania ich do weryfikacji przez administratora. Moduł obsługuje pliki PDF oraz Excel, a dla PDF może opcjonalnie używać modelu Gemini.
 
----
+Ekstrakcja AI ani heurystyczna nie jest źródłem prawdy dla danych handlowych.
 
-## 2. Nasz "Cyfrowy Mózg" — Knowledge Hub 🧠
-Największym przełomem jest system, który eliminuje żmudne przepisywanie specyfikacji technicznych.
+## Aktualny przepływ
 
-> [!IMPORTANT]
-> **Jak to działa?**
-> Wgrywasz katalog PDF od dystrybutora, a nasze AI w kilka minut wyciąga z niego kluczowe parametry techniczne, opisy i ceny, przypisując je do właściwych produktów.
+1. Administrator wgrywa prywatny katalog dostawcy.
+2. Serwer waliduje nazwę, format i limity uploadu.
+3. Parser lokalny lub AI wyciąga modele, parametry, producenta, klasyfikację i cenę katalogową, jeśli jest dostępna.
+4. Wynik jest zapisywany w osobnym magazynie wiedzy (`knowledgeEntries`).
+5. Dane trafiają do warstwy staging/weryfikacji.
+6. Dopiero jawna akcja administratora może zsynchronizować wiedzę z istniejącym produktem albo promować nowy SKU do katalogu.
 
-### Korzyści biznesowe:
-| Cecha | Przed wdrożeniem | Z nowym systemem AI |
-| :--- | :--- | :--- |
-| **Wprowadzanie 50 produktów** | ~4 godziny pracy ręcznej | < 5 minut (automatycznie) |
-| **Błędy w opisach** | Ryzyko ludzkich pomyłek | Precyzja klasy inżynieryjnej |
-| **Aktualizacja cenników** | Skomplikowany proces | Natychmiastowe rozpoznanie zmian |
+### Granica bezpieczeństwa
 
----
+Samo wgranie lub przeanalizowanie PDF/XLS:
 
-## 3. Inteligentny Asystent Sprzedaży 🤖
-Dzięki temu, że system "nauczył się" Twoich produktów, platforma zyskała nowe supermoce:
+- nie zmienia aktywnej ceny sprzedaży,
+- nie nadpisuje live produktu,
+- nie tworzy automatycznie sprzedawalnego SKU,
+- nie rezerwuje ani nie zmienia magazynu.
 
-- **Generator Opisów**: AI potrafi teraz samo stworzyć profesjonalny opis produktu na stronę, korzystając z wiedzy wyciągniętej bezpośrednio z Twoich katalogów.
-- **Baza Wiedzy 24/7**: System pamięta każdy szczegół techniczny z tysięcy stron dokumentacji, gotowy do natychmiastowego użycia w ofertach dla klientów.
+Cena znaleziona w katalogu dostawcy jest danymi referencyjnymi (`catalogPrice`), a nie automatycznie ceną sprzedaży.
 
----
+## Co działa dzisiaj
 
-## 4. Stabilność i Niezawodność (Refresh-Proof) 🛡️
-Zastosowaliśmy technologię **Globalnej Persystencji**. Oznacza to, że analiza AI może trwać w tle, nawet gdy Ty sprawdzasz inne zakładki w panelu lub odświeżysz stronę. Nic nie przerywa pracy systemu – dane są zawsze bezpieczne i synchronizowane w czasie rzeczywistym.
+- prywatne przechowywanie uploadów poza katalogiem `public/`,
+- limit pojedynczego pliku 25 MiB,
+- ograniczony rozmiar całego requestu multipart przed parsowaniem,
+- obsługa XLS/XLSX/XLSM,
+- heurystyczna ekstrakcja PDF,
+- opcjonalna ekstrakcja PDF przez Gemini,
+- walidacja i normalizacja wpisów wiedzy,
+- osobny storage wiedzy,
+- staging przed zmianą katalogu handlowego,
+- jawna synchronizacja istniejącego produktu z IQ Hub,
+- eksport bazy wiedzy,
+- generator opisu produktu korzystający z wiedzy katalogowej.
 
----
+## Czego nie deklarujemy bez pomiaru
 
----
+Nie ma obecnie danych pomiarowych pozwalających uczciwie twierdzić, że moduł:
 
-## 5. Ogólna Wizja Rozwoju Systemu 🔭
-Wprowadzone narzędzia to nie tylko pojedyncze funkcje, ale fundament pod kompleksowy ekosystem, który ma uczynić **Celtronics liderem innowacji** w branży:
+- skraca pracę o konkretny procent,
+- przetwarza określoną liczbę produktów w gwarantowanym czasie,
+- zapewnia określoną, stałą dokładność ekstrakcji,
+- działa bezobsługowo 24/7.
 
-1.  **Inteligentny Generator Ofert**: Wykorzystanie "Mózgu Firmy" do tworzenia spersonalizowanych, profesjonalnych wycen w kilka sekund.
-2.  **Automatyczne Wsparcie Klienta (RMA)**: AI, które pomaga diagnozować usterki na podstawie tysięcy stron instrukcji technicznych.
-3.  **Analityka Przewidująca**: System, który podpowie, jakie produkty będą potrzebne Twoim klientom, zanim o to zapytają.
+Takie wskaźniki powinny wynikać z rzeczywistych pomiarów na katalogach używanych przez zespół.
 
-**Podsumowując**: System Celtronics B2B przestał być zwykłym sklepem, a stał się inteligentnym narzędziem wsparcia sprzedaży, które oszczędza czas pracowników i dostarcza klientom unikalną wartość merytoryczną. Inwestujemy w technologię, która pracuje dla nas 24/7.
+## Zachowanie podczas odświeżenia strony
 
----
-*Przygotowane automatycznie przez system Antigravity AI dla Celtronics.*
+Aktualny trening korzysta ze strumienia SSE powiązanego z żądaniem klienta. Minimalizacja modalu i nawigacja w ramach zamontowanego interfejsu mogą zachować trwającą sesję, ale pełne odświeżenie strony lub zerwanie połączenia może przerwać analizę.
+
+`sessionStorage` odtwarza wyłącznie stan interfejsu i logi; nie jest kolejką zadań działającą niezależnie od przeglądarki.
+
+Jeżeli wymagane będzie rzeczywiste „refresh-proof”, kolejnym krokiem powinien być serwerowy job runner z trwałym stanem zadania i endpointem do ponownego podłączenia lub pollingu.
+
+## Wartość biznesowa
+
+Obecna wartość modułu polega na ograniczeniu ręcznego przepisywania katalogów i ujednoliceniu procesu:
+
+**dokument dostawcy → ekstrakcja → wiedza/staging → weryfikacja administratora → katalog handlowy**
+
+Wpływ na czas pracy, liczbę błędów i koszt operacyjny powinien być mierzony na realnych importach przed publikowaniem konkretnych KPI.
+
+## Dalszy rozwój
+
+Priorytetem jest utrzymanie bezpiecznej granicy pomiędzy danymi wyekstrahowanymi a commerce source-of-truth. Potencjalne kolejne etapy to trwałe zadania background, lepszy workflow zatwierdzania zmian oraz mierzalne metryki jakości parsera.
