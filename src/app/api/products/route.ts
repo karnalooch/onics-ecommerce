@@ -11,6 +11,7 @@ import {
 } from "@/lib/catalogProductInput"
 import {
   buildProductCatalogView,
+  type ProductCatalogCategory,
   type ProductCatalogRecord,
   type ProductCatalogUser,
 } from "@/lib/productCatalogView"
@@ -92,7 +93,7 @@ function catalogClassificationErrorResponse(error: unknown) {
 
 export async function GET() {
   const session = await auth()
-  const { products, users } = initializeMockData()
+  const { products, users, categories } = initializeMockData()
   const sessionUser = session?.user as
     | { id?: string; email?: string | null }
     | undefined
@@ -101,6 +102,7 @@ export async function GET() {
     await buildProductCatalogView(
       products as ProductCatalogRecord[],
       users as ProductCatalogUser[],
+      categories as ProductCatalogCategory[],
       sessionUser
     )
   )

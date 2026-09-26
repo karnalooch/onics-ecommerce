@@ -11,7 +11,10 @@ import { auth } from "@/auth"
 import { AddToCartButton } from "@/components/ui/AddToCartButton"
 import { initializeMockData } from "@/store/serverStore"
 import {
+  buildCatalogCategoryOptions,
   buildProductCatalogView,
+  matchesCatalogCategory,
+  type ProductCatalogCategory,
   type ProductCatalogRecord,
   type ProductCatalogUser,
 } from "@/lib/productCatalogView"
@@ -27,33 +30,16 @@ export const metadata: Metadata = {
 export const revalidate = 0
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
-type CatalogCategory = string | { name?: string }
-type CatalogProduct = {
-  id?: string | number
-  sku?: string
-  name?: string
-  price?: number | string | null
+type CatalogProduct = ProductCatalogRecord & {
   priceHidden?: boolean
   imageUrl?: string
   specs?: string
-  manufacturer?: string
-  category?: CatalogCategory
-  categoryName?: string
-  subcategory?: CatalogCategory
-  subcategoryName?: string
 }
 
 const normalize = (value: unknown) => String(value ?? "").trim().toLowerCase()
 
-const getCategoryName = (value: CatalogCategory | undefined) =>
-  typeof value === "string" ? value : value?.name
-
-const getCategory = (product: CatalogProduct) =>
-  getCategoryName(product.category) ||
-  product.categoryName ||
-  getCategoryName(product.subcategory) ||
-  product.subcategoryName ||
-  "Pozostałe"
+const getCategoryLabel = (product: CatalogProduct) =>
+  product.subcategoryName || product.categoryName || "Pozostałe"
 
 export default async function ConsumerCatalogPage({
   searchParams,
@@ -68,7 +54,11 @@ export default async function ConsumerCatalogPage({
   let products: CatalogProduct[] = []
 
   try {
-    const { products: storedProducts, users } = initializeMockData()
+    const {
+      products: storedProducts,
+      users,
+      categories: storedCategories,
+    } = initializeMockData()
     const sessionUser = session?.user as
       | { id?: string; email?: string | null }
       | undefined
@@ -76,15 +66,14 @@ export default async function ConsumerCatalogPage({
     products = (await buildProductCatalogView(
       storedProducts as ProductCatalogRecord[],
       users as ProductCatalogUser[],
+      storedCategories as ProductCatalogCategory[],
       sessionUser
     )) as CatalogProduct[]
   } catch (error) {
     console.error("Błąd pobierania produktów:", error)
   }
 
-  const categories = Array.from(
-    new Set(products.map(getCategory).filter(Boolean))
-  ).sort((a, b) => String(a).localeCompare(String(b), "pl"))
+  const categories = buildCatalogCategoryOptions(products)
 
   const normalizedQuery = normalize(query)
   const visibleProducts = products.filter((product) => {
@@ -94,8 +83,7 @@ export default async function ConsumerCatalogPage({
         .map(normalize)
         .some((value) => value.includes(normalizedQuery))
 
-    const matchesCategory =
-      !activeCategory || normalize(getCategory(product)) === normalize(activeCategory)
+    const matchesCategory = matchesCatalogCategory(product, activeCategory)
 
     return matchesQuery && matchesCategory
   })
@@ -172,15 +160,16 @@ export default async function ConsumerCatalogPage({
           </Link>
           {categories.map((category) => (
             <Link
-              key={String(category)}
-              href={categoryHref(String(category))}
+              key={category.id}
+              href={categoryHref(category.id)}
               className={`rounded-full border px-4 py-2 text-xs font-extrabold transition ${
-                normalize(activeCategory) === normalize(category)
+                normalize(activeCategory) === normalize(category.id) ||
+                normalize(activeCategory) === normalize(category.name)
                   ? "border-[#102033] bg-[#102033] text-white"
                   : "border-black/10 bg-white text-muted-foreground hover:text-foreground dark:border-white/10 dark:bg-white/[0.04]"
               }`}
             >
-              {String(category)}
+              {category.name}
             </Link>
           ))}
         </div>
@@ -223,7 +212,7 @@ export default async function ConsumerCatalogPage({
                       {product.name || "Produkt bez nazwy"}
                     </h2>
                     <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 text-muted-foreground">
-                      {product.specs || getCategory(product)}
+                      {product.specs || getCategoryLabel(product)}
                     </p>
                   </div>
 

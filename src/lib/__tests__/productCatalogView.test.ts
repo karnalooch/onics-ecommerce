@@ -2,7 +2,11 @@ import fs from "fs"
 import path from "path"
 import { describe, expect, it } from "vitest"
 import {
+  buildCatalogCategoryOptions,
+  matchesCatalogCategory,
+  projectProductCatalogClassification,
   projectProductCatalogForSession,
+  type ProductCatalogCategory,
   type ProductCatalogRecord,
 } from "@/lib/productCatalogView"
 
@@ -14,6 +18,75 @@ const product: ProductCatalogRecord = {
   catalogPrice: 120,
   stock: 5,
 }
+
+
+const categories: ProductCatalogCategory[] = [
+  {
+    id: "cat_alarm",
+    name: "Alarmy",
+    subcategories: [{ id: "sub_motion", name: "Czujki" }],
+  },
+  {
+    id: "cat_cctv",
+    name: "CCTV",
+    subcategories: [{ id: "sub_camera", name: "Kamery" }],
+  },
+]
+
+describe("product catalog classification projection", () => {
+  it("projects canonical category and subcategory names from stored ids", () => {
+    const [projected] = projectProductCatalogClassification(
+      [
+        {
+          ...product,
+          categoryId: "cat_alarm",
+          subcategoryId: "sub_motion",
+          categoryName: "stale category",
+          subcategoryName: "stale subcategory",
+        },
+      ],
+      categories
+    )
+
+    expect(projected.categoryName).toBe("Alarmy")
+    expect(projected.subcategoryName).toBe("Czujki")
+  })
+
+  it("does not resolve a subcategory outside the selected category", () => {
+    const [projected] = projectProductCatalogClassification(
+      [
+        {
+          ...product,
+          categoryId: "cat_alarm",
+          subcategoryId: "sub_camera",
+        },
+      ],
+      categories
+    )
+
+    expect(projected.categoryName).toBe("Alarmy")
+    expect(projected.subcategoryName).toBeNull()
+  })
+
+  it("builds filter options from canonical ids and accepts legacy name links", () => {
+    const projected = projectProductCatalogClassification(
+      [
+        { ...product, id: "p1", categoryId: "cat_alarm" },
+        { ...product, id: "p2", categoryId: "cat_alarm" },
+        { ...product, id: "p3", categoryId: "cat_cctv" },
+      ],
+      categories
+    )
+
+    expect(buildCatalogCategoryOptions(projected)).toEqual([
+      { id: "cat_alarm", name: "Alarmy" },
+      { id: "cat_cctv", name: "CCTV" },
+    ])
+    expect(matchesCatalogCategory(projected[0], "cat_alarm")).toBe(true)
+    expect(matchesCatalogCategory(projected[0], "Alarmy")).toBe(true)
+    expect(matchesCatalogCategory(projected[0], "cat_cctv")).toBe(false)
+  })
+})
 
 describe("product catalog session projection", () => {
   it("hides sale and reference prices from anonymous readers", () => {
@@ -115,7 +188,10 @@ describe("catalog projection wiring", () => {
     )
 
     expect(publicPage).toContain("buildProductCatalogView")
+    expect(publicPage).toContain("buildCatalogCategoryOptions")
+    expect(publicPage).toContain("matchesCatalogCategory")
     expect(apiRoute).toContain("buildProductCatalogView")
+    expect(apiRoute).toContain("categories as ProductCatalogCategory[]")
     expect(publicPage).not.toContain("/api/products")
     expect(publicPage).not.toContain("NEXTAUTH_URL")
   })
