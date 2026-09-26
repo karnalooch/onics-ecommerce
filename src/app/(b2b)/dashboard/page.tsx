@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { InstallerTier } from "@/components/ui/InstallerTier"
 import { initializeMockData } from "@/store/serverStore"
+import { isRepairTerminalStatus } from "@/lib/repairLifecycle"
 import { StatCard } from "./_components/StatCard"
 import { QuickActionTerminal } from "./_components/QuickActionTerminal"
 
@@ -84,7 +85,7 @@ export default async function DashboardPage() {
     belongsTo(repair.user, sessionUser)
   )
   const activeRma = ownRepairs.filter(
-    (repair) => !["DONE", "COMPLETED", "RETURNED", "REJECTED"].includes(repair.status || "")
+    (repair) => !isRepairTerminalStatus(repair.status)
   ).length
 
   const currentYear = new Date().getFullYear()
