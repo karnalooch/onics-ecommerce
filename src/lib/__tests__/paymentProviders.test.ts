@@ -3,6 +3,7 @@ import {
   PAYMENT_PROVIDER_CAPABILITIES,
   PAYMENT_PROVIDER_IDS,
   assertPaymentProviderCapability,
+  describeOrderPaymentLifecycle,
   getPaymentProviderDefinition,
   listPaymentProviderDefinitions,
   resolveOrderPaymentProvider,
@@ -100,6 +101,42 @@ describe("payment provider registry", () => {
         paymentProvider: "UNKNOWN",
         stripeCheckoutSessionId: "cs_should_not_override_explicit_provider",
       })
+    ).toBeNull()
+  })
+
+  it("describes safe order lifecycle metadata for current and legacy records", () => {
+    expect(
+      describeOrderPaymentLifecycle({
+        paymentProvider: "BANK_TRANSFER",
+        bankTransferReference: "ORD-1",
+      })
+    ).toEqual({
+      provider: "BANK_TRANSFER",
+      kind: "MANUAL",
+      capabilities: {
+        checkout: true,
+        webhook: false,
+        cancel: true,
+        refund: true,
+        reconcile: false,
+        rma: true,
+        manualSettlement: true,
+      },
+      inferredFromLegacyFields: false,
+    })
+
+    expect(
+      describeOrderPaymentLifecycle({
+        stripeCheckoutSessionId: "cs_legacy",
+      })
+    ).toMatchObject({
+      provider: "STRIPE",
+      kind: "REDIRECT",
+      inferredFromLegacyFields: true,
+    })
+
+    expect(
+      describeOrderPaymentLifecycle({ paymentProvider: "UNKNOWN" })
     ).toBeNull()
   })
 
