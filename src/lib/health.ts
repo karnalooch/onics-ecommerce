@@ -3,6 +3,7 @@ import { needsAdminBootstrap } from "@/lib/adminBootstrap"
 import { getDbLockSettings } from "@/lib/jsonDb"
 import { resolveKnowledgeUploadRoot } from "@/lib/knowledge/files"
 import { resolvePersistentPath } from "@/lib/storageConfig"
+import { validateOptionalStripeReadiness } from "@/lib/payments"
 
 type ReadinessOptions = {
   nodeEnv?: string
@@ -11,6 +12,9 @@ type ReadinessOptions = {
   authSecret?: string | null
   nextAuthSecret?: string | null
   adminBootstrapPassword?: string | null
+  stripeSecretKey?: string | null
+  stripeWebhookSecret?: string | null
+  appUrl?: string | null
 }
 
 type ReadinessCheck = "ok" | "error"
@@ -23,6 +27,7 @@ export type ReadinessResult = {
     database: ReadinessCheck
     uploads: ReadinessCheck
     adminBootstrap: ReadinessCheck
+    payments: ReadinessCheck
   }
 }
 
@@ -88,6 +93,17 @@ function validateAdminBootstrap(options: ReadinessOptions) {
   )
 }
 
+function validatePayments(options: ReadinessOptions) {
+  validateOptionalStripeReadiness({
+    nodeEnv: options.nodeEnv ?? process.env.NODE_ENV,
+    stripeSecretKey:
+      options.stripeSecretKey ?? process.env.STRIPE_SECRET_KEY,
+    stripeWebhookSecret:
+      options.stripeWebhookSecret ?? process.env.STRIPE_WEBHOOK_SECRET,
+    appUrl: options.appUrl ?? process.env.NEXT_PUBLIC_APP_URL,
+  })
+}
+
 function validateDatabase(options: ReadinessOptions) {
   readDatabaseRoot(options)
 }
@@ -120,6 +136,7 @@ export function evaluateReadiness(
     database: check(() => validateDatabase(options)),
     uploads: check(() => validateUploads(options)),
     adminBootstrap: check(() => validateAdminBootstrap(options)),
+    payments: check(() => validatePayments(options)),
   }
 
   return {
