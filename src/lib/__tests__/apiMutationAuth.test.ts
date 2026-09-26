@@ -7,7 +7,7 @@ const MUTATING_METHODS = ["POST", "PUT", "PATCH", "DELETE"] as const
 type MutationMethod = (typeof MUTATING_METHODS)[number]
 
 type ExplicitMutationGuard = {
-  markers: string[]
+  handlerMarkers: string[]
   fileMarkers?: string[]
   beforeMutationMarker?: string
 }
@@ -144,7 +144,7 @@ describe("API mutation authorization boundary", () => {
 
         discoveredExplicitGuards.add(key)
 
-        const missingMarkers = explicitGuard.markers.filter(
+        const missingMarkers = explicitGuard.handlerMarkers.filter(
           (marker) => !handler.includes(marker)
         )
         if (missingMarkers.length > 0) {
@@ -166,7 +166,7 @@ describe("API mutation authorization boundary", () => {
 
         if (explicitGuard.beforeMutationMarker) {
           const guardIndex = Math.max(
-            ...explicitGuard.markers.map((marker) => handler.indexOf(marker))
+            ...explicitGuard.handlerMarkers.map((marker) => handler.indexOf(marker))
           )
           const mutationIndex = handler.indexOf(
             explicitGuard.beforeMutationMarker
