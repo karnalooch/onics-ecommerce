@@ -36,7 +36,7 @@ describe("authoritative cart repricing wiring", () => {
     expect(hook).toContain("replaceItems(nextItems)")
     expect(cartPage).toContain("useAuthoritativeCart")
     expect(miniCart).toContain("useAuthoritativeCart")
-    expect(shopPage).toContain("cartIdentityKey=")
+    expect(shopPage).toContain("cartOwnerKey={cartOwnerKey}")
   })
 
   it("keeps transaction actions paused while repricing is running", () => {
