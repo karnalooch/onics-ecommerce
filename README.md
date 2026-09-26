@@ -33,7 +33,7 @@ npm run build
 npm audit --audit-level=high
 ```
 
-The platform gate also runs blocking ESLint checks over the security-, commerce-, payment- and knowledge-critical server code. After the production build it starts the built application and smoke-tests both health endpoints over HTTP.
+The platform gate also runs blocking ESLint checks over the security-, commerce-, payment- and knowledge-critical server code. After the production build it starts the built application, smoke-tests both health endpoints over HTTP, and verifies the production security headers.
 
 ## Production storage contract
 
@@ -91,6 +91,12 @@ The application exposes two uncached operational endpoints:
 - `GET /api/health/ready` — production readiness; returns HTTP 200 only when required session secrets and lock settings are valid, the JSON database is readable/writable and valid, the private upload root exists and is readable/writable, and any unsealed active admin still has a bootstrap secret available. Otherwise it returns HTTP 503.
 
 The readiness payload reports only coarse check states (`ok` / `error`) and does not expose filesystem paths, secrets or raw exception messages.
+
+## HTTP security hardening
+
+Production responses apply `nosniff`, deny framing, use a strict-origin referrer policy, disable camera/microphone/geolocation permissions by default, and send one-year HSTS. The default Next.js `X-Powered-By` header is disabled.
+
+Image optimization does not allow remote image sources, does not allow local IP access, does not follow redirects, limits upstream image bodies to 5 MB, and keeps the Next.js 16 quality allowlist explicit at `[75]`. Add future remote image hosts only as narrow HTTPS `remotePatterns` with explicit port/path/query constraints.
 
 ## Authentication
 
