@@ -15,6 +15,7 @@ import {
   type ProductCatalogRecord,
 } from "@/lib/productCatalogView";
 import Link from "next/link";
+import { buildCartOwnerKey } from "@/lib/cartIdentity";
 
 /**
  * Modern Retail & B2B Shop Page (Server Component)
@@ -49,6 +50,8 @@ export default async function SklepPage() {
   }
 
   const user = storefront.user;
+  const cartOwnerKey = buildCartOwnerKey(sessionUser);
+  if (!cartOwnerKey) redirect("/logowanie");
 
   return (
     <div className="container mx-auto py-12 px-6 max-w-[1600px] min-h-screen">
@@ -70,7 +73,7 @@ export default async function SklepPage() {
          initialProducts={storefront.products}
          categories={categories}
          role={user.role}
-         cartIdentityKey={sessionUser.id || sessionUser.email || "anonymous"}
+         cartOwnerKey={cartOwnerKey}
        />
     </div>
   );
