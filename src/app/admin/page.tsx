@@ -21,6 +21,7 @@ import {
   Globe
 } from "lucide-react";
 
+import { isQuoteAdminActionable } from "@/lib/quoteAdmin";
 import { isRepairTerminalStatus } from "@/lib/repairLifecycle";
 import { initializeMockData } from "@/store/serverStore";
 
@@ -36,7 +37,9 @@ export default async function AdminDashboard() {
   const unapprovedUsers = users.filter((u: any) => u.roleType === "BIZ" && !u.isApproved);
   const registeredUsers = users.filter((u: any) => u.roleType === "BIZ" && u.isApproved);
   const totalProducts = products.length;
-  const pendingQuotes = orders.filter((o: any) => o.status === "INQUIRY" || o.orderType === "INQUIRY");
+  const pendingQuotes = orders.filter((o: any) =>
+    isQuoteAdminActionable(o.status)
+  );
   const pendingRepairs = repairs.filter(
     (r: any) => !isRepairTerminalStatus(r.status)
   );
