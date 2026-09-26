@@ -19,7 +19,6 @@ interface IAICommandCenterProps {
   isTraining: boolean;
   progressPercent: number;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onDeleteSource: (filename: string) => void;
   onTrainSource: (filename: string) => void;
   onClearAll: () => void;
   knowledgeCount: number;
@@ -31,7 +30,7 @@ interface IAICommandCenterProps {
 
 export function AICommandCenter({ 
   isOpen, onToggle, sources, processedSources, isUploading, 
-  isTraining, progressPercent, onUpload, onDeleteSource, 
+  isTraining, progressPercent, onUpload, 
   onTrainSource, onClearAll, knowledgeCount, onExcelParsed,
   categories, manufacturers, onRefreshStructure
 }: IAICommandCenterProps) {
@@ -89,7 +88,7 @@ export function AICommandCenter({
                   <div className="flex flex-col gap-4">
                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest italic">Ekstrakcja wiedzy z katalogów</span>
                      <div className="relative">
-                        <input type="file" onChange={onUpload} disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" />
+                        <input type="file" accept=".pdf,.xls,.xlsx,.xlsm" onChange={onUpload} disabled={isUploading} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" />
                         <button className="h-11 w-full bg-primary text-white font-bold uppercase text-[11px] tracking-widest flex items-center justify-center gap-4 rounded-lg active-press transition-all hover:brightness-110 shadow-lg shadow-primary/25">
                            {isUploading ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                            {isUploading ? "Przesyłanie..." : "Wgraj Katalog"}
@@ -142,9 +141,6 @@ export function AICommandCenter({
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                            <button onClick={() => onTrainSource(s)} className={`h-9 w-9 rounded-lg flex items-center justify-center transition-all active-press ${processedSources.includes(s) ? 'bg-primary text-white shadow-lg' : 'bg-black/5 dark:bg-white/5 text-muted-foreground hover:text-primary'}`}>
                               <Sparkles className="w-4 h-4" />
-                           </button>
-                           <button onClick={() => onDeleteSource(s)} className="h-9 w-9 bg-black/5 dark:bg-white/5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 flex items-center justify-center rounded-lg transition-all active-press">
-                              <Trash2 className="w-4 h-4" />
                            </button>
                         </div>
                      </div>
