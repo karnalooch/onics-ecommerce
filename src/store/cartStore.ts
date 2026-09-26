@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { shouldResetCartForOwner } from '@/lib/cartIdentity';
+import {
+  CART_ITEM_QUANTITY_MAX,
+  isValidCartItemQuantity,
+  resolveMergedCartQuantity,
+} from '@/lib/cartQuantity';
 
 export interface CartItem {
   id: string; // Unikalne ID produktu
@@ -13,7 +18,7 @@ export interface CartItem {
 interface CartStore {
   ownerKey: string | null;
   items: CartItem[];
-  addItem: (item: CartItem) => void;
+  addItem: (item: CartItem) => boolean;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   replaceItems: (items: CartItem[]) => void;
@@ -30,18 +35,28 @@ export const useCartStore = create<CartStore>()(
       items: [],
       
       addItem: (item) => {
+        if (!isValidCartItemQuantity(item.quantity)) return false;
+
         const currentItems = get().items;
         const existingItem = currentItems.find((i) => i.id === item.id);
         
         if (existingItem) {
+          const nextQuantity = resolveMergedCartQuantity(
+            existingItem.quantity,
+            item.quantity
+          );
+          if (nextQuantity === null) return false;
+
           set({
             items: currentItems.map((i) =>
-              i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
+              i.id === item.id ? { ...i, quantity: nextQuantity } : i
             ),
           });
-        } else {
-          set({ items: [...currentItems, item] });
+          return true;
         }
+
+        set({ items: [...currentItems, item] });
+        return true;
       },
       
       removeItem: (id) => {
@@ -52,8 +67,27 @@ export const useCartStore = create<CartStore>()(
       
       updateQuantity: (id, quantity) => {
         if (quantity < 1) return;
+
+        const currentItems = get().items;
+        const currentItem = currentItems.find((item) => item.id === id);
+        if (!currentItem) return;
+
+        let nextQuantity = quantity;
+        if (!isValidCartItemQuantity(nextQuantity)) {
+          if (
+            currentItem.quantity > CART_ITEM_QUANTITY_MAX &&
+            nextQuantity < currentItem.quantity
+          ) {
+            nextQuantity = CART_ITEM_QUANTITY_MAX;
+          } else {
+            return;
+          }
+        }
+
         set({
-          items: get().items.map((i) => (i.id === id ? { ...i, quantity } : i)),
+          items: currentItems.map((i) =>
+            i.id === id ? { ...i, quantity: nextQuantity } : i
+          ),
         });
       },
 
