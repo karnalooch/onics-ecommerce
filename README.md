@@ -28,12 +28,15 @@ The pull-request gates run:
 
 ```bash
 npm ci
+npm run test:payments
 npm test -- --run
 npm run build
 npm audit --audit-level=high
 ```
 
-The platform gate also runs blocking ESLint checks over the security-, commerce-, payment- and knowledge-critical server code. After the production build it starts the built application, smoke-tests both health endpoints over HTTP, and verifies the production security headers.
+The platform gate also runs blocking ESLint checks over the security-, commerce-, payment- and knowledge-critical server code. The named `Payment production acceptance` step exercises the critical payment lifecycle/recovery invariants before the general suite. After the production build the platform gate starts the built application, smoke-tests both health endpoints over HTTP, and verifies the production security headers.
+
+For production payment configuration, incident handling, reconciliation, emergency shutdown, backup/restore and go-live sign-off, see [PAYMENTS_PRODUCTION_RUNBOOK.md](./PAYMENTS_PRODUCTION_RUNBOOK.md).
 
 ## Production storage contract
 
