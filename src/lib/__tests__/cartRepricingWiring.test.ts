@@ -81,7 +81,8 @@ describe("authoritative cart repricing wiring", () => {
 
     expect(hook).toContain("const refreshCart = useCallback")
     expect(hook).toContain("setRefreshVersion((version) => version + 1)")
-    expect(hook).toContain("availableStockById, refreshCart")
+    expect(hook).toContain("availableStockById,")
+    expect(hook).toContain("refreshCart,")
     expect(
       cartPage.match(/if \(response\.status === 409\) refreshCart\(\);/g)
     ).toHaveLength(2)
@@ -90,6 +91,25 @@ describe("authoritative cart repricing wiring", () => {
     )
     expect(checkoutRoute).toContain("checkoutConflict")
     expect(checkoutRoute).toContain("? 409")
+  })
+
+  it("fails closed hard transactions until the current preview is verified", () => {
+    const hook = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/useAuthoritativeCart.ts"),
+      "utf8"
+    )
+    const cartPage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/koszyk/page.tsx"),
+      "utf8"
+    )
+
+    expect(hook).toContain("verifiedPreviewKey")
+    expect(hook).toContain("setVerifiedPreviewKey(\"\")")
+    expect(hook).toContain("cartPreviewVerified")
+    expect(hook).toContain("cartPreviewFailed")
+    expect(cartPage).toContain('action === "ORDER" && !cartPreviewVerified')
+    expect(cartPage).toContain("!cartPreviewVerified")
+    expect(cartPage).toContain("Spróbuj odświeżyć ponownie")
   })
 
   it("keeps transaction actions paused while repricing is running", () => {

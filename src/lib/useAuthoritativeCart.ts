@@ -53,11 +53,15 @@ export function useAuthoritativeCart(options: {
   const lastPreviewKeyRef = useRef("")
   const [refreshingCart, setRefreshingCart] = useState(false)
   const [refreshVersion, setRefreshVersion] = useState(0)
+  const [verifiedPreviewKey, setVerifiedPreviewKey] = useState("")
+  const [cartPreviewFailed, setCartPreviewFailed] = useState(false)
   const [availableStockById, setAvailableStockById] =
     useState<CartStockByProduct>({})
 
   const refreshCart = useCallback(() => {
     lastPreviewKeyRef.current = ""
+    setVerifiedPreviewKey("")
+    setCartPreviewFailed(false)
     setRefreshVersion((version) => version + 1)
   }, [])
 
@@ -69,6 +73,8 @@ export function useAuthoritativeCart(options: {
   useEffect(() => {
     if (!options.enabled || items.length === 0) {
       lastPreviewKeyRef.current = ""
+      setVerifiedPreviewKey("")
+      setCartPreviewFailed(false)
       setRefreshingCart(false)
       setAvailableStockById({})
       return
@@ -77,6 +83,7 @@ export function useAuthoritativeCart(options: {
 
     lastPreviewKeyRef.current = previewKey
     let cancelled = false
+    setCartPreviewFailed(false)
     setRefreshingCart(true)
 
     fetch("/api/cart/preview", {
@@ -105,6 +112,9 @@ export function useAuthoritativeCart(options: {
           (data.items as unknown[]).map(parsePreviewItem)
 
         if (cancelled) return
+
+        setVerifiedPreviewKey(previewKey)
+        setCartPreviewFailed(false)
 
         const nextItems = previewItems.map((item) => item.cartItem)
         setAvailableStockById(
@@ -137,6 +147,8 @@ export function useAuthoritativeCart(options: {
       })
       .catch((error) => {
         if (!cancelled) {
+          setVerifiedPreviewKey("")
+          setCartPreviewFailed(true)
           setAvailableStockById({})
           toast.warning(
             error instanceof Error
@@ -154,5 +166,16 @@ export function useAuthoritativeCart(options: {
     }
   }, [items, options.enabled, previewKey, refreshVersion, replaceItems])
 
-  return { refreshingCart, availableStockById, refreshCart }
+  const cartPreviewVerified =
+    options.enabled &&
+    items.length > 0 &&
+    verifiedPreviewKey === previewKey
+
+  return {
+    refreshingCart,
+    availableStockById,
+    refreshCart,
+    cartPreviewVerified,
+    cartPreviewFailed,
+  }
 }
