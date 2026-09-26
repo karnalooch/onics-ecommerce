@@ -19,6 +19,7 @@ import {
   resolveOrderPaymentProvider,
   type PaymentProviderCapability,
 } from "@/lib/paymentProviders"
+import { listAvailablePaymentAdminActions } from "@/lib/paymentAdminActions"
 import { mutateMockData } from "@/store/serverStore"
 
 const BankTransferActionSchema = z.object({
@@ -126,6 +127,7 @@ export async function POST(req: Request) {
       order: {
         ...result.order,
         paymentLifecycle: describeOrderPaymentLifecycle(result.order),
+        paymentAdminActions: listAvailablePaymentAdminActions(result.order),
       },
     })
   } catch (error) {
