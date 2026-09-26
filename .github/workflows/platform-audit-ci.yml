@@ -45,6 +45,7 @@ jobs:
           src/lib/commerce.ts
           src/lib/company.ts
           src/lib/authUtils.ts
+          src/lib/adminBootstrap.ts
           src/lib/jsonDb.ts
           src/lib/payments.ts
           src/lib/storageConfig.ts
