@@ -55,6 +55,7 @@ jobs:
           src/lib/securityHeaders.ts
           src/store/serverStore.ts
           src/lib/knowledge/files.ts
+          src/lib/knowledge/uploadIngress.ts
           src/lib/knowledge/KnowledgeContext.tsx
           src/app/api/register/route.ts
           src/app/api/orders/route.ts

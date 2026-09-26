@@ -12,6 +12,11 @@ import {
   MAX_KNOWLEDGE_UPLOAD_BYTES,
   validateKnowledgeFilename,
 } from "@/lib/knowledge/files"
+import {
+  KnowledgeUploadBodyInvalidError,
+  KnowledgeUploadBodyTooLargeError,
+  parseBoundedKnowledgeUploadFormData,
+} from "@/lib/knowledge/uploadIngress"
 
 export const runtime = "nodejs"
 
@@ -20,7 +25,7 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const formData = await req.formData()
+    const formData = await parseBoundedKnowledgeUploadFormData(req)
     const file = formData.get("file")
     const transientApiKey = String(formData.get("apiKey") || "").trim()
 
@@ -83,8 +88,25 @@ export async function POST(req: Request) {
       { status: 201 }
     )
   } catch (error) {
+    if (error instanceof KnowledgeUploadBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie przesyłania pliku przekracza dozwolony limit." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof KnowledgeUploadBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie przesyłania pliku." },
+        { status: 400 }
+      )
+    }
+
     const message = error instanceof Error ? error.message : "Błąd serwera."
-    const status = /EEXIST/.test(message) ? 409 : /nazwa pliku|format/.test(message) ? 400 : 500
+    const status = /EEXIST/.test(message)
+      ? 409
+      : /nazwa pliku|format/.test(message)
+        ? 400
+        : 500
     console.error("Knowledge upload error:", error)
     return NextResponse.json({ error: message }, { status })
   }
