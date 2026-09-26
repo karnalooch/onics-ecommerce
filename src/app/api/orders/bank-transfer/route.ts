@@ -7,11 +7,23 @@ import {
   type BankTransferOrder,
 } from "@/lib/manualPayments"
 import type { InventoryProduct } from "@/lib/inventoryReservations"
+import {
+  confirmBankTransferReturnRefund,
+  receiveBankTransferReturn,
+  requestBankTransferReturn,
+  type BankTransferReturnOrder,
+} from "@/lib/manualReturns"
 import { mutateMockData } from "@/store/serverStore"
 
 const BankTransferActionSchema = z.object({
   id: z.string().min(1),
-  action: z.enum(["CONFIRM_PAYMENT", "CONFIRM_REFUND"]),
+  action: z.enum([
+    "CONFIRM_PAYMENT",
+    "CONFIRM_REFUND",
+    "REQUEST_RETURN",
+    "RECEIVE_RETURN",
+    "CONFIRM_RETURN_REFUND",
+  ]),
 })
 
 export async function POST(req: Request) {
@@ -33,14 +45,45 @@ export async function POST(req: Request) {
       )
       if (!order) throw new Error("ORDER_NOT_FOUND")
 
-      const outcome =
-        parsed.data.action === "CONFIRM_PAYMENT"
-          ? confirmBankTransferPayment(order, authCheck.user)
-          : confirmBankTransferRefund(
-              db.products as InventoryProduct[],
-              order,
-              authCheck.user
-            )
+      let outcome:
+        | ReturnType<typeof confirmBankTransferPayment>
+        | ReturnType<typeof confirmBankTransferRefund>
+        | ReturnType<typeof requestBankTransferReturn>
+        | ReturnType<typeof receiveBankTransferReturn>
+        | ReturnType<typeof confirmBankTransferReturnRefund>
+
+      switch (parsed.data.action) {
+        case "CONFIRM_PAYMENT":
+          outcome = confirmBankTransferPayment(
+            order,
+            authCheck.user
+          )
+          break
+        case "CONFIRM_REFUND":
+          outcome = confirmBankTransferRefund(
+            db.products as InventoryProduct[],
+            order,
+            authCheck.user
+          )
+          break
+        case "REQUEST_RETURN":
+          outcome = requestBankTransferReturn(
+            order as BankTransferReturnOrder
+          )
+          break
+        case "RECEIVE_RETURN":
+          outcome = receiveBankTransferReturn(
+            order as BankTransferReturnOrder
+          )
+          break
+        case "CONFIRM_RETURN_REFUND":
+          outcome = confirmBankTransferReturnRefund(
+            db.products as InventoryProduct[],
+            order as BankTransferReturnOrder,
+            authCheck.user
+          )
+          break
+      }
 
       return { order, outcome }
     })
@@ -73,6 +116,20 @@ export async function POST(req: Request) {
         "Ręczny zwrot można potwierdzić dopiero po wcześniejszym zaksięgowaniu płatności.",
       BANK_TRANSFER_RMA_REQUIRED:
         "Wysłane zamówienie wymaga procesu RMA przed potwierdzeniem ręcznego zwrotu środków.",
+      BANK_TRANSFER_RETURN_INVALID_ORDER_STATUS:
+        "RMA przelewu można prowadzić tylko dla wysłanego zamówienia.",
+      BANK_TRANSFER_RETURN_PAYMENT_REQUIRED:
+        "RMA przelewu wymaga wcześniej zaksięgowanej płatności.",
+      BANK_TRANSFER_RETURN_INVALID_STATE:
+        "Stan RMA przelewu nie pozwala na tę operację.",
+      BANK_TRANSFER_RETURN_NOT_REQUESTED:
+        "Najpierw otwórz RMA, zanim potwierdzisz odbiór towaru.",
+      BANK_TRANSFER_RETURN_NOT_RECEIVED:
+        "Najpierw potwierdź fizyczny odbiór zwracanego towaru.",
+      BANK_TRANSFER_RETURN_STOCK_ALREADY_RESTOCKED:
+        "Towar z tego RMA został już zwrócony na magazyn.",
+      BANK_TRANSFER_RETURN_INVENTORY_NOT_FINALIZED:
+        "Stan magazynowy zamówienia nie pozwala bezpiecznie zakończyć RMA.",
       INVENTORY_RESERVATION_INVALID_STATE:
         "Stan rezerwacji magazynowej nie pozwala bezpiecznie anulować zamówienia.",
       INVENTORY_RESERVATION_MISSING_ITEMS:
