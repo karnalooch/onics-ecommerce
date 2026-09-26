@@ -501,7 +501,7 @@ export default function AdminOrdersPage() {
                     </div>
                  </div>
 
-                 {stripeFulfillmentLocked && (
+                 {orderCanAdvance && stripeFulfillmentLocked && (
                     <div className="px-6 py-4 bg-amber-50 border-t border-amber-200">
                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">
                           {stripeRefundInProgress
