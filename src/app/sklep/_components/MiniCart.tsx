@@ -6,6 +6,7 @@ import { useCartStore } from "@/store/cartStore";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
 
 export function MiniCart({ isB2B }: { isB2B: boolean }) {
   const router = useRouter();
@@ -22,6 +23,7 @@ export function MiniCart({ isB2B }: { isB2B: boolean }) {
 
   const cartCount = getTotalItems();
   const total = getTotalPrice();
+  const requiresPricing = cartRequiresPricing(cart);
 
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 sticky top-28 flex flex-col max-h-[calc(100vh-160px)]">
@@ -54,7 +56,9 @@ export function MiniCart({ isB2B }: { isB2B: boolean }) {
                        <div className="flex items-center gap-2">
                           <span className="text-[10px] font-black text-primary">x{item.quantity}</span>
                           <span className="text-[10px] text-slate-300 font-bold">•</span>
-                          <span className="text-[10px] font-bold text-slate-400">{item.price.toFixed(2)} zł</span>
+                          <span className="text-[10px] font-bold text-slate-400">
+                            {hasActiveCartPrice(item.price) ? `${item.price.toFixed(2)} zł` : "Na zapytanie"}
+                          </span>
                        </div>
                     </div>
                     <button onClick={() => removeItem(item.id)} className="p-1 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all">
@@ -68,8 +72,16 @@ export function MiniCart({ isB2B }: { isB2B: boolean }) {
                <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Wartość Razem</span>
                   <div className="flex flex-col items-end">
-                     <span className="text-xl font-black text-slate-900 tracking-tight">{total.toFixed(2)} zł</span>
-                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Netto + VAT</span>
+                     <span className="text-xl font-black text-slate-900 tracking-tight">
+                       {requiresPricing
+                         ? total > 0
+                           ? `${total.toFixed(2)} zł + wycena`
+                           : "Do wyceny"
+                         : `${total.toFixed(2)} zł`}
+                     </span>
+                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                       {requiresPricing ? "część pozycji bez aktywnej ceny" : "Netto + VAT"}
+                     </span>
                   </div>
                </div>
 
@@ -77,7 +89,7 @@ export function MiniCart({ isB2B }: { isB2B: boolean }) {
                  onClick={() => router.push('/koszyk')}
                  className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-[10px] gap-3 shadow-xl"
                >
-                 Finalizuj Wybór <ArrowRight className="w-4 h-4" />
+                 {requiresPricing ? "Przejdź do zapytania" : "Finalizuj Wybór"} <ArrowRight className="w-4 h-4" />
                </Button>
             </div>
           </>
