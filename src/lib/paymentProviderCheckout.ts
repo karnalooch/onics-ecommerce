@@ -239,6 +239,8 @@ async function createPrzelewy24Checkout(
       p24SessionId: orderId,
       p24OrderId: null,
       p24LastNotificationSign: null,
+      p24VerificationPending: null,
+      p24VerificationPendingAt: null,
       paidAt: null,
       paymentUpdatedAt: null,
       inventoryReservationSource: "ORDER",
