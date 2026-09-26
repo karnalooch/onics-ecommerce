@@ -2,9 +2,46 @@
 
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { useCartStore } from "@/store/cartStore"
+import { useCartStore, type CartItem } from "@/store/cartStore"
 
 export type CartStockByProduct = Partial<Record<string, number>>
+
+type AuthoritativeCartPreviewItem = {
+  cartItem: CartItem
+  availableStock: number
+}
+
+function parsePreviewItem(value: unknown): AuthoritativeCartPreviewItem {
+  if (!value || typeof value !== "object") {
+    throw new Error("Serwer zwrócił nieprawidłowy podgląd koszyka.")
+  }
+
+  const item = value as Record<string, unknown>
+  const price = Number(item.price)
+  const quantity = Number(item.quantity)
+  const availableStock = Number(item.availableStock)
+
+  if (!Number.isFinite(price) || price < 0) {
+    throw new Error("Serwer zwrócił nieprawidłową cenę koszyka.")
+  }
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 10000) {
+    throw new Error("Serwer zwrócił nieprawidłową ilość produktu.")
+  }
+  if (!Number.isInteger(availableStock) || availableStock < 0) {
+    throw new Error("Serwer zwrócił nieprawidłowy stan magazynowy.")
+  }
+
+  return {
+    cartItem: {
+      id: String(item.id),
+      sku: String(item.sku),
+      name: String(item.name),
+      price,
+      quantity,
+    },
+    availableStock,
+  }
+}
 
 export function useAuthoritativeCart(options: {
   enabled: boolean
@@ -57,23 +94,8 @@ export function useAuthoritativeCart(options: {
           throw new Error("Serwer zwrócił nieprawidłowy podgląd koszyka.")
         }
 
-        const previewItems = data.items.map((item: any) => {
-          const availableStock = Number(item.availableStock)
-          if (!Number.isInteger(availableStock) || availableStock < 0) {
-            throw new Error("Serwer zwrócił nieprawidłowy stan magazynowy.")
-          }
-
-          return {
-            cartItem: {
-              id: String(item.id),
-              sku: String(item.sku),
-              name: String(item.name),
-              price: Number(item.price),
-              quantity: Number(item.quantity),
-            },
-            availableStock,
-          }
-        })
+        const previewItems: AuthoritativeCartPreviewItem[] =
+          (data.items as unknown[]).map(parsePreviewItem)
 
         if (cancelled) return
 
