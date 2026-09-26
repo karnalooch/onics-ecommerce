@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
+  adjustInventoryReservation,
+  applyOrderInventoryTransition,
   applyStripeInventoryTransition,
   hasActiveReservationForProduct,
   releaseInventory,
@@ -195,6 +197,148 @@ describe("inventory reservations", () => {
       )
     ).toThrow("INVENTORY_RESERVATION_MISSING_ITEMS")
     expect(products[0].stock).toBe(5)
+  })
+
+  it("adjusts an active reservation by the net quantity delta", () => {
+    const products = [
+      { id: "p1", stock: 3 },
+      { id: "p2", stock: 4 },
+    ]
+
+    adjustInventoryReservation(
+      products,
+      [
+        { id: "p1", quantity: 2 },
+        { id: "p2", quantity: 2 },
+      ],
+      [
+        { id: "p1", quantity: 4 },
+        { id: "p2", quantity: 1 },
+      ]
+    )
+
+    expect(products).toEqual([
+      { id: "p1", stock: 1 },
+      { id: "p2", stock: 5 },
+    ])
+  })
+
+  it("rejects a reservation increase without partially mutating stock", () => {
+    const products = [
+      { id: "p1", stock: 1 },
+      { id: "p2", stock: 3 },
+    ]
+
+    expect(() =>
+      adjustInventoryReservation(
+        products,
+        [
+          { id: "p1", quantity: 1 },
+          { id: "p2", quantity: 2 },
+        ],
+        [
+          { id: "p1", quantity: 3 },
+          { id: "p2", quantity: 1 },
+        ]
+      )
+    ).toThrow("INVENTORY_NOT_AVAILABLE")
+
+    expect(products).toEqual([
+      { id: "p1", stock: 1 },
+      { id: "p2", stock: 3 },
+    ])
+  })
+
+  it("keeps B2B stock reserved through confirmation and finalizes on shipping", () => {
+    const products = [{ id: "p1", stock: 3 }]
+    const order: InventoryReservationOrder = {
+      items: [{ id: "p1", quantity: 2 }],
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+      inventoryReservedAt: "2026-09-26T08:00:00.000Z",
+    }
+
+    expect(
+      applyOrderInventoryTransition(
+        products,
+        order,
+        [{ id: "p1", quantity: 2 }],
+        "CONFIRMED",
+        "2026-09-26T09:00:00.000Z"
+      )
+    ).toBe("reserved")
+    expect(products[0].stock).toBe(3)
+    expect(order.inventoryReservationStatus).toBe("RESERVED")
+
+    expect(
+      applyOrderInventoryTransition(
+        products,
+        order,
+        [{ id: "p1", quantity: 2 }],
+        "SHIPPED",
+        "2026-09-26T10:00:00.000Z"
+      )
+    ).toBe("finalized")
+    expect(products[0].stock).toBe(3)
+    expect(order.inventoryReservationStatus).toBe("FINALIZED")
+    expect(order.inventoryFinalizedAt).toBe("2026-09-26T10:00:00.000Z")
+  })
+
+  it("releases a B2B reservation on cancellation exactly once", () => {
+    const products = [{ id: "p1", stock: 3 }]
+    const order: InventoryReservationOrder = {
+      items: [{ id: "p1", quantity: 2 }],
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+    }
+
+    expect(
+      applyOrderInventoryTransition(
+        products,
+        order,
+        [{ id: "p1", quantity: 2 }],
+        "CANCELLED",
+        "2026-09-26T09:00:00.000Z"
+      )
+    ).toBe("released")
+    expect(products[0].stock).toBe(5)
+    expect(order.inventoryReservationStatus).toBe("RELEASED")
+
+    expect(
+      applyOrderInventoryTransition(
+        products,
+        order,
+        [{ id: "p1", quantity: 2 }],
+        "CANCELLED",
+        "2026-09-26T10:00:00.000Z"
+      )
+    ).toBe("unchanged")
+    expect(products[0].stock).toBe(5)
+  })
+
+  it("rejects quantity rewrites after B2B reservation release or finalization", () => {
+    const products = [{ id: "p1", stock: 3 }]
+
+    for (const status of ["RELEASED", "FINALIZED"] as const) {
+      const order: InventoryReservationOrder = {
+        items: [{ id: "p1", quantity: 2 }],
+        inventoryReservationSource: "ORDER",
+        inventoryReservationStatus: status,
+      }
+
+      expect(() =>
+        applyOrderInventoryTransition(
+          products,
+          order,
+          [{ id: "p1", quantity: 3 }],
+          status === "RELEASED" ? "CANCELLED" : "SHIPPED"
+        )
+      ).toThrow(
+        status === "RELEASED"
+          ? "INVENTORY_RELEASED_ITEMS_IMMUTABLE"
+          : "INVENTORY_FINALIZED_ITEMS_IMMUTABLE"
+      )
+    }
   })
 
   it("leaves legacy Stripe orders unmanaged", () => {

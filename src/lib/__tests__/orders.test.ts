@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   canReplaceOrderItems,
   resolveEstimatedDeliveryDays,
+  validateReservedOrderStatusTransition,
   validateStripeOrderStatusTransition,
 } from "@/lib/orders"
 
@@ -144,5 +145,71 @@ describe("Stripe-linked order status transitions", () => {
   it("leaves non-Stripe order status semantics unchanged", () => {
     expect(validateStripeOrderStatusTransition(null, null, "PENDING_VERIFICATION", "CANCELLED")).toBe("ok")
     expect(validateStripeOrderStatusTransition(null, null, "PENDING_VERIFICATION", "CONFIRMED")).toBe("ok")
+  })
+})
+
+
+describe("B2B reserved order status transitions", () => {
+  it("allows confirmation, shipping, and cancellation before shipment", () => {
+    expect(
+      validateReservedOrderStatusTransition(
+        "ORDER",
+        "PENDING_VERIFICATION",
+        "CONFIRMED"
+      )
+    ).toBe("ok")
+    expect(
+      validateReservedOrderStatusTransition("ORDER", "CONFIRMED", "SHIPPED")
+    ).toBe("ok")
+    expect(
+      validateReservedOrderStatusTransition(
+        "ORDER",
+        "PENDING_VERIFICATION",
+        "CANCELLED"
+      )
+    ).toBe("ok")
+    expect(
+      validateReservedOrderStatusTransition("ORDER", "CONFIRMED", "CANCELLED")
+    ).toBe("ok")
+  })
+
+  it("rejects skips, rollback, and reopening terminal states", () => {
+    expect(
+      validateReservedOrderStatusTransition(
+        "ORDER",
+        "PENDING_VERIFICATION",
+        "SHIPPED"
+      )
+    ).toBe("invalid-transition")
+    expect(
+      validateReservedOrderStatusTransition(
+        "ORDER",
+        "CONFIRMED",
+        "PENDING_VERIFICATION"
+      )
+    ).toBe("invalid-transition")
+    expect(
+      validateReservedOrderStatusTransition("ORDER", "SHIPPED", "CONFIRMED")
+    ).toBe("invalid-transition")
+    expect(
+      validateReservedOrderStatusTransition("ORDER", "CANCELLED", "CONFIRMED")
+    ).toBe("invalid-transition")
+  })
+
+  it("leaves legacy and Stripe order semantics to their existing flows", () => {
+    expect(
+      validateReservedOrderStatusTransition(
+        undefined,
+        "PENDING_VERIFICATION",
+        "SHIPPED"
+      )
+    ).toBe("ok")
+    expect(
+      validateReservedOrderStatusTransition(
+        "STRIPE",
+        "PENDING_VERIFICATION",
+        "SHIPPED"
+      )
+    ).toBe("ok")
   })
 })

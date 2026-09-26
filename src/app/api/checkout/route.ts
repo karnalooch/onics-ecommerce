@@ -195,6 +195,7 @@ export async function POST(req: Request) {
           stripeCheckoutSessionId: session.id,
           stripePaymentIntentId: null,
           paidAt: null,
+          inventoryReservationSource: "STRIPE",
           inventoryReservationStatus: "RESERVED",
           inventoryReservedAt: reservedAt,
           inventoryReleasedAt: null,
