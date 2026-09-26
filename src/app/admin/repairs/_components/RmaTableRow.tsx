@@ -5,17 +5,13 @@ import { useRouter } from "next/navigation"
 import { Trash2 } from "lucide-react"
 import { TableCell, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
+import {
+  isRepairTerminalStatus,
+  REPAIR_STATUSES,
+} from "@/lib/repairLifecycle"
 import { deleteRepairAction, updateStatusAction } from "../_actions"
 import type { AdminRma } from "../RepairsDashboardClient"
-
-const statuses = [
-  "WERYFIKACJA",
-  "DIAGNOSIS",
-  "REPAIRING",
-  "COMPLETED",
-  "RETURNED",
-  "REJECTED",
-]
 
 export function RmaTableRow({ rma }: { rma: AdminRma }) {
   const router = useRouter()
@@ -25,7 +21,14 @@ export function RmaTableRow({ rma }: { rma: AdminRma }) {
     setBusy(true)
     try {
       const result = await updateStatusAction(rma.id, status)
-      if (result.success) router.refresh()
+      if (result.success) {
+        toast.success(result.message)
+        router.refresh()
+      } else {
+        toast.error(result.error)
+      }
+    } catch {
+      toast.error("Nie udało się zmienić statusu zgłoszenia.")
     } finally {
       setBusy(false)
     }
@@ -36,11 +39,20 @@ export function RmaTableRow({ rma }: { rma: AdminRma }) {
     setBusy(true)
     try {
       const result = await deleteRepairAction(rma.id)
-      if (result.success) router.refresh()
+      if (result.success) {
+        toast.success(result.message)
+        router.refresh()
+      } else {
+        toast.error(result.error)
+      }
+    } catch {
+      toast.error("Nie udało się usunąć zgłoszenia.")
     } finally {
       setBusy(false)
     }
   }
+
+  const terminal = isRepairTerminalStatus(rma.status)
 
   return (
     <TableRow>
@@ -62,12 +74,14 @@ export function RmaTableRow({ rma }: { rma: AdminRma }) {
         <div className="inline-flex items-center gap-2">
           <select
             value={rma.status}
-            disabled={busy}
+            disabled={busy || terminal}
             onChange={(event) => void changeStatus(event.target.value)}
             className="h-9 rounded-lg border border-border bg-background px-3 text-xs font-semibold"
           >
-            {!statuses.includes(rma.status) && <option value={rma.status}>{rma.status}</option>}
-            {statuses.map((status) => (
+            {!REPAIR_STATUSES.includes(rma.status as (typeof REPAIR_STATUSES)[number]) && (
+              <option value={rma.status}>{rma.status}</option>
+            )}
+            {REPAIR_STATUSES.map((status) => (
               <option key={status} value={status}>{status}</option>
             ))}
           </select>
