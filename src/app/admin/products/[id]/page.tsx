@@ -4,7 +4,10 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { initializeMockData, mutateMockData } from "@/store/serverStore";
-import { hasSkuConflict } from "@/lib/catalog";
+import {
+  assertCatalogClassification,
+  hasSkuConflict,
+} from "@/lib/catalog";
 import {
   shouldDeferProductStockWrite,
   type InventoryReservationOrder,
@@ -77,24 +80,11 @@ export default async function EditProductPage({ params }: { params: any }) {
       const categoryStore = db.categories as any[];
       const input = parsed.data;
 
-      if (input.categoryId) {
-        const category = categoryStore.find(
-          (candidate) => String(candidate.id) === input.categoryId
-        );
-        if (!category) throw new Error("CATEGORY_NOT_FOUND");
-
-        if (
-          input.subcategoryId &&
-          !(category.subcategories || []).some(
-            (candidate: any) =>
-              String(candidate.id) === input.subcategoryId
-          )
-        ) {
-          throw new Error("SUBCATEGORY_NOT_FOUND");
-        }
-      } else if (input.subcategoryId) {
-        throw new Error("SUBCATEGORY_WITHOUT_CATEGORY");
-      }
+      assertCatalogClassification(
+        categoryStore,
+        input.categoryId,
+        input.subcategoryId
+      );
 
       if (id === "new") {
         if (hasSkuConflict(productStore, input.sku)) {
