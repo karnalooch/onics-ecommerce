@@ -18,6 +18,8 @@ generic EDI/XML parser.
 
 ## Security contract
 
+Request bodies are bounded while streaming, so missing or understated `Content-Length` cannot bypass the 256 KiB limit.
+
 The parser is fail-closed. The following are not part of the format and are
 rejected: DTD, ENTITY declarations, CDATA, comments, namespaces, text nodes,
 unknown elements, unknown attributes and arbitrary XML extensions.
