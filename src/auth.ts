@@ -3,6 +3,13 @@ import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcrypt"
 import crypto from "crypto"
 import { sealAdminBootstrapPassword } from "@/lib/adminBootstrap"
+import {
+  applicationRateLimiter,
+  getClientRateLimitKey,
+} from "@/lib/rateLimit"
+
+const LOGIN_CLIENT_POLICY = { limit: 30, windowMs: 15 * 60_000 } as const
+const LOGIN_ACCOUNT_POLICY = { limit: 20, windowMs: 15 * 60_000 } as const
 
 function normalizeEmail(value: unknown) {
   return String(value ?? "").trim().toLowerCase()
@@ -58,11 +65,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email", placeholder: "twoj-email@firma.pl" },
         password: { label: "Hasło", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email = normalizeEmail(credentials?.email)
         const password = String(credentials?.password ?? "")
 
         if (!email || !password) return null
+
+        const clientLimit = applicationRateLimiter.check(
+          "login:client",
+          getClientRateLimitKey(request),
+          LOGIN_CLIENT_POLICY
+        )
+        if (!clientLimit.allowed) return null
 
         const { initializeMockData } = await import("@/store/serverStore")
         const { users } = initializeMockData()
@@ -71,6 +85,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         )
 
         if (!user || user.isBlocked) return null
+
+        const accountLimit = applicationRateLimiter.check(
+          "login:account",
+          email,
+          LOGIN_ACCOUNT_POLICY
+        )
+        if (!accountLimit.allowed) return null
 
         const passwordValid = await verifyStoredPassword(user, password)
         if (!passwordValid) return null
