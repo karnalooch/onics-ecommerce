@@ -2,7 +2,10 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
-import { resolveEstimatedDeliveryDays } from "@/lib/orders"
+import {
+  canReplaceOrderItems,
+  resolveEstimatedDeliveryDays,
+} from "@/lib/orders"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 export const dynamic = "force-dynamic"
@@ -61,6 +64,7 @@ type StoredOrder = {
   status?: string
   estimatedDeliveryDays?: number | null
   items?: Array<z.infer<typeof AdminOrderItemSchema>>
+  stripeCheckoutSessionId?: string | null
   user?: {
     id?: string
     email?: string
@@ -200,6 +204,17 @@ export async function PUT(req: Request) {
       if (index === -1) throw new Error("ORDER_NOT_FOUND")
 
       const currentOrder = orderStore[index]
+
+      if (
+        !canReplaceOrderItems(
+          currentOrder.stripeCheckoutSessionId,
+          parsed.data.items,
+          currentOrder.items
+        )
+      ) {
+        throw new Error("STRIPE_ORDER_ITEMS_IMMUTABLE")
+      }
+
       const items = parsed.data.items ?? currentOrder.items ?? []
       const totalPriceFinal =
         Math.round(
@@ -231,6 +246,19 @@ export async function PUT(req: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 })
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "STRIPE_ORDER_ITEMS_IMMUTABLE"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Pozycje zamówienia powiązanego z płatnością Stripe nie mogą być zmieniane.",
+        },
+        { status: 409 }
+      )
     }
 
     const message = error instanceof Error ? error.message : "Błąd serwera."
