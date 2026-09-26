@@ -70,6 +70,7 @@ type PaymentMethod = {
     openReturns: number
     lastReconciledAt: string | null
     lastErrorAt: string | null
+    lastOperationAt: string | null
     lastOperationOutcome: "SUCCESS" | "PARTIAL" | "FAILED" | null
     lastOperationProcessed: number
     lastOperationFailed: number
@@ -686,11 +687,21 @@ export default function AdminPaymentsPage() {
                             {new Date(
                               method.operations.lastReconciledAt
                             ).toLocaleString("pl-PL")}
-                            {method.operations.lastOperationOutcome
-                              ? ` · ${method.operations.lastOperationOutcome} · processed ${method.operations.lastOperationProcessed} · failed ${method.operations.lastOperationFailed} · review ${method.operations.lastOperationManualReview}`
-                              : ""}
                           </span>
                         )}
+                        {method.operations.lastOperationAt &&
+                          method.operations.lastOperationOutcome && (
+                            <span>
+                              Ostatni wynik:{" "}
+                              {method.operations.lastOperationOutcome}
+                              {" · processed " +
+                                method.operations.lastOperationProcessed +
+                                " · failed " +
+                                method.operations.lastOperationFailed +
+                                " · review " +
+                                method.operations.lastOperationManualReview}
+                            </span>
+                          )}
                         {method.operations.lastErrorAt && (
                           <span className="text-red-600">
                             Ostatni błąd:{" "}
