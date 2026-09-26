@@ -178,7 +178,13 @@ export default function CartPage() {
     identityKey: cartOwnerKey,
     resolved: sessionStatus !== "loading",
   });
-  const { refreshingCart, availableStockById, refreshCart } = useAuthoritativeCart({
+  const {
+    refreshingCart,
+    availableStockById,
+    refreshCart,
+    cartPreviewVerified,
+    cartPreviewFailed,
+  } = useAuthoritativeCart({
     enabled: mounted && cartOwnerReady && isB2B,
     identityKey: cartOwnerKey || "anonymous",
   });
@@ -310,6 +316,13 @@ export default function CartPage() {
       return;
     }
 
+    if (!cartPreviewVerified) {
+      toast.error(
+        "Nie udało się potwierdzić bieżących danych koszyka. Odśwież koszyk przed płatnością."
+      );
+      return;
+    }
+
     if (requiresPricing) {
       toast.error(
         "Koszyk zawiera pozycje bez aktywnej ceny. Najpierw wyślij zapytanie cenowe."
@@ -397,6 +410,13 @@ export default function CartPage() {
     if (action !== "INQUIRY" && requiresPricing) {
       toast.error(
         "Pozycje bez aktywnej ceny można teraz wysłać jako zapytanie. Oferta PDF i zamówienie będą dostępne po wycenie."
+      );
+      return;
+    }
+
+    if (action === "ORDER" && !cartPreviewVerified) {
+      toast.error(
+        "Nie udało się potwierdzić bieżących danych koszyka. Odśwież koszyk przed wysłaniem zamówienia."
       );
       return;
     }
@@ -804,6 +824,26 @@ export default function CartPage() {
                 </div>
               ) : isB2B ? (
                 <div className="space-y-3">
+                  {cartPreviewFailed && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] leading-relaxed text-amber-800 space-y-2">
+                      <div>
+                        Nie udało się potwierdzić bieżących cen i stanów magazynowych.
+                        Realne zamówienie oraz płatność są wstrzymane do czasu udanego
+                        odświeżenia. Zapytanie i oferta PDF pozostają dostępne.
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshCart}
+                        disabled={refreshingCart}
+                        className="h-8 bg-white"
+                      >
+                        {refreshingCart ? "Odświeżanie..." : "Spróbuj odświeżyć ponownie"}
+                      </Button>
+                    </div>
+                  )}
+
                   {requiresPricing && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] leading-relaxed text-amber-800">
                       Koszyk zawiera pozycje bez aktywnej ceny. Możesz wysłać zapytanie
@@ -846,7 +886,8 @@ export default function CartPage() {
                       submitting !== null ||
                       requiresPricing ||
                       refreshingCart ||
-                      hasStockConflict
+                      hasStockConflict ||
+                      !cartPreviewVerified
                     }
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-green-600 hover:bg-green-700 text-white shadow-md border-none"
                   >
@@ -862,7 +903,8 @@ export default function CartPage() {
                         submitting !== null ||
                         requiresPricing ||
                         refreshingCart ||
-                        hasStockConflict
+                        hasStockConflict ||
+                        !cartPreviewVerified
                       }
                       className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-slate-950 hover:bg-slate-800 text-white shadow-md border-none"
                     >
