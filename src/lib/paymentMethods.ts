@@ -6,6 +6,7 @@ import {
   getPaymentProviderDefinition,
   paymentProviderOperationalStatus,
   type PaymentProviderCapabilities,
+  type PaymentProviderConfigurationIssue,
   type PaymentProviderId,
   type PaymentRuntimeOptions,
 } from "@/lib/paymentProviders"
@@ -34,7 +35,7 @@ export type PaymentMethodAvailability = {
   kind: "REDIRECT" | "MANUAL"
   capabilities: PaymentProviderCapabilities
   state: PaymentProviderState
-  configurationIssues: string[]
+  configurationIssues: PaymentProviderConfigurationIssue[]
   available: boolean
   updatedAt: string | null
 }
