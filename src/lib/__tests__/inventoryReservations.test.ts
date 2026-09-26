@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   applyStripeInventoryTransition,
+  hasActiveReservationForProduct,
   releaseInventory,
   reserveInventory,
 } from "@/lib/inventoryReservations"
@@ -129,6 +130,22 @@ describe("inventory reservations", () => {
     ).toThrow("INVENTORY_NOT_AVAILABLE")
     expect(products[0].stock).toBe(1)
     expect(order.inventoryReservationStatus).toBe("RELEASED")
+  })
+
+  it("detects products referenced by active reservations only", () => {
+    const orders = [
+      {
+        items: [{ id: "p1", quantity: 1 }],
+        inventoryReservationStatus: "RESERVED" as const,
+      },
+      {
+        items: [{ id: "p2", quantity: 1 }],
+        inventoryReservationStatus: "RELEASED" as const,
+      },
+    ]
+
+    expect(hasActiveReservationForProduct(orders, "p1")).toBe(true)
+    expect(hasActiveReservationForProduct(orders, "p2")).toBe(false)
   })
 
   it("can release an explicit reservation directly", () => {
