@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  findRemovedReferencedSubcategoryIds,
+  hasCategoryProductReference,
+  type CatalogCategoryReference,
+} from "@/lib/catalog"
 
 export const dynamic = "force-dynamic"
 
@@ -106,13 +111,28 @@ export async function PUT(req: Request) {
       if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
 
       const current = categoryStore[index]
+      const nextSubcategories = parsed.data.subcategories
+        ? normalizeSubcategories(parsed.data.subcategories)
+        : current.subcategories
+
+      if (parsed.data.subcategories) {
+        const removedReferencedSubcategoryIds =
+          findRemovedReferencedSubcategoryIds(
+            db.products as CatalogCategoryReference[],
+            parsed.data.id,
+            nextSubcategories.map((subcategory) => subcategory.id)
+          )
+
+        if (removedReferencedSubcategoryIds.length > 0) {
+          throw new Error("CATEGORY_SUBCATEGORY_IN_USE")
+        }
+      }
+
       const nextCategory: Category = {
         ...current,
         name: parsed.data.name.toUpperCase(),
         iconName: parsed.data.iconName || current.iconName || "Folder",
-        subcategories: parsed.data.subcategories
-          ? normalizeSubcategories(parsed.data.subcategories)
-          : current.subcategories,
+        subcategories: nextSubcategories,
       }
 
       categoryStore[index] = nextCategory
@@ -125,6 +145,18 @@ export async function PUT(req: Request) {
       return NextResponse.json(
         { error: "Nie znaleziono kategorii." },
         { status: 404 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_SUBCATEGORY_IN_USE"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nie można usunąć podkategorii przypisanej do produktu. Najpierw przenieś produkty do innej podkategorii.",
+        },
+        { status: 409 }
       )
     }
 
@@ -150,6 +182,14 @@ export async function DELETE(req: Request) {
       const index = categoryStore.findIndex((category) => category.id === id)
 
       if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
+      if (
+        hasCategoryProductReference(
+          db.products as CatalogCategoryReference[],
+          id
+        )
+      ) {
+        throw new Error("CATEGORY_IN_USE")
+      }
       categoryStore.splice(index, 1)
     })
 
@@ -159,6 +199,15 @@ export async function DELETE(req: Request) {
       return NextResponse.json(
         { error: "Nie znaleziono kategorii." },
         { status: 404 }
+      )
+    }
+    if (error instanceof Error && error.message === "CATEGORY_IN_USE") {
+      return NextResponse.json(
+        {
+          error:
+            "Nie można usunąć kategorii przypisanej do produktów. Najpierw przenieś produkty do innej kategorii.",
+        },
+        { status: 409 }
       )
     }
 

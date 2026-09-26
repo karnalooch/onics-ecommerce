@@ -68,12 +68,52 @@ export function CategoriesDashboardClient({ initialCategories }: { initialCatego
   const handleConfirmRename = (id: string, name: string) => {
     if (!name.trim()) return setRenamingId(null);
     startTransition(async () => {
-       if (activeCat?.id === id) await updateCategoryAction({ id, name });
-       else if (activeCat) {
-         const subcategories = activeCat.subcategories.map((s: any) => s.id === id ? { ...s, name } : s);
-         await updateCategoryAction({ id: activeCat.id, subcategories });
-       }
-       setRenamingId(null);
+      const res = activeCat?.id === id
+        ? await updateCategoryAction({ id, name })
+        : activeCat
+          ? await updateCategoryAction({
+              id: activeCat.id,
+              subcategories: activeCat.subcategories.map((s: any) =>
+                s.id === id ? { ...s, name } : s
+              ),
+            })
+          : null;
+
+      if (res?.success) toast.success("LOG: Nazwa została zaktualizowana.");
+      else if (res) toast.error(res.error);
+      setRenamingId(null);
+    });
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (!confirm("Usunąć kategorię?")) return;
+    startTransition(async () => {
+      const res = await deleteCategoryAction(id);
+      if (res.success) {
+        if (activeCatId === id) setActiveCatId(null);
+        toast.success("LOG: Kategoria została usunięta.");
+      } else {
+        toast.error(res.error);
+      }
+    });
+  };
+
+  const handleDeleteSubcategory = (subId: string) => {
+    if (!activeCat || !confirm("Usunąć gałąź?")) return;
+    const subcategories = (activeCat.subcategories || []).filter(
+      (subcategory: any) => subcategory.id !== subId
+    );
+
+    startTransition(async () => {
+      const res = await updateCategoryAction({
+        id: activeCat.id,
+        subcategories,
+      });
+      if (res.success) {
+        toast.success("LOG: Gałąź została usunięta.");
+      } else {
+        toast.error(res.error);
+      }
     });
   };
 
@@ -116,7 +156,7 @@ export function CategoriesDashboardClient({ initialCategories }: { initialCatego
               activeCatId={activeCatId} 
               onSelect={setActiveCatId} 
               onAdd={handleAddCategory}
-              onDelete={(id: string) => confirm("Usunąć kategorię?") && startTransition(async () => { await deleteCategoryAction(id); if (activeCatId === id) setActiveCatId(null); })}
+              onDelete={handleDeleteCategory}
               newCatName={newCatName} 
               onNewCatNameChange={setNewCatName} 
               renamingId={renamingId} 
@@ -189,7 +229,7 @@ export function CategoriesDashboardClient({ initialCategories }: { initialCatego
                          onSetRenameValue={setRenameValue} 
                          onConfirmRename={handleConfirmRename} 
                          onCancelRename={() => setRenamingId(null)} 
-                         onDelete={(subId) => confirm("Usunąć gałąź?") && handleConfirmRename(subId, "") } 
+                         onDelete={handleDeleteSubcategory} 
                        />
 
                        <div className="pt-10 mt-16 border-t border-black/5 dark:border-white/5 flex flex-col md:flex-row gap-6 items-end">
