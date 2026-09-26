@@ -26,6 +26,10 @@ export function isRepairTerminalStatus(value: unknown) {
   return TERMINAL_REPAIR_STATUSES.has(String(value ?? ""))
 }
 
+export function canDeleteRepair(value: unknown) {
+  return value === "WERYFIKACJA"
+}
+
 export function validateRepairStatusTransition(
   currentStatus: unknown,
   nextStatus: unknown
