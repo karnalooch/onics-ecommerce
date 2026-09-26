@@ -102,7 +102,7 @@ Serwer:
 - liczy cenę B2B z aktywnej `product.price` i jawnego `user.discount`; `tierName` jest etykietą klasyfikacyjną, nie drugim silnikiem ceny,
 - generator cenników używa tego samego wzoru rabatowego co commerce; presety PARTNER/VIP/BASIC są wyłącznie jawnymi skrótami procentowymi i nie dodają ukrytych rabatów producenta/kategorii,
 - waliduje ceny i stock przy właściwym checkout/order flow,
-- traktuje ceny zapisane w lokalnym koszyku wyłącznie jako cache prezentacyjny; mini-koszyk i pełny koszyk odświeżają bieżące ceny/nazwy przez chroniony `POST /api/cart/preview`, a finalne order/payment flow nadal przelicza wszystko ponownie,
+- traktuje dane zapisane w lokalnym koszyku wyłącznie jako cache prezentacyjny; mini-koszyk i pełny koszyk odświeżają bieżące ceny/nazwy oraz informacyjny stock przez chroniony `POST /api/cart/preview`; preview nie rezerwuje magazynu, UI blokuje hard ORDER/payment przy oczywistym konflikcie ilości, a finalne order/payment flow nadal przelicza i waliduje wszystko ponownie,
 - wiąże utrwalony koszyk ze stabilnym owner key konta (preferowane `user.id`, legacy fallback do znormalizowanego e-maila); zmiana konta albo przejście do sesji anonimowej czyści poprzednią zawartość po rehydratacji store, zanim UI pokaże koszyk,
 - traktuje `RETAIL` jako rolę browse-only dla katalogu z ceną bazową; obecny lifecycle zamówień i płatności jest dostępny wyłącznie dla `BIZ` i `ADMIN`,
 - endpointy checkoutu i discovery metod płatności egzekwują tę samą granicę ról na bieżącym rekordzie konta,
