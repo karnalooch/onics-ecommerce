@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import {
   AlertTriangle,
   CreditCard,
+  History,
   Power,
   RefreshCcw,
   ShieldCheck,
@@ -15,6 +16,21 @@ type PaymentControl = {
   enabled: boolean
   maintenanceMessage: string | null
   updatedAt: string | null
+}
+
+type PaymentAuditEntry = {
+  id: string
+  createdAt: string
+  target: "GLOBAL" | "STRIPE"
+  actor: {
+    id: string | null
+    email: string | null
+    name: string | null
+  }
+  previousEnabled: boolean
+  nextEnabled: boolean
+  previousMaintenanceMessage: string | null
+  nextMaintenanceMessage: string | null
 }
 
 type PaymentMethod = {
@@ -29,6 +45,7 @@ type PaymentMethod = {
 export default function AdminPaymentsPage() {
   const [control, setControl] = useState<PaymentControl | null>(null)
   const [methods, setMethods] = useState<PaymentMethod[]>([])
+  const [audit, setAudit] = useState<PaymentAuditEntry[]>([])
   const [maintenanceMessage, setMaintenanceMessage] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
@@ -46,6 +63,7 @@ export default function AdminPaymentsPage() {
       setControl(data?.control ?? null)
       setMaintenanceMessage(data?.control?.maintenanceMessage ?? "")
       setMethods(data?.methods ?? [])
+      setAudit(data?.audit ?? [])
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -93,6 +111,7 @@ export default function AdminPaymentsPage() {
       setControl(data?.control ?? null)
       setMaintenanceMessage(data?.control?.maintenanceMessage ?? "")
       setMethods(data?.methods ?? [])
+      setAudit(data?.audit ?? [])
       toast.success(
         nextEnabled
           ? "Nowe płatności online zostały włączone."
@@ -140,6 +159,7 @@ export default function AdminPaymentsPage() {
       }
 
       setMethods(data?.methods ?? [])
+      setAudit(data?.audit ?? [])
       toast.success(
         nextEnabled
           ? "Stripe włączony dla nowych płatności."
@@ -367,6 +387,91 @@ export default function AdminPaymentsPage() {
             )
           })}
         </div>
+      )}
+
+      {!loading && audit.length > 0 && (
+        <section className="bg-white border border-slate-100 shadow-sm">
+          <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <History className="w-5 h-5 text-primary" />
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-widest text-slate-950">
+                  Historia zmian płatności
+                </h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  Ostatnie {audit.length} zdarzeń
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {audit.map((entry) => {
+              const actor =
+                entry.actor.name ||
+                entry.actor.email ||
+                entry.actor.id ||
+                "ADMIN"
+              const enabledChanged =
+                entry.previousEnabled !== entry.nextEnabled
+              const messageChanged =
+                entry.previousMaintenanceMessage !==
+                entry.nextMaintenanceMessage
+
+              return (
+                <div
+                  key={entry.id}
+                  className="px-8 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`mt-1 w-2.5 h-2.5 rounded-full ${
+                        entry.nextEnabled ? "bg-green-500" : "bg-red-500"
+                      }`}
+                    />
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-950">
+                          {entry.target === "GLOBAL"
+                            ? "Wszystkie płatności"
+                            : "Stripe"}
+                        </span>
+                        {enabledChanged && (
+                          <span
+                            className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest ${
+                              entry.nextEnabled
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {entry.nextEnabled ? "WŁĄCZONO" : "WYŁĄCZONO"}
+                          </span>
+                        )}
+                        {messageChanged && (
+                          <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-amber-100 text-amber-700">
+                            KOMUNIKAT_ZMIENIONY
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">
+                        Operator: <span className="font-bold">{actor}</span>
+                      </p>
+                      {messageChanged && entry.nextMaintenanceMessage && (
+                        <p className="text-xs text-slate-400 mt-2 italic">
+                          „{entry.nextMaintenanceMessage}”
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <time className="text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
+                    {new Date(entry.createdAt).toLocaleString("pl-PL")}
+                  </time>
+                </div>
+              )
+            })}
+          </div>
+        </section>
       )}
     </div>
   )
