@@ -18,14 +18,14 @@ import type { InventoryProduct } from "@/lib/inventoryReservations"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const NotificationSchema = z.object({
-  merchantId: z.number().int().positive(),
-  posId: z.number().int().positive(),
+  merchantId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  posId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   sessionId: z.string().min(1).max(100),
-  amount: z.number().int().nonnegative(),
-  originAmount: z.number().int().nonnegative(),
+  amount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  originAmount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   currency: z.string().length(3),
-  orderId: z.number().int().positive(),
-  methodId: z.number().int().nonnegative(),
+  orderId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  methodId: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   statement: z.string(),
   sign: z.string().regex(/^[0-9a-f]{96}$/i),
 })
