@@ -131,7 +131,7 @@ function normalizePaymentOperationEvents(value: unknown): PaymentOperationEvent[
           createdAt: entry.createdAt,
           provider: entry.provider,
           operation: "RECONCILE" as const,
-          outcome: entry.outcome,
+          outcome: entry.outcome as PaymentOperationEvent["outcome"],
           processed: entry.processed,
           failed: entry.failed,
           manualReview: entry.manualReview,
