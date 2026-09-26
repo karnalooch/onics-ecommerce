@@ -19,7 +19,7 @@ export function MiniCart({
   const router = useRouter();
   const { items: cart, removeItem, getTotalItems, getTotalPrice } = useCartStore();
   const [mounted, setMounted] = useState(false);
-  const { refreshingCart } = useAuthoritativeCart({
+  const { refreshingCart, availableStockById } = useAuthoritativeCart({
     enabled: mounted && isB2B,
     identityKey,
   });
@@ -35,6 +35,14 @@ export function MiniCart({
   const cartCount = getTotalItems();
   const total = getTotalPrice();
   const requiresPricing = cartRequiresPricing(cart);
+  const hasStockConflict = cart.some((item) => {
+    const availableStock = availableStockById[item.id];
+    return (
+      hasActiveCartPrice(item.price) &&
+      availableStock !== undefined &&
+      item.quantity > availableStock
+    );
+  });
 
   return (
     <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 sticky top-28 flex flex-col max-h-[calc(100vh-160px)]">
@@ -71,6 +79,14 @@ export function MiniCart({
                             {hasActiveCartPrice(item.price) ? `${item.price.toFixed(2)} zł` : "Na zapytanie"}
                           </span>
                        </div>
+                       {hasActiveCartPrice(item.price) &&
+                         availableStockById[item.id] !== undefined &&
+                         item.quantity >
+                           (availableStockById[item.id] ?? Number.POSITIVE_INFINITY) && (
+                           <div className="mt-1 text-[9px] font-black uppercase tracking-wide text-red-500">
+                             Dostępne {availableStockById[item.id]} szt.
+                           </div>
+                         )}
                     </div>
                     <button onClick={() => removeItem(item.id)} className="p-1 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all">
                        <X className="w-4 h-4" />
@@ -91,7 +107,11 @@ export function MiniCart({
                          : `${total.toFixed(2)} zł`}
                      </span>
                      <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                       {requiresPricing ? "część pozycji bez aktywnej ceny" : "Netto + VAT"}
+                       {hasStockConflict
+                         ? "część ilości przekracza bieżący stan"
+                         : requiresPricing
+                           ? "część pozycji bez aktywnej ceny"
+                           : "Netto + VAT"}
                      </span>
                   </div>
                </div>
@@ -102,10 +122,12 @@ export function MiniCart({
                  className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-[10px] gap-3 shadow-xl"
                >
                  {refreshingCart
-                   ? "Odświeżanie cen..."
-                   : requiresPricing
-                     ? "Przejdź do zapytania"
-                     : "Finalizuj Wybór"} <ArrowRight className="w-4 h-4" />
+                   ? "Odświeżanie danych..."
+                   : hasStockConflict
+                     ? "Popraw dostępność"
+                     : requiresPricing
+                       ? "Przejdź do zapytania"
+                       : "Finalizuj Wybór"} <ArrowRight className="w-4 h-4" />
                </Button>
             </div>
           </>
