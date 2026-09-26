@@ -29,9 +29,13 @@ export const useCatalogStore = create<CatalogStore>()(
       setStagingPayload: (payload) => set({ stagingPayload: payload }),
 
       updateStagingItem: (tempId, field, value) => set((state) => ({
-        stagingPayload: state.stagingPayload.map((item) => 
-          item.tempId === tempId ? { ...item, [field]: value } : item
-        )
+        stagingPayload: state.stagingPayload.map((item) => {
+          if (item.tempId !== tempId) return item;
+          if (field === "categoryId" && item.categoryId !== value) {
+            return { ...item, categoryId: value, subcategoryId: null };
+          }
+          return { ...item, [field]: value };
+        })
       })),
 
       removeStagingItem: (tempId) => set((state) => ({
