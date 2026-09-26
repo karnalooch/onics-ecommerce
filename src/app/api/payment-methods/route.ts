@@ -24,7 +24,10 @@ import {
 function describeAdminPaymentMethods(
   snapshot: ReturnType<typeof initializeMockData>
 ) {
-  const operations = describePaymentProviderOperations(snapshot.orders)
+  const operations = describePaymentProviderOperations(
+    snapshot.orders,
+    snapshot.paymentOperationEvents
+  )
   return describePaymentMethods(snapshot.paymentMethods).map((method) => ({
     ...method,
     operations: operations[method.id],
