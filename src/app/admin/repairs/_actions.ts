@@ -6,6 +6,7 @@ import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
 import { mutateMockData } from "@/store/serverStore";
 import {
+  canDeleteRepair,
   validateRepairStatusTransition,
   type RepairStatus,
 } from "@/lib/repairLifecycle";
@@ -80,6 +81,9 @@ export async function deleteRepairAction(id: string): Promise<ActionState> {
       const repairs = db.repairs as RepairRecord[]
       const index = repairs.findIndex((repair) => repair.id === id)
       if (index === -1) throw new Error("REPAIR_NOT_FOUND")
+      if (!canDeleteRepair(repairs[index].status)) {
+        throw new Error("REPAIR_HISTORY_PROTECTED")
+      }
       repairs.splice(index, 1)
     })
 
@@ -88,6 +92,13 @@ export async function deleteRepairAction(id: string): Promise<ActionState> {
   } catch (error) {
     if (error instanceof Error && error.message === "REPAIR_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono zgłoszenia." };
+    }
+    if (error instanceof Error && error.message === "REPAIR_HISTORY_PROTECTED") {
+      return {
+        success: false,
+        error:
+          "Nie można usunąć zgłoszenia po rozpoczęciu obsługi. Historia serwisowa musi zostać zachowana."
+      };
     }
     return { success: false, error: "Błąd serwera." };
   }
