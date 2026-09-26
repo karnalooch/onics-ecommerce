@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useCartStore } from "@/store/cartStore"
 
-export type CartStockByProduct = Record<string, number>
+export type CartStockByProduct = Partial<Record<string, number>>
 
 export function useAuthoritativeCart(options: {
   enabled: boolean
