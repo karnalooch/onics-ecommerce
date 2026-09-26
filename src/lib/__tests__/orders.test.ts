@@ -92,6 +92,36 @@ describe("Stripe-linked order status transitions", () => {
     ).toBe("ok")
   })
 
+  it("blocks fulfillment while a Stripe refund is pending", () => {
+    expect(
+      validateStripeOrderStatusTransition(
+        "cs_test",
+        "PAID",
+        "PENDING_VERIFICATION",
+        "CONFIRMED",
+        "pending"
+      )
+    ).toBe("refund-in-progress")
+    expect(
+      validateStripeOrderStatusTransition(
+        "cs_test",
+        "PAID",
+        "CONFIRMED",
+        "SHIPPED",
+        "requires_action"
+      )
+    ).toBe("refund-in-progress")
+    expect(
+      validateStripeOrderStatusTransition(
+        "cs_test",
+        "PAID",
+        "PENDING_VERIFICATION",
+        "CONFIRMED",
+        "failed"
+      )
+    ).toBe("ok")
+  })
+
   it("does not fake Stripe cancellation through a local status change", () => {
     expect(
       validateStripeOrderStatusTransition("cs_test", "PENDING", "PENDING_VERIFICATION", "CANCELLED")
