@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { POST as postPrzelewy24Reconcile } from "@/app/api/payment-methods/reconcile/przelewy24/route"
 import { POST as postStripeReconcile } from "@/app/api/payment-methods/reconcile/stripe/route"
+import { authorizeAPI } from "@/lib/authUtils"
 import {
   PAYMENT_PROVIDER_IDS,
   supportsPaymentProviderCapability,
@@ -21,6 +22,9 @@ const handlers: Partial<Record<PaymentProviderId, ReconcileHandler>> = {
 }
 
 export async function POST(req: Request) {
+  const authCheck = await authorizeAPI(["ADMIN"])
+  if (!authCheck.authorized) return authCheck.response
+
   const parsed = ReconcileSchema.safeParse(
     await req.json().catch(() => ({}))
   )
