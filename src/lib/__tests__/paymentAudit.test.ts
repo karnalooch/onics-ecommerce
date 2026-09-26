@@ -63,6 +63,7 @@ describe("payment settings audit", () => {
     expect(entry).toMatchObject({
       createdAt: "2026-09-26T10:00:00.000Z",
       target: "STRIPE",
+      operation: "SETTING_CHANGE",
       actor: {
         id: "admin-1",
         email: "admin@example.com",
@@ -79,6 +80,27 @@ describe("payment settings audit", () => {
     expect(entries).toHaveLength(1)
   })
 
+  it("logs emergency shutdown even when global state was already disabled", () => {
+    const entries: PaymentAuditEntry[] = []
+
+    const entry = appendPaymentAudit(
+      entries,
+      { id: "admin-1" },
+      {
+        target: "GLOBAL",
+        operation: "EMERGENCY_SHUTDOWN",
+        previousEnabled: false,
+        nextEnabled: false,
+        previousMaintenanceMessage: "Przerwa",
+        nextMaintenanceMessage: "Przerwa",
+      },
+      "2026-09-26T10:30:00.000Z"
+    )
+
+    expect(entry?.operation).toBe("EMERGENCY_SHUTDOWN")
+    expect(entries).toHaveLength(1)
+  })
+
   it("keeps at most 100 newest entries", () => {
     const entries: PaymentAuditEntry[] = Array.from(
       { length: 100 },
@@ -86,6 +108,7 @@ describe("payment settings audit", () => {
         id: `old-${index}`,
         createdAt: "2026-09-26T09:00:00.000Z",
         target: "GLOBAL" as const,
+        operation: "SETTING_CHANGE" as const,
         actor: { id: null, email: null, name: null },
         previousEnabled: true,
         nextEnabled: false,
