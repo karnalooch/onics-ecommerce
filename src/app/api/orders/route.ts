@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
+import { resolveEstimatedDeliveryDays } from "@/lib/orders"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 export const dynamic = "force-dynamic"
@@ -213,10 +214,10 @@ export async function PUT(req: Request) {
       const nextOrder: StoredOrder = {
         ...currentOrder,
         status: parsed.data.status,
-        estimatedDeliveryDays:
-          parsed.data.estimatedDeliveryDays ??
-          currentOrder.estimatedDeliveryDays ??
-          null,
+        estimatedDeliveryDays: resolveEstimatedDeliveryDays(
+          parsed.data.estimatedDeliveryDays,
+          currentOrder.estimatedDeliveryDays
+        ),
         items,
         totalPriceFinal,
         updatedAt: new Date().toISOString(),
