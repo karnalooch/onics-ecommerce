@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   canDeleteRepair,
   isRepairStatus,
+  isRepairTerminalStatus,
   validateRepairStatusTransition,
 } from "@/lib/repairLifecycle"
 
@@ -40,6 +41,15 @@ describe("repair lifecycle", () => {
     expect(
       validateRepairStatusTransition("WERYFIKACJA", "HACKED")
     ).toBe("invalid-status")
+  })
+
+
+  it("uses returned and rejected as the only terminal RMA states", () => {
+    expect(isRepairTerminalStatus("RETURNED")).toBe(true)
+    expect(isRepairTerminalStatus("REJECTED")).toBe(true)
+    expect(isRepairTerminalStatus("COMPLETED")).toBe(false)
+    expect(isRepairTerminalStatus("DONE")).toBe(false)
+    expect(isRepairTerminalStatus(undefined)).toBe(false)
   })
 
   it("allows permanent deletion only before service handling starts", () => {
