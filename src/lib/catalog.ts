@@ -47,3 +47,55 @@ export function ensureManufacturerRecord(
   manufacturers.push(created)
   return created
 }
+
+export type CatalogCategoryReference = {
+  categoryId?: string | null
+  subcategoryId?: string | null
+}
+
+function normalizeCatalogReference(value: unknown) {
+  return String(value ?? "").trim()
+}
+
+export function hasCategoryProductReference(
+  products: CatalogCategoryReference[],
+  categoryId: unknown
+) {
+  const normalizedCategoryId = normalizeCatalogReference(categoryId)
+  if (!normalizedCategoryId) return false
+
+  return products.some(
+    (product) =>
+      normalizeCatalogReference(product.categoryId) === normalizedCategoryId
+  )
+}
+
+export function findRemovedReferencedSubcategoryIds(
+  products: CatalogCategoryReference[],
+  categoryId: unknown,
+  nextSubcategoryIds: unknown[]
+) {
+  const normalizedCategoryId = normalizeCatalogReference(categoryId)
+  if (!normalizedCategoryId) return []
+
+  const nextIds = new Set(
+    nextSubcategoryIds.map(normalizeCatalogReference).filter(Boolean)
+  )
+  const removed = new Set<string>()
+
+  for (const product of products) {
+    if (
+      normalizeCatalogReference(product.categoryId) !== normalizedCategoryId
+    ) {
+      continue
+    }
+
+    const subcategoryId = normalizeCatalogReference(product.subcategoryId)
+    if (subcategoryId && !nextIds.has(subcategoryId)) {
+      removed.add(subcategoryId)
+    }
+  }
+
+  return [...removed]
+}
+
