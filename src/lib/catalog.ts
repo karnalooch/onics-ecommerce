@@ -39,6 +39,41 @@ export function indexCatalogProductsBySku<T extends CatalogSkuRecord>(
   return index
 }
 
+export type WfMagCatalogImportItem = {
+  sku?: string | null
+  name?: string | null
+  price?: number | null
+  stock?: number | null
+  manufacturer?: string | null
+  specs?: string | null
+  [key: string]: unknown
+}
+
+export function buildWfMagCatalogProduct(
+  item: WfMagCatalogImportItem,
+  options: {
+    id: string
+    categoryId?: string | null
+    subcategoryId?: string | null
+  }
+) {
+  const sku = String(item.sku ?? "").trim()
+  const name = String(item.name ?? "").trim()
+
+  return {
+    id: options.id,
+    sku,
+    name: name || sku || "Produkt",
+    price: Number(item.price ?? 0),
+    stock: Number(item.stock ?? 0),
+    manufacturer: String(item.manufacturer ?? "").trim(),
+    categoryId: options.categoryId ?? null,
+    subcategoryId: options.subcategoryId ?? null,
+    specs: String(item.specs ?? ""),
+    seoDescription: "",
+  }
+}
+
 
 export type CatalogManufacturerRecord = {
   id: string
