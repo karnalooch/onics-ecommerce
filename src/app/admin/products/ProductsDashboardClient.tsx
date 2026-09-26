@@ -162,9 +162,13 @@ export function ProductsDashboardClient({
   const handleBatchUpdate = (ids: string[], field: string, value: any) => {
     const selected = new Set(ids);
     setStagingPayload(
-      stagingPayload.map((item) =>
-        selected.has(item.tempId) ? { ...item, [field]: value } : item
-      )
+      stagingPayload.map((item) => {
+        if (!selected.has(item.tempId)) return item;
+        if (field === "categoryId" && item.categoryId !== value) {
+          return { ...item, categoryId: value, subcategoryId: null };
+        }
+        return { ...item, [field]: value };
+      })
     );
   };
 
