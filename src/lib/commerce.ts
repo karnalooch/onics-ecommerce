@@ -55,6 +55,7 @@ export function resolveCartItems(
   options: { requirePriced?: boolean; requireStock?: boolean } = {}
 ): { items: ResolvedCartItem[]; total: number } {
   const productMap = new Map(products.map((product) => [String(product.id), product]))
+  const quantitiesByProduct = new Map<string, number>()
   const items: ResolvedCartItem[] = []
 
   for (const input of inputs) {
@@ -63,7 +64,16 @@ export function resolveCartItems(
       throw new Error("Nieprawidłowa ilość produktu.")
     }
 
-    const product = productMap.get(String(input.id))
+    const productId = String(input.id)
+    const totalQuantity = (quantitiesByProduct.get(productId) ?? 0) + quantity
+    if (!Number.isSafeInteger(totalQuantity) || totalQuantity > 10000) {
+      throw new Error("Nieprawidłowa ilość produktu.")
+    }
+    quantitiesByProduct.set(productId, totalQuantity)
+  }
+
+  for (const [productId, quantity] of quantitiesByProduct) {
+    const product = productMap.get(productId)
     if (!product) {
       throw new Error("Produkt nie istnieje w aktualnym katalogu.")
     }
