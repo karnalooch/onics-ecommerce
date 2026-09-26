@@ -17,6 +17,10 @@ import {
   PaymentWebhookBodyTooLargeError,
   readPaymentWebhookJson,
 } from "@/lib/paymentWebhookIngress"
+import {
+  hasProcessedPaymentWebhookEvent,
+  recordProcessedPaymentWebhookEvent,
+} from "@/lib/paymentWebhookLedger"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const RefundNotificationSchema = z.object({
@@ -77,6 +81,12 @@ export async function POST(req: Request) {
   }
 
   const notification = parsed.data as Przelewy24RefundNotification
+  const eventIdentity = {
+    provider: "PRZELEWY24" as const,
+    kind: "REFUND" as const,
+    externalId: notification.sign,
+  }
+
   if (!verifyPrzelewy24RefundNotificationSignature(notification, config)) {
     return NextResponse.json(
       { error: "Nieprawidłowy podpis refundu Przelewy24." },
@@ -110,6 +120,24 @@ export async function POST(req: Request) {
 
   try {
     const result = await mutateMockData((db) => {
+      if (
+        hasProcessedPaymentWebhookEvent(
+          db.paymentWebhookEvents,
+          eventIdentity
+        )
+      ) {
+        const existing = (db.orders as Przelewy24StoredOrder[]).find(
+          (candidate) => candidate.id === order.id
+        )
+        return {
+          outcome: "completed" as const,
+          paymentStatus: existing?.paymentStatus ?? null,
+          refundStatus: existing?.refundStatus ?? null,
+          returnStatus: existing?.returnStatus ?? null,
+          ledgerDuplicate: true,
+        }
+      }
+
       const fresh = (db.orders as Przelewy24StoredOrder[]).find(
         (candidate) => candidate.id === order.id
       )
@@ -124,18 +152,28 @@ export async function POST(req: Request) {
         notification
       )
 
+      recordProcessedPaymentWebhookEvent(
+        db.paymentWebhookEvents,
+        eventIdentity
+      )
+
       return {
         outcome,
         paymentStatus: fresh.paymentStatus,
         refundStatus: fresh.refundStatus,
         returnStatus: fresh.returnStatus,
+        ledgerDuplicate: false,
       }
     })
 
     return NextResponse.json({
       received: true,
+      duplicate: result.ledgerDuplicate,
       success: result.outcome === "completed",
-      ...result,
+      outcome: result.outcome,
+      paymentStatus: result.paymentStatus,
+      refundStatus: result.refundStatus,
+      returnStatus: result.returnStatus,
     })
   } catch (error) {
     console.error("Przelewy24 refund settlement failed:", error)
