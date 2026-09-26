@@ -53,7 +53,9 @@ The configured locations must survive application restarts and deployments. Do n
 
 ### File-store lock tuning
 
-The single-instance file store serializes mutations with a lock file. Defaults are tuned for short critical sections:
+The single-instance file store serializes mutations with a lock file. Business snapshots fail closed when the persisted JSON cannot be read or when core persisted structures are corrupted; the application does not reinterpret those failures as an empty catalog/order database or silently reset corrupted payment enablement. Successful writes are serialized to a unique temporary file, the temporary file contents are `fsync`-ed before the atomic rename, and directory metadata is synchronized best-effort on POSIX platforms.
+
+Defaults are tuned for short critical sections:
 
 ```bash
 CELTRONICS_DB_LOCK_RETRY_MS=25

@@ -97,12 +97,7 @@ export function buildKnowledgeEntriesForPersistence(data: KnowledgeStore) {
 }
 
 export async function getKnowledge(): Promise<KnowledgeStore> {
-  try {
-    return buildKnowledgeFromDb(initializeMockData());
-  } catch (e) {
-    console.error("[KNOWLEDGE-BRIDGE] Bridge failure:", e);
-    return { lastUpdated: null, sources: [], processedSources: [], knowledge: {} };
-  }
+  return buildKnowledgeFromDb(initializeMockData());
 }
 
 export async function saveKnowledge(data: KnowledgeStore) {

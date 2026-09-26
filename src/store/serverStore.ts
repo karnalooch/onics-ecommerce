@@ -1,6 +1,6 @@
 // src/store/serverStore.ts
 // Współdzielony stan serwerowy oparty na trwałym pliku JSON
-import { readDb, readDbOrThrow, withDbWriteLock, writeDb } from "@/lib/jsonDb"
+import { readDbOrThrow, readDbStrict, withDbWriteLock, writeDb } from "@/lib/jsonDb"
 import {
   PAYMENT_PROVIDER_IDS,
   getPaymentProviderDefinition,
@@ -97,21 +97,34 @@ function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-function recordArray(value: unknown): JsonRecord[] {
-  return Array.isArray(value) ? value.filter(isRecord) : []
+function recordArray(value: unknown, field: string): JsonRecord[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value) || value.some((entry) => !isRecord(entry))) {
+    throw new Error(`DATABASE_FIELD_INVALID:${field}`)
+  }
+  return value as JsonRecord[]
 }
 
-function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((entry): entry is string => typeof entry === "string")
-    : []
+function stringArray(value: unknown, field: string): string[] {
+  if (value === undefined) return []
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => typeof entry !== "string")
+  ) {
+    throw new Error(`DATABASE_FIELD_INVALID:${field}`)
+  }
+  return value as string[]
 }
 
-function recordMap(value: unknown): KnowledgeEntries {
-  const source = isRecord(value) ? value : {}
-  return Object.fromEntries(
-    Object.entries(source).filter(([, entry]) => isRecord(entry))
-  ) as KnowledgeEntries
+function recordMap(value: unknown, field: string): KnowledgeEntries {
+  if (value === undefined) return {}
+  if (
+    !isRecord(value) ||
+    Object.values(value).some((entry) => !isRecord(entry))
+  ) {
+    throw new Error(`DATABASE_FIELD_INVALID:${field}`)
+  }
+  return value as KnowledgeEntries
 }
 
 function normalizePaymentWebhookEvents(value: unknown): PaymentWebhookEvent[] {
@@ -334,21 +347,127 @@ export function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
   ) as PaymentMethodSettings
 }
 
+function assertOptionalPersistedPaymentControl(value: unknown) {
+  if (value === undefined) return
+  if (!isRecord(value)) {
+    throw new Error("DATABASE_FIELD_INVALID:paymentControl")
+  }
+  if (value.enabled !== undefined && typeof value.enabled !== "boolean") {
+    throw new Error("DATABASE_FIELD_INVALID:paymentControl.enabled")
+  }
+  if (
+    value.maintenanceMessage !== undefined &&
+    value.maintenanceMessage !== null &&
+    typeof value.maintenanceMessage !== "string"
+  ) {
+    throw new Error(
+      "DATABASE_FIELD_INVALID:paymentControl.maintenanceMessage"
+    )
+  }
+  if (
+    value.updatedAt !== undefined &&
+    value.updatedAt !== null &&
+    typeof value.updatedAt !== "string"
+  ) {
+    throw new Error("DATABASE_FIELD_INVALID:paymentControl.updatedAt")
+  }
+}
+
+function assertOptionalPersistedPaymentMethods(value: unknown) {
+  if (value === undefined) return
+  if (!isRecord(value)) {
+    throw new Error("DATABASE_FIELD_INVALID:paymentMethods")
+  }
+
+  for (const id of PAYMENT_PROVIDER_IDS) {
+    const config = value[id]
+    if (config === undefined) continue
+    if (!isRecord(config)) {
+      throw new Error(`DATABASE_FIELD_INVALID:paymentMethods.${id}`)
+    }
+    if (config.enabled !== undefined && typeof config.enabled !== "boolean") {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.enabled`
+      )
+    }
+    if (
+      config.displayName !== undefined &&
+      typeof config.displayName !== "string"
+    ) {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.displayName`
+      )
+    }
+    if (
+      config.displayOrder !== undefined &&
+      (typeof config.displayOrder !== "number" ||
+        !Number.isSafeInteger(config.displayOrder) ||
+        config.displayOrder < 0 ||
+        config.displayOrder > 999)
+    ) {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.displayOrder`
+      )
+    }
+    if (
+      config.maintenanceMessage !== undefined &&
+      config.maintenanceMessage !== null &&
+      typeof config.maintenanceMessage !== "string"
+    ) {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.maintenanceMessage`
+      )
+    }
+    if (
+      config.updatedAt !== undefined &&
+      config.updatedAt !== null &&
+      typeof config.updatedAt !== "string"
+    ) {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.updatedAt`
+      )
+    }
+  }
+}
+
 function normalizeDb(input: unknown): ServerDb {
-  const source = isRecord(input) ? input : {}
+  if (!isRecord(input)) {
+    throw new Error("DATABASE_ROOT_INVALID")
+  }
+
+  const source = input
+  if (
+    source.knowledgeMeta !== undefined &&
+    !isRecord(source.knowledgeMeta)
+  ) {
+    throw new Error("DATABASE_FIELD_INVALID:knowledgeMeta")
+  }
+  assertOptionalPersistedPaymentMethods(source.paymentMethods)
+  assertOptionalPersistedPaymentControl(source.paymentControl)
+
+  for (const [field, value] of [
+    ["paymentAudit", source.paymentAudit],
+    ["paymentOperationEvents", source.paymentOperationEvents],
+    ["paymentWebhookEvents", source.paymentWebhookEvents],
+  ] as const) {
+    if (value !== undefined && !Array.isArray(value)) {
+      throw new Error(`DATABASE_FIELD_INVALID:${field}`)
+    }
+  }
+
   const knowledgeMeta = isRecord(source.knowledgeMeta)
     ? source.knowledgeMeta
     : {}
 
   return {
     ...source,
-    users: recordArray(source.users),
-    orders: recordArray(source.orders),
-    repairs: recordArray(source.repairs),
-    categories: recordArray(source.categories),
-    manufacturers: recordArray(source.manufacturers),
-    products: recordArray(source.products),
-    knowledgeEntries: recordMap(source.knowledgeEntries),
+    users: recordArray(source.users, "users"),
+    orders: recordArray(source.orders, "orders"),
+    repairs: recordArray(source.repairs, "repairs"),
+    categories: recordArray(source.categories, "categories"),
+    manufacturers: recordArray(source.manufacturers, "manufacturers"),
+    products: recordArray(source.products, "products"),
+    knowledgeEntries: recordMap(source.knowledgeEntries, "knowledgeEntries"),
     paymentMethods: normalizePaymentMethods(source.paymentMethods),
     paymentControl: normalizePaymentControl(source.paymentControl),
     paymentAudit: normalizePaymentAudit(source.paymentAudit),
@@ -359,8 +478,11 @@ function normalizeDb(input: unknown): ServerDb {
       source.paymentWebhookEvents
     ),
     knowledgeMeta: {
-      sources: stringArray(knowledgeMeta.sources),
-      processedSources: stringArray(knowledgeMeta.processedSources),
+      sources: stringArray(knowledgeMeta.sources, "knowledgeMeta.sources"),
+      processedSources: stringArray(
+        knowledgeMeta.processedSources,
+        "knowledgeMeta.processedSources"
+      ),
       lastUpdated:
         typeof knowledgeMeta.lastUpdated === "string"
           ? knowledgeMeta.lastUpdated
@@ -373,7 +495,7 @@ function normalizeDb(input: unknown): ServerDb {
  * Pobiera najnowszy snapshot trwałej bazy.
  */
 export function initializeMockData() {
-  const db = normalizeDb(readDb())
+  const db = normalizeDb(readDbStrict())
   return {
     users: db.users,
     orders: db.orders,
