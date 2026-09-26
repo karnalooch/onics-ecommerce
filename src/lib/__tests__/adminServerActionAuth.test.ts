@@ -30,20 +30,19 @@ function hasUseServerDirective(statements: ts.NodeArray<ts.Statement>) {
   )
 }
 
-function isAsync(node: ts.Node) {
-  return Boolean(
-    node.modifiers?.some(
-      (modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword
-    )
+function hasModifier(node: ts.Node, kind: ts.SyntaxKind) {
+  return (
+    ts.canHaveModifiers(node) &&
+    Boolean(ts.getModifiers(node)?.some((modifier) => modifier.kind === kind))
   )
 }
 
+function isAsync(node: ts.Node) {
+  return hasModifier(node, ts.SyntaxKind.AsyncKeyword)
+}
+
 function isExported(node: ts.Node) {
-  return Boolean(
-    node.modifiers?.some(
-      (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
-    )
-  )
+  return hasModifier(node, ts.SyntaxKind.ExportKeyword)
 }
 
 function actionName(node: ts.Node) {
