@@ -51,11 +51,12 @@ export async function PUT(req: Request) {
   }
 
   if (parsed.data.scope === "GLOBAL") {
+    const globalUpdate = parsed.data
     const control = await mutateMockData((db) => {
       const paymentControl = db.paymentControl as PaymentControlSettings
-      paymentControl.enabled = parsed.data.enabled
+      paymentControl.enabled = globalUpdate.enabled
       paymentControl.maintenanceMessage =
-        parsed.data.maintenanceMessage?.trim() || null
+        globalUpdate.maintenanceMessage?.trim() || null
       paymentControl.updatedAt = new Date().toISOString()
       return paymentControl
     })
@@ -67,8 +68,9 @@ export async function PUT(req: Request) {
     })
   }
 
-  const method = parsed.data.id as PaymentMethodId
-  if (method === "STRIPE" && parsed.data.enabled) {
+  const methodUpdate = parsed.data
+  const method = methodUpdate.id as PaymentMethodId
+  if (method === "STRIPE" && methodUpdate.enabled) {
     const status = stripeOperationalStatus()
     if (!status.configured) {
       return NextResponse.json(
@@ -85,7 +87,7 @@ export async function PUT(req: Request) {
     const paymentMethods = db.paymentMethods as PaymentMethodSettings
     paymentMethods[method] = {
       ...paymentMethods[method],
-      enabled: parsed.data.enabled,
+      enabled: methodUpdate.enabled,
       updatedAt: new Date().toISOString(),
     }
     return paymentMethods
