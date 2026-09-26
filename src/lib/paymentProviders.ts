@@ -182,8 +182,10 @@ export function isPaymentProviderId(value: unknown): value is PaymentProviderId 
 export function resolveOrderPaymentProvider(
   order: PaymentProviderOrderIdentity
 ): PaymentProviderId | null {
-  if (isPaymentProviderId(order.paymentProvider)) {
-    return order.paymentProvider
+  if (order.paymentProvider !== undefined && order.paymentProvider !== null) {
+    return isPaymentProviderId(order.paymentProvider)
+      ? order.paymentProvider
+      : null
   }
 
   if (
