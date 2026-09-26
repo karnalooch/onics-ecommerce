@@ -12,6 +12,7 @@ import {
   PAYMENT_PROVIDER_IDS,
   getPaymentProviderDefinition,
 } from "@/lib/paymentProviders"
+import { describePaymentProviderOperations } from "@/lib/paymentProviderOperations"
 import {
   initializeMockData,
   mutateMockData,
@@ -19,6 +20,19 @@ import {
   type PaymentControlSettings,
   type PaymentMethodSettings,
 } from "@/store/serverStore"
+
+function describeAdminPaymentMethods(
+  snapshot: ReturnType<typeof initializeMockData>
+) {
+  const operations = describePaymentProviderOperations(
+    snapshot.orders,
+    snapshot.paymentOperationEvents
+  )
+  return describePaymentMethods(snapshot.paymentMethods).map((method) => ({
+    ...method,
+    operations: operations[method.id],
+  }))
+}
 
 const UpdatePaymentSettingsSchema = z.union([
   z.object({
@@ -53,7 +67,7 @@ export async function GET() {
   const methods = describePaymentMethods(snapshot.paymentMethods)
   const visibleMethods =
     authCheck.currentRole === "ADMIN"
-      ? methods
+      ? describeAdminPaymentMethods(snapshot)
       : methods.map(({ configurationIssues, ...method }) => {
           void configurationIssues
           return method
@@ -120,7 +134,7 @@ export async function PUT(req: Request) {
     const snapshot = initializeMockData()
     return NextResponse.json({
       control: describePaymentControl(result.paymentControl),
-      methods: describePaymentMethods(snapshot.paymentMethods),
+      methods: describeAdminPaymentMethods(snapshot),
       audit: snapshot.paymentAudit.slice(0, 20),
     })
   }
@@ -141,7 +155,7 @@ export async function PUT(req: Request) {
     }
   }
 
-  const result = await mutateMockData((db) => {
+  await mutateMockData((db) => {
     const paymentMethods = db.paymentMethods as PaymentMethodSettings
     const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
     const previous = paymentMethods[method]
@@ -185,7 +199,7 @@ export async function PUT(req: Request) {
   const snapshot = initializeMockData()
   return NextResponse.json({
     control: describePaymentControl(snapshot.paymentControl),
-    methods: describePaymentMethods(result.paymentMethods),
+    methods: describeAdminPaymentMethods(snapshot),
     audit: snapshot.paymentAudit.slice(0, 20),
   })
 }

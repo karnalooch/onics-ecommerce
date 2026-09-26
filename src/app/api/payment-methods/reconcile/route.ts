@@ -326,6 +326,36 @@ export async function POST(req: Request) {
           shouldReconcileStripeOrder(order)
       ).length
 
+  const operationOutcome =
+    results.length > 0 && summary.FAILED === results.length
+      ? ("FAILED" as const)
+      : summary.FAILED > 0 || summary.MANUAL_REVIEW > 0
+        ? ("PARTIAL" as const)
+        : ("SUCCESS" as const)
+
+  try {
+    await mutateMockData((db) => {
+      db.paymentOperationEvents.unshift({
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        provider: "STRIPE",
+        operation: "RECONCILE",
+        outcome: operationOutcome,
+        processed: results.length,
+        failed: summary.FAILED,
+        manualReview: summary.MANUAL_REVIEW,
+      })
+      if (db.paymentOperationEvents.length > 100) {
+        db.paymentOperationEvents.splice(100)
+      }
+    })
+  } catch (operationLogError) {
+    console.error(
+      "Nie udało się utrwalić metadanych operacji reconcile:",
+      operationLogError
+    )
+  }
+
   return NextResponse.json(
     {
       success: summary.FAILED === 0,
