@@ -3,7 +3,7 @@ import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
-import { moneyToMinorUnits } from "@/lib/payments"
+import { moneyToMinorUnits, resolveStripeCheckoutConfig } from "@/lib/payments"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const CartSchema = z.object({
@@ -85,7 +85,13 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI([])
   if (!authCheck.authorized) return authCheck.response
 
-  if (!process.env.STRIPE_SECRET_KEY) {
+  let stripeConfig: ReturnType<typeof resolveStripeCheckoutConfig>
+  try {
+    stripeConfig = resolveStripeCheckoutConfig({
+      requestUrl: req.url,
+    })
+  } catch (error) {
+    console.error("Nieprawidłowa konfiguracja Stripe:", error)
     return NextResponse.json(
       { error: "Płatności online nie są skonfigurowane." },
       { status: 503 }
@@ -110,8 +116,8 @@ export async function POST(req: Request) {
       parsed.data.items
     )
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin
+    const stripe = new Stripe(stripeConfig.stripeSecretKey)
+    const appUrl = stripeConfig.appUrl
     const orderId = `ORD-${crypto.randomUUID()}`
 
     const session = await stripe.checkout.sessions.create({
