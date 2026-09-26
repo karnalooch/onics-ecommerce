@@ -9,7 +9,7 @@ import { toast } from "sonner"; // Jeśli mamy sonner zainstalowane, jeśli nie 
 import { Button } from "@/components/ui/button";
 
 type CheckoutPaymentMethod = {
-  id: "STRIPE" | "BANK_TRANSFER";
+  id: string;
   name: string;
   enabled: boolean;
   configured: boolean;
@@ -18,25 +18,29 @@ type CheckoutPaymentMethod = {
   maintenanceMessage: string | null;
 };
 
-type BankTransferConfirmation = {
+type ManualPaymentConfirmation = {
   orderId: string;
-  recipient: string;
-  iban: string;
   title: string;
-  amount: number;
-  currency: string;
+  fields: Array<{
+    label: string;
+    value: string;
+    monospace?: boolean;
+  }>;
+  amount?: number;
+  currency?: string;
+  note?: string;
 };
 
 export default function CartPage() {
   const { data: session } = useSession();
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
-  const [submitting, setSubmitting] = useState<"PDF" | "INQUIRY" | "ORDER" | "STRIPE" | "BANK_TRANSFER" | null>(null);
+  const [submitting, setSubmitting] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<CheckoutPaymentMethod[]>([]);
   const [paymentControlEnabled, setPaymentControlEnabled] = useState(false);
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
-  const [bankTransferConfirmation, setBankTransferConfirmation] = useState<BankTransferConfirmation | null>(null);
+  const [manualPaymentConfirmation, setManualPaymentConfirmation] = useState<ManualPaymentConfirmation | null>(null);
   const router = useRouter();
 
   // Zabezpieczenie przez Hydration Mismatch przy renderze Local Storage
@@ -122,28 +126,37 @@ export default function CartPage() {
         );
       }
 
-      if (method.id === "STRIPE") {
-        if (!data?.url) {
+      if (data?.nextAction?.type === "REDIRECT") {
+        if (!data.nextAction.url) {
           throw new Error("Bramka płatności nie zwróciła adresu przekierowania.");
         }
-        window.location.assign(data.url);
+        window.location.assign(data.nextAction.url);
         return;
       }
 
-      if (!data?.bankTransfer?.iban || !data?.orderId) {
-        throw new Error("Nie udało się pobrać danych do przelewu.");
+      if (
+        data?.nextAction?.type !== "MANUAL" ||
+        !data?.orderId ||
+        !data.nextAction.title ||
+        !Array.isArray(data.nextAction.fields) ||
+        data.nextAction.fields.length === 0
+      ) {
+        throw new Error("Provider płatności zwrócił nieprawidłową instrukcję.");
       }
 
-      setBankTransferConfirmation({
+      setManualPaymentConfirmation({
         orderId: data.orderId,
-        recipient: data.bankTransfer.recipient,
-        iban: data.bankTransfer.iban,
-        title: data.bankTransfer.title,
-        amount: Number(data.bankTransfer.amount),
-        currency: data.bankTransfer.currency || "PLN",
+        title: data.nextAction.title,
+        fields: data.nextAction.fields,
+        amount:
+          typeof data.nextAction.amount === "number"
+            ? data.nextAction.amount
+            : undefined,
+        currency: data.nextAction.currency,
+        note: data.nextAction.note,
       });
       clearCart();
-      toast.success("Zamówienie utworzone. Dane do przelewu są gotowe.");
+      toast.success("Zamówienie utworzone. Instrukcja płatności jest gotowa.");
       setSubmitting(null);
     } catch (error) {
       toast.error(
@@ -217,40 +230,47 @@ export default function CartPage() {
         </div>
       )}
 
-      {bankTransferConfirmation ? (
+      {manualPaymentConfirmation ? (
         <div className="max-w-2xl mx-auto w-full rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
           <div className="flex items-start gap-4">
             <ShieldCheck className="w-8 h-8 text-green-600 shrink-0" />
             <div className="w-full">
               <p className="text-xs font-bold uppercase tracking-widest text-green-700">
-                Zamówienie {bankTransferConfirmation.orderId}
+                Zamówienie {manualPaymentConfirmation.orderId}
               </p>
               <h2 className="text-2xl font-bold text-slate-950 mt-1">
-                Dane do przelewu
+                {manualPaymentConfirmation.title}
               </h2>
               <div className="mt-6 grid gap-4 text-sm">
-                <div>
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Odbiorca</div>
-                  <div className="font-semibold mt-1">{bankTransferConfirmation.recipient}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 uppercase font-semibold">IBAN</div>
-                  <div className="font-mono font-semibold mt-1 break-all">{bankTransferConfirmation.iban}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Tytuł przelewu</div>
-                  <div className="font-mono font-semibold mt-1">{bankTransferConfirmation.title}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-500 uppercase font-semibold">Kwota</div>
-                  <div className="text-xl font-bold mt-1">
-                    {bankTransferConfirmation.amount.toFixed(2)} {bankTransferConfirmation.currency}
+                {manualPaymentConfirmation.fields.map((field) => (
+                  <div key={field.label}>
+                    <div className="text-xs text-slate-500 uppercase font-semibold">
+                      {field.label}
+                    </div>
+                    <div
+                      className={`${field.monospace ? "font-mono" : ""} font-semibold mt-1 break-all`}
+                    >
+                      {field.value}
+                    </div>
                   </div>
-                </div>
+                ))}
+                {typeof manualPaymentConfirmation.amount === "number" && (
+                  <div>
+                    <div className="text-xs text-slate-500 uppercase font-semibold">
+                      Kwota
+                    </div>
+                    <div className="text-xl font-bold mt-1">
+                      {manualPaymentConfirmation.amount.toFixed(2)}{" "}
+                      {manualPaymentConfirmation.currency ?? ""}
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="mt-6 text-xs text-slate-600">
-                Zachowaj dokładny tytuł przelewu — identyfikuje on płatność z zamówieniem.
-              </p>
+              {manualPaymentConfirmation.note && (
+                <p className="mt-6 text-xs text-slate-600">
+                  {manualPaymentConfirmation.note}
+                </p>
+              )}
               <Button
                 onClick={() => router.push("/oferty/zamowienia")}
                 className="mt-6 rounded-xl"
@@ -399,7 +419,7 @@ export default function CartPage() {
                       ) : (
                         <CreditCard className="w-5 h-5" />
                       )}
-                      {method.id === "STRIPE"
+                      {method.kind === "REDIRECT"
                         ? `Zapłać online przez ${method.name}`
                         : method.name}
                     </Button>
