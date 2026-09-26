@@ -9,6 +9,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
 import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart";
+import { buildCartOwnerKey } from "@/lib/cartIdentity";
+import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding";
 
 type CheckoutPaymentMethod = {
   id: string;
@@ -68,7 +70,7 @@ const ORDER_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
 `;
 
 export default function CartPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const {
     items,
     addItem,
@@ -96,6 +98,12 @@ export default function CartPage() {
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
+    if (sessionStatus === "loading") {
+      setPaymentMethodsLoaded(false);
+      setTransactionAccess("loading");
+      return;
+    }
+
     if (!session?.user) {
       setPaymentMethods([]);
       setPaymentControlEnabled(false);
@@ -156,7 +164,7 @@ export default function CartPage() {
     return () => {
       cancelled = true;
     };
-  }, [session?.user]);
+  }, [session?.user, sessionStatus]);
 
   const isAuthenticated = Boolean(session?.user);
   const isB2B = transactionAccess === "allowed";
@@ -164,11 +172,14 @@ export default function CartPage() {
   const sessionIdentity = session?.user as
     | { id?: string; email?: string | null }
     | undefined;
-  const cartIdentityKey =
-    sessionIdentity?.id || sessionIdentity?.email || "anonymous";
+  const cartOwnerKey = buildCartOwnerKey(sessionIdentity);
+  const { cartOwnerReady } = useCartOwnerBinding({
+    identityKey: cartOwnerKey,
+    resolved: sessionStatus !== "loading",
+  });
   const { refreshingCart } = useAuthoritativeCart({
-    enabled: mounted && isB2B,
-    identityKey: cartIdentityKey,
+    enabled: mounted && cartOwnerReady && isB2B,
+    identityKey: cartOwnerKey || "anonymous",
   });
 
   const availablePaymentMethods = paymentControlEnabled
@@ -519,7 +530,13 @@ export default function CartPage() {
     </div>
   ) : null;
 
-  if (!mounted) return <div className="p-12 text-center flex justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
+  if (!mounted || !cartOwnerReady) {
+    return (
+      <div className="p-12 text-center flex justify-center">
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-8 px-4 flex flex-col min-h-screen">

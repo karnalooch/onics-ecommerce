@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { shouldResetCartForOwner } from '@/lib/cartIdentity';
 
 export interface CartItem {
   id: string; // Unikalne ID produktu
@@ -10,11 +11,13 @@ export interface CartItem {
 }
 
 interface CartStore {
+  ownerKey: string | null;
   items: CartItem[];
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   replaceItems: (items: CartItem[]) => void;
+  bindOwner: (ownerKey: string | null) => void;
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
@@ -23,6 +26,7 @@ interface CartStore {
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
+      ownerKey: null,
       items: [],
       
       addItem: (item) => {
@@ -54,6 +58,26 @@ export const useCartStore = create<CartStore>()(
       },
 
       replaceItems: (items) => set({ items }),
+
+      bindOwner: (ownerKey) => {
+        const nextOwnerKey = ownerKey?.trim() || null;
+        const current = get();
+
+        if (
+          shouldResetCartForOwner(
+            current.ownerKey,
+            nextOwnerKey,
+            current.items.length > 0
+          )
+        ) {
+          set({ ownerKey: nextOwnerKey, items: [] });
+          return;
+        }
+
+        if (current.ownerKey !== nextOwnerKey) {
+          set({ ownerKey: nextOwnerKey });
+        }
+      },
       
       clearCart: () => set({ items: [] }),
       
