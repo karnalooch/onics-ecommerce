@@ -80,6 +80,33 @@ describe("payment settings audit", () => {
     expect(entries).toHaveLength(1)
   })
 
+  it("audits provider presentation changes", () => {
+    const entries: PaymentAuditEntry[] = []
+
+    const entry = appendPaymentAudit(
+      entries,
+      { id: "admin-1" },
+      {
+        target: "BANK_TRANSFER",
+        previousEnabled: false,
+        nextEnabled: false,
+        previousDisplayName: "Przelew bankowy",
+        nextDisplayName: "Przelew tradycyjny",
+        previousDisplayOrder: 20,
+        nextDisplayOrder: 10,
+      },
+      "2026-09-26T10:15:00.000Z"
+    )
+
+    expect(entry).toMatchObject({
+      target: "BANK_TRANSFER",
+      previousDisplayName: "Przelew bankowy",
+      nextDisplayName: "Przelew tradycyjny",
+      previousDisplayOrder: 20,
+      nextDisplayOrder: 10,
+    })
+  })
+
   it("logs emergency shutdown even when global state was already disabled", () => {
     const entries: PaymentAuditEntry[] = []
 
@@ -114,6 +141,10 @@ describe("payment settings audit", () => {
         nextEnabled: false,
         previousMaintenanceMessage: null,
         nextMaintenanceMessage: null,
+        previousDisplayName: null,
+        nextDisplayName: null,
+        previousDisplayOrder: null,
+        nextDisplayOrder: null,
       })
     )
 
