@@ -1,7 +1,7 @@
 "use client";
 
 import { ShoppingCart } from "lucide-react";
-import { useCartStore, CartItem } from "@/store/cartStore";
+import { useCartStore, type CartItem } from "@/store/cartStore";
 import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding";
 
 export function AddToCartButton({
