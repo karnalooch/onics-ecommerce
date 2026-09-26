@@ -209,6 +209,7 @@ export async function PUT(req: Request) {
       const statusTransition = validateStripeOrderStatusTransition(
         currentOrder.stripeCheckoutSessionId,
         currentOrder.paymentStatus,
+        currentOrder.status,
         parsed.data.status
       )
       if (statusTransition !== "ok") {
@@ -290,6 +291,19 @@ export async function PUT(req: Request) {
     ) {
       return NextResponse.json(
         { error: "Zamówienia Stripe nie można zmienić na zapytanie." },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_STATUS_INVALID_TRANSITION"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nieprawidłowe przejście statusu zamówienia Stripe. Wymagana kolejność to oczekiwanie → potwierdzone → wysłane.",
+        },
         { status: 409 }
       )
     }
