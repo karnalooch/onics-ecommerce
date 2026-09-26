@@ -4,6 +4,7 @@ import {
   hasActiveReservationForProduct,
   releaseInventory,
   reserveInventory,
+  type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
 
 describe("inventory reservations", () => {
@@ -98,9 +99,9 @@ describe("inventory reservations", () => {
 
   it("re-reserves inventory when a late paid event follows a release", () => {
     const products = [{ id: "p1", stock: 5 }]
-    const order = {
+    const order: InventoryReservationOrder = {
       items: [{ id: "p1", quantity: 3 }],
-      inventoryReservationStatus: "RELEASED" as const,
+      inventoryReservationStatus: "RELEASED",
       inventoryReleasedAt: "2026-09-26T01:00:00.000Z",
     }
 
