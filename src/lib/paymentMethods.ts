@@ -3,7 +3,7 @@ import type {
   PaymentMethodSettings,
 } from "@/store/serverStore"
 
-export type PaymentMethodId = "STRIPE"
+export type PaymentMethodId = keyof PaymentMethodSettings
 
 export type PaymentMethodAvailability = {
   id: PaymentMethodId
@@ -11,7 +11,20 @@ export type PaymentMethodAvailability = {
   enabled: boolean
   configured: boolean
   webhookConfigured: boolean
+  displayOrder: number
+  maintenanceMessage: string | null
+  kind: "REDIRECT" | "MANUAL"
+  available: boolean
   updatedAt: string | null
+}
+
+type PaymentRuntimeOptions = {
+  nodeEnv?: string
+  stripeSecretKey?: string | null
+  stripeWebhookSecret?: string | null
+  appUrl?: string | null
+  bankTransferRecipient?: string | null
+  bankTransferAccountNumber?: string | null
 }
 
 export function isPaymentControlEnabled(
@@ -36,12 +49,7 @@ export function resolvePaymentAvailability(
 }
 
 export function stripeOperationalStatus(
-  options: {
-    nodeEnv?: string
-    stripeSecretKey?: string | null
-    stripeWebhookSecret?: string | null
-    appUrl?: string | null
-  } = {}
+  options: PaymentRuntimeOptions = {}
 ) {
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV
   const stripeSecretKey =
@@ -78,24 +86,66 @@ export function stripeOperationalStatus(
   }
 }
 
-export function describePaymentMethods(
-  settings: PaymentMethodSettings,
-  options?: Parameters<typeof stripeOperationalStatus>[0]
-): PaymentMethodAvailability[] {
-  const stripe = stripeOperationalStatus(options)
+export function bankTransferOperationalStatus(
+  options: PaymentRuntimeOptions = {}
+) {
+  const recipient =
+    options.bankTransferRecipient ?? process.env.BANK_TRANSFER_RECIPIENT
+  const accountNumber =
+    options.bankTransferAccountNumber ??
+    process.env.BANK_TRANSFER_ACCOUNT_NUMBER
 
-  return [
-    {
-      id: "STRIPE",
-      name: "Stripe",
-      enabled: settings.STRIPE.enabled,
-      configured: stripe.configured,
-      webhookConfigured: stripe.webhookConfigured,
-      updatedAt: settings.STRIPE.updatedAt,
-    },
-  ]
+  const normalizedAccount = accountNumber
+    ?.replace(/^PL/i, "")
+    .replace(/\s+/g, "")
+
+  return {
+    configured:
+      Boolean(recipient?.trim()) &&
+      Boolean(normalizedAccount && /^\d{26}$/.test(normalizedAccount)),
+    webhookConfigured: false,
+  }
 }
 
+export function paymentMethodOperationalStatus(
+  method: PaymentMethodId,
+  options: PaymentRuntimeOptions = {}
+) {
+  return method === "STRIPE"
+    ? stripeOperationalStatus(options)
+    : bankTransferOperationalStatus(options)
+}
+
+export function describePaymentMethods(
+  settings: PaymentMethodSettings,
+  options: PaymentRuntimeOptions = {}
+): PaymentMethodAvailability[] {
+  const methods: PaymentMethodAvailability[] = (
+    Object.keys(settings) as PaymentMethodId[]
+  ).map((id) => {
+    const operational = paymentMethodOperationalStatus(id, options)
+    const config = settings[id]
+
+    return {
+      id,
+      name: config.displayName,
+      enabled: config.enabled,
+      configured: operational.configured,
+      webhookConfigured: operational.webhookConfigured,
+      displayOrder: config.displayOrder,
+      maintenanceMessage: config.maintenanceMessage,
+      kind: id === "STRIPE" ? "REDIRECT" : "MANUAL",
+      available: config.enabled && operational.configured,
+      updatedAt: config.updatedAt,
+    }
+  })
+
+  return methods.sort(
+    (left, right) =>
+      left.displayOrder - right.displayOrder ||
+      left.id.localeCompare(right.id)
+  )
+}
 
 export function describePaymentControl(control: PaymentControlSettings) {
   return {
