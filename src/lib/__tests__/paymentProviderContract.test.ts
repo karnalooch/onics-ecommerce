@@ -1,4 +1,4 @@
-import { describe, expect } from "vitest"
+import { describe, expect, it } from "vitest"
 import {
   applyExpiredCheckoutCancellation,
   applyStripeRefundSnapshot,
@@ -249,9 +249,11 @@ const harnesses = {
 } satisfies Record<PaymentProviderId, PaymentProviderContractHarness>
 
 describe("payment provider contract kit", () => {
-  expect(Object.keys(harnesses).sort()).toEqual(
-    [...PAYMENT_PROVIDER_IDS].sort()
-  )
+  it("requires an explicit harness for every registered provider", () => {
+    expect(Object.keys(harnesses).sort()).toEqual(
+      [...PAYMENT_PROVIDER_IDS].sort()
+    )
+  })
 
   for (const provider of PAYMENT_PROVIDER_IDS) {
     definePaymentProviderContract(harnesses[provider])
