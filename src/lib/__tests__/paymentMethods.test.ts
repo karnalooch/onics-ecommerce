@@ -70,9 +70,44 @@ describe("payment method management", () => {
   it("exposes a safe global maintenance snapshot", () => {
     expect(describePaymentControl(control(false))).toEqual({
       enabled: false,
+      state: "maintenance",
       maintenanceMessage: "Przerwa techniczna",
       updatedAt: null,
     })
+  })
+
+
+  it("derives ready, misconfigured, disabled and maintenance states without exposing secrets", () => {
+    const providerStates = describePaymentMethods(settings(true, false), {
+      nodeEnv: "production",
+      stripeSecretKey: "",
+      stripeWebhookSecret: "",
+      appUrl: "http://shop.example.com",
+      bankTransferRecipient: "ONICS Sp. z o.o.",
+      bankTransferAccountNumber: "12345678901234567890123456",
+    })
+
+    expect(providerStates.find((method) => method.id === "STRIPE")).toMatchObject({
+      state: "misconfigured",
+      available: false,
+      configurationIssues: [
+        "CREDENTIALS_MISSING",
+        "WEBHOOK_SECRET_MISSING",
+        "PUBLIC_APP_URL_INVALID",
+      ],
+    })
+    expect(
+      providerStates.find((method) => method.id === "BANK_TRANSFER")
+    ).toMatchObject({
+      state: "maintenance",
+      available: false,
+      configurationIssues: [],
+    })
+
+    expect(JSON.stringify(providerStates)).not.toContain("http://shop.example.com")
+    expect(JSON.stringify(providerStates)).not.toContain(
+      "12345678901234567890123456"
+    )
   })
 
   it("requires the Stripe secret for availability", () => {
@@ -85,6 +120,7 @@ describe("payment method management", () => {
     ).toEqual({
       configured: false,
       webhookConfigured: false,
+      configurationIssues: ["CREDENTIALS_MISSING"],
     })
 
     expect(
@@ -96,6 +132,7 @@ describe("payment method management", () => {
     ).toEqual({
       configured: true,
       webhookConfigured: false,
+      configurationIssues: [],
     })
   })
 
@@ -163,6 +200,8 @@ describe("payment method management", () => {
       name: "Przelew tradycyjny",
       enabled: true,
       configured: true,
+      state: "ready",
+      configurationIssues: [],
       displayOrder: 10,
       kind: "MANUAL",
       capabilities: {
@@ -182,6 +221,8 @@ describe("payment method management", () => {
       enabled: false,
       configured: true,
       webhookConfigured: true,
+      state: "disabled",
+      configurationIssues: [],
       displayOrder: 20,
       kind: "REDIRECT",
       capabilities: {
