@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto"
 import Stripe from "stripe"
 import { resolveCartItems } from "@/lib/commerce"
 import {
@@ -25,8 +24,11 @@ import {
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   assertPaymentProviderCapability,
-  getPaymentProviderDefinition,
 } from "@/lib/paymentProviders"
+import {
+  registerPrzelewy24Transaction,
+  resolvePrzelewy24Config,
+} from "@/lib/przelewy24"
 
 export type PaymentCheckoutItem = {
   id: string
@@ -174,75 +176,10 @@ function assertPaymentStillAvailable(
   }
 }
 
-type Przelewy24RegistrationResponse = {
-  data?: {
-    token?: unknown
-  }
-}
-
-function resolvePrzelewy24SandboxConfig(requestUrl: string) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("PAYMENT_PROVIDER_NOT_CONFIGURED")
-  }
-
-  const operational =
-    getPaymentProviderDefinition("PRZELEWY24").operationalStatus()
-  if (!operational.configured) {
-    throw new Error("PAYMENT_PROVIDER_NOT_CONFIGURED")
-  }
-
-  const merchantId = Number(process.env.P24_MERCHANT_ID)
-  const posId = Number(process.env.P24_POS_ID)
-  const apiKey = process.env.P24_API_KEY?.trim() ?? ""
-  const crc = process.env.P24_CRC?.trim() ?? ""
-
-  if (
-    !Number.isSafeInteger(merchantId) ||
-    merchantId <= 0 ||
-    !Number.isSafeInteger(posId) ||
-    posId <= 0 ||
-    !apiKey ||
-    !crc
-  ) {
-    throw new Error("PAYMENT_PROVIDER_NOT_CONFIGURED")
-  }
-
-  const appUrl = new URL(requestUrl).origin
-
-  return {
-    merchantId,
-    posId,
-    apiKey,
-    crc,
-    appUrl,
-    apiBaseUrl: "https://sandbox.przelewy24.pl",
-  }
-}
-
-async function cancelFailedPrzelewy24Registration(orderId: string) {
-  await mutateMockData((db) => {
-    const order = (db.orders as Array<Record<string, unknown>>).find(
-      (candidate) =>
-        candidate.id === orderId &&
-        candidate.paymentProvider === "PRZELEWY24"
-    )
-    if (!order || order.status === "CANCELLED") return
-
-    applyOrderInventoryTransition(
-      db.products as InventoryProduct[],
-      order as Parameters<typeof applyOrderInventoryTransition>[1],
-      order.items as Parameters<typeof applyOrderInventoryTransition>[2],
-      "CANCELLED"
-    )
-    order.status = "CANCELLED"
-    order.paymentStatus = "EXPIRED"
-  })
-}
-
 async function createPrzelewy24Checkout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
-  const p24 = resolvePrzelewy24SandboxConfig(input.requestUrl)
+  const p24 = resolvePrzelewy24Config({ requestUrl: input.requestUrl })
   const { storedUser, resolved } = resolveCheckout(
     input.snapshot.users as StoredUser[],
     input.snapshot.products as Parameters<typeof resolveCartItems>[1],
@@ -300,6 +237,10 @@ async function createPrzelewy24Checkout(
       paymentProvider: "PRZELEWY24",
       paymentStatus: "PENDING",
       p24SessionId: orderId,
+      p24OrderId: null,
+      p24LastNotificationSign: null,
+      paidAt: null,
+      paymentUpdatedAt: null,
       inventoryReservationSource: "ORDER",
       inventoryReservationStatus: "RESERVED",
       inventoryReservedAt: now,
@@ -309,64 +250,20 @@ async function createPrzelewy24Checkout(
     })
   })
 
-  const sign = createHash("sha384")
-    .update(
-      JSON.stringify({
-        sessionId: orderId,
-        merchantId: p24.merchantId,
-        amount,
-        currency: "PLN",
-        crc: p24.crc,
-      }),
-      "utf8"
-    )
-    .digest("hex")
-
   try {
-    const response = await fetch(
-      `${p24.apiBaseUrl}/api/v1/transaction/register`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:
-            "Basic " +
-            Buffer.from(`${p24.posId}:${p24.apiKey}`).toString("base64"),
-        },
-        body: JSON.stringify({
-          merchantId: p24.merchantId,
-          posId: p24.posId,
-          sessionId: orderId,
-          amount,
-          currency: "PLN",
-          description: `ONICS ${orderId}`,
-          email,
-          country: "PL",
-          language: "pl",
-          urlReturn:
-            `${p24.appUrl}/oferty/zamowienia?payment=success&provider=PRZELEWY24&session_id=${encodeURIComponent(orderId)}`,
-          sign,
-        }),
-        signal: AbortSignal.timeout(10_000),
-      }
-    )
-
-    const payload =
-      (await response.json().catch(() => null)) as
-        | Przelewy24RegistrationResponse
-        | null
-    const token = payload?.data?.token
-
-    if (!response.ok || typeof token !== "string" || !token.trim()) {
-      throw new Error("PRZELEWY24_REGISTRATION_FAILED")
-    }
+    const registration = await registerPrzelewy24Transaction(p24, {
+      sessionId: orderId,
+      amount,
+      email,
+      description: `ONICS ${orderId}`,
+    })
 
     return {
       orderId,
       paymentMethod: "PRZELEWY24",
       nextAction: {
         type: "REDIRECT",
-        url: `${p24.apiBaseUrl}/trnRequest/${encodeURIComponent(token)}`,
+        url: registration.redirectUrl,
       },
     }
   } catch {
