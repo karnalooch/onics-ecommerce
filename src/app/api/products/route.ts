@@ -9,6 +9,10 @@ import { getKnowledge } from "@/lib/knowledge/parser"
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
+  CatalogProductInputSchema,
+  CatalogProductUpdateSchema,
+} from "@/lib/catalogProductInput"
+import {
   assertCatalogClassification,
   buildWfMagCatalogProduct,
   ensureManufacturerRecord,
@@ -72,20 +76,6 @@ const ImportItemSchema = z
     isNewSubcategory: z.boolean().optional(),
     xlsCategoryName: z.string().trim().optional(),
     xlsSubcategoryName: z.string().trim().optional(),
-  })
-  .passthrough()
-
-const ProductInputSchema = z
-  .object({
-    id: z.string().optional(),
-    sku: z.string().trim().min(1),
-    name: z.string().trim().min(2),
-    price: z.coerce.number().min(0).nullable().optional(),
-    stock: z.coerce.number().min(0).optional(),
-    manufacturer: z.string().trim().optional(),
-    categoryId: z.string().trim().nullable().optional(),
-    subcategoryId: z.string().trim().nullable().optional(),
-    seoDescription: z.string().max(5000).optional(),
   })
   .passthrough()
 
@@ -378,7 +368,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const parsed = ProductInputSchema.safeParse(body)
+  const parsed = CatalogProductInputSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane produktu." },
@@ -430,9 +420,7 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = ProductInputSchema.extend({
-    id: z.string().min(1),
-  }).safeParse(await req.json())
+  const parsed = CatalogProductUpdateSchema.safeParse(await req.json())
 
   if (!parsed.success) {
     return NextResponse.json(
