@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { KnowledgeProvider } from "@/lib/knowledge/KnowledgeContext"
 import { initializeMockData } from "@/store/serverStore"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { CommandPalette } from "./_components/CommandPalette"
 import { SupportCard } from "./_components/SupportCard"
 
@@ -26,12 +27,7 @@ export default async function AdminLayout({
     roleType?: string
     isBlocked?: boolean
   }>
-  const currentUser = userStore.find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
-  )
+  const currentUser = findStoredUserBySession(userStore, sessionUser)
 
   if (!currentUser || currentUser.isBlocked || currentUser.roleType !== "ADMIN") {
     redirect("/logowanie")
