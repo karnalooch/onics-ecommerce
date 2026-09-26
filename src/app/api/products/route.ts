@@ -7,6 +7,7 @@ import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
 export const dynamic = "force-dynamic"
 
@@ -145,12 +146,7 @@ export async function GET() {
     | { id?: string; email?: string | null }
     | undefined
   const currentUser = sessionUser
-    ? (users as StoredUser[]).find(
-        (user) =>
-          (sessionUser.id && user.id === sessionUser.id) ||
-          (sessionUser.email &&
-            normalize(user.email) === normalize(sessionUser.email))
-      )
+    ? findStoredUserBySession(users as StoredUser[], sessionUser)
     : undefined
   const role = currentUser?.isBlocked ? undefined : currentUser?.roleType
   const canSeePrices =
