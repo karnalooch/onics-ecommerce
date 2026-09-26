@@ -81,6 +81,37 @@ describe("Stripe refund lifecycle", () => {
     expect(products[0].stock).toBe(5)
   })
 
+  it("does not reopen a succeeded refund when an older pending event arrives", () => {
+    const products = [{ id: "p1", stock: 3 }]
+    const order = paidOrder()
+
+    applyStripeRefundSnapshot(products, order, {
+      orderId: "ORD-1",
+      refundId: "re_1",
+      paymentIntentId: "pi_1",
+      amount: 10000,
+      currency: "pln",
+      status: "succeeded",
+    })
+
+    expect(products[0].stock).toBe(5)
+
+    expect(
+      applyStripeRefundSnapshot(products, order, {
+        orderId: "ORD-1",
+        refundId: "re_1",
+        paymentIntentId: "pi_1",
+        amount: 10000,
+        currency: "pln",
+        status: "pending",
+      })
+    ).toBe("succeeded")
+
+    expect(order.refundStatus).toBe("succeeded")
+    expect(order.paymentStatus).toBe("REFUNDED")
+    expect(products[0].stock).toBe(5)
+  })
+
   it("records failed refunds without cancelling the paid order", () => {
     const products = [{ id: "p1", stock: 3 }]
     const order = paidOrder()
