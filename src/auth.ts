@@ -2,6 +2,7 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcrypt"
 import crypto from "crypto"
+import { sealAdminBootstrapPassword } from "@/lib/adminBootstrap"
 
 function normalizeEmail(value: unknown) {
   return String(value ?? "").trim().toLowerCase()
@@ -29,6 +30,26 @@ type StoredAuthUser = {
   passwordHash?: string
 }
 
+async function verifyStoredPassword(user: StoredAuthUser, password: string) {
+  if (typeof user.passwordHash === "string" && user.passwordHash.length > 0) {
+    return bcrypt.compare(password, user.passwordHash)
+  }
+
+  if (user.roleType !== "ADMIN") return false
+
+  const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD
+  if (!bootstrapPassword || !safeSecretEqual(password, bootstrapPassword)) {
+    return false
+  }
+
+  const sealedHash = await sealAdminBootstrapPassword({
+    userId: user.id,
+    email: user.email,
+    password,
+  })
+  return bcrypt.compare(password, sealedHash)
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
@@ -51,17 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         if (!user || user.isBlocked) return null
 
-        let passwordValid = false
-
-        if (typeof user.passwordHash === "string" && user.passwordHash.length > 0) {
-          passwordValid = await bcrypt.compare(password, user.passwordHash)
-        } else if (user.roleType === "ADMIN") {
-          const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD
-          passwordValid = Boolean(
-            bootstrapPassword && safeSecretEqual(password, bootstrapPassword)
-          )
-        }
-
+        const passwordValid = await verifyStoredPassword(user, password)
         if (!passwordValid) return null
 
         return {
