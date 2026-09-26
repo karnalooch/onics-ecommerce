@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useCartStore } from "@/store/cartStore"
 
+export type CartStockByProduct = Record<string, number>
+
 export function useAuthoritativeCart(options: {
   enabled: boolean
   identityKey: string
@@ -12,6 +14,8 @@ export function useAuthoritativeCart(options: {
   const replaceItems = useCartStore((state) => state.replaceItems)
   const lastPreviewKeyRef = useRef("")
   const [refreshingCart, setRefreshingCart] = useState(false)
+  const [availableStockById, setAvailableStockById] =
+    useState<CartStockByProduct>({})
 
   const previewKey = [
     options.identityKey || "anonymous",
@@ -22,6 +26,7 @@ export function useAuthoritativeCart(options: {
     if (!options.enabled || items.length === 0) {
       lastPreviewKeyRef.current = ""
       setRefreshingCart(false)
+      setAvailableStockById({})
       return
     }
     if (lastPreviewKeyRef.current === previewKey) return
@@ -45,25 +50,46 @@ export function useAuthoritativeCart(options: {
         const data = await response.json().catch(() => null)
         if (!response.ok) {
           throw new Error(
-            data?.error || "Nie udało się odświeżyć bieżących cen koszyka."
+            data?.error || "Nie udało się odświeżyć bieżących danych koszyka."
           )
         }
         if (!Array.isArray(data?.items)) {
           throw new Error("Serwer zwrócił nieprawidłowy podgląd koszyka.")
         }
 
+        const previewItems = data.items.map((item: any) => {
+          const availableStock = Number(item.availableStock)
+          if (!Number.isInteger(availableStock) || availableStock < 0) {
+            throw new Error("Serwer zwrócił nieprawidłowy stan magazynowy.")
+          }
+
+          return {
+            cartItem: {
+              id: String(item.id),
+              sku: String(item.sku),
+              name: String(item.name),
+              price: Number(item.price),
+              quantity: Number(item.quantity),
+            },
+            availableStock,
+          }
+        })
+
         if (cancelled) return
 
-        const nextItems = data.items.map((item: any) => ({
-          id: String(item.id),
-          sku: String(item.sku),
-          name: String(item.name),
-          price: Number(item.price),
-          quantity: Number(item.quantity),
-        }))
+        const nextItems = previewItems.map((item) => item.cartItem)
+        setAvailableStockById(
+          Object.fromEntries(
+            previewItems.map((item) => [
+              item.cartItem.id,
+              item.availableStock,
+            ])
+          )
+        )
+
         const changed =
           nextItems.length !== items.length ||
-          nextItems.some((item: any, index: number) => {
+          nextItems.some((item, index) => {
             const current = items[index]
             return (
               !current ||
@@ -77,15 +103,16 @@ export function useAuthoritativeCart(options: {
 
         if (changed) {
           replaceItems(nextItems)
-          toast.info("Koszyk zaktualizowano do bieżących cen i danych katalogu.")
+          toast.info("Koszyk zaktualizowano do bieżących danych katalogu.")
         }
       })
       .catch((error) => {
         if (!cancelled) {
+          setAvailableStockById({})
           toast.warning(
             error instanceof Error
               ? error.message
-              : "Nie udało się odświeżyć bieżących cen koszyka."
+              : "Nie udało się odświeżyć bieżących danych koszyka."
           )
         }
       })
@@ -98,5 +125,5 @@ export function useAuthoritativeCart(options: {
     }
   }, [items, options.enabled, previewKey, replaceItems])
 
-  return { refreshingCart }
+  return { refreshingCart, availableStockById }
 }
