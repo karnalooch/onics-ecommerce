@@ -61,6 +61,16 @@ describe("payment provider registry", () => {
       rma: true,
       manualSettlement: true,
     })
+
+    expect(getPaymentProviderDefinition("PRZELEWY24").capabilities).toEqual({
+      checkout: true,
+      webhook: true,
+      cancel: false,
+      refund: false,
+      reconcile: false,
+      rma: false,
+      manualSettlement: false,
+    })
   })
 
   it("fails closed when a provider does not support a lifecycle capability", () => {
@@ -91,6 +101,12 @@ describe("payment provider registry", () => {
         bankTransferReference: "ORD-legacy",
       })
     ).toBe("BANK_TRANSFER")
+
+    expect(
+      resolveOrderPaymentProvider({
+        p24SessionId: "ORD-P24-legacy",
+      })
+    ).toBe("PRZELEWY24")
 
     expect(
       resolveOrderPaymentProvider({ paymentProvider: "UNKNOWN" })
