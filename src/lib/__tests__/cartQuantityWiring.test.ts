@@ -19,7 +19,12 @@ describe("cart quantity boundary wiring", () => {
 
     expect(store).toContain("addItem: (item: CartItem) => boolean")
     expect(store).toContain("resolveMergedCartQuantity(")
-    expect(store).toContain("isValidCartItemQuantity(item.quantity)")
+    expect(store).toContain("sanitizeCartItems([item])")
+    const persistedGuard = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/cartPersist.ts"),
+      "utf8"
+    )
+    expect(persistedGuard).toContain("isValidCartItemQuantity(quantity)")
     expect(productCard).toContain("if (!added)")
     expect(productCard).toContain("CART_ITEM_QUANTITY_MAX")
     expect(cartPage).toContain("Pominięto ${skippedCount} pozycji")

@@ -13,6 +13,9 @@ describe("persisted cart account isolation wiring", () => {
     expect(store).toContain("bindOwner: (ownerKey: string | null) => void")
     expect(store).toContain("shouldResetCartForOwner(")
     expect(store).toContain("set({ ownerKey: nextOwnerKey, items: [] })")
+    expect(store).toContain("sanitizePersistedCartState")
+    expect(store).toContain("merge: (persistedState, currentState)")
+    expect(store).toContain("sanitizeCartItems(items)")
   })
 
   it("waits for Zustand persistence hydration before binding an account", () => {
