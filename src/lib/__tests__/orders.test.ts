@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   canReplaceOrderItems,
   resolveEstimatedDeliveryDays,
+  validateStripeOrderStatusTransition,
 } from "@/lib/orders"
 
 describe("order delivery estimate updates", () => {
@@ -70,5 +71,78 @@ describe("Stripe-linked order item updates", () => {
         currentItems
       )
     ).toBe(false)
+  })
+})
+
+
+describe("Stripe-linked order status transitions", () => {
+  it("requires payment before fulfillment states", () => {
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PENDING", "PENDING_VERIFICATION", "CONFIRMED")
+    ).toBe("payment-required")
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "FAILED", "CONFIRMED", "SHIPPED")
+    ).toBe("payment-required")
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PAID", "PENDING_VERIFICATION", "CONFIRMED")
+    ).toBe("ok")
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PAID", "CONFIRMED", "SHIPPED")
+    ).toBe("ok")
+  })
+
+  it("does not fake Stripe cancellation through a local status change", () => {
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PENDING", "PENDING_VERIFICATION", "CANCELLED")
+    ).toBe("stripe-cancel-required")
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PAID", "CONFIRMED", "CANCELLED")
+    ).toBe("stripe-cancel-required")
+  })
+
+  it("does not downgrade Stripe orders into inquiry status", () => {
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PENDING", "PENDING_VERIFICATION", "INQUIRY")
+    ).toBe("invalid-stripe-status")
+  })
+
+  it("enforces the Stripe fulfillment sequence without skipping or rollback", () => {
+    expect(
+      validateStripeOrderStatusTransition(
+        "cs_test",
+        "PAID",
+        "PENDING_VERIFICATION",
+        "SHIPPED"
+      )
+    ).toBe("invalid-transition")
+    expect(
+      validateStripeOrderStatusTransition(
+        "cs_test",
+        "PAID",
+        "SHIPPED",
+        "CONFIRMED"
+      )
+    ).toBe("invalid-transition")
+    expect(
+      validateStripeOrderStatusTransition(
+        "cs_test",
+        "PAID",
+        "CONFIRMED",
+        "PENDING_VERIFICATION"
+      )
+    ).toBe("invalid-transition")
+    expect(
+      validateStripeOrderStatusTransition(
+        "cs_test",
+        "PAID",
+        "SHIPPED",
+        "SHIPPED"
+      )
+    ).toBe("ok")
+  })
+
+  it("leaves non-Stripe order status semantics unchanged", () => {
+    expect(validateStripeOrderStatusTransition(null, null, "PENDING_VERIFICATION", "CANCELLED")).toBe("ok")
+    expect(validateStripeOrderStatusTransition(null, null, "PENDING_VERIFICATION", "CONFIRMED")).toBe("ok")
   })
 })

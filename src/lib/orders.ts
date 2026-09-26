@@ -39,3 +39,51 @@ export function canReplaceOrderItems(
   if (!stripeCheckoutSessionId || incoming === undefined) return true
   return orderItemsEqual(incoming, current ?? [])
 }
+
+
+export type OrderStatus =
+  | "PENDING_VERIFICATION"
+  | "INQUIRY"
+  | "CONFIRMED"
+  | "SHIPPED"
+  | "CANCELLED"
+
+export function validateStripeOrderStatusTransition(
+  stripeCheckoutSessionId: string | null | undefined,
+  paymentStatus: string | null | undefined,
+  currentStatus: OrderStatus | string | null | undefined,
+  nextStatus: OrderStatus
+):
+  | "ok"
+  | "payment-required"
+  | "stripe-cancel-required"
+  | "invalid-stripe-status"
+  | "invalid-transition" {
+  if (!stripeCheckoutSessionId) return "ok"
+  if (currentStatus === nextStatus) return "ok"
+
+  if (nextStatus === "CANCELLED") {
+    return "stripe-cancel-required"
+  }
+
+  if (nextStatus === "INQUIRY") {
+    return "invalid-stripe-status"
+  }
+
+  if (
+    (nextStatus === "CONFIRMED" || nextStatus === "SHIPPED") &&
+    paymentStatus !== "PAID"
+  ) {
+    return "payment-required"
+  }
+
+  if (
+    (nextStatus === "CONFIRMED" && currentStatus !== "PENDING_VERIFICATION") ||
+    (nextStatus === "SHIPPED" && currentStatus !== "CONFIRMED") ||
+    nextStatus === "PENDING_VERIFICATION"
+  ) {
+    return "invalid-transition"
+  }
+
+  return "ok"
+}

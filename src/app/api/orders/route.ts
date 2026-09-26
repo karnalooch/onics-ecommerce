@@ -5,6 +5,7 @@ import { resolveCartItems } from "@/lib/commerce"
 import {
   canReplaceOrderItems,
   resolveEstimatedDeliveryDays,
+  validateStripeOrderStatusTransition,
 } from "@/lib/orders"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
@@ -65,6 +66,7 @@ type StoredOrder = {
   estimatedDeliveryDays?: number | null
   items?: Array<z.infer<typeof AdminOrderItemSchema>>
   stripeCheckoutSessionId?: string | null
+  paymentStatus?: string | null
   user?: {
     id?: string
     email?: string
@@ -204,6 +206,15 @@ export async function PUT(req: Request) {
       if (index === -1) throw new Error("ORDER_NOT_FOUND")
 
       const currentOrder = orderStore[index]
+      const statusTransition = validateStripeOrderStatusTransition(
+        currentOrder.stripeCheckoutSessionId,
+        currentOrder.paymentStatus,
+        currentOrder.status,
+        parsed.data.status
+      )
+      if (statusTransition !== "ok") {
+        throw new Error(`ORDER_STATUS_${statusTransition.toUpperCase().replaceAll("-", "_")}`)
+      }
 
       if (
         !canReplaceOrderItems(
@@ -246,6 +257,55 @@ export async function PUT(req: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 })
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_STATUS_PAYMENT_REQUIRED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Zamówienie Stripe musi być opłacone przed potwierdzeniem lub wysyłką.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_STATUS_STRIPE_CANCEL_REQUIRED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Zamówienia Stripe nie można anulować samą zmianą statusu. Wymagany jest workflow anulowania/refundu Stripe.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_STATUS_INVALID_STRIPE_STATUS"
+    ) {
+      return NextResponse.json(
+        { error: "Zamówienia Stripe nie można zmienić na zapytanie." },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_STATUS_INVALID_TRANSITION"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nieprawidłowe przejście statusu zamówienia Stripe. Wymagana kolejność to oczekiwanie → potwierdzone → wysłane.",
+        },
+        { status: 409 }
+      )
     }
 
     if (

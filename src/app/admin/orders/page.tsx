@@ -19,6 +19,9 @@ export default function AdminOrdersPage() {
   const [editableItems, setEditableItems] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const stripeAmountsLocked = Boolean(validatingOrder?.stripeCheckoutSessionId);
+  const stripeFulfillmentLocked =
+    Boolean(validatingOrder?.stripeCheckoutSessionId) &&
+    validatingOrder?.paymentStatus !== "PAID";
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -283,7 +286,7 @@ export default function AdminOrdersPage() {
                        {stripeAmountsLocked && (
                           <div className="border-l-4 border-primary bg-primary/5 px-4 py-3">
                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">
-                                Kwoty zablokowane przez sesję Stripe. Możesz nadal zmienić termin i status zamówienia.
+                                Kwoty zablokowane przez sesję Stripe. Realizacja jest możliwa dopiero po potwierdzeniu płatności.
                              </p>
                           </div>
                        )}
@@ -349,6 +352,13 @@ export default function AdminOrdersPage() {
                     </div>
                  </div>
 
+                 {stripeFulfillmentLocked && (
+                    <div className="px-6 py-4 bg-amber-50 border-t border-amber-200">
+                       <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">
+                          Oczekiwanie na płatność Stripe ({validatingOrder?.paymentStatus || "PENDING"}). Zamówienia nie można jeszcze przekazać do logistyki.
+                       </p>
+                    </div>
+                 )}
                  <div className="p-6 bg-slate-950 flex items-center gap-4">
                     <button 
                        onClick={() => setValidatingOrder(null)}
@@ -358,11 +368,19 @@ export default function AdminOrdersPage() {
                     </button>
                     <button 
                        onClick={confirmOrder}
-                       disabled={saving}
-                       className="flex-1 h-14 bg-primary text-slate-950 font-black text-[11px] uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center justify-center gap-4 transition-all hover:brightness-110 active-press italic"
+                       disabled={saving || stripeFulfillmentLocked}
+                       className={`flex-1 h-14 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 transition-all italic ${
+                          saving || stripeFulfillmentLocked
+                             ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                             : "bg-primary text-slate-950 shadow-xl shadow-primary/20 hover:brightness-110 active-press"
+                       }`}
                     >
                        {saving ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-                       {saving ? "PROPAGACJA_PARAMETRÓW..." : "ZATWIERDŹ_DO_LOGISTYKI"}
+                       {saving
+                          ? "PROPAGACJA_PARAMETRÓW..."
+                          : stripeFulfillmentLocked
+                            ? "OCZEKIWANIE_NA_PŁATNOŚĆ"
+                            : "ZATWIERDŹ_DO_LOGISTYKI"}
                     </button>
                  </div>
               </motion.div>
