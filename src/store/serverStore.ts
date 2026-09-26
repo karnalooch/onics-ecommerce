@@ -16,6 +16,8 @@ type KnowledgeMeta = {
   lastUpdated: string | null
 }
 
+type KnowledgeEntries = Record<string, JsonRecord>
+
 export type PaymentMethodConfig = {
   enabled: boolean
   displayName: string
@@ -82,6 +84,7 @@ type ServerDb = {
   manufacturers: JsonRecord[]
   products: JsonRecord[]
   knowledgeMeta: KnowledgeMeta
+  knowledgeEntries: KnowledgeEntries
   paymentMethods: PaymentMethodSettings
   paymentControl: PaymentControlSettings
   paymentAudit: PaymentAuditEntry[]
@@ -102,6 +105,13 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : []
+}
+
+function recordMap(value: unknown): KnowledgeEntries {
+  const source = isRecord(value) ? value : {}
+  return Object.fromEntries(
+    Object.entries(source).filter(([, entry]) => isRecord(entry))
+  ) as KnowledgeEntries
 }
 
 function normalizePaymentWebhookEvents(value: unknown): PaymentWebhookEvent[] {
@@ -338,6 +348,7 @@ function normalizeDb(input: unknown): ServerDb {
     categories: recordArray(source.categories),
     manufacturers: recordArray(source.manufacturers),
     products: recordArray(source.products),
+    knowledgeEntries: recordMap(source.knowledgeEntries),
     paymentMethods: normalizePaymentMethods(source.paymentMethods),
     paymentControl: normalizePaymentControl(source.paymentControl),
     paymentAudit: normalizePaymentAudit(source.paymentAudit),
@@ -376,6 +387,7 @@ export function initializeMockData() {
     paymentOperationEvents: db.paymentOperationEvents,
     paymentWebhookEvents: db.paymentWebhookEvents,
     knowledgeMeta: db.knowledgeMeta,
+    knowledgeEntries: db.knowledgeEntries,
   }
 }
 

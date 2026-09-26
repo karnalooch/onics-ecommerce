@@ -5,8 +5,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
 import { mutateMockData } from "@/store/serverStore";
-import { buildKnowledgeFromDb, saveKnowledge, checkQuality } from "@/lib/knowledge/parser";
+import { buildKnowledgeFromDb, checkQuality } from "@/lib/knowledge/parser";
 import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher";
+import {
+  preserveSalePriceForKnowledgeUpdate,
+  pricingForKnowledgeCreatedProduct,
+} from "@/lib/knowledge/pricingBoundary";
 
 /**
  * Całkowite wyczyszczenie Centralnego Rejestru Towarowego
@@ -19,6 +23,12 @@ export async function wipeRegistryAction(): Promise<ActionState> {
   try {
     await mutateMockData((db) => {
       db.products.splice(0, db.products.length);
+      db.knowledgeEntries = {};
+      db.knowledgeMeta = {
+        sources: [],
+        processedSources: [],
+        lastUpdated: new Date().toISOString(),
+      };
     });
 
     revalidatePath("/admin/products");
@@ -441,7 +451,12 @@ export async function syncProductWithIqAction(productId: string): Promise<Action
       );
       if (!match) throw new Error("IQ_NOT_FOUND");
 
-      current.catalogPrice = match.entry.price || 0;
+      const pricing = preserveSalePriceForKnowledgeUpdate(
+        current,
+        match.entry.price
+      );
+      current.price = pricing.price;
+      current.catalogPrice = pricing.catalogPrice;
       current.catalogSpecs = match.entry.specs || "";
       current.description = match.entry.specs || "";
       current.seoDescription = match.entry.specs || "";
@@ -520,13 +535,14 @@ export async function activateVirtualProductAction(sku: string): Promise<ActionS
         }
       }
 
+      const pricing = pricingForKnowledgeCreatedProduct(entry.price);
       const product = {
         id: `p_${crypto.randomUUID()}`,
         sku,
         name: entry.model || sku,
         manufacturer: entry.manufacturer || "",
-        price: entry.price || 0,
-        catalogPrice: entry.price || 0,
+        price: pricing.price,
+        catalogPrice: pricing.catalogPrice,
         stock: 0,
         specs: entry.specs || "",
         isIqSynced: true,

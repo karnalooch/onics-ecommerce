@@ -5,7 +5,6 @@ import * as path from 'path';
 import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema, ProgressCallback, ParserOptions } from './types';
 
 import { ToolkitParser } from './ToolkitParser';
-import { preserveSalePriceForKnowledgeUpdate, pricingForKnowledgeCreatedProduct } from './pricingBoundary';
 
 // Knowledge storage is now fully integrated into db.json via serverStore
 
@@ -21,6 +20,7 @@ import { initializeMockData, mutateMockData } from '@/store/serverStore';
 
 type KnowledgeDbSnapshot = {
   products: any[];
+  knowledgeEntries?: Record<string, unknown>;
   knowledgeMeta?: {
     sources?: unknown;
     processedSources?: unknown;
@@ -44,6 +44,27 @@ export function buildKnowledgeFromDb(db: KnowledgeDbSnapshot): KnowledgeStore {
     };
   });
 
+  Object.entries(db.knowledgeEntries || {}).forEach(([rawSku, rawEntry]) => {
+    const sku = rawSku.trim();
+    if (!sku) return;
+
+    const parsed = KnowledgeEntrySchema.safeParse(rawEntry);
+    if (!parsed.success) return;
+
+    const existing = knowledgeMap[sku];
+    knowledgeMap[sku] = existing
+      ? {
+          ...existing,
+          ...parsed.data,
+          model: parsed.data.model || existing.model,
+          specs: parsed.data.specs || existing.specs,
+          price: parsed.data.price ?? existing.price,
+          manufacturer: parsed.data.manufacturer || existing.manufacturer,
+          currency: parsed.data.currency || existing.currency,
+        }
+      : parsed.data;
+  });
+
   const meta = db.knowledgeMeta || {};
 
   return {
@@ -59,6 +80,22 @@ export function buildKnowledgeFromDb(db: KnowledgeDbSnapshot): KnowledgeStore {
   };
 }
 
+export function buildKnowledgeEntriesForPersistence(data: KnowledgeStore) {
+  const entries: Record<string, KnowledgeEntry> = {};
+
+  Object.entries(data.knowledge).forEach(([rawSku, entry]) => {
+    const sku = rawSku.trim();
+    if (!sku || !entry.source) return;
+
+    const parsed = KnowledgeEntrySchema.safeParse(entry);
+    if (!parsed.success) return;
+
+    entries[sku] = parsed.data;
+  });
+
+  return entries;
+}
+
 export async function getKnowledge(): Promise<KnowledgeStore> {
   try {
     return buildKnowledgeFromDb(initializeMockData());
@@ -68,112 +105,14 @@ export async function getKnowledge(): Promise<KnowledgeStore> {
   }
 }
 
-/**
- * Funkcja pomocnicza do mapowania nazw tekstowych na ID kategorii i podkategorii z db.json.
- */
-function resolveCategoryIds(categoryName: string | undefined, subcategoryName: string | undefined, db: any) {
-  if (!db.categories) return { categoryId: "c_auto_th95x", subcategoryId: "s_auto_other" };
-
-  const normCat = categoryName?.toLowerCase().trim();
-  const normSub = subcategoryName?.toLowerCase().trim();
-
-  // 1. Znajdź Kategorię
-  let foundCategory = db.categories.find((c: any) => 
-    c.name.toLowerCase().trim() === normCat || 
-    normCat?.includes(c.name.toLowerCase().trim()) ||
-    c.name.toLowerCase().trim().includes(normCat || "")
-  );
-
-  // Jeśli nie znaleziono po nazwie, spróbuj przeszukać podkategorie (często w plikach są zamienione)
-  if (!foundCategory && normSub) {
-    foundCategory = db.categories.find((c: any) => 
-      c.subcategories?.some((s: any) => s.name.toLowerCase().trim() === normSub)
-    );
-  }
-
-  const categoryId = foundCategory?.id || "c_auto_other"; // Default fallback
-
-  // 2. Znajdź Podkategorię w obrębie znalezionej (lub dowolnej) kategorii
-  let subcategoryId = "s_auto_other";
-  if (foundCategory && normSub) {
-    const sub = foundCategory.subcategories?.find((s: any) => 
-      s.name.toLowerCase().trim() === normSub || 
-      normSub.includes(s.name.toLowerCase().trim()) ||
-      s.name.toLowerCase().trim().includes(normSub)
-    );
-    if (sub) subcategoryId = sub.id;
-  } else if (normSub) {
-    // Search all categories as fallback
-    for (const cat of db.categories) {
-      const sub = cat.subcategories?.find((s: any) => s.name.toLowerCase().trim() === normSub);
-      if (sub) {
-        subcategoryId = sub.id;
-        break;
-      }
-    }
-  }
-
-  return { categoryId, subcategoryId };
-}
-
 export async function saveKnowledge(data: KnowledgeStore) {
   await mutateMockData((db) => {
-    const products = db.products as any[];
-    const productIndexBySku = new Map(
-      products.map((product, index) => [String(product.sku || ""), index] as const)
-    );
-
+    db.knowledgeEntries = buildKnowledgeEntriesForPersistence(data);
     db.knowledgeMeta = {
       sources: Array.from(new Set(data.sources || [])),
       processedSources: Array.from(new Set(data.processedSources || [])),
       lastUpdated: data.lastUpdated || new Date().toISOString()
     };
-
-    Object.entries(data.knowledge).forEach(([sku, entry]) => {
-      const existingIdx = productIndexBySku.get(sku);
-      const { categoryId, subcategoryId } = resolveCategoryIds(
-        entry.category,
-        entry.subcategory,
-        db
-      );
-
-      if (existingIdx !== undefined) {
-        const pricing = preserveSalePriceForKnowledgeUpdate(
-          products[existingIdx],
-          entry.price
-        );
-
-        products[existingIdx] = {
-          ...products[existingIdx],
-          name: entry.model || products[existingIdx].name,
-          specs: entry.specs || products[existingIdx].specs,
-          price: pricing.price,
-          catalogPrice: pricing.catalogPrice,
-          manufacturer: entry.manufacturer || products[existingIdx].manufacturer,
-          categoryId: categoryId || products[existingIdx].categoryId,
-          subcategoryId: subcategoryId || products[existingIdx].subcategoryId,
-          lastUpdated: new Date().toISOString()
-        };
-      } else {
-        const newIndex = products.length;
-        const pricing = pricingForKnowledgeCreatedProduct(entry.price);
-        products.push({
-          id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-          sku,
-          name: entry.model || sku,
-          manufacturer: entry.manufacturer || "Nieznany",
-          price: pricing.price,
-          catalogPrice: pricing.catalogPrice,
-          stock: 0,
-          specs: entry.specs || "",
-          categoryId,
-          subcategoryId,
-          isIqSynced: true,
-          lastUpdated: new Date().toISOString()
-        });
-        productIndexBySku.set(sku, newIndex);
-      }
-    });
   });
 }
 
