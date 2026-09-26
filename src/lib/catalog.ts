@@ -99,3 +99,57 @@ export function findRemovedReferencedSubcategoryIds(
   return [...removed]
 }
 
+export type CatalogCategoryDefinition = {
+  id?: string | null
+  subcategories?: Array<{ id?: string | null }>
+}
+
+export type CatalogClassificationErrorCode =
+  | "CATEGORY_NOT_FOUND"
+  | "SUBCATEGORY_WITHOUT_CATEGORY"
+  | "SUBCATEGORY_NOT_FOUND"
+
+export function validateCatalogClassification(
+  categories: CatalogCategoryDefinition[],
+  categoryId: unknown,
+  subcategoryId: unknown
+): CatalogClassificationErrorCode | null {
+  const normalizedCategoryId = normalizeCatalogReference(categoryId)
+  const normalizedSubcategoryId = normalizeCatalogReference(subcategoryId)
+
+  if (!normalizedCategoryId) {
+    return normalizedSubcategoryId ? "SUBCATEGORY_WITHOUT_CATEGORY" : null
+  }
+
+  const category = categories.find(
+    (candidate) =>
+      normalizeCatalogReference(candidate.id) === normalizedCategoryId
+  )
+  if (!category) return "CATEGORY_NOT_FOUND"
+
+  if (
+    normalizedSubcategoryId &&
+    !(category.subcategories || []).some(
+      (candidate) =>
+        normalizeCatalogReference(candidate.id) === normalizedSubcategoryId
+    )
+  ) {
+    return "SUBCATEGORY_NOT_FOUND"
+  }
+
+  return null
+}
+
+export function assertCatalogClassification(
+  categories: CatalogCategoryDefinition[],
+  categoryId: unknown,
+  subcategoryId: unknown
+) {
+  const error = validateCatalogClassification(
+    categories,
+    categoryId,
+    subcategoryId
+  )
+  if (error) throw new Error(error)
+}
+
