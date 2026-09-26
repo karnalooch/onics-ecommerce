@@ -88,7 +88,7 @@ The file-backed store is an interim persistence layer. It is suitable only for a
 The application exposes two uncached operational endpoints:
 
 - `GET /api/health/live` — process liveness only; returns HTTP 200 while the Next.js server can answer requests.
-- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required session secrets and lock settings are valid, the JSON database is readable/writable and valid, the private upload root exists and is readable/writable, and any unsealed active admin still has a bootstrap secret available. Otherwise it returns HTTP 503.
+- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required session secrets and lock settings are valid, the JSON database is readable/writable and valid, the private upload root exists and is readable/writable, any unsealed active admin still has a bootstrap secret available, and optional Stripe configuration is complete when enabled. Otherwise it returns HTTP 503.
 
 The readiness payload reports only coarse check states (`ok` / `error`) and does not expose filesystem paths, secrets or raw exception messages.
 
@@ -132,7 +132,7 @@ STRIPE_WEBHOOK_SECRET=...
 NEXT_PUBLIC_APP_URL=https://your-production-host.example
 ```
 
-Checkout sessions are linked to local order IDs. Signed webhook events update the local payment truth and reject mismatched order IDs, sessions, currencies or amounts.
+Stripe is optional, but production payment configuration is fail-closed: enabling it requires `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and an explicit HTTPS `NEXT_PUBLIC_APP_URL` containing only the application origin. Production checkout never derives success/cancel URLs from the incoming request host. Checkout sessions are linked to local order IDs. Signed webhook events update the local payment truth and reject mismatched order IDs, sessions, currencies or amounts.
 
 ## Storage files
 
