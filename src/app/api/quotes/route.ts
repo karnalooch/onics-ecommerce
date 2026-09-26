@@ -5,6 +5,10 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { mutateMockData } from "@/store/serverStore"
 import { calculateCustomerUnitPrice, roundMoney } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
+import {
+  AdminQuoteUpdateSchema,
+  assertQuoteAdminTransition,
+} from "@/lib/quoteAdmin"
 
 const QuoteSchema = z.object({
   productId: z.string().min(1),
@@ -172,13 +176,6 @@ export async function POST(req: Request) {
   }
 }
 
-const AdminQuoteUpdateSchema = z.object({
-  id: z.string().min(1),
-  status: z.enum(["QUOTED", "REJECTED"]),
-  deliveryTimeDays: z.coerce.number().int().min(1).max(365).nullable().optional(),
-  additionalDiscount: z.coerce.number().min(0).max(100).default(0),
-})
-
 export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
@@ -203,6 +200,7 @@ export async function PUT(req: Request) {
       if (quoteIndex === -1) throw new Error("QUOTE_NOT_FOUND")
 
       const quote = orders[quoteIndex]
+      assertQuoteAdminTransition(quote.status)
       let totalPriceFinal = Number(quote.totalPriceFinal || 0)
 
       if (parsed.data.status === "QUOTED") {
@@ -266,6 +264,12 @@ export async function PUT(req: Request) {
       return NextResponse.json(
         { error: "Nie znaleziono zapytania." },
         { status: 404 }
+      )
+    }
+    if (error instanceof Error && error.message === "QUOTE_NOT_ACTIONABLE") {
+      return NextResponse.json(
+        { error: "Zapytanie zostało już rozpatrzone." },
+        { status: 409 }
       )
     }
 
