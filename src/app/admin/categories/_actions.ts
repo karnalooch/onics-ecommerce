@@ -5,6 +5,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
 import { mutateMockData } from "@/store/serverStore";
+import {
+  findRemovedReferencedSubcategoryIds,
+  hasCategoryProductReference,
+  type CatalogCategoryReference,
+} from "@/lib/catalog";
 
 const SubcategorySchema = z.object({
   id: z.string(),
@@ -75,6 +80,19 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
       const idx = categories.findIndex((category) => category.id === validated.data.id)
       if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
 
+      if (validated.data.subcategories) {
+        const removedReferencedSubcategoryIds =
+          findRemovedReferencedSubcategoryIds(
+            db.products as CatalogCategoryReference[],
+            validated.data.id,
+            validated.data.subcategories.map((subcategory) => subcategory.id)
+          )
+
+        if (removedReferencedSubcategoryIds.length > 0) {
+          throw new Error("CATEGORY_SUBCATEGORY_IN_USE")
+        }
+      }
+
       categories[idx] = {
         ...categories[idx],
         ...validated.data,
@@ -90,6 +108,16 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
     }
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_SUBCATEGORY_IN_USE"
+    ) {
+      return {
+        success: false,
+        error:
+          "Nie można usunąć podkategorii przypisanej do produktu. Najpierw przenieś produkty."
+      };
+    }
     return { success: false, error: "Błąd podczas aktualizacji" };
   }
 }
@@ -103,6 +131,14 @@ export async function deleteCategoryAction(id: string): Promise<ActionState> {
       const categories = db.categories as CategoryRecord[]
       const idx = categories.findIndex((category) => category.id === id)
       if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
+      if (
+        hasCategoryProductReference(
+          db.products as CatalogCategoryReference[],
+          id
+        )
+      ) {
+        throw new Error("CATEGORY_IN_USE")
+      }
       categories.splice(idx, 1)
     })
 
@@ -111,6 +147,13 @@ export async function deleteCategoryAction(id: string): Promise<ActionState> {
   } catch (error) {
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
+    }
+    if (error instanceof Error && error.message === "CATEGORY_IN_USE") {
+      return {
+        success: false,
+        error:
+          "Nie można usunąć kategorii przypisanej do produktów. Najpierw przenieś produkty."
+      };
     }
     return { success: false, error: "Błąd podczas usuwania" };
   }
