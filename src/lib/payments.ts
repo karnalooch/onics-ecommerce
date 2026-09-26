@@ -151,6 +151,44 @@ export function nextPaymentStatus(
   currentStatus: string | null | undefined,
   incomingStatus: "PAID" | "FAILED" | "EXPIRED"
 ) {
+  if (currentStatus === "REFUNDED") return "REFUNDED"
   if (currentStatus === "PAID") return "PAID"
   return incomingStatus
+}
+
+
+export type StripeRefundSnapshot = {
+  orderId?: string | null
+  refundId: string
+  paymentIntentId?: string | null
+  amount: number
+  currency: string
+  status: string | null
+}
+
+export function verifyStripeRefund(
+  order: CheckoutPaymentOrder & { stripePaymentIntentId?: string | null },
+  refund: StripeRefundSnapshot
+): PaymentVerificationResult {
+  if (refund.orderId && refund.orderId !== order.id) {
+    return { ok: false, reason: "Stripe refund order_id nie pasuje do zamówienia." }
+  }
+
+  if (
+    order.stripePaymentIntentId &&
+    refund.paymentIntentId &&
+    order.stripePaymentIntentId !== refund.paymentIntentId
+  ) {
+    return { ok: false, reason: "Refund Stripe nie pasuje do PaymentIntent zamówienia." }
+  }
+
+  if (refund.currency.toLowerCase() !== "pln") {
+    return { ok: false, reason: "Nieprawidłowa waluta refundu Stripe." }
+  }
+
+  if (refund.amount !== moneyToMinorUnits(order.totalPriceFinal)) {
+    return { ok: false, reason: "Kwota refundu Stripe nie pasuje do wartości zamówienia." }
+  }
+
+  return { ok: true }
 }
