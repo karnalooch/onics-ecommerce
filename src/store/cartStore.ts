@@ -5,7 +5,7 @@ export interface CartItem {
   id: string; // Unikalne ID produktu
   sku: string;
   name: string;
-  price: number; // Cena netto w B2B / brutto w B2C
+  price: number; // Ostatnia cena wyświetlana; transakcje i preview przeliczają ją na serwerze
   quantity: number;
 }
 
@@ -14,6 +14,7 @@ interface CartStore {
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
+  replaceItems: (items: CartItem[]) => void;
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
@@ -51,6 +52,8 @@ export const useCartStore = create<CartStore>()(
           items: get().items.map((i) => (i.id === id ? { ...i, quantity } : i)),
         });
       },
+
+      replaceItems: (items) => set({ items }),
       
       clearCart: () => set({ items: [] }),
       

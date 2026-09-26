@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
+import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart";
 
 type CheckoutPaymentMethod = {
   id: string;
@@ -68,7 +69,14 @@ const ORDER_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
 
 export default function CartPage() {
   const { data: session } = useSession();
-  const { items, addItem, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
+  const {
+    items,
+    addItem,
+    removeItem,
+    updateQuantity,
+    getTotalPrice,
+    clearCart,
+  } = useCartStore();
   const [mounted, setMounted] = useState(false);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<CheckoutPaymentMethod[]>([]);
@@ -153,6 +161,16 @@ export default function CartPage() {
   const isAuthenticated = Boolean(session?.user);
   const isB2B = transactionAccess === "allowed";
   const requiresPricing = cartRequiresPricing(items);
+  const sessionIdentity = session?.user as
+    | { id?: string; email?: string | null }
+    | undefined;
+  const cartIdentityKey =
+    sessionIdentity?.id || sessionIdentity?.email || "anonymous";
+  const { refreshingCart } = useAuthoritativeCart({
+    enabled: mounted && isB2B,
+    identityKey: cartIdentityKey,
+  });
+
   const availablePaymentMethods = paymentControlEnabled
     ? paymentMethods.filter((method) => method.available)
     : [];
@@ -249,6 +267,11 @@ export default function CartPage() {
   };
 
   const handlePaymentCheckout = async (method: CheckoutPaymentMethod) => {
+    if (refreshingCart) {
+      toast.info("Odświeżam bieżące ceny koszyka. Spróbuj ponownie za chwilę.");
+      return;
+    }
+
     if (requiresPricing) {
       toast.error(
         "Koszyk zawiera pozycje bez aktywnej ceny. Najpierw wyślij zapytanie cenowe."
@@ -320,6 +343,11 @@ export default function CartPage() {
   };
 
   const handleAction = async (action: "PDF" | "INQUIRY" | "ORDER") => {
+    if (refreshingCart) {
+      toast.info("Odświeżam bieżące ceny koszyka. Spróbuj ponownie za chwilę.");
+      return;
+    }
+
     if (action !== "INQUIRY" && requiresPricing) {
       toast.error(
         "Pozycje bez aktywnej ceny można teraz wysłać jako zapytanie. Oferta PDF i zamówienie będą dostępne po wycenie."
@@ -665,9 +693,11 @@ export default function CartPage() {
                        : `${getTotalPrice().toFixed(2)} PLN`}
                    </div>
                    <div className="text-xs text-muted-foreground mt-1">
-                     {requiresPricing
-                       ? "Pozycje bez aktywnej ceny nie są wliczone do sumy."
-                       : "(bez VAT)"}
+                     {refreshingCart
+                       ? "Odświeżanie bieżących cen z serwera..."
+                       : requiresPricing
+                         ? "Pozycje bez aktywnej ceny nie są wliczone do sumy."
+                         : "(bez VAT)"}
                    </div>
                 </div>
               </div>
@@ -689,7 +719,7 @@ export default function CartPage() {
 
                   <Button 
                     onClick={() => handleAction("PDF")} 
-                    disabled={submitting !== null || requiresPricing}
+                    disabled={submitting !== null || requiresPricing || refreshingCart}
                     variant="outline"
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-950 dark:border-gray-800"
                   >
@@ -699,7 +729,7 @@ export default function CartPage() {
                   
                   <Button 
                     onClick={() => handleAction("INQUIRY")} 
-                    disabled={submitting !== null}
+                    disabled={submitting !== null || refreshingCart}
                     variant="outline"
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-white border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:bg-gray-950 dark:border-gray-800"
                   >
@@ -709,7 +739,7 @@ export default function CartPage() {
 
                   <Button 
                     onClick={() => handleAction("ORDER")} 
-                    disabled={submitting !== null || requiresPricing}
+                    disabled={submitting !== null || requiresPricing || refreshingCart}
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-green-600 hover:bg-green-700 text-white shadow-md border-none"
                   >
                     <ShoppingBag className="w-5 h-5" />
@@ -720,7 +750,7 @@ export default function CartPage() {
                     <Button
                       key={method.id}
                       onClick={() => handlePaymentCheckout(method)}
-                      disabled={submitting !== null || requiresPricing}
+                      disabled={submitting !== null || requiresPricing || refreshingCart}
                       className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-slate-950 hover:bg-slate-800 text-white shadow-md border-none"
                     >
                       {submitting === method.id ? (

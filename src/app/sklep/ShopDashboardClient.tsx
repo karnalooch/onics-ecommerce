@@ -10,9 +10,15 @@ interface IShopDashboardClientProps {
   initialProducts: any[];
   categories: any[];
   role: string;
+  cartIdentityKey: string;
 }
 
-export function ShopDashboardClient({ initialProducts, categories, role }: IShopDashboardClientProps) {
+export function ShopDashboardClient({
+  initialProducts,
+  categories,
+  role,
+  cartIdentityKey,
+}: IShopDashboardClientProps) {
   const [search, setSearch] = useState("");
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
   const isB2B = role === "BIZ" || role === "ADMIN";
@@ -63,7 +69,7 @@ export function ShopDashboardClient({ initialProducts, categories, role }: IShop
 
        {/* Right: Smart Terminal (Cart) */}
        <div className="lg:col-span-3">
-          <MiniCart isB2B={isB2B} />
+          <MiniCart isB2B={isB2B} identityKey={cartIdentityKey} />
        </div>
     </div>
   );

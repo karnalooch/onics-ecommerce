@@ -70,6 +70,7 @@ export default async function SklepPage() {
          initialProducts={storefront.products}
          categories={categories}
          role={user.role}
+         cartIdentityKey={sessionUser.id || sessionUser.email || "anonymous"}
        />
     </div>
   );

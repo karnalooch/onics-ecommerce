@@ -1,17 +1,28 @@
 // src/app/sklep/_components/MiniCart.tsx
 "use client";
 
-import { ShoppingBag, X, ArrowRight, Wallet } from "lucide-react";
+import { ShoppingBag, X, ArrowRight } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
+import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart";
 
-export function MiniCart({ isB2B }: { isB2B: boolean }) {
+export function MiniCart({
+  isB2B,
+  identityKey,
+}: {
+  isB2B: boolean;
+  identityKey: string;
+}) {
   const router = useRouter();
   const { items: cart, removeItem, getTotalItems, getTotalPrice } = useCartStore();
   const [mounted, setMounted] = useState(false);
+  const { refreshingCart } = useAuthoritativeCart({
+    enabled: mounted && isB2B,
+    identityKey,
+  });
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -87,9 +98,14 @@ export function MiniCart({ isB2B }: { isB2B: boolean }) {
 
                <Button 
                  onClick={() => router.push('/koszyk')}
+                 disabled={refreshingCart}
                  className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-[10px] gap-3 shadow-xl"
                >
-                 {requiresPricing ? "Przejdź do zapytania" : "Finalizuj Wybór"} <ArrowRight className="w-4 h-4" />
+                 {refreshingCart
+                   ? "Odświeżanie cen..."
+                   : requiresPricing
+                     ? "Przejdź do zapytania"
+                     : "Finalizuj Wybór"} <ArrowRight className="w-4 h-4" />
                </Button>
             </div>
           </>
