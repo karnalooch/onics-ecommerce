@@ -52,10 +52,12 @@ export function validateStripeOrderStatusTransition(
   stripeCheckoutSessionId: string | null | undefined,
   paymentStatus: string | null | undefined,
   currentStatus: OrderStatus | string | null | undefined,
-  nextStatus: OrderStatus
+  nextStatus: OrderStatus,
+  refundStatus?: string | null
 ):
   | "ok"
   | "payment-required"
+  | "refund-in-progress"
   | "stripe-cancel-required"
   | "invalid-stripe-status"
   | "invalid-transition" {
@@ -75,6 +77,13 @@ export function validateStripeOrderStatusTransition(
     paymentStatus !== "PAID"
   ) {
     return "payment-required"
+  }
+
+  if (
+    (nextStatus === "CONFIRMED" || nextStatus === "SHIPPED") &&
+    (refundStatus === "pending" || refundStatus === "requires_action")
+  ) {
+    return "refund-in-progress"
   }
 
   if (
