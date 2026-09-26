@@ -7,9 +7,11 @@ import { PUT as putOrder } from "@/app/api/orders/route"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
   PAYMENT_ADMIN_ACTIONS,
+  listAvailablePaymentAdminActions,
   resolvePaymentAdminActionTarget,
 } from "@/lib/paymentAdminActions"
 import {
+  describeOrderPaymentLifecycle,
   resolveOrderPaymentProvider,
   type PaymentProviderOrderIdentity,
 } from "@/lib/paymentProviders"
@@ -34,6 +36,45 @@ function forwardedRequest(
     headers: request.headers,
     body: JSON.stringify(body),
   })
+}
+
+async function withFreshPaymentOrder(
+  response: Response,
+  orderId: string
+) {
+  const payload = await response.json().catch(() => null)
+
+  if (!response.ok && response.status !== 202) {
+    return NextResponse.json(
+      payload ?? { error: "Operacja płatnicza nie powiodła się." },
+      { status: response.status }
+    )
+  }
+
+  const snapshot = initializeMockData()
+  const order = (snapshot.orders as IdentifiablePaymentOrder[]).find(
+    (candidate) => candidate.id === orderId
+  )
+  if (!order) {
+    return NextResponse.json(payload ?? {}, { status: response.status })
+  }
+
+  const body =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? payload
+      : { result: payload }
+
+  return NextResponse.json(
+    {
+      ...body,
+      order: {
+        ...order,
+        paymentLifecycle: describeOrderPaymentLifecycle(order),
+        paymentAdminActions: listAvailablePaymentAdminActions(order),
+      },
+    },
+    { status: response.status }
+  )
 }
 
 export async function POST(req: Request) {
@@ -67,36 +108,55 @@ export async function POST(req: Request) {
     )
   }
 
+  const availableActions = listAvailablePaymentAdminActions(order)
+  if (!availableActions.includes(parsed.data.action)) {
+    return NextResponse.json(
+      {
+        error:
+          "Ta operacja płatnicza nie jest dostępna dla aktualnego stanu zamówienia.",
+      },
+      { status: 409 }
+    )
+  }
+
   try {
     const target = resolvePaymentAdminActionTarget(provider, parsed.data.action)
 
+    let response: Response
+
     switch (target.handler) {
       case "STRIPE_CANCEL":
-        return postStripeCancel(
+        response = await postStripeCancel(
           forwardedRequest(req, "POST", { id: parsed.data.id })
         )
+        break
       case "STRIPE_RETURN":
-        return postStripeReturn(
+        response = await postStripeReturn(
           forwardedRequest(req, "POST", {
             id: parsed.data.id,
             action: target.action,
           })
         )
+        break
       case "BANK_TRANSFER":
-        return postBankTransferAction(
+        response = await postBankTransferAction(
           forwardedRequest(req, "POST", {
             id: parsed.data.id,
             action: target.action,
           })
         )
+        break
       case "ORDER_CANCEL":
-        return putOrder(
+        response = await putOrder(
           forwardedRequest(req, "PUT", {
             id: parsed.data.id,
             status: "CANCELLED",
           })
         )
+        break
     }
+
+    return withFreshPaymentOrder(response, parsed.data.id)
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
     if (

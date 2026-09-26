@@ -17,6 +17,7 @@ import {
   type InventoryProduct,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
+import { listAvailablePaymentAdminActions } from "@/lib/paymentAdminActions"
 import { describeOrderPaymentLifecycle } from "@/lib/paymentProviders"
 
 export const dynamic = "force-dynamic"
@@ -88,11 +89,21 @@ type StoredOrder = InventoryReservationOrder & {
   [key: string]: unknown
 }
 
-function withPaymentLifecycle(order: StoredOrder) {
-  return {
+function withPaymentLifecycle(
+  order: StoredOrder,
+  includeAdminActions = false
+) {
+  const described = {
     ...order,
     paymentLifecycle: describeOrderPaymentLifecycle(order),
   }
+
+  return includeAdminActions
+    ? {
+        ...described,
+        paymentAdminActions: listAvailablePaymentAdminActions(order),
+      }
+    : described
 }
 
 export async function GET() {
@@ -104,7 +115,9 @@ export async function GET() {
   const orderStore = orders as StoredOrder[]
 
   if (authCheck.currentRole === "ADMIN") {
-    return NextResponse.json(orderStore.map(withPaymentLifecycle))
+    return NextResponse.json(
+      orderStore.map((order) => withPaymentLifecycle(order, true))
+    )
   }
 
   const ownOrders = orderStore.filter((order) =>
@@ -113,7 +126,9 @@ export async function GET() {
       : false
   )
 
-  return NextResponse.json(ownOrders.map(withPaymentLifecycle))
+  return NextResponse.json(
+    ownOrders.map((order) => withPaymentLifecycle(order))
+  )
 }
 
 export async function POST(req: Request) {
@@ -331,7 +346,7 @@ export async function PUT(req: Request) {
       return nextOrder
     })
 
-    return NextResponse.json(withPaymentLifecycle(updatedOrder))
+    return NextResponse.json(withPaymentLifecycle(updatedOrder, true))
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 })

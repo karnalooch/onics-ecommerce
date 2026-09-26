@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   PAYMENT_ADMIN_ACTIONS,
+  listAvailablePaymentAdminActions,
   requiredPaymentAdminCapabilities,
   resolvePaymentAdminActionTarget,
 } from "../paymentAdminActions"
@@ -73,4 +74,88 @@ describe("payment admin action dispatcher", () => {
       "manualSettlement",
     ])
   })
+
+  it("derives pending manual-payment actions from order state", () => {
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "BANK_TRANSFER",
+        status: "PENDING_VERIFICATION",
+        paymentStatus: "PENDING",
+      })
+    ).toEqual(["CANCEL", "CONFIRM_PAYMENT"])
+  })
+
+  it("switches a paid manual order from refund to the RMA lifecycle", () => {
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "BANK_TRANSFER",
+        status: "CONFIRMED",
+        paymentStatus: "PAID",
+      })
+    ).toEqual(["CONFIRM_REFUND"])
+
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "BANK_TRANSFER",
+        status: "SHIPPED",
+        paymentStatus: "PAID",
+      })
+    ).toEqual(["REQUEST_RETURN"])
+
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "BANK_TRANSFER",
+        status: "SHIPPED",
+        paymentStatus: "PAID",
+        returnStatus: "REQUESTED",
+      })
+    ).toEqual(["RECEIVE_RETURN"])
+
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "BANK_TRANSFER",
+        status: "SHIPPED",
+        paymentStatus: "PAID",
+        returnStatus: "RECEIVED",
+      })
+    ).toEqual(["CONFIRM_RETURN_REFUND"])
+  })
+
+  it("keeps automated refund/RMA retry states available without exposing manual actions", () => {
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "STRIPE",
+        status: "PENDING_VERIFICATION",
+        paymentStatus: "PENDING",
+      })
+    ).toEqual(["CANCEL"])
+
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "STRIPE",
+        status: "SHIPPED",
+        paymentStatus: "PAID",
+        returnStatus: "REFUND_PENDING",
+        refundStatus: "pending",
+      })
+    ).toEqual(["RECEIVE_RETURN"])
+  })
+
+  it("returns no destructive actions for terminal or unknown payment orders", () => {
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "BANK_TRANSFER",
+        status: "CANCELLED",
+        paymentStatus: "PENDING",
+      })
+    ).toEqual([])
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "UNKNOWN",
+        status: "PENDING_VERIFICATION",
+        paymentStatus: "PENDING",
+      })
+    ).toEqual([])
+  })
+
 })
