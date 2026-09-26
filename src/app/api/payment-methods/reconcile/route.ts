@@ -122,7 +122,7 @@ export async function POST(req: Request) {
       !order.stripeCheckoutSessionId
     ) {
       return NextResponse.json(
-        { error: "Zamówienie nie jest powiązane z obsługiwaną synchronizacją Stripe." },
+        { error: "Zamówienie nie jest powiązane z Stripe." },
         { status: 409 }
       )
     }
