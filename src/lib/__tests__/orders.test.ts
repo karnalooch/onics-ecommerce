@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   canReplaceOrderItems,
   resolveEstimatedDeliveryDays,
+  validateStripeOrderStatusTransition,
 } from "@/lib/orders"
 
 describe("order delivery estimate updates", () => {
@@ -70,5 +71,43 @@ describe("Stripe-linked order item updates", () => {
         currentItems
       )
     ).toBe(false)
+  })
+})
+
+
+describe("Stripe-linked order status transitions", () => {
+  it("requires payment before fulfillment states", () => {
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PENDING", "CONFIRMED")
+    ).toBe("payment-required")
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "FAILED", "SHIPPED")
+    ).toBe("payment-required")
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PAID", "CONFIRMED")
+    ).toBe("ok")
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PAID", "SHIPPED")
+    ).toBe("ok")
+  })
+
+  it("does not fake Stripe cancellation through a local status change", () => {
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PENDING", "CANCELLED")
+    ).toBe("stripe-cancel-required")
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PAID", "CANCELLED")
+    ).toBe("stripe-cancel-required")
+  })
+
+  it("does not downgrade Stripe orders into inquiry status", () => {
+    expect(
+      validateStripeOrderStatusTransition("cs_test", "PENDING", "INQUIRY")
+    ).toBe("invalid-stripe-status")
+  })
+
+  it("leaves non-Stripe order status semantics unchanged", () => {
+    expect(validateStripeOrderStatusTransition(null, null, "CANCELLED")).toBe("ok")
+    expect(validateStripeOrderStatusTransition(null, null, "CONFIRMED")).toBe("ok")
   })
 })
