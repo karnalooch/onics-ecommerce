@@ -93,6 +93,10 @@ describe("payment method management", () => {
       appUrl: "http://shop.example.com",
       bankTransferRecipient: "ONICS Sp. z o.o.",
       bankTransferAccountNumber: "12345678901234567890123456",
+      p24MerchantId: "123456",
+      p24PosId: "123456",
+      p24ApiKey: "p24_secret",
+      p24Crc: "p24_crc",
     })
 
     expect(providerStates.find((method) => method.id === "STRIPE")).toMatchObject({
@@ -173,10 +177,11 @@ describe("payment method management", () => {
     ).toBe(true)
   })
 
-  it("keeps Przelewy24 sandbox-only until its full lifecycle is implemented", () => {
+  it("requires a verified public callback origin before Przelewy24 can be enabled in production", () => {
     expect(
       przelewy24OperationalStatus({
-        nodeEnv: "test",
+        nodeEnv: "production",
+        appUrl: "https://shop.example.com",
         p24MerchantId: "123456",
         p24PosId: "123456",
         p24ApiKey: "api-key",
@@ -184,13 +189,14 @@ describe("payment method management", () => {
       })
     ).toEqual({
       configured: true,
-      webhookConfigured: false,
+      webhookConfigured: true,
       configurationIssues: [],
     })
 
     expect(
       przelewy24OperationalStatus({
         nodeEnv: "production",
+        appUrl: "http://shop.example.com",
         p24MerchantId: "123456",
         p24PosId: "123456",
         p24ApiKey: "api-key",
@@ -199,7 +205,7 @@ describe("payment method management", () => {
     ).toEqual({
       configured: false,
       webhookConfigured: false,
-      configurationIssues: ["PROVIDER_NOT_PRODUCTION_READY"],
+      configurationIssues: ["PUBLIC_APP_URL_INVALID"],
     })
   })
 
@@ -227,6 +233,10 @@ describe("payment method management", () => {
       appUrl: "https://shop.example.com",
       bankTransferRecipient: "ONICS Sp. z o.o.",
       bankTransferAccountNumber: "12345678901234567890123456",
+      p24MerchantId: "123456",
+      p24PosId: "123456",
+      p24ApiKey: "p24_secret",
+      p24Crc: "p24_crc",
     })
 
     expect(methods.map((method) => method.id)).toEqual([
@@ -277,7 +287,31 @@ describe("payment method management", () => {
     })
 
     expect(JSON.stringify(methods)).not.toContain("sk_live_secret")
+    expect(methods[2]).toMatchObject({
+      id: "PRZELEWY24",
+      name: "Przelewy24",
+      enabled: false,
+      configured: true,
+      webhookConfigured: true,
+      state: "disabled",
+      configurationIssues: [],
+      displayOrder: 30,
+      kind: "REDIRECT",
+      capabilities: {
+        checkout: true,
+        webhook: true,
+        cancel: false,
+        refund: false,
+        reconcile: false,
+        rma: false,
+        manualSettlement: false,
+      },
+      available: false,
+    })
+
     expect(JSON.stringify(methods)).not.toContain("whsec_secret")
+    expect(JSON.stringify(methods)).not.toContain("p24_secret")
+    expect(JSON.stringify(methods)).not.toContain("p24_crc")
     expect(JSON.stringify(methods)).not.toContain(
       "12345678901234567890123456"
     )
