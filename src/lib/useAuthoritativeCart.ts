@@ -2,47 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { useCartStore, type CartItem } from "@/store/cartStore"
-import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
+import { useCartStore } from "@/store/cartStore"
+import { validateAuthoritativeCartPreview } from "@/lib/cartPreviewContract"
 
 export type CartStockByProduct = Partial<Record<string, number>>
-
-type AuthoritativeCartPreviewItem = {
-  cartItem: CartItem
-  availableStock: number
-}
-
-function parsePreviewItem(value: unknown): AuthoritativeCartPreviewItem {
-  if (!value || typeof value !== "object") {
-    throw new Error("Serwer zwrócił nieprawidłowy podgląd koszyka.")
-  }
-
-  const item = value as Record<string, unknown>
-  const price = Number(item.price)
-  const quantity = Number(item.quantity)
-  const availableStock = Number(item.availableStock)
-
-  if (!Number.isFinite(price) || price < 0) {
-    throw new Error("Serwer zwrócił nieprawidłową cenę koszyka.")
-  }
-  if (!Number.isInteger(quantity) || quantity < 1 || quantity > CART_ITEM_QUANTITY_MAX) {
-    throw new Error("Serwer zwrócił nieprawidłową ilość produktu.")
-  }
-  if (!Number.isInteger(availableStock) || availableStock < 0) {
-    throw new Error("Serwer zwrócił nieprawidłowy stan magazynowy.")
-  }
-
-  return {
-    cartItem: {
-      id: String(item.id),
-      sku: String(item.sku),
-      name: String(item.name),
-      price,
-      quantity,
-    },
-    availableStock,
-  }
-}
 
 export function useAuthoritativeCart(options: {
   enabled: boolean
@@ -86,16 +49,16 @@ export function useAuthoritativeCart(options: {
     setCartPreviewFailed(false)
     setRefreshingCart(true)
 
+    const requestedItems = items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+    }))
+
     fetch("/api/cart/preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({
-        items: items.map((item) => ({
-          id: item.id,
-          quantity: item.quantity,
-        })),
-      }),
+      body: JSON.stringify({ items: requestedItems }),
     })
       .then(async (response) => {
         const data = await response.json().catch(() => null)
@@ -104,12 +67,10 @@ export function useAuthoritativeCart(options: {
             data?.error || "Nie udało się odświeżyć bieżących danych koszyka."
           )
         }
-        if (!Array.isArray(data?.items)) {
-          throw new Error("Serwer zwrócił nieprawidłowy podgląd koszyka.")
-        }
-
-        const previewItems: AuthoritativeCartPreviewItem[] =
-          (data.items as unknown[]).map(parsePreviewItem)
+        const previewItems = validateAuthoritativeCartPreview(
+          requestedItems,
+          data?.items
+        )
 
         if (cancelled) return
 
