@@ -19,6 +19,7 @@ export default function AdminOrdersPage() {
   const [editableItems, setEditableItems] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [returning, setReturning] = useState(false);
   const stripeAmountsLocked = Boolean(validatingOrder?.stripeCheckoutSessionId);
   const stripeRefundInProgress =
     validatingOrder?.refundStatus === "pending" ||
@@ -26,6 +27,13 @@ export default function AdminOrdersPage() {
   const stripeFulfillmentLocked =
     Boolean(validatingOrder?.stripeCheckoutSessionId) &&
     (validatingOrder?.paymentStatus !== "PAID" || stripeRefundInProgress);
+  const orderCanAdvance =
+    validatingOrder?.status === "PENDING_VERIFICATION" ||
+    validatingOrder?.status === "CONFIRMED";
+  const stripeReturnEligible =
+    Boolean(validatingOrder?.stripeCheckoutSessionId) &&
+    (validatingOrder?.status === "SHIPPED" ||
+      validatingOrder?.status === "RETURNED");
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -113,7 +121,16 @@ export default function AdminOrdersPage() {
     }
   }
 
-  const confirmOrder = async () => {
+  const advanceOrder = async () => {
+    const nextStatus =
+      validatingOrder?.status === "PENDING_VERIFICATION"
+        ? "CONFIRMED"
+        : validatingOrder?.status === "CONFIRMED"
+          ? "SHIPPED"
+          : null;
+
+    if (!nextStatus) return;
+
     setSaving(true);
     try {
       const res = await fetch("/api/orders", {
@@ -121,7 +138,7 @@ export default function AdminOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: validatingOrder.id,
-          status: "CONFIRMED",
+          status: nextStatus,
           estimatedDeliveryDays: parseInt(deliveryDays),
           items: editableItems
         })
@@ -130,21 +147,77 @@ export default function AdminOrdersPage() {
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         throw new Error(
-          data?.error || "Nie udało się zapisać weryfikacji zamówienia."
+          data?.error || "Nie udało się zaktualizować statusu zamówienia."
         );
       }
 
-      toast.success("LOG: Zamówienie zweryfikowane. Alert wysłany do klienta.");
-      setValidatingOrder(null);
-      fetchOrders();
+      toast.success(
+        nextStatus === "CONFIRMED"
+          ? "LOG: Zamówienie zweryfikowane i przekazane do logistyki."
+          : "LOG: Zamówienie oznaczone jako wysłane."
+      );
+      setValidatingOrder(data);
+      await fetchOrders();
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "FAULT: Błąd zapisu weryfikacji."
+          : "FAULT: Błąd aktualizacji zamówienia."
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  const handleReturnAction = async (action: "REQUEST" | "RECEIVE") => {
+    if (!validatingOrder?.id || !stripeReturnEligible) return;
+
+    const confirmation =
+      action === "REQUEST"
+        ? "Otworzyć RMA dla tego wysłanego zamówienia?"
+        : "Potwierdzić fizyczny odbiór zwrotu? Operacja może uruchomić refund Stripe, a po jego powodzeniu zwrócić towar na magazyn.";
+
+    if (!window.confirm(confirmation)) return;
+
+    setReturning(true);
+    try {
+      const res = await fetch("/api/orders/return", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: validatingOrder.id,
+          action,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok && res.status !== 202) {
+        throw new Error(data?.error || "Nie udało się obsłużyć RMA.");
+      }
+
+      if (res.status === 202) {
+        toast.success("Refund Stripe jest w toku. RMA pozostaje otwarte.");
+      } else if (data?.returnStatus === "COMPLETED") {
+        toast.success("RMA zakończone: refund potwierdzony, towar zwrócony na magazyn.");
+      } else if (action === "REQUEST") {
+        toast.success("RMA otwarte. Oczekuje na fizyczny zwrot towaru.");
+      } else {
+        toast.success("Odbiór zwrotu zapisany. Finalizacja refundu rozpoczęta.");
+      }
+
+      setValidatingOrder((current: any) => ({
+        ...current,
+        ...(data ?? {}),
+      }));
+      await fetchOrders();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "FAULT: Błąd obsługi RMA."
+      );
+    } finally {
+      setReturning(false);
     }
   }
 
@@ -252,9 +325,13 @@ export default function AdminOrdersPage() {
                                    <span className="text-[15px] font-black text-slate-950 tabular-nums italic tracking-tighter">{Number(o.totalPriceFinal).toFixed(2)} <span className="text-[8px] NOT-italic text-slate-400 ml-1">PLN</span></span>
                                 </td>
                                 <td className="px-6 py-6">
-                                   <div className="flex items-center justify-center gap-1">
+                                   <div className="flex flex-col items-center gap-2">
+                                     <div className="flex items-center justify-center gap-1">
                                       {[1, 2, 3].map(step => {
-                                         const isActive = (step === 1) || (step === 2 && o.status === 'CONFIRMED') || (step === 3 && o.status === 'SHIPPED');
+                                         const isActive =
+                                            step === 1 ||
+                                            (step === 2 && ["CONFIRMED", "SHIPPED", "RETURNED"].includes(o.status)) ||
+                                            (step === 3 && ["SHIPPED", "RETURNED"].includes(o.status));
                                          return (
                                             <div key={step} className="flex items-center gap-1">
                                                <div className={`h-2 w-10 ${isActive ? 'bg-primary' : 'bg-slate-100'} skew-x-[-20deg]`} />
@@ -262,6 +339,12 @@ export default function AdminOrdersPage() {
                                             </div>
                                          )
                                       })}
+                                     </div>
+                                     {(o.returnStatus || o.status === "RETURNED") && (
+                                       <span className="text-[8px] font-black uppercase tracking-widest text-amber-600">
+                                         RMA_{o.returnStatus || "COMPLETED"}
+                                       </span>
+                                     )}
                                    </div>
                                 </td>
                                 <td className="pr-6 py-6 text-right">
@@ -273,7 +356,17 @@ export default function AdminOrdersPage() {
                                             : "bg-slate-50 text-slate-400 border border-slate-100"
                                       }`}
                                    >
-                                      {o.status === "PENDING_VERIFICATION" ? "VERIFY_NODE" : "VIEW_LOGS"}
+                                      {o.status === "PENDING_VERIFICATION"
+                                        ? "VERIFY_NODE"
+                                        : o.status === "CONFIRMED"
+                                          ? "READY_TO_SHIP"
+                                          : o.status === "SHIPPED"
+                                            ? o.returnStatus
+                                              ? `RMA_${o.returnStatus}`
+                                              : "RMA / LOGS"
+                                            : o.status === "RETURNED"
+                                              ? "RMA_CLOSED"
+                                              : "VIEW_LOGS"}
                                    </button>
                                 </td>
                              </tr>
@@ -408,7 +501,7 @@ export default function AdminOrdersPage() {
                     </div>
                  </div>
 
-                 {stripeFulfillmentLocked && (
+                 {orderCanAdvance && stripeFulfillmentLocked && (
                     <div className="px-6 py-4 bg-amber-50 border-t border-amber-200">
                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">
                           {stripeRefundInProgress
@@ -417,18 +510,20 @@ export default function AdminOrdersPage() {
                        </p>
                     </div>
                  )}
-                 <div className="p-6 bg-slate-950 flex items-center gap-4">
+                 <div className="p-6 bg-slate-950 flex flex-wrap items-center gap-4">
                     {validatingOrder?.stripeCheckoutSessionId &&
                      validatingOrder?.status !== "CANCELLED" &&
-                     validatingOrder?.status !== "SHIPPED" && (
+                     validatingOrder?.status !== "SHIPPED" &&
+                     validatingOrder?.status !== "RETURNED" && (
                        <button
                          onClick={cancelStripeOrder}
                          disabled={
                            cancelling ||
+                           returning ||
                            validatingOrder?.refundStatus === "pending" ||
                            validatingOrder?.refundStatus === "requires_action"
                          }
-                         className="flex-1 h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                         className="flex-1 min-w-[180px] h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
                        >
                          {cancelling
                            ? "ANULOWANIE..."
@@ -440,30 +535,69 @@ export default function AdminOrdersPage() {
                                : "ANULUJ_PŁATNOŚĆ"}
                        </button>
                     )}
+
+                    {stripeReturnEligible &&
+                     validatingOrder?.status === "SHIPPED" &&
+                     validatingOrder?.returnStatus !== "COMPLETED" && (
+                       <button
+                         onClick={() =>
+                           handleReturnAction(
+                             validatingOrder?.returnStatus
+                               ? "RECEIVE"
+                               : "REQUEST"
+                           )
+                         }
+                         disabled={returning || cancelling}
+                         className="flex-1 min-w-[180px] h-14 border-2 border-amber-400/50 text-amber-300 font-black text-[10px] uppercase tracking-widest hover:border-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                       >
+                         {returning
+                           ? "RMA_PROCESSING..."
+                           : !validatingOrder?.returnStatus
+                             ? "OTWÓRZ_RMA"
+                             : validatingOrder?.returnStatus === "REQUESTED"
+                               ? "TOWAR_ODEBRANY_REFUND"
+                               : validatingOrder?.returnStatus === "RECEIVED"
+                                 ? "FINALIZUJ_REFUND"
+                                 : "SPRAWDŹ_REFUND"}
+                       </button>
+                    )}
+
+                    {validatingOrder?.status === "RETURNED" &&
+                     validatingOrder?.returnStatus === "COMPLETED" && (
+                       <div className="flex-1 min-w-[180px] h-14 border-2 border-green-400/40 text-green-300 font-black text-[10px] uppercase tracking-widest flex items-center justify-center">
+                         RMA_ZAKOŃCZONE
+                       </div>
+                    )}
+
                     <button 
                        onClick={() => setValidatingOrder(null)}
-                       className="flex-1 h-14 border-2 border-white/20 text-white font-black text-[11px] uppercase tracking-widest hover:border-white transition-all active-press italic"
+                       className="flex-1 min-w-[140px] h-14 border-2 border-white/20 text-white font-black text-[11px] uppercase tracking-widest hover:border-white transition-all active-press italic"
                     >
                        ZAMKNIJ
                     </button>
-                    <button 
-                       onClick={confirmOrder}
-                       disabled={saving || cancelling || stripeFulfillmentLocked}
-                       className={`flex-1 h-14 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 transition-all italic ${
-                          saving || stripeFulfillmentLocked
-                             ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-                             : "bg-primary text-slate-950 shadow-xl shadow-primary/20 hover:brightness-110 active-press"
-                       }`}
-                    >
-                       {saving ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-                       {saving
-                          ? "PROPAGACJA_PARAMETRÓW..."
-                          : stripeFulfillmentLocked
-                            ? stripeRefundInProgress
-                              ? "REFUND_W_TOKU"
-                              : "OCZEKIWANIE_NA_PŁATNOŚĆ"
-                            : "ZATWIERDŹ_DO_LOGISTYKI"}
-                    </button>
+
+                    {orderCanAdvance && (
+                      <button 
+                         onClick={advanceOrder}
+                         disabled={saving || cancelling || returning || stripeFulfillmentLocked}
+                         className={`flex-1 min-w-[200px] h-14 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 transition-all italic ${
+                            saving || stripeFulfillmentLocked
+                               ? "bg-slate-700 text-slate-400 cursor-not-allowed"
+                               : "bg-primary text-slate-950 shadow-xl shadow-primary/20 hover:brightness-110 active-press"
+                         }`}
+                      >
+                         {saving ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
+                         {saving
+                            ? "PROPAGACJA_PARAMETRÓW..."
+                            : stripeFulfillmentLocked
+                              ? stripeRefundInProgress
+                                ? "REFUND_W_TOKU"
+                                : "OCZEKIWANIE_NA_PŁATNOŚĆ"
+                              : validatingOrder?.status === "PENDING_VERIFICATION"
+                                ? "ZATWIERDŹ_DO_LOGISTYKI"
+                                : "OZNACZ_JAKO_WYSŁANE"}
+                      </button>
+                    )}
                  </div>
               </motion.div>
            </div>
