@@ -14,6 +14,7 @@ export default function CartPage() {
   const [mounted, setMounted] = useState(false);
   const [submitting, setSubmitting] = useState<"PDF" | "INQUIRY" | "ORDER" | "STRIPE" | null>(null);
   const [stripeAvailable, setStripeAvailable] = useState(false);
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
   const router = useRouter();
 
@@ -23,6 +24,7 @@ export default function CartPage() {
   useEffect(() => {
     if (!session?.user) {
       setStripeAvailable(false);
+      setPaymentNotice(null);
       setPaymentMethodsLoaded(true);
       return;
     }
@@ -38,12 +40,30 @@ export default function CartPage() {
         const stripe = (data?.methods ?? []).find(
           (method: { id?: string }) => method.id === "STRIPE"
         );
+        const controlEnabled = data?.control?.enabled !== false;
+        const available = Boolean(
+          controlEnabled && stripe?.enabled && stripe?.configured
+        );
+
         if (!cancelled) {
-          setStripeAvailable(Boolean(stripe?.enabled && stripe?.configured));
+          setStripeAvailable(available);
+          setPaymentNotice(
+            !controlEnabled
+              ? data?.control?.maintenanceMessage ||
+                  "Płatności online są obecnie wyłączone."
+              : !stripe?.enabled
+                ? "Płatność online Stripe została wyłączona przez administratora."
+                : !stripe?.configured
+                  ? "Płatność online jest chwilowo niedostępna z powodu konfiguracji operatora."
+                  : null
+          );
         }
       })
       .catch(() => {
-        if (!cancelled) setStripeAvailable(false);
+        if (!cancelled) {
+          setStripeAvailable(false);
+          setPaymentNotice("Nie udało się sprawdzić dostępności płatności online.");
+        }
       })
       .finally(() => {
         if (!cancelled) setPaymentMethodsLoaded(true);
@@ -297,8 +317,8 @@ export default function CartPage() {
 
                   {paymentMethodsLoaded && !stripeAvailable && (
                     <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-500">
-                      Płatność online jest obecnie wyłączona. Nadal możesz wysłać
-                      zamówienie do ręcznej realizacji.
+                      {paymentNotice || "Płatność online jest obecnie niedostępna."}{" "}
+                      Nadal możesz wysłać zamówienie do ręcznej realizacji.
                     </div>
                   )}
 
