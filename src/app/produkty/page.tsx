@@ -9,6 +9,12 @@ import {
 } from "lucide-react"
 import { auth } from "@/auth"
 import { AddToCartButton } from "@/components/ui/AddToCartButton"
+import { initializeMockData } from "@/store/serverStore"
+import {
+  buildProductCatalogView,
+  type ProductCatalogRecord,
+  type ProductCatalogUser,
+} from "@/lib/productCatalogView"
 import type { CartItem } from "@/store/cartStore"
 
 export const metadata: Metadata = {
@@ -59,13 +65,19 @@ export default async function ConsumerCatalogPage({
   const query = typeof params.q === "string" ? params.q.trim() : ""
   const activeCategory = typeof params.category === "string" ? params.category.trim() : ""
 
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
   let products: CatalogProduct[] = []
 
   try {
-    const response = await fetch(`${baseUrl}/api/products`, { cache: "no-store" })
-    const payload: unknown = await response.json()
-    products = Array.isArray(payload) ? (payload as CatalogProduct[]) : []
+    const { products: storedProducts, users } = initializeMockData()
+    const sessionUser = session?.user as
+      | { id?: string; email?: string | null }
+      | undefined
+
+    products = (await buildProductCatalogView(
+      storedProducts as ProductCatalogRecord[],
+      users as ProductCatalogUser[],
+      sessionUser
+    )) as CatalogProduct[]
   } catch (error) {
     console.error("Błąd pobierania produktów:", error)
   }

@@ -5,13 +5,15 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
-import { getKnowledge } from "@/lib/knowledge/parser"
-import { calculateCustomerUnitPrice } from "@/lib/commerce"
-import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   CatalogProductInputSchema,
   CatalogProductUpdateSchema,
 } from "@/lib/catalogProductInput"
+import {
+  buildProductCatalogView,
+  type ProductCatalogRecord,
+  type ProductCatalogUser,
+} from "@/lib/productCatalogView"
 import {
   assertCatalogClassification,
   buildWfMagCatalogProduct,
@@ -28,22 +30,7 @@ import {
 
 export const dynamic = "force-dynamic"
 
-type ProductRecord = {
-  id: string
-  sku: string
-  name: string
-  price?: number | null
-  stock?: number | null
-  manufacturer?: string
-  categoryId?: string | null
-  subcategoryId?: string | null
-  seoDescription?: string
-  catalogPrice?: number | null
-  catalogSpecs?: string
-  isVirtual?: boolean
-  isIqSynced?: boolean
-  [key: string]: unknown
-}
+type ProductRecord = ProductCatalogRecord
 
 type Subcategory = { id: string; name: string }
 type CategoryRecord = {
@@ -51,15 +38,6 @@ type CategoryRecord = {
   name: string
   iconName?: string
   subcategories: Subcategory[]
-}
-
-type StoredUser = {
-  id?: string
-  email?: string
-  roleType?: string
-  isApproved?: boolean
-  isBlocked?: boolean
-  discount?: number
 }
 
 const ImportItemSchema = z
@@ -115,91 +93,16 @@ function catalogClassificationErrorResponse(error: unknown) {
 export async function GET() {
   const session = await auth()
   const { products, users } = initializeMockData()
-  const productStore = products as ProductRecord[]
-
-  let unifiedDevices: ProductRecord[]
-  try {
-    const store = await getKnowledge()
-    const existingSkus = new Set(productStore.map((product) => normalize(product.sku)))
-
-    const virtualDevices: ProductRecord[] = Object.keys(store.knowledge)
-      .filter((key) => !existingSkus.has(normalize(key)))
-      .map((key) => {
-        const entry = store.knowledge[key]
-        return {
-          id: `virtual_${key}`,
-          sku: key,
-          name: entry.model || key,
-          manufacturer: entry.manufacturer || "NIEZNANY",
-          price: 0,
-          catalogPrice: entry.price || 0,
-          stock: 0,
-          isVirtual: true,
-          seoDescription: entry.specs || "",
-          catalogSpecs: entry.specs || "",
-        }
-      })
-
-    const enrichedProducts = productStore.map((product) => {
-      const entry = store.knowledge[product.sku]
-      if (!entry) return product
-
-      return {
-        ...product,
-        manufacturer:
-          product.manufacturer && product.manufacturer !== "NIEZNANY"
-            ? product.manufacturer
-            : entry.manufacturer || "NIEZNANY",
-        catalogSpecs: entry.specs || "",
-        catalogPrice: entry.price || 0,
-        isIqSynced: true,
-      }
-    })
-
-    unifiedDevices = [...enrichedProducts, ...virtualDevices]
-  } catch {
-    unifiedDevices = [...productStore]
-  }
-
   const sessionUser = session?.user as
     | { id?: string; email?: string | null }
     | undefined
-  const currentUser = sessionUser
-    ? findStoredUserBySession(users as StoredUser[], sessionUser)
-    : undefined
-  const role = currentUser?.isBlocked ? undefined : currentUser?.roleType
-  const canSeePrices =
-    role === "ADMIN" || (role === "BIZ" && Boolean(currentUser?.isApproved))
-
-  if (!canSeePrices) {
-    return NextResponse.json(
-      unifiedDevices.map((product) => ({
-        ...product,
-        price: null,
-        catalogPrice: null,
-        priceHidden: true,
-      }))
-    )
-  }
 
   return NextResponse.json(
-    unifiedDevices.map((product) => ({
-      ...product,
-      price:
-        role === "BIZ"
-          ? calculateCustomerUnitPrice(
-              {
-                id: product.id,
-                sku: product.sku,
-                name: product.name,
-                price: Number(product.price ?? 0),
-                stock: Number(product.stock ?? 0),
-              },
-              { role: "BIZ", discount: Number(currentUser?.discount ?? 0) }
-            )
-          : Number(product.price ?? 0),
-      priceHidden: false,
-    }))
+    await buildProductCatalogView(
+      products as ProductCatalogRecord[],
+      users as ProductCatalogUser[],
+      sessionUser
+    )
   )
 }
 
