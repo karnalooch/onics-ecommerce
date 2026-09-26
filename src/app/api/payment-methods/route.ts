@@ -143,11 +143,14 @@ export async function PUT(req: Request) {
 
   if (parsed.data.scope === "GLOBAL") {
     const globalUpdate = parsed.data
+    const activationSnapshot = initializeMockData()
 
-    if (globalUpdate.enabled) {
-      const snapshot = initializeMockData()
+    if (
+      globalUpdate.enabled &&
+      !activationSnapshot.paymentControl.enabled
+    ) {
       for (const method of PAYMENT_PROVIDER_IDS) {
-        if (!snapshot.paymentMethods[method]?.enabled) continue
+        if (!activationSnapshot.paymentMethods[method]?.enabled) continue
         const activationError =
           await validatePaymentProviderActivation(method)
         if (activationError) return activationError
@@ -196,7 +199,11 @@ export async function PUT(req: Request) {
   const methodUpdate = parsed.data
   const method = methodUpdate.id as PaymentMethodId
 
-  if (methodUpdate.enabled === true) {
+  const activationSnapshot = initializeMockData()
+  if (
+    methodUpdate.enabled === true &&
+    activationSnapshot.paymentMethods[method]?.enabled !== true
+  ) {
     const activationError = await validatePaymentProviderActivation(method)
     if (activationError) return activationError
   }
