@@ -21,29 +21,31 @@ export default function AdminOrdersPage() {
   const [cancelling, setCancelling] = useState(false);
   const [returning, setReturning] = useState(false);
   const [bankTransferUpdating, setBankTransferUpdating] = useState(false);
+  const paymentLifecycle = validatingOrder?.paymentLifecycle ?? null;
+  const paymentProvider = paymentLifecycle?.provider ?? null;
+  const paymentCapabilities = paymentLifecycle?.capabilities ?? null;
+  const isStripePayment = paymentProvider === "STRIPE";
   const isBankTransfer =
-    validatingOrder?.paymentProvider === "BANK_TRANSFER";
-  const paymentAmountsLocked =
-    Boolean(validatingOrder?.stripeCheckoutSessionId) || isBankTransfer;
-  const stripeRefundInProgress =
+    paymentProvider === "BANK_TRANSFER" &&
+    Boolean(paymentCapabilities?.manualSettlement);
+  const paymentAmountsLocked = Boolean(paymentProvider);
+  const paymentRefundInProgress =
     validatingOrder?.refundStatus === "pending" ||
     validatingOrder?.refundStatus === "requires_action";
-  const stripeFulfillmentLocked =
-    Boolean(validatingOrder?.stripeCheckoutSessionId) &&
-    (validatingOrder?.paymentStatus !== "PAID" || stripeRefundInProgress);
-  const bankTransferFulfillmentLocked =
-    isBankTransfer && validatingOrder?.paymentStatus !== "PAID";
   const paymentFulfillmentLocked =
-    stripeFulfillmentLocked || bankTransferFulfillmentLocked;
+    Boolean(paymentProvider) &&
+    (validatingOrder?.paymentStatus !== "PAID" || paymentRefundInProgress);
   const orderCanAdvance =
     validatingOrder?.status === "PENDING_VERIFICATION" ||
     validatingOrder?.status === "CONFIRMED";
   const stripeReturnEligible =
-    Boolean(validatingOrder?.stripeCheckoutSessionId) &&
+    isStripePayment &&
+    Boolean(paymentCapabilities?.rma) &&
     (validatingOrder?.status === "SHIPPED" ||
       validatingOrder?.status === "RETURNED");
   const bankTransferReturnEligible =
     isBankTransfer &&
+    Boolean(paymentCapabilities?.rma) &&
     (validatingOrder?.status === "SHIPPED" ||
       validatingOrder?.status === "RETURNED") &&
     (validatingOrder?.paymentStatus === "PAID" ||
@@ -84,7 +86,11 @@ export default function AdminOrdersPage() {
   }
 
   const cancelStripeOrder = async () => {
-    if (!validatingOrder?.stripeCheckoutSessionId) return;
+    if (
+      !validatingOrder?.stripeCheckoutSessionId ||
+      !isStripePayment ||
+      !paymentCapabilities?.cancel
+    ) return;
     if (
       !window.confirm(
         validatingOrder.paymentStatus === "PAID"
@@ -138,7 +144,11 @@ export default function AdminOrdersPage() {
   const settleBankTransfer = async (
     action: "CONFIRM_PAYMENT" | "CONFIRM_REFUND"
   ) => {
-    if (!validatingOrder?.id || !isBankTransfer) return;
+    if (
+      !validatingOrder?.id ||
+      !isBankTransfer ||
+      !paymentCapabilities?.manualSettlement
+    ) return;
 
     if (action === "CONFIRM_PAYMENT") {
       if (
@@ -275,6 +285,7 @@ export default function AdminOrdersPage() {
     if (
       !validatingOrder?.id ||
       !isBankTransfer ||
+      !paymentCapabilities?.cancel ||
       validatingOrder?.paymentStatus !== "PENDING"
     ) {
       return;
