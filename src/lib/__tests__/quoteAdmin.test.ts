@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
+  requirePositiveQuoteTotal,
   requireQuoteBasePrice,
 } from "../quoteAdmin"
 
@@ -86,6 +87,16 @@ describe("quote admin invariants", () => {
     for (const price of [null, undefined, 0, -1, Number.NaN, Infinity]) {
       expect(() => requireQuoteBasePrice(price)).toThrow(
         "QUOTE_PRODUCT_NOT_PRICED"
+      )
+    }
+  })
+
+  it("rejects zero or invalid final quote totals", () => {
+    expect(requirePositiveQuoteTotal(250)).toBe(250)
+
+    for (const total of [null, undefined, 0, -1, Number.NaN, Infinity]) {
+      expect(() => requirePositiveQuoteTotal(total)).toThrow(
+        "QUOTE_TOTAL_NOT_POSITIVE"
       )
     }
   })
