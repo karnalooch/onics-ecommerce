@@ -347,6 +347,88 @@ export function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
   ) as PaymentMethodSettings
 }
 
+function assertOptionalPersistedPaymentControl(value: unknown) {
+  if (value === undefined) return
+  if (!isRecord(value)) {
+    throw new Error("DATABASE_FIELD_INVALID:paymentControl")
+  }
+  if (value.enabled !== undefined && typeof value.enabled !== "boolean") {
+    throw new Error("DATABASE_FIELD_INVALID:paymentControl.enabled")
+  }
+  if (
+    value.maintenanceMessage !== undefined &&
+    value.maintenanceMessage !== null &&
+    typeof value.maintenanceMessage !== "string"
+  ) {
+    throw new Error(
+      "DATABASE_FIELD_INVALID:paymentControl.maintenanceMessage"
+    )
+  }
+  if (
+    value.updatedAt !== undefined &&
+    value.updatedAt !== null &&
+    typeof value.updatedAt !== "string"
+  ) {
+    throw new Error("DATABASE_FIELD_INVALID:paymentControl.updatedAt")
+  }
+}
+
+function assertOptionalPersistedPaymentMethods(value: unknown) {
+  if (value === undefined) return
+  if (!isRecord(value)) {
+    throw new Error("DATABASE_FIELD_INVALID:paymentMethods")
+  }
+
+  for (const id of PAYMENT_PROVIDER_IDS) {
+    const config = value[id]
+    if (config === undefined) continue
+    if (!isRecord(config)) {
+      throw new Error(`DATABASE_FIELD_INVALID:paymentMethods.${id}`)
+    }
+    if (config.enabled !== undefined && typeof config.enabled !== "boolean") {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.enabled`
+      )
+    }
+    if (
+      config.displayName !== undefined &&
+      typeof config.displayName !== "string"
+    ) {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.displayName`
+      )
+    }
+    if (
+      config.displayOrder !== undefined &&
+      (!Number.isSafeInteger(config.displayOrder) ||
+        Number(config.displayOrder) < 0 ||
+        Number(config.displayOrder) > 999)
+    ) {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.displayOrder`
+      )
+    }
+    if (
+      config.maintenanceMessage !== undefined &&
+      config.maintenanceMessage !== null &&
+      typeof config.maintenanceMessage !== "string"
+    ) {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.maintenanceMessage`
+      )
+    }
+    if (
+      config.updatedAt !== undefined &&
+      config.updatedAt !== null &&
+      typeof config.updatedAt !== "string"
+    ) {
+      throw new Error(
+        `DATABASE_FIELD_INVALID:paymentMethods.${id}.updatedAt`
+      )
+    }
+  }
+}
+
 function normalizeDb(input: unknown): ServerDb {
   if (!isRecord(input)) {
     throw new Error("DATABASE_ROOT_INVALID")
@@ -359,17 +441,17 @@ function normalizeDb(input: unknown): ServerDb {
   ) {
     throw new Error("DATABASE_FIELD_INVALID:knowledgeMeta")
   }
-  if (
-    source.paymentMethods !== undefined &&
-    !isRecord(source.paymentMethods)
-  ) {
-    throw new Error("DATABASE_FIELD_INVALID:paymentMethods")
-  }
-  if (
-    source.paymentControl !== undefined &&
-    !isRecord(source.paymentControl)
-  ) {
-    throw new Error("DATABASE_FIELD_INVALID:paymentControl")
+  assertOptionalPersistedPaymentMethods(source.paymentMethods)
+  assertOptionalPersistedPaymentControl(source.paymentControl)
+
+  for (const [field, value] of [
+    ["paymentAudit", source.paymentAudit],
+    ["paymentOperationEvents", source.paymentOperationEvents],
+    ["paymentWebhookEvents", source.paymentWebhookEvents],
+  ] as const) {
+    if (value !== undefined && !Array.isArray(value)) {
+      throw new Error(`DATABASE_FIELD_INVALID:${field}`)
+    }
   }
 
   const knowledgeMeta = isRecord(source.knowledgeMeta)
