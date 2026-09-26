@@ -3,16 +3,25 @@ import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
-import { moneyToMinorUnits, resolveStripeCheckoutConfig } from "@/lib/payments"
+import {
+  moneyToMinorUnits,
+  resolveBankTransferConfig,
+  resolveStripeCheckoutConfig,
+} from "@/lib/payments"
 import {
   isPaymentControlEnabled,
   isPaymentMethodEnabled,
+  type PaymentMethodId,
 } from "@/lib/paymentMethods"
-import { reserveInventory } from "@/lib/inventoryReservations"
+import {
+  reserveInventory,
+  type InventoryProduct,
+} from "@/lib/inventoryReservations"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
 const CartSchema = z.object({
+  paymentMethod: z.enum(["STRIPE", "BANK_TRANSFER"]).default("STRIPE"),
   items: z
     .array(
       z.object({
@@ -80,11 +89,65 @@ function resolveCheckout(
   return { storedUser, resolved }
 }
 
+function providerDisabledMessage(
+  method: PaymentMethodId,
+  maintenanceMessage?: string | null
+) {
+  if (maintenanceMessage) return maintenanceMessage
+  return method === "STRIPE"
+    ? "Płatność Stripe została wyłączona przez administratora."
+    : "Przelew bankowy jest obecnie niedostępny."
+}
+
+function paymentErrorResponse(
+  error: unknown,
+  method: PaymentMethodId,
+  maintenanceMessage?: string | null
+) {
+  const code = error instanceof Error ? error.message : ""
+  const inventoryConflict =
+    code === "INVENTORY_NOT_AVAILABLE" ||
+    code === "INVENTORY_PRODUCT_NOT_FOUND" ||
+    /Brak wymaganej ilości produktu/.test(code)
+  const paymentDisabled =
+    code === "PAYMENTS_DISABLED" || code === "PAYMENT_METHOD_DISABLED"
+
+  const message =
+    code === "CHECKOUT_STATE_CHANGED"
+      ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
+      : code === "PAYMENTS_DISABLED"
+        ? "Płatności online zostały wyłączone przez administratora."
+        : code === "PAYMENT_METHOD_DISABLED"
+          ? providerDisabledMessage(method, maintenanceMessage)
+          : inventoryConflict
+            ? "Stan magazynowy zmienił się podczas tworzenia płatności. Odśwież koszyk i spróbuj ponownie."
+            : error instanceof Error
+              ? error.message
+              : "Błąd serwera."
+
+  console.error("Błąd generowania checkoutu:", error)
+  return NextResponse.json(
+    { error: message },
+    { status: paymentDisabled ? 503 : inventoryConflict ? 409 : 500 }
+  )
+}
+
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI([])
   if (!authCheck.authorized) return authCheck.response
 
+  const parsed = CartSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || "Nieprawidłowy koszyk." },
+      { status: 400 }
+    )
+  }
+
+  const method = parsed.data.paymentMethod
   const snapshot = initializeMockData()
+  const methodSettings = snapshot.paymentMethods[method]
+
   if (!isPaymentControlEnabled(snapshot.paymentControl)) {
     return NextResponse.json(
       {
@@ -95,11 +158,108 @@ export async function POST(req: Request) {
       { status: 503 }
     )
   }
-  if (!isPaymentMethodEnabled(snapshot.paymentMethods, "STRIPE")) {
+  if (!isPaymentMethodEnabled(snapshot.paymentMethods, method)) {
     return NextResponse.json(
-      { error: "Płatność Stripe została wyłączona przez administratora." },
+      { error: providerDisabledMessage(method, methodSettings.maintenanceMessage) },
       { status: 503 }
     )
+  }
+
+  const sessionUser = authCheck.user as SessionUser
+
+  if (method === "BANK_TRANSFER") {
+    let bankConfig: ReturnType<typeof resolveBankTransferConfig>
+    try {
+      bankConfig = resolveBankTransferConfig()
+    } catch (error) {
+      console.error("Nieprawidłowa konfiguracja przelewu bankowego:", error)
+      return NextResponse.json(
+        { error: "Przelew bankowy nie jest poprawnie skonfigurowany." },
+        { status: 503 }
+      )
+    }
+
+    try {
+      const { storedUser, resolved } = resolveCheckout(
+        snapshot.users as StoredUser[],
+        snapshot.products as Parameters<typeof resolveCartItems>[1],
+        sessionUser,
+        parsed.data.items
+      )
+      const orderId = `ORD-${crypto.randomUUID()}`
+
+      await mutateMockData((db) => {
+        if (!isPaymentControlEnabled(db.paymentControl)) {
+          throw new Error("PAYMENTS_DISABLED")
+        }
+        if (!isPaymentMethodEnabled(db.paymentMethods, method)) {
+          throw new Error("PAYMENT_METHOD_DISABLED")
+        }
+
+        const fresh = resolveCheckout(
+          db.users as StoredUser[],
+          db.products as Parameters<typeof resolveCartItems>[1],
+          sessionUser,
+          parsed.data.items
+        )
+
+        if (JSON.stringify(fresh.resolved) !== JSON.stringify(resolved)) {
+          throw new Error("CHECKOUT_STATE_CHANGED")
+        }
+
+        reserveInventory(
+          db.products as InventoryProduct[],
+          fresh.resolved.items
+        )
+        const now = new Date().toISOString()
+
+        db.orders.unshift({
+          id: orderId,
+          orderType: "ORDER",
+          createdAt: now,
+          status: "PENDING_VERIFICATION",
+          estimatedDeliveryDays: null,
+          totalPriceOrig: fresh.resolved.total,
+          totalPriceFinal: fresh.resolved.total,
+          items: fresh.resolved.items,
+          user: {
+            id: fresh.storedUser.id,
+            email: fresh.storedUser.email,
+            companyName: fresh.storedUser.companyName,
+            nip: fresh.storedUser.nip ?? null,
+          },
+          paymentProvider: "BANK_TRANSFER",
+          paymentStatus: "PENDING",
+          bankTransferReference: orderId,
+          inventoryReservationSource: "ORDER",
+          inventoryReservationStatus: "RESERVED",
+          inventoryReservedAt: now,
+          inventoryReleasedAt: null,
+          inventoryFinalizedAt: null,
+          inventoryReReservedAt: null,
+        })
+      })
+
+      return NextResponse.json({
+        orderId,
+        paymentMethod: method,
+        status: "AWAITING_TRANSFER",
+        bankTransfer: {
+          recipient: bankConfig.recipient,
+          accountNumber: bankConfig.accountNumber,
+          iban: bankConfig.iban,
+          title: orderId,
+          amount: resolved.total,
+          currency: "PLN",
+        },
+      })
+    } catch (error) {
+      return paymentErrorResponse(
+        error,
+        method,
+        methodSettings.maintenanceMessage
+      )
+    }
   }
 
   let stripeConfig: ReturnType<typeof resolveStripeCheckoutConfig>
@@ -116,15 +276,6 @@ export async function POST(req: Request) {
   }
 
   try {
-    const parsed = CartSchema.safeParse(await req.json())
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.issues[0]?.message || "Nieprawidłowy koszyk." },
-        { status: 400 }
-      )
-    }
-
-    const sessionUser = authCheck.user as SessionUser
     const { storedUser, resolved } = resolveCheckout(
       snapshot.users as StoredUser[],
       snapshot.products as Parameters<typeof resolveCartItems>[1],
@@ -172,7 +323,10 @@ export async function POST(req: Request) {
       try {
         await stripe.checkout.sessions.expire(session.id)
       } catch (expireError) {
-        console.error("Nie udało się wygasić sesji Stripe bez URL:", expireError)
+        console.error(
+          "Nie udało się wygasić sesji Stripe bez URL:",
+          expireError
+        )
       }
       throw new Error("Stripe nie zwrócił adresu płatności.")
     }
@@ -198,7 +352,7 @@ export async function POST(req: Request) {
         }
 
         reserveInventory(
-          db.products as Parameters<typeof reserveInventory>[0],
+          db.products as InventoryProduct[],
           fresh.resolved.items
         )
         const reservedAt = new Date().toISOString()
@@ -235,7 +389,10 @@ export async function POST(req: Request) {
       try {
         await stripe.checkout.sessions.expire(session.id)
       } catch (expireError) {
-        console.error("Nie udało się wygasić osieroconej sesji Stripe:", expireError)
+        console.error(
+          "Nie udało się wygasić osieroconej sesji Stripe:",
+          expireError
+        )
       }
       throw persistenceError
     }
@@ -244,32 +401,13 @@ export async function POST(req: Request) {
       id: session.id,
       url: session.url,
       orderId,
+      paymentMethod: "STRIPE",
     })
   } catch (error) {
-    const code = error instanceof Error ? error.message : ""
-    const inventoryConflict =
-      code === "INVENTORY_NOT_AVAILABLE" ||
-      code === "INVENTORY_PRODUCT_NOT_FOUND" ||
-      /Brak wymaganej ilości produktu/.test(code)
-    const paymentDisabled =
-      code === "PAYMENTS_DISABLED" || code === "PAYMENT_METHOD_DISABLED"
-    const message =
-      code === "CHECKOUT_STATE_CHANGED"
-        ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
-        : code === "PAYMENTS_DISABLED"
-          ? "Płatności online zostały wyłączone przez administratora."
-          : code === "PAYMENT_METHOD_DISABLED"
-            ? "Płatność Stripe została wyłączona przez administratora."
-            : inventoryConflict
-              ? "Stan magazynowy zmienił się podczas tworzenia płatności. Odśwież koszyk i spróbuj ponownie."
-              : error instanceof Error
-                ? error.message
-                : "Błąd serwera."
-
-    console.error("Błąd generowania bramki checkout:", error)
-    return NextResponse.json(
-      { error: message },
-      { status: paymentDisabled ? 503 : inventoryConflict ? 409 : 500 }
+    return paymentErrorResponse(
+      error,
+      method,
+      methodSettings.maintenanceMessage
     )
   }
 }

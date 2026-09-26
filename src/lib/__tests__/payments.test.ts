@@ -1,12 +1,44 @@
 import { describe, expect, it } from "vitest"
 import {
   moneyToMinorUnits,
+  resolveBankTransferConfig,
   nextPaymentStatus,
   resolveStripeCheckoutConfig,
   validateOptionalStripeReadiness,
   verifyCheckoutPayment,
   verifyStripeRefund,
 } from "@/lib/payments"
+
+describe("bank transfer config", () => {
+  it("normalizes a Polish account number without exposing ambiguity", () => {
+    expect(
+      resolveBankTransferConfig({
+        recipient: "ONICS Sp. z o.o.",
+        accountNumber: "PL12 3456 7890 1234 5678 9012 3456",
+      })
+    ).toEqual({
+      recipient: "ONICS Sp. z o.o.",
+      accountNumber: "12345678901234567890123456",
+      iban: "PL12345678901234567890123456",
+    })
+  })
+
+  it("fails closed for incomplete bank transfer configuration", () => {
+    expect(() =>
+      resolveBankTransferConfig({
+        recipient: "",
+        accountNumber: "12345678901234567890123456",
+      })
+    ).toThrow(/BANK_TRANSFER_RECIPIENT/)
+
+    expect(() =>
+      resolveBankTransferConfig({
+        recipient: "ONICS",
+        accountNumber: "123",
+      })
+    ).toThrow(/BANK_TRANSFER_ACCOUNT_NUMBER/)
+  })
+})
 
 describe("Stripe payment verification", () => {
   const order = {

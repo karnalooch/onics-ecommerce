@@ -94,6 +94,42 @@ export function resolveStripeCheckoutConfig(
   }
 }
 
+export type BankTransferRuntimeOptions = {
+  recipient?: string | null
+  accountNumber?: string | null
+}
+
+export function resolveBankTransferConfig(
+  options: BankTransferRuntimeOptions = {}
+) {
+  const recipient = cleanSecret(
+    options.recipient ?? process.env.BANK_TRANSFER_RECIPIENT
+  )
+  const rawAccountNumber = cleanSecret(
+    options.accountNumber ?? process.env.BANK_TRANSFER_ACCOUNT_NUMBER
+  )
+  const accountNumber = rawAccountNumber
+    ?.replace(/^PL/i, "")
+    .replace(/\s+/g, "")
+
+  if (!recipient) {
+    throw new Error(
+      "BANK_TRANSFER_RECIPIENT jest wymagane dla przelewu bankowego."
+    )
+  }
+  if (!accountNumber || !/^\d{26}$/.test(accountNumber)) {
+    throw new Error(
+      "BANK_TRANSFER_ACCOUNT_NUMBER musi zawierać poprawny 26-cyfrowy numer rachunku."
+    )
+  }
+
+  return {
+    recipient,
+    accountNumber,
+    iban: `PL${accountNumber}`,
+  }
+}
+
 export function validateOptionalStripeReadiness(
   options: StripeRuntimeOptions = {}
 ) {

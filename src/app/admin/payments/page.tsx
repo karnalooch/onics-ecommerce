@@ -21,7 +21,7 @@ type PaymentControl = {
 type PaymentAuditEntry = {
   id: string
   createdAt: string
-  target: "GLOBAL" | "STRIPE"
+  target: "GLOBAL" | "STRIPE" | "BANK_TRANSFER"
   operation: "SETTING_CHANGE" | "EMERGENCY_SHUTDOWN"
   actor: {
     id: string | null
@@ -32,14 +32,22 @@ type PaymentAuditEntry = {
   nextEnabled: boolean
   previousMaintenanceMessage: string | null
   nextMaintenanceMessage: string | null
+  previousDisplayName: string | null
+  nextDisplayName: string | null
+  previousDisplayOrder: number | null
+  nextDisplayOrder: number | null
 }
 
 type PaymentMethod = {
-  id: "STRIPE"
+  id: "STRIPE" | "BANK_TRANSFER"
   name: string
   enabled: boolean
   configured: boolean
   webhookConfigured: boolean
+  displayOrder: number
+  maintenanceMessage: string | null
+  kind: "REDIRECT" | "MANUAL"
+  available: boolean
   updatedAt: string | null
 }
 
@@ -245,13 +253,59 @@ export default function AdminPaymentsPage() {
     }
   }
 
+  const updateMethodDraft = (
+    id: PaymentMethod["id"],
+    patch: Partial<Pick<PaymentMethod, "name" | "displayOrder" | "maintenanceMessage">>
+  ) => {
+    setMethods((current) =>
+      current.map((method) =>
+        method.id === id ? { ...method, ...patch } : method
+      )
+    )
+  }
+
+  const saveMethodSettings = async (method: PaymentMethod) => {
+    setSaving(`${method.id}:settings`)
+    try {
+      const response = await fetch("/api/payment-methods", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: method.id,
+          displayName: method.name,
+          displayOrder: method.displayOrder,
+          maintenanceMessage: method.maintenanceMessage?.trim() || null,
+        }),
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Nie udało się zapisać ustawień dostawcy."
+        )
+      }
+
+      setMethods(data?.methods ?? [])
+      setAudit(data?.audit ?? [])
+      toast.success(`Zapisano ustawienia: ${method.name}.`)
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się zapisać ustawień dostawcy."
+      )
+    } finally {
+      setSaving(null)
+    }
+  }
+
   const toggleMethod = async (method: PaymentMethod) => {
     const nextEnabled = !method.enabled
 
     if (
       !nextEnabled &&
       !window.confirm(
-        "Wyłączyć Stripe dla nowych płatności? Istniejące transakcje, webhooki, refundy i RMA nadal będą obsługiwane."
+        `Wyłączyć ${method.name} dla nowych płatności? Istniejące transakcje i historyczne zamówienia pozostaną dostępne.`
       )
     ) {
       return
@@ -279,8 +333,8 @@ export default function AdminPaymentsPage() {
       setAudit(data?.audit ?? [])
       toast.success(
         nextEnabled
-          ? "Stripe włączony dla nowych płatności."
-          : "Stripe wyłączony dla nowych płatności."
+          ? `${method.name} włączony dla nowych płatności.`
+          : `${method.name} wyłączony dla nowych płatności.`
       )
     } catch (error) {
       toast.error(
@@ -458,92 +512,199 @@ export default function AdminPaymentsPage() {
         <div className="grid gap-6">
           {methods.map((method) => {
             const canEnable = method.configured
-            const busy = saving === method.id
+            const busy =
+              saving === method.id || saving === `${method.id}:settings`
 
             return (
               <section
                 key={method.id}
                 className="bg-white border border-slate-100 shadow-sm"
               >
-                <div className="p-8 flex flex-col xl:flex-row xl:items-center justify-between gap-8">
-                  <div className="flex items-start gap-5">
-                    <div
-                      className={`w-12 h-12 flex items-center justify-center ${method.enabled ? "bg-green-50 text-green-600" : "bg-slate-100 text-slate-400"}`}
-                    >
-                      <CreditCard className="w-6 h-6" />
-                    </div>
-
-                    <div>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="text-xl font-black uppercase italic tracking-tight text-slate-950">
-                          {method.name}
-                        </h2>
-                        <span
-                          className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest ${method.enabled ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}
-                        >
-                          {method.enabled ? "AKTYWNA" : "WYŁĄCZONA"}
-                        </span>
+                <div className="p-8 grid gap-8 xl:grid-cols-[1fr_320px]">
+                  <div>
+                    <div className="flex items-start gap-5">
+                      <div
+                        className={`w-12 h-12 flex items-center justify-center ${
+                          method.enabled
+                            ? "bg-green-50 text-green-600"
+                            : "bg-slate-100 text-slate-400"
+                        }`}
+                      >
+                        <CreditCard className="w-6 h-6" />
                       </div>
 
-                      <div className="flex flex-wrap gap-4 mt-4">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                          {method.configured ? (
-                            <ShieldCheck className="w-4 h-4 text-green-600" />
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h2 className="text-xl font-black uppercase italic tracking-tight text-slate-950">
+                            {method.name}
+                          </h2>
+                          <span
+                            className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest ${
+                              method.enabled
+                                ? "bg-green-100 text-green-700"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {method.enabled ? "AKTYWNA" : "WYŁĄCZONA"}
+                          </span>
+                          <span className="px-3 py-1 text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500">
+                            {method.kind === "REDIRECT" ? "BRAMKA" : "MANUAL"}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-4 mt-4">
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                            {method.configured ? (
+                              <ShieldCheck className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            )}
+                            <span className="text-slate-500">
+                              Konfiguracja: {method.configured ? "OK" : "BRAK"}
+                            </span>
+                          </div>
+
+                          {method.id === "STRIPE" ? (
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                              <Webhook
+                                className={`w-4 h-4 ${
+                                  method.webhookConfigured
+                                    ? "text-green-600"
+                                    : "text-amber-500"
+                                }`}
+                              />
+                              <span className="text-slate-500">
+                                Webhook:{" "}
+                                {method.webhookConfigured
+                                  ? "OK"
+                                  : "NIESKONFIGUROWANY"}
+                              </span>
+                            </div>
                           ) : (
-                            <AlertTriangle className="w-4 h-4 text-amber-500" />
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                              Wymaga odbiorcy i 26-cyfrowego rachunku
+                            </div>
                           )}
-                          <span className="text-slate-500">
-                            Konfiguracja: {method.configured ? "OK" : "BRAK"}
-                          </span>
                         </div>
 
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                          <Webhook
-                            className={`w-4 h-4 ${method.webhookConfigured ? "text-green-600" : "text-amber-500"}`}
-                          />
-                          <span className="text-slate-500">
-                            Webhook:{" "}
-                            {method.webhookConfigured ? "OK" : "NIESKONFIGUROWANY"}
-                          </span>
-                        </div>
+                        {method.updatedAt && (
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-4">
+                            Ostatnia zmiana:{" "}
+                            {new Date(method.updatedAt).toLocaleString("pl-PL")}
+                          </p>
+                        )}
                       </div>
-
-                      {method.updatedAt && (
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-4">
-                          Ostatnia zmiana:{" "}
-                          {new Date(method.updatedAt).toLocaleString("pl-PL")}
-                        </p>
-                      )}
                     </div>
+
+                    <div className="grid gap-4 md:grid-cols-[1fr_140px] mt-7">
+                      <label className="space-y-2">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                          Nazwa dla klienta
+                        </span>
+                        <input
+                          value={method.name}
+                          maxLength={80}
+                          onChange={(event) =>
+                            updateMethodDraft(method.id, {
+                              name: event.target.value.slice(0, 80),
+                            })
+                          }
+                          className="w-full h-11 border border-slate-200 px-3 text-sm outline-none focus:border-slate-950"
+                        />
+                      </label>
+
+                      <label className="space-y-2">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                          Kolejność
+                        </span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={999}
+                          value={method.displayOrder}
+                          onChange={(event) =>
+                            updateMethodDraft(method.id, {
+                              displayOrder: Math.max(
+                                0,
+                                Math.min(999, Number(event.target.value) || 0)
+                              ),
+                            })
+                          }
+                          className="w-full h-11 border border-slate-200 px-3 text-sm outline-none focus:border-slate-950"
+                        />
+                      </label>
+                    </div>
+
+                    <label className="space-y-2 block mt-4">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                        Komunikat niedostępności
+                      </span>
+                      <textarea
+                        value={method.maintenanceMessage ?? ""}
+                        rows={2}
+                        maxLength={160}
+                        onChange={(event) =>
+                          updateMethodDraft(method.id, {
+                            maintenanceMessage:
+                              event.target.value.slice(0, 160),
+                          })
+                        }
+                        placeholder="Opcjonalny komunikat wyświetlany klientowi, gdy metoda jest niedostępna."
+                        className="w-full border border-slate-200 px-3 py-3 text-sm outline-none focus:border-slate-950 resize-none"
+                      />
+                    </label>
                   </div>
 
-                  <div className="flex flex-col gap-3 min-w-[240px]">
+                  <div className="flex flex-col justify-end gap-3">
+                    <button
+                      onClick={() => saveMethodSettings(method)}
+                      disabled={busy}
+                      className="h-11 px-6 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-slate-950 disabled:opacity-40"
+                    >
+                      {saving === `${method.id}:settings`
+                        ? "ZAPISYWANIE..."
+                        : "ZAPISZ USTAWIENIA"}
+                    </button>
+
                     <button
                       onClick={() => toggleMethod(method)}
-                      disabled={busy || reconciling || (!method.enabled && !canEnable)}
-                      className={`h-14 px-6 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed ${method.enabled ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100" : "bg-slate-950 text-white hover:bg-slate-800"}`}
+                      disabled={busy || (!method.enabled && !canEnable)}
+                      className={`h-14 px-6 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                        method.enabled
+                          ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                          : "bg-slate-950 text-white hover:bg-slate-800"
+                      }`}
                     >
-                      {busy ? (
+                      {saving === method.id ? (
                         <RefreshCcw className="w-4 h-4 animate-spin" />
                       ) : (
                         <Power className="w-4 h-4" />
                       )}
-                      {busy
+                      {saving === method.id
                         ? "ZAPISYWANIE..."
                         : method.enabled
                           ? "WYŁĄCZ NOWE PŁATNOŚCI"
                           : canEnable
-                            ? "WŁĄCZ STRIPE"
+                            ? `WŁĄCZ ${method.name}`
                             : "BRAK KONFIGURACJI"}
                     </button>
 
                     {method.id === "STRIPE" && (
                       <button
                         onClick={reconcileStripe}
-                        disabled={reconciling || saving !== null || emergencyRunning || !method.configured}
+                        disabled={
+                          reconciling ||
+                          saving !== null ||
+                          emergencyRunning ||
+                          !method.configured
+                        }
                         className="h-11 px-6 border border-slate-200 text-slate-600 bg-white text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:border-slate-950 hover:text-slate-950 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <RefreshCcw className={`w-4 h-4 ${reconciling ? "animate-spin" : ""}`} />
+                        <RefreshCcw
+                          className={`w-4 h-4 ${
+                            reconciling ? "animate-spin" : ""
+                          }`}
+                        />
                         {reconciling
                           ? "SYNCHRONIZACJA..."
                           : "SYNCHRONIZUJ STRIPE"}
@@ -585,6 +746,9 @@ export default function AdminPaymentsPage() {
               const messageChanged =
                 entry.previousMaintenanceMessage !==
                 entry.nextMaintenanceMessage
+              const presentationChanged =
+                entry.previousDisplayName !== entry.nextDisplayName ||
+                entry.previousDisplayOrder !== entry.nextDisplayOrder
 
               return (
                 <div
@@ -602,7 +766,9 @@ export default function AdminPaymentsPage() {
                         <span className="text-[11px] font-black uppercase tracking-widest text-slate-950">
                           {entry.target === "GLOBAL"
                             ? "Wszystkie płatności"
-                            : "Stripe"}
+                            : entry.target === "STRIPE"
+                              ? "Stripe"
+                              : "Przelew bankowy"}
                         </span>
                         {entry.operation === "EMERGENCY_SHUTDOWN" && (
                           <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-red-700 text-white">
@@ -623,6 +789,11 @@ export default function AdminPaymentsPage() {
                         {messageChanged && (
                           <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-amber-100 text-amber-700">
                             KOMUNIKAT_ZMIENIONY
+                          </span>
+                        )}
+                        {presentationChanged && (
+                          <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-blue-100 text-blue-700">
+                            PREZENTACJA_ZMIENIONA
                           </span>
                         )}
                       </div>
