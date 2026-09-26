@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcrypt"
 import crypto from "crypto"
 import { sealAdminBootstrapPassword } from "@/lib/adminBootstrap"
+import { authorizePageRoute } from "@/lib/routeAccess"
 import {
   applicationRateLimiter,
   getClientRateLimitKey,
@@ -110,6 +111,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   callbacks: {
+    authorized({ auth, request }) {
+      const role = (auth?.user as { role?: string } | undefined)?.role
+      return authorizePageRoute(request.nextUrl.pathname, role)
+    },
     async jwt({ token, user }) {
       if (user) {
         token.role = (user as { role?: string }).role
