@@ -9,6 +9,7 @@ import { getKnowledge } from "@/lib/knowledge/parser"
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
+  assertCatalogClassification,
   ensureManufacturerRecord,
   hasSkuConflict,
   type CatalogManufacturerRecord,
@@ -101,6 +102,21 @@ function logImport(message: string) {
 
 function normalize(value: unknown) {
   return String(value ?? "").trim().toLowerCase()
+}
+
+function catalogClassificationErrorResponse(error: unknown) {
+  if (!(error instanceof Error)) return null
+
+  const messages: Record<string, string> = {
+    CATEGORY_NOT_FOUND: "Wybrana kategoria nie istnieje.",
+    SUBCATEGORY_WITHOUT_CATEGORY: "Podkategoria wymaga wybranej kategorii.",
+    SUBCATEGORY_NOT_FOUND:
+      "Wybrana podkategoria nie należy do wybranej kategorii.",
+  }
+  const message = messages[error.message]
+  return message
+    ? NextResponse.json({ error: message }, { status: 409 })
+    : null
 }
 
 export async function GET() {
@@ -295,6 +311,12 @@ export async function POST(req: Request) {
             }
           }
 
+          assertCatalogClassification(
+            categoryStore,
+            categoryId,
+            subcategoryId
+          )
+
           if (existing) {
             if (item.price !== undefined) existing.price = item.price
             if (item.stock !== undefined) {
@@ -342,6 +364,10 @@ export async function POST(req: Request) {
       )
       return NextResponse.json({ success: true, ...result })
     } catch (error) {
+      const classificationResponse =
+        catalogClassificationErrorResponse(error)
+      if (classificationResponse) return classificationResponse
+
       console.error("WF-Mag import persistence error:", error)
       return NextResponse.json(
         { error: "Nie udało się utrwalić importu." },
@@ -364,6 +390,11 @@ export async function POST(req: Request) {
       if (hasSkuConflict(productStore, parsed.data.sku)) {
         throw new Error("SKU_EXISTS")
       }
+      assertCatalogClassification(
+        db.categories as CategoryRecord[],
+        parsed.data.categoryId,
+        parsed.data.subcategoryId
+      )
 
       const product: ProductRecord = {
         ...parsed.data,
@@ -381,6 +412,9 @@ export async function POST(req: Request) {
         { status: 409 }
       )
     }
+    const classificationResponse =
+      catalogClassificationErrorResponse(error)
+    if (classificationResponse) return classificationResponse
 
     console.error("Product create persistence error:", error)
     return NextResponse.json(
@@ -416,6 +450,11 @@ export async function PUT(req: Request) {
       if (hasSkuConflict(productStore, parsed.data.sku, parsed.data.id)) {
         throw new Error("SKU_EXISTS")
       }
+      assertCatalogClassification(
+        db.categories as CategoryRecord[],
+        parsed.data.categoryId,
+        parsed.data.subcategoryId
+      )
       if (
         shouldDeferProductStockWrite(
           db.orders as InventoryReservationOrder[],
@@ -460,6 +499,9 @@ export async function PUT(req: Request) {
         { status: 409 }
       )
     }
+    const classificationResponse =
+      catalogClassificationErrorResponse(error)
+    if (classificationResponse) return classificationResponse
 
     return NextResponse.json(
       { error: "Nie udało się zapisać produktu." },
