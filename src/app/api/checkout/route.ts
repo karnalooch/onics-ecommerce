@@ -54,11 +54,14 @@ function paymentErrorResponse(
     code === "PAYMENTS_DISABLED" ||
     code === "PAYMENT_METHOD_DISABLED" ||
     code === "PAYMENT_PROVIDER_NOT_CONFIGURED"
+  const checkoutForbidden = code === "CHECKOUT_ROLE_NOT_ALLOWED"
 
   const message =
-    code === "CHECKOUT_STATE_CHANGED"
-      ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
-      : code === "PAYMENTS_DISABLED"
+    code === "CHECKOUT_ROLE_NOT_ALLOWED"
+      ? "Checkout online jest dostępny dla aktywnych kont B2B."
+      : code === "CHECKOUT_STATE_CHANGED"
+        ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
+        : code === "PAYMENTS_DISABLED"
         ? "Płatności online zostały wyłączone przez administratora."
         : code === "PAYMENT_METHOD_DISABLED"
           ? providerDisabledMessage(method, maintenanceMessage)
@@ -74,11 +77,13 @@ function paymentErrorResponse(
   return NextResponse.json(
     { error: message },
     {
-      status: paymentUnavailable
-        ? 503
-        : inventoryConflict
-          ? 409
-          : 500,
+      status: checkoutForbidden
+        ? 403
+        : paymentUnavailable
+          ? 503
+          : inventoryConflict
+            ? 409
+            : 500,
     }
   )
 }
