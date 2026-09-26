@@ -23,6 +23,7 @@ export function stripeOperationalStatus(
     nodeEnv?: string
     stripeSecretKey?: string | null
     stripeWebhookSecret?: string | null
+    appUrl?: string | null
   } = {}
 ) {
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV
@@ -30,13 +31,32 @@ export function stripeOperationalStatus(
     options.stripeSecretKey ?? process.env.STRIPE_SECRET_KEY
   const stripeWebhookSecret =
     options.stripeWebhookSecret ?? process.env.STRIPE_WEBHOOK_SECRET
+  const appUrl = options.appUrl ?? process.env.NEXT_PUBLIC_APP_URL
 
   const hasSecretKey = Boolean(stripeSecretKey?.trim())
   const hasWebhookSecret = Boolean(stripeWebhookSecret?.trim())
 
+  let productionAppUrlConfigured = nodeEnv !== "production"
+  if (nodeEnv === "production" && appUrl?.trim()) {
+    try {
+      const parsed = new URL(appUrl.trim())
+      productionAppUrlConfigured =
+        parsed.protocol === "https:" &&
+        !parsed.username &&
+        !parsed.password &&
+        parsed.pathname === "/" &&
+        !parsed.search &&
+        !parsed.hash
+    } catch {
+      productionAppUrlConfigured = false
+    }
+  }
+
   return {
     configured:
-      hasSecretKey && (nodeEnv !== "production" || hasWebhookSecret),
+      hasSecretKey &&
+      (nodeEnv !== "production" ||
+        (hasWebhookSecret && productionAppUrlConfigured)),
     webhookConfigured: hasWebhookSecret,
   }
 }
