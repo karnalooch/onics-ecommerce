@@ -8,14 +8,35 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner"; // Jeśli mamy sonner zainstalowane, jeśli nie to mock
 import { Button } from "@/components/ui/button";
 
+type CheckoutPaymentMethod = {
+  id: "STRIPE" | "BANK_TRANSFER";
+  name: string;
+  enabled: boolean;
+  configured: boolean;
+  available: boolean;
+  kind: "REDIRECT" | "MANUAL";
+  maintenanceMessage: string | null;
+};
+
+type BankTransferConfirmation = {
+  orderId: string;
+  recipient: string;
+  iban: string;
+  title: string;
+  amount: number;
+  currency: string;
+};
+
 export default function CartPage() {
   const { data: session } = useSession();
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
-  const [submitting, setSubmitting] = useState<"PDF" | "INQUIRY" | "ORDER" | "STRIPE" | null>(null);
-  const [stripeAvailable, setStripeAvailable] = useState(false);
+  const [submitting, setSubmitting] = useState<"PDF" | "INQUIRY" | "ORDER" | "STRIPE" | "BANK_TRANSFER" | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<CheckoutPaymentMethod[]>([]);
+  const [paymentControlEnabled, setPaymentControlEnabled] = useState(false);
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
+  const [bankTransferConfirmation, setBankTransferConfirmation] = useState<BankTransferConfirmation | null>(null);
   const router = useRouter();
 
   // Zabezpieczenie przez Hydration Mismatch przy renderze Local Storage
@@ -23,7 +44,8 @@ export default function CartPage() {
 
   useEffect(() => {
     if (!session?.user) {
-      setStripeAvailable(false);
+      setPaymentMethods([]);
+      setPaymentControlEnabled(false);
       setPaymentNotice(null);
       setPaymentMethodsLoaded(true);
       return;
@@ -37,32 +59,24 @@ export default function CartPage() {
         const data = await response.json().catch(() => null);
         if (!response.ok) throw new Error(data?.error || "PAYMENT_METHODS_UNAVAILABLE");
 
-        const stripe = (data?.methods ?? []).find(
-          (method: { id?: string }) => method.id === "STRIPE"
-        );
         const controlEnabled = data?.control?.enabled !== false;
-        const available = Boolean(
-          controlEnabled && stripe?.enabled && stripe?.configured
-        );
 
         if (!cancelled) {
-          setStripeAvailable(available);
+          setPaymentMethods(data?.methods ?? []);
+          setPaymentControlEnabled(controlEnabled);
           setPaymentNotice(
-            !controlEnabled
-              ? data?.control?.maintenanceMessage ||
+            controlEnabled
+              ? null
+              : data?.control?.maintenanceMessage ||
                   "Płatności online są obecnie wyłączone."
-              : !stripe?.enabled
-                ? "Płatność online Stripe została wyłączona przez administratora."
-                : !stripe?.configured
-                  ? "Płatność online jest chwilowo niedostępna z powodu konfiguracji operatora."
-                  : null
           );
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setStripeAvailable(false);
-          setPaymentNotice("Nie udało się sprawdzić dostępności płatności online.");
+          setPaymentMethods([]);
+          setPaymentControlEnabled(false);
+          setPaymentNotice("Nie udało się sprawdzić dostępności płatności.");
         }
       })
       .finally(() => {
@@ -75,14 +89,25 @@ export default function CartPage() {
   }, [session?.user]);
 
   const isB2B = (session?.user as any)?.role === "BIZ" || (session?.user as any)?.role === "ADMIN";
+  const availablePaymentMethods = paymentControlEnabled
+    ? paymentMethods.filter((method) => method.available)
+    : [];
 
-  const handleStripeCheckout = async () => {
-    setSubmitting("STRIPE");
+  const unavailablePaymentNotice =
+    paymentNotice ||
+    paymentMethods.find((method) => method.enabled && !method.configured)
+      ?.maintenanceMessage ||
+    paymentMethods.find((method) => !method.enabled)?.maintenanceMessage ||
+    "Brak aktywnej i poprawnie skonfigurowanej metody płatności.";
+
+  const handlePaymentCheckout = async (method: CheckoutPaymentMethod) => {
+    setSubmitting(method.id);
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          paymentMethod: method.id,
           items: items.map((item) => ({
             id: item.id,
             quantity: item.quantity,
@@ -93,19 +118,38 @@ export default function CartPage() {
       const data = await response.json().catch(() => null);
       if (!response.ok) {
         throw new Error(
-          data?.error || "Nie udało się uruchomić płatności online."
+          data?.error || "Nie udało się uruchomić płatności."
         );
       }
-      if (!data?.url) {
-        throw new Error("Bramka płatności nie zwróciła adresu przekierowania.");
+
+      if (method.id === "STRIPE") {
+        if (!data?.url) {
+          throw new Error("Bramka płatności nie zwróciła adresu przekierowania.");
+        }
+        window.location.assign(data.url);
+        return;
       }
 
-      window.location.assign(data.url);
+      if (!data?.bankTransfer?.iban || !data?.orderId) {
+        throw new Error("Nie udało się pobrać danych do przelewu.");
+      }
+
+      setBankTransferConfirmation({
+        orderId: data.orderId,
+        recipient: data.bankTransfer.recipient,
+        iban: data.bankTransfer.iban,
+        title: data.bankTransfer.title,
+        amount: Number(data.bankTransfer.amount),
+        currency: data.bankTransfer.currency || "PLN",
+      });
+      clearCart();
+      toast.success("Zamówienie utworzone. Dane do przelewu są gotowe.");
+      setSubmitting(null);
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Nie udało się uruchomić płatności online."
+          : "Nie udało się uruchomić płatności."
       );
       setSubmitting(null);
     }
@@ -173,7 +217,50 @@ export default function CartPage() {
         </div>
       )}
 
-      {items.length === 0 ? (
+      {bankTransferConfirmation ? (
+        <div className="max-w-2xl mx-auto w-full rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
+          <div className="flex items-start gap-4">
+            <ShieldCheck className="w-8 h-8 text-green-600 shrink-0" />
+            <div className="w-full">
+              <p className="text-xs font-bold uppercase tracking-widest text-green-700">
+                Zamówienie {bankTransferConfirmation.orderId}
+              </p>
+              <h2 className="text-2xl font-bold text-slate-950 mt-1">
+                Dane do przelewu
+              </h2>
+              <div className="mt-6 grid gap-4 text-sm">
+                <div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">Odbiorca</div>
+                  <div className="font-semibold mt-1">{bankTransferConfirmation.recipient}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">IBAN</div>
+                  <div className="font-mono font-semibold mt-1 break-all">{bankTransferConfirmation.iban}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">Tytuł przelewu</div>
+                  <div className="font-mono font-semibold mt-1">{bankTransferConfirmation.title}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 uppercase font-semibold">Kwota</div>
+                  <div className="text-xl font-bold mt-1">
+                    {bankTransferConfirmation.amount.toFixed(2)} {bankTransferConfirmation.currency}
+                  </div>
+                </div>
+              </div>
+              <p className="mt-6 text-xs text-slate-600">
+                Zachowaj dokładny tytuł przelewu — identyfikuje on płatność z zamówieniem.
+              </p>
+              <Button
+                onClick={() => router.push("/oferty/zamowienia")}
+                className="mt-6 rounded-xl"
+              >
+                Przejdź do zamówień
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : items.length === 0 ? (
         <div className="bg-muted/30 border border-dashed rounded-xl p-16 text-center">
           <p className="text-muted-foreground text-lg">Twój koszyk jest pusty.</p>
         </div>
@@ -300,25 +387,27 @@ export default function CartPage() {
                     {submitting === "ORDER" ? <Loader2 className="w-5 h-5 animate-spin" /> : "Wyślij realne ZAMÓWIENIE"}
                   </Button>
 
-                  {stripeAvailable && (
+                  {availablePaymentMethods.map((method) => (
                     <Button
-                      onClick={handleStripeCheckout}
+                      key={method.id}
+                      onClick={() => handlePaymentCheckout(method)}
                       disabled={submitting !== null}
                       className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-slate-950 hover:bg-slate-800 text-white shadow-md border-none"
                     >
-                      {submitting === "STRIPE" ? (
+                      {submitting === method.id ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                       ) : (
                         <CreditCard className="w-5 h-5" />
                       )}
-                      Zapłać online przez Stripe
+                      {method.id === "STRIPE"
+                        ? `Zapłać online przez ${method.name}`
+                        : method.name}
                     </Button>
-                  )}
+                  ))}
 
-                  {paymentMethodsLoaded && !stripeAvailable && (
+                  {paymentMethodsLoaded && availablePaymentMethods.length === 0 && (
                     <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-500">
-                      {paymentNotice || "Płatność online jest obecnie niedostępna."}{" "}
-                      Nadal możesz wysłać zamówienie do ręcznej realizacji.
+                      {unavailablePaymentNotice} Nadal możesz wysłać zamówienie do ręcznej realizacji.
                     </div>
                   )}
 
