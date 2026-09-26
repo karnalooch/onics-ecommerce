@@ -51,6 +51,7 @@ export default function AdminPaymentsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [emergencyRunning, setEmergencyRunning] = useState(false)
+  const [reconciling, setReconciling] = useState(false)
 
   const loadMethods = useCallback(async () => {
     setLoading(true)
@@ -199,6 +200,48 @@ export default function AdminPaymentsPage() {
       await loadMethods()
     } finally {
       setEmergencyRunning(false)
+    }
+  }
+
+  const reconcileStripe = async () => {
+    setReconciling(true)
+    try {
+      const response = await fetch("/api/payment-methods/reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok && response.status !== 207) {
+        throw new Error(
+          data?.error || "Nie udało się zsynchronizować Stripe."
+        )
+      }
+
+      const summary = data?.summary ?? {}
+      const updated = Number(summary.UPDATED ?? 0)
+      const review = Number(summary.MANUAL_REVIEW ?? 0)
+      const failed = Number(summary.FAILED ?? 0)
+      const unchanged = Number(summary.UNCHANGED ?? 0)
+
+      if (failed > 0 || review > 0) {
+        toast.warning(
+          `Stripe: zaktualizowano ${updated}, bez zmian ${unchanged}, review ${review}, błędy ${failed}.`
+        )
+      } else {
+        toast.success(
+          `Stripe zsynchronizowany: zaktualizowano ${updated}, bez zmian ${unchanged}.`
+        )
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się zsynchronizować Stripe."
+      )
+    } finally {
+      setReconciling(false)
     }
   }
 
@@ -474,24 +517,39 @@ export default function AdminPaymentsPage() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => toggleMethod(method)}
-                    disabled={busy || (!method.enabled && !canEnable)}
-                    className={`min-w-[240px] h-14 px-6 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed ${method.enabled ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100" : "bg-slate-950 text-white hover:bg-slate-800"}`}
-                  >
-                    {busy ? (
-                      <RefreshCcw className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Power className="w-4 h-4" />
+                  <div className="flex flex-col gap-3 min-w-[240px]">
+                    <button
+                      onClick={() => toggleMethod(method)}
+                      disabled={busy || reconciling || (!method.enabled && !canEnable)}
+                      className={`h-14 px-6 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed ${method.enabled ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100" : "bg-slate-950 text-white hover:bg-slate-800"}`}
+                    >
+                      {busy ? (
+                        <RefreshCcw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Power className="w-4 h-4" />
+                      )}
+                      {busy
+                        ? "ZAPISYWANIE..."
+                        : method.enabled
+                          ? "WYŁĄCZ NOWE PŁATNOŚCI"
+                          : canEnable
+                            ? "WŁĄCZ STRIPE"
+                            : "BRAK KONFIGURACJI"}
+                    </button>
+
+                    {method.id === "STRIPE" && (
+                      <button
+                        onClick={reconcileStripe}
+                        disabled={reconciling || saving !== null || emergencyRunning || !method.configured}
+                        className="h-11 px-6 border border-slate-200 text-slate-600 bg-white text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:border-slate-950 hover:text-slate-950 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCcw className={`w-4 h-4 ${reconciling ? "animate-spin" : ""}`} />
+                        {reconciling
+                          ? "SYNCHRONIZACJA..."
+                          : "SYNCHRONIZUJ STRIPE"}
+                      </button>
                     )}
-                    {busy
-                      ? "ZAPISYWANIE..."
-                      : method.enabled
-                        ? "WYŁĄCZ NOWE PŁATNOŚCI"
-                        : canEnable
-                          ? "WŁĄCZ STRIPE"
-                          : "BRAK KONFIGURACJI"}
-                  </button>
+                  </div>
                 </div>
               </section>
             )
