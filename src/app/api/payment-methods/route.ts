@@ -50,9 +50,15 @@ export async function GET() {
   if (!authCheck.authorized) return authCheck.response
 
   const snapshot = initializeMockData()
+  const methods = describePaymentMethods(snapshot.paymentMethods)
+  const visibleMethods =
+    authCheck.currentRole === "ADMIN"
+      ? methods
+      : methods.map(({ configurationIssues: _configurationIssues, ...method }) => method)
+
   return NextResponse.json({
     control: describePaymentControl(snapshot.paymentControl),
-    methods: describePaymentMethods(snapshot.paymentMethods),
+    methods: visibleMethods,
     ...(authCheck.currentRole === "ADMIN"
       ? { audit: snapshot.paymentAudit.slice(0, 20) }
       : {}),
