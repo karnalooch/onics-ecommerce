@@ -96,8 +96,7 @@ describe("Stripe payment verification", () => {
       ).ok
     ).toBe(false)
   })
-
-}
+})
 
 describe("Stripe runtime configuration", () => {
   it("requires webhook verification and an explicit HTTPS origin in production", () => {
