@@ -6,6 +6,10 @@ import {
   isValidCartItemQuantity,
   resolveMergedCartQuantity,
 } from '@/lib/cartQuantity';
+import {
+  sanitizeCartItems,
+  sanitizePersistedCartState,
+} from '@/lib/cartPersist';
 
 export interface CartItem {
   id: string; // Unikalne ID produktu
@@ -35,15 +39,16 @@ export const useCartStore = create<CartStore>()(
       items: [],
       
       addItem: (item) => {
-        if (!isValidCartItemQuantity(item.quantity)) return false;
+        const [safeItem] = sanitizeCartItems([item]) ?? [];
+        if (!safeItem) return false;
 
         const currentItems = get().items;
-        const existingItem = currentItems.find((i) => i.id === item.id);
+        const existingItem = currentItems.find((i) => i.id === safeItem.id);
         
         if (existingItem) {
           const nextQuantity = resolveMergedCartQuantity(
             existingItem.quantity,
-            item.quantity
+            safeItem.quantity
           );
           if (nextQuantity === null) return false;
 
@@ -55,7 +60,7 @@ export const useCartStore = create<CartStore>()(
           return true;
         }
 
-        set({ items: [...currentItems, item] });
+        set({ items: [...currentItems, safeItem] });
         return true;
       },
       
@@ -91,7 +96,10 @@ export const useCartStore = create<CartStore>()(
         });
       },
 
-      replaceItems: (items) => set({ items }),
+      replaceItems: (items) => {
+        const safeItems = sanitizeCartItems(items);
+        set({ items: safeItems ?? [] });
+      },
 
       bindOwner: (ownerKey) => {
         const nextOwnerKey = ownerKey?.trim() || null;
@@ -121,6 +129,10 @@ export const useCartStore = create<CartStore>()(
     }),
     {
       name: 'celtronics-cart-storage', // Klucz w localStorage
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...sanitizePersistedCartState(persistedState),
+      }),
     }
   )
 );
