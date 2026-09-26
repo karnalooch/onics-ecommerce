@@ -21,8 +21,10 @@ describe("persisted cart account isolation wiring", () => {
       "utf8"
     )
 
-    expect(hook).toContain("useCartStore.persist.hasHydrated()")
-    expect(hook).toContain("useCartStore.persist.onFinishHydration")
+    expect(hook).toContain("const persistApi = useCartStore.persist")
+    expect(hook).toContain("if (!persistApi) return")
+    expect(hook).toContain("persistApi.hasHydrated()")
+    expect(hook).toContain("persistApi.onFinishHydration")
     expect(hook).toContain("bindOwner(options.identityKey)")
   })
 
