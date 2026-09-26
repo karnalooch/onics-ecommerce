@@ -249,7 +249,8 @@ const harnesses = {
   PRZELEWY24: {
     id: "PRZELEWY24",
     validRuntimeOptions: {
-      nodeEnv: "test",
+      nodeEnv: "production",
+      appUrl: "https://shop.example.com",
       p24MerchantId: "123456",
       p24PosId: "123456",
       p24ApiKey: "p24_contract_api_key",
@@ -267,6 +268,9 @@ const harnesses = {
       "p24_contract_api_key",
       "p24_contract_crc",
     ],
+    legacyOrder: {
+      p24SessionId: "ORD-CONTRACT-P24-LEGACY",
+    },
     checkoutResult: {
       orderId: "ORD-CONTRACT-P24-CHECKOUT",
       paymentMethod: "PRZELEWY24",
