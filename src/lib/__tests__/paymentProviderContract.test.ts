@@ -246,6 +246,36 @@ const harnesses = {
       expect(refundProducts[0].stock).toBe(5)
     },
   },
+  PRZELEWY24: {
+    id: "PRZELEWY24",
+    validRuntimeOptions: {
+      nodeEnv: "test",
+      p24MerchantId: "123456",
+      p24PosId: "123456",
+      p24ApiKey: "p24_contract_api_key",
+      p24Crc: "p24_contract_crc",
+    },
+    invalidRuntimeOptions: {
+      nodeEnv: "production",
+      p24MerchantId: "",
+      p24PosId: "",
+      p24ApiKey: "",
+      p24Crc: "",
+    },
+    sensitiveRuntimeValues: [
+      "123456",
+      "p24_contract_api_key",
+      "p24_contract_crc",
+    ],
+    checkoutResult: {
+      orderId: "ORD-CONTRACT-P24-CHECKOUT",
+      paymentMethod: "PRZELEWY24",
+      nextAction: {
+        type: "REDIRECT",
+        url: "https://sandbox.przelewy24.pl/trnRequest/contract-token",
+      },
+    },
+  },
 } satisfies Record<PaymentProviderId, PaymentProviderContractHarness>
 
 describe("payment provider contract kit", () => {
