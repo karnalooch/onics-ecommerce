@@ -84,6 +84,17 @@ export function hasActiveReservationForProduct(
   )
 }
 
+export function shouldDeferProductStockWrite(
+  orders: InventoryReservationOrder[],
+  productId: string,
+  currentStock: number | null | undefined,
+  incomingStock: number | undefined
+) {
+  if (incomingStock === undefined) return false
+  if (Number(currentStock ?? 0) === Number(incomingStock)) return false
+  return hasActiveReservationForProduct(orders, productId)
+}
+
 export function reserveInventory(
   products: InventoryProduct[],
   items: InventoryItem[]
