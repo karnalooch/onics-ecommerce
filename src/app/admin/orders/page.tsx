@@ -20,7 +20,7 @@ export default function AdminOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [returning, setReturning] = useState(false);
-  const [bankTransferUpdating, setBankTransferUpdating] = useState(false);
+  const [manualPaymentUpdating, setBankTransferUpdating] = useState(false);
   const paymentLifecycle = validatingOrder?.paymentLifecycle ?? null;
   const paymentProvider = paymentLifecycle?.provider ?? null;
   const paymentKind = paymentLifecycle?.kind ?? null;
@@ -31,9 +31,8 @@ export default function AdminOrdersPage() {
   const canManuallySettlePayment = Boolean(
     paymentCapabilities?.manualSettlement
   );
-  const isStripePayment = paymentProvider === "STRIPE";
-  const isBankTransfer = paymentProvider === "BANK_TRANSFER";
   const isManualPayment = paymentKind === "MANUAL";
+  const isAutomatedPayment = Boolean(paymentProvider) && !isManualPayment;
   const paymentAmountsLocked = Boolean(paymentProvider);
   const paymentRefundInProgress =
     validatingOrder?.refundStatus === "pending" ||
@@ -44,14 +43,14 @@ export default function AdminOrdersPage() {
   const orderCanAdvance =
     validatingOrder?.status === "PENDING_VERIFICATION" ||
     validatingOrder?.status === "CONFIRMED";
-  const stripeReturnEligible =
-    isStripePayment &&
+  const automatedReturnEligible =
+    isAutomatedPayment &&
     canManageRma &&
     canRefundPayment &&
     (validatingOrder?.status === "SHIPPED" ||
       validatingOrder?.status === "RETURNED");
-  const bankTransferReturnEligible =
-    isBankTransfer &&
+  const manualReturnEligible =
+    isManualPayment &&
     canManageRma &&
     canRefundPayment &&
     canManuallySettlePayment &&
@@ -94,13 +93,15 @@ export default function AdminOrdersPage() {
     );
   }
 
-  const cancelStripeOrder = async () => {
-    if (!validatingOrder?.id || !isStripePayment || !canCancelPayment) return;
+  const cancelPaymentOrder = async () => {
+    if (!validatingOrder?.id || !canCancelPayment) return;
+    if (isManualPayment && validatingOrder?.paymentStatus !== "PENDING") return;
+
     if (
       !window.confirm(
         validatingOrder.paymentStatus === "PAID"
-          ? "Uruchomić pełny refund Stripe i anulować zamówienie po jego powodzeniu?"
-          : "Wygasić sesję Stripe, zwolnić rezerwację i anulować zamówienie?"
+          ? "Uruchomić zwrot przez operatora płatności i anulować zamówienie po jego powodzeniu?"
+          : "Anulować oczekującą płatność, zwolnić rezerwację i anulować zamówienie?"
       )
     ) {
       return;
@@ -108,28 +109,29 @@ export default function AdminOrdersPage() {
 
     setCancelling(true);
     try {
-      const res = await fetch("/api/orders/cancel", {
+      const res = await fetch("/api/orders/payment-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: validatingOrder.id }),
+        body: JSON.stringify({
+          id: validatingOrder.id,
+          action: "CANCEL",
+        }),
       });
       const data = await res.json().catch(() => null);
 
       if (!res.ok && res.status !== 202) {
-        throw new Error(
-          data?.error || "Nie udało się anulować zamówienia Stripe."
-        );
+        throw new Error(data?.error || "Nie udało się anulować płatności.");
       }
 
       if (res.status === 202) {
         toast.success(
-          "Refund Stripe został zlecony i oczekuje na końcowe potwierdzenie."
+          "Zwrot został zlecony i oczekuje na końcowe potwierdzenie operatora."
         );
       } else {
         toast.success(
           data?.paymentStatus === "REFUNDED"
-            ? "Refund Stripe zakończony. Zamówienie anulowane."
-            : "Sesja Stripe wygaszona. Rezerwacja magazynowa zwolniona."
+            ? "Zwrot zakończony. Zamówienie anulowane."
+            : "Płatność anulowana. Rezerwacja magazynowa zwolniona."
         );
       }
 
@@ -139,26 +141,26 @@ export default function AdminOrdersPage() {
       toast.error(
         error instanceof Error
           ? error.message
-          : "FAULT: Błąd anulowania zamówienia Stripe."
+          : "FAULT: Błąd anulowania płatności."
       );
     } finally {
       setCancelling(false);
     }
   }
 
-  const settleBankTransfer = async (
+  const settleManualPayment = async (
     action: "CONFIRM_PAYMENT" | "CONFIRM_REFUND"
   ) => {
     if (
       !validatingOrder?.id ||
-      !isBankTransfer ||
+      !isManualPayment ||
       !canManuallySettlePayment
     ) return;
 
     if (action === "CONFIRM_PAYMENT") {
       if (
         !window.confirm(
-          `Potwierdzić wpływ przelewu dla zamówienia ${validatingOrder.id}? Operacja odblokuje przekazanie zamówienia do logistyki.`
+          `Potwierdzić wpływ płatności ręcznej dla zamówienia ${validatingOrder.id}? Operacja odblokuje przekazanie zamówienia do logistyki.`
         )
       ) {
         return;
@@ -173,9 +175,9 @@ export default function AdminOrdersPage() {
       }
     }
 
-    setBankTransferUpdating(true);
+    setManualPaymentUpdating(true);
     try {
-      const res = await fetch("/api/orders/bank-transfer", {
+      const res = await fetch("/api/orders/payment-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -187,13 +189,12 @@ export default function AdminOrdersPage() {
 
       if (!res.ok) {
         throw new Error(
-          data?.error ||
-            "Nie udało się rozliczyć przelewu bankowego."
+          data?.error || "Nie udało się rozliczyć płatności ręcznej."
         );
       }
 
       if (action === "CONFIRM_PAYMENT") {
-        toast.success("Wpływ przelewu został potwierdzony.");
+        toast.success("Wpływ płatności ręcznej został potwierdzony.");
         setValidatingOrder(data?.order ?? validatingOrder);
       } else {
         toast.success(
@@ -206,22 +207,22 @@ export default function AdminOrdersPage() {
       toast.error(
         error instanceof Error
           ? error.message
-          : "FAULT: Błąd rozliczenia przelewu bankowego."
+          : "FAULT: Błąd rozliczenia płatności ręcznej."
       );
     } finally {
-      setBankTransferUpdating(false);
+      setManualPaymentUpdating(false);
     }
   }
 
-  const handleBankTransferReturnAction = async (
+  const handleManualReturnAction = async (
     action: "REQUEST_RETURN" | "RECEIVE_RETURN" | "CONFIRM_RETURN_REFUND"
   ) => {
-    if (!validatingOrder?.id || !bankTransferReturnEligible) return;
+    if (!validatingOrder?.id || !manualReturnEligible) return;
 
     if (action === "REQUEST_RETURN") {
       if (
         !window.confirm(
-          "Otworzyć RMA dla wysłanego zamówienia opłaconego przelewem?"
+          "Otworzyć RMA dla wysłanego zamówienia opłaconego ręcznie?"
         )
       ) {
         return;
@@ -244,9 +245,9 @@ export default function AdminOrdersPage() {
       }
     }
 
-    setBankTransferUpdating(true);
+    setManualPaymentUpdating(true);
     try {
-      const res = await fetch("/api/orders/bank-transfer", {
+      const res = await fetch("/api/orders/payment-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -257,12 +258,12 @@ export default function AdminOrdersPage() {
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         throw new Error(
-          data?.error || "Nie udało się obsłużyć RMA przelewu."
+          data?.error || "Nie udało się obsłużyć RMA płatności ręcznej."
         );
       }
 
       if (action === "REQUEST_RETURN") {
-        toast.success("RMA przelewu zostało otwarte.");
+        toast.success("RMA płatności ręcznej zostało otwarte.");
       } else if (action === "RECEIVE_RETURN") {
         toast.success(
           "Odbiór towaru potwierdzony. Oczekuje na wykonanie i potwierdzenie zwrotu środków."
@@ -279,61 +280,10 @@ export default function AdminOrdersPage() {
       toast.error(
         error instanceof Error
           ? error.message
-          : "FAULT: Błąd RMA przelewu bankowego."
+          : "FAULT: Błąd RMA płatności ręcznej."
       );
     } finally {
-      setBankTransferUpdating(false);
-    }
-  }
-
-  const cancelPendingBankTransfer = async () => {
-    if (
-      !validatingOrder?.id ||
-      !isBankTransfer ||
-      !canCancelPayment ||
-      validatingOrder?.paymentStatus !== "PENDING"
-    ) {
-      return;
-    }
-
-    if (
-      !window.confirm(
-        "Anulować oczekujący przelew i zwolnić rezerwację magazynową?"
-      )
-    ) {
-      return;
-    }
-
-    setBankTransferUpdating(true);
-    try {
-      const res = await fetch("/api/orders", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: validatingOrder.id,
-          status: "CANCELLED",
-        }),
-      });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(
-          data?.error || "Nie udało się anulować oczekującego przelewu."
-        );
-      }
-
-      toast.success(
-        "Oczekujący przelew anulowany. Rezerwacja magazynowa zwolniona."
-      );
-      setValidatingOrder(null);
-      await fetchOrders();
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "FAULT: Błąd anulowania przelewu."
-      );
-    } finally {
-      setBankTransferUpdating(false);
+      setManualPaymentUpdating(false);
     }
   }
 
@@ -385,19 +335,21 @@ export default function AdminOrdersPage() {
     }
   }
 
-  const handleReturnAction = async (action: "REQUEST" | "RECEIVE") => {
-    if (!validatingOrder?.id || !stripeReturnEligible) return;
+  const handleAutomatedReturnAction = async (
+    action: "REQUEST_RETURN" | "RECEIVE_RETURN"
+  ) => {
+    if (!validatingOrder?.id || !automatedReturnEligible) return;
 
     const confirmation =
-      action === "REQUEST"
+      action === "REQUEST_RETURN"
         ? "Otworzyć RMA dla tego wysłanego zamówienia?"
-        : "Potwierdzić fizyczny odbiór zwrotu? Operacja może uruchomić refund Stripe, a po jego powodzeniu zwrócić towar na magazyn.";
+        : "Potwierdzić fizyczny odbiór zwrotu? Operacja może uruchomić zwrot przez operatora płatności, a po jego powodzeniu zwrócić towar na magazyn.";
 
     if (!window.confirm(confirmation)) return;
 
     setReturning(true);
     try {
-      const res = await fetch("/api/orders/return", {
+      const res = await fetch("/api/orders/payment-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -412,13 +364,17 @@ export default function AdminOrdersPage() {
       }
 
       if (res.status === 202) {
-        toast.success("Refund Stripe jest w toku. RMA pozostaje otwarte.");
+        toast.success(
+          "Zwrot przez operatora płatności jest w toku. RMA pozostaje otwarte."
+        );
       } else if (data?.returnStatus === "COMPLETED") {
-        toast.success("RMA zakończone: refund potwierdzony, towar zwrócony na magazyn.");
-      } else if (action === "REQUEST") {
+        toast.success(
+          "RMA zakończone: zwrot potwierdzony, towar zwrócony na magazyn."
+        );
+      } else if (action === "REQUEST_RETURN") {
         toast.success("RMA otwarte. Oczekuje na fizyczny zwrot towaru.");
       } else {
-        toast.success("Odbiór zwrotu zapisany. Finalizacja refundu rozpoczęta.");
+        toast.success("Odbiór zwrotu zapisany. Finalizacja zwrotu rozpoczęta.");
       }
 
       setValidatingOrder((current: any) => ({
@@ -729,7 +685,7 @@ export default function AdminOrdersPage() {
                     </div>
                  )}
                  <div className="p-6 bg-slate-950 flex flex-wrap items-center gap-4">
-                    {isBankTransfer &&
+                    {isManualPayment &&
                      canManuallySettlePayment &&
                      canCancelPayment &&
                      validatingOrder?.status !== "CANCELLED" &&
@@ -738,25 +694,25 @@ export default function AdminOrdersPage() {
                      validatingOrder?.paymentStatus === "PENDING" && (
                        <>
                          <button
-                           onClick={() => settleBankTransfer("CONFIRM_PAYMENT")}
-                           disabled={bankTransferUpdating || saving || returning}
+                           onClick={() => settleManualPayment("CONFIRM_PAYMENT")}
+                           disabled={manualPaymentUpdating || saving || returning}
                            className="flex-1 min-w-[190px] h-14 border-2 border-green-400/50 text-green-300 font-black text-[10px] uppercase tracking-widest hover:border-green-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
                          >
-                           {bankTransferUpdating
+                           {manualPaymentUpdating
                              ? "ROZLICZANIE..."
-                             : "POTWIERDŹ_WPŁYW_PRZELEWU"}
+                             : "POTWIERDŹ_WPŁYW"}
                          </button>
                          <button
-                           onClick={cancelPendingBankTransfer}
-                           disabled={bankTransferUpdating || saving || returning}
+                           onClick={cancelPaymentOrder}
+                           disabled={manualPaymentUpdating || saving || returning}
                            className="flex-1 min-w-[190px] h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
                          >
-                           ANULUJ_OCZEKUJĄCY_PRZELEW
+                           ANULUJ_OCZEKUJĄCĄ_PŁATNOŚĆ
                          </button>
                        </>
                     )}
 
-                    {isBankTransfer &&
+                    {isManualPayment &&
                      canManuallySettlePayment &&
                      canRefundPayment &&
                      validatingOrder?.paymentStatus === "PAID" &&
@@ -764,23 +720,23 @@ export default function AdminOrdersPage() {
                      validatingOrder?.status !== "SHIPPED" &&
                      validatingOrder?.status !== "RETURNED" && (
                        <button
-                         onClick={() => settleBankTransfer("CONFIRM_REFUND")}
-                         disabled={bankTransferUpdating || saving || returning}
+                         onClick={() => settleManualPayment("CONFIRM_REFUND")}
+                         disabled={manualPaymentUpdating || saving || returning}
                          className="flex-1 min-w-[220px] h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
                        >
-                         {bankTransferUpdating
+                         {manualPaymentUpdating
                            ? "ROZLICZANIE..."
                            : "POTWIERDŹ_ZWROT_I_ANULUJ"}
                        </button>
                     )}
 
-                    {isStripePayment &&
+                    {isAutomatedPayment &&
                      canCancelPayment &&
                      validatingOrder?.status !== "CANCELLED" &&
                      validatingOrder?.status !== "SHIPPED" &&
                      validatingOrder?.status !== "RETURNED" && (
                        <button
-                         onClick={cancelStripeOrder}
+                         onClick={cancelPaymentOrder}
                          disabled={
                            cancelling ||
                            returning ||
@@ -798,15 +754,15 @@ export default function AdminOrdersPage() {
                        </button>
                     )}
 
-                    {stripeReturnEligible &&
+                    {automatedReturnEligible &&
                      validatingOrder?.status === "SHIPPED" &&
                      validatingOrder?.returnStatus !== "COMPLETED" && (
                        <button
                          onClick={() =>
-                           handleReturnAction(
+                           handleAutomatedReturnAction(
                              validatingOrder?.returnStatus
-                               ? "RECEIVE"
-                               : "REQUEST"
+                               ? "RECEIVE_RETURN"
+                               : "REQUEST_RETURN"
                            )
                          }
                          disabled={returning || cancelling}
@@ -824,12 +780,12 @@ export default function AdminOrdersPage() {
                        </button>
                     )}
 
-                    {bankTransferReturnEligible &&
+                    {manualReturnEligible &&
                      validatingOrder?.status === "SHIPPED" &&
                      validatingOrder?.returnStatus !== "COMPLETED" && (
                        <button
                          onClick={() =>
-                           handleBankTransferReturnAction(
+                           handleManualReturnAction(
                              !validatingOrder?.returnStatus
                                ? "REQUEST_RETURN"
                                : validatingOrder?.returnStatus === "REQUESTED"
@@ -837,13 +793,13 @@ export default function AdminOrdersPage() {
                                  : "CONFIRM_RETURN_REFUND"
                            )
                          }
-                         disabled={bankTransferUpdating || saving || cancelling}
+                         disabled={manualPaymentUpdating || saving || cancelling}
                          className="flex-1 min-w-[210px] h-14 border-2 border-blue-400/50 text-blue-300 font-black text-[10px] uppercase tracking-widest hover:border-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
                        >
-                         {bankTransferUpdating
+                         {manualPaymentUpdating
                            ? "RMA_PROCESSING..."
                            : !validatingOrder?.returnStatus
-                             ? "OTWÓRZ_RMA_PRZELEWU"
+                             ? "OTWÓRZ_RMA_PŁATNOŚCI"
                              : validatingOrder?.returnStatus === "REQUESTED"
                                ? "POTWIERDŹ_ODBIÓR_TOWARU"
                                : "POTWIERDŹ_ZWROT_ŚRODKÓW"}
@@ -871,7 +827,7 @@ export default function AdminOrdersPage() {
                            saving ||
                            cancelling ||
                            returning ||
-                           bankTransferUpdating ||
+                           manualPaymentUpdating ||
                            paymentFulfillmentLocked
                          }
                          className={`flex-1 min-w-[200px] h-14 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 transition-all italic ${
