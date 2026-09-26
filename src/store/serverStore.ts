@@ -269,7 +269,7 @@ function normalizePaymentMethod(
   }
 }
 
-function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
+export function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
   const source = isRecord(value) ? value : {}
 
   return Object.fromEntries(
