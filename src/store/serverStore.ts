@@ -73,7 +73,7 @@ function normalizePaymentAudit(value: unknown): PaymentAuditEntry[] {
     .filter(isRecord)
     .flatMap((entry) => {
       const actor = isRecord(entry.actor) ? entry.actor : {}
-      const target =
+      const target: PaymentAuditEntry["target"] | null =
         entry.target === "GLOBAL" || entry.target === "STRIPE"
           ? entry.target
           : null
