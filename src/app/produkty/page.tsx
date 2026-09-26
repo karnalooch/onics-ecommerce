@@ -21,6 +21,7 @@ import {
   type ProductCatalogUser,
 } from "@/lib/productCatalogView"
 import type { CartItem } from "@/store/cartStore"
+import { buildCartOwnerKey } from "@/lib/cartIdentity"
 
 export const metadata: Metadata = {
   title: "Katalog B2B",
@@ -49,6 +50,10 @@ export default async function ConsumerCatalogPage({
   searchParams?: SearchParams
 }) {
   const session = await auth()
+  const sessionUser = session?.user as
+    | { id?: string; email?: string | null }
+    | undefined
+  const cartOwnerKey = buildCartOwnerKey(sessionUser)
   const params = (await searchParams) ?? {}
   const query = typeof params.q === "string" ? params.q.trim() : ""
   const activeCategory = typeof params.category === "string" ? params.category.trim() : ""
@@ -61,10 +66,6 @@ export default async function ConsumerCatalogPage({
       users,
       categories: storedCategories,
     } = initializeMockData()
-    const sessionUser = session?.user as
-      | { id?: string; email?: string | null }
-      | undefined
-
     products = (await buildProductCatalogView(
       storedProducts as ProductCatalogRecord[],
       users as ProductCatalogUser[],
@@ -234,7 +235,7 @@ export default async function ConsumerCatalogPage({
                           cena netto
                         </span>
                         <div className="mt-3 flex lg:justify-end">
-                          <AddToCartButton product={cartProduct} />
+                          <AddToCartButton product={cartProduct} ownerKey={cartOwnerKey} />
                         </div>
                       </>
                     ) : (

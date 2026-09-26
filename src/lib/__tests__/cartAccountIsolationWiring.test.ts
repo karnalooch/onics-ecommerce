@@ -31,7 +31,7 @@ describe("persisted cart account isolation wiring", () => {
     expect(hook).toContain("bindOwner(options.identityKey)")
   })
 
-  it("gates storefront, full cart and offer preview on the bound owner", () => {
+  it("gates every cart surface and catalog mutation on the bound owner", () => {
     const shop = fs.readFileSync(
       path.join(process.cwd(), "src/app/sklep/ShopDashboardClient.tsx"),
       "utf8"
@@ -44,6 +44,14 @@ describe("persisted cart account isolation wiring", () => {
       path.join(process.cwd(), "src/app/koszyk/oferta/page.tsx"),
       "utf8"
     )
+    const catalog = fs.readFileSync(
+      path.join(process.cwd(), "src/app/produkty/page.tsx"),
+      "utf8"
+    )
+    const addButton = fs.readFileSync(
+      path.join(process.cwd(), "src/components/ui/AddToCartButton.tsx"),
+      "utf8"
+    )
 
     expect(shop).toContain("useCartOwnerBinding")
     expect(shop).toContain("if (!cartOwnerReady)")
@@ -54,5 +62,10 @@ describe("persisted cart account isolation wiring", () => {
     expect(offer).toContain("if (!mounted || !cartOwnerReady) return")
     expect(offer).toContain("if (!mounted || !cartOwnerReady || loading)")
     expect(offer).toContain('resolved: sessionStatus !== "loading"')
+    expect(catalog).toContain("buildCartOwnerKey(sessionUser)")
+    expect(catalog).toContain("ownerKey={cartOwnerKey}")
+    expect(addButton).toContain("useCartOwnerBinding")
+    expect(addButton).toContain("if (!cartOwnerReady || !ownerKey) return")
+    expect(addButton).toContain("disabled={!cartOwnerReady || !ownerKey}")
   })
 })
