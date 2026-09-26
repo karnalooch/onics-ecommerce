@@ -7,12 +7,13 @@ import {
   type CartOfferCustomer,
 } from "@/lib/cartOffer"
 import type { CommerceProduct } from "@/lib/commerce"
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { initializeMockData } from "@/store/serverStore"
 
 const OfferItemSchema = z.object({
   id: z.string().min(1).max(200),
-  quantity: z.coerce.number().int().min(1).max(10000),
+  quantity: z.coerce.number().int().min(1).max(CART_ITEM_QUANTITY_MAX),
 })
 
 const OfferPreviewSchema = z.object({
