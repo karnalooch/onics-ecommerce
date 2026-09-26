@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  canDeleteRepair,
   isRepairStatus,
   validateRepairStatusTransition,
 } from "@/lib/repairLifecycle"
@@ -39,5 +40,21 @@ describe("repair lifecycle", () => {
     expect(
       validateRepairStatusTransition("WERYFIKACJA", "HACKED")
     ).toBe("invalid-status")
+  })
+
+  it("allows permanent deletion only before service handling starts", () => {
+    expect(canDeleteRepair("WERYFIKACJA")).toBe(true)
+
+    for (const status of [
+      "DIAGNOSIS",
+      "REPAIRING",
+      "COMPLETED",
+      "RETURNED",
+      "REJECTED",
+      "UNKNOWN",
+      undefined,
+    ]) {
+      expect(canDeleteRepair(status)).toBe(false)
+    }
   })
 })
