@@ -22,6 +22,7 @@ type PaymentAuditEntry = {
   id: string
   createdAt: string
   target: "GLOBAL" | "STRIPE"
+  operation: "SETTING_CHANGE" | "EMERGENCY_SHUTDOWN"
   actor: {
     id: string | null
     email: string | null
@@ -49,6 +50,7 @@ export default function AdminPaymentsPage() {
   const [maintenanceMessage, setMaintenanceMessage] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const [emergencyRunning, setEmergencyRunning] = useState(false)
 
   const loadMethods = useCallback(async () => {
     setLoading(true)
@@ -125,6 +127,78 @@ export default function AdminPaymentsPage() {
       )
     } finally {
       setSaving(null)
+    }
+  }
+
+  const runEmergencyShutdown = async () => {
+    if (
+      !window.confirm(
+        "AWARYJNE WYŁĄCZENIE: nowe płatności zostaną zablokowane, a wszystkie bezpiecznie wygaszalne otwarte sesje Stripe zostaną anulowane i zwolnią rezerwacje magazynowe. Kontynuować?"
+      )
+    ) {
+      return
+    }
+
+    const typed = window.prompt(
+      'Aby potwierdzić operację, wpisz dokładnie: WYŁĄCZ'
+    )
+    if (typed !== "WYŁĄCZ") {
+      toast.error("Awaryjne wyłączenie anulowane — niepoprawne potwierdzenie.")
+      return
+    }
+
+    setEmergencyRunning(true)
+    try {
+      const response = await fetch(
+        "/api/payment-methods/emergency-shutdown",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            confirm: "EMERGENCY_SHUTDOWN",
+            maintenanceMessage:
+              maintenanceMessage.trim() ||
+              "Płatności online zostały tymczasowo wyłączone przez administratora.",
+          }),
+        }
+      )
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok && response.status !== 207) {
+        throw new Error(
+          data?.error || "Nie udało się wykonać awaryjnego wyłączenia."
+        )
+      }
+
+      const counts = data?.counts ?? {}
+      const cancelled =
+        Number(counts.cancelled ?? 0) +
+        Number(counts["already-expired"] ?? 0)
+      const unresolved =
+        Number(counts.failed ?? 0) +
+        Number(counts.changed ?? 0) +
+        Number(counts["skipped-finalizing"] ?? 0)
+
+      if (unresolved > 0) {
+        toast.warning(
+          `Płatności wyłączone. Zamknięto ${cancelled} sesji; ${unresolved} wymaga ponownej weryfikacji.`
+        )
+      } else {
+        toast.success(
+          `Awaryjne wyłączenie zakończone. Zamknięto ${cancelled} otwartych sesji Stripe.`
+        )
+      }
+
+      await loadMethods()
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się wykonać awaryjnego wyłączenia."
+      )
+      await loadMethods()
+    } finally {
+      setEmergencyRunning(false)
     }
   }
 
@@ -297,6 +371,42 @@ export default function AdminPaymentsPage() {
         </section>
       )}
 
+      {!loading && control && (
+        <section className="border-2 border-red-200 bg-red-50">
+          <div className="p-8 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+            <div className="max-w-3xl">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+                <h2 className="text-lg font-black uppercase tracking-tight text-red-900">
+                  Awaryjne wyłączenie płatności
+                </h2>
+              </div>
+              <p className="text-sm text-red-800/80 mt-3 leading-relaxed">
+                Blokuje nowe checkouty i próbuje wygasić wszystkie otwarte,
+                jeszcze nieopłacone sesje Stripe. Opłacone, wysłane i
+                finalizujące się transakcje są pomijane. Pomyślnie wygaszone
+                sesje zwalniają rezerwacje magazynowe.
+              </p>
+            </div>
+
+            <button
+              onClick={runEmergencyShutdown}
+              disabled={saving !== null || emergencyRunning}
+              className="min-w-[300px] h-14 px-6 bg-red-700 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {emergencyRunning ? (
+                <RefreshCcw className="w-4 h-4 animate-spin" />
+              ) : (
+                <AlertTriangle className="w-4 h-4" />
+              )}
+              {emergencyRunning
+                ? "WYGASZANIE_SESJI..."
+                : "AWARYJNIE WYŁĄCZ I WYGASZ SESJE"}
+            </button>
+          </div>
+        </section>
+      )}
+
       {loading ? (
         <div className="h-64 border border-slate-100 bg-white flex items-center justify-center">
           <RefreshCcw className="w-8 h-8 animate-spin text-primary" />
@@ -436,6 +546,11 @@ export default function AdminPaymentsPage() {
                             ? "Wszystkie płatności"
                             : "Stripe"}
                         </span>
+                        {entry.operation === "EMERGENCY_SHUTDOWN" && (
+                          <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-red-700 text-white">
+                            AWARYJNE_WYŁĄCZENIE
+                          </span>
+                        )}
                         {enabledChanged && (
                           <span
                             className={`px-2 py-0.5 text-[8px] font-black uppercase tracking-widest ${
