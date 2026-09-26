@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { toSafeUserResponse } from "@/lib/userResponse"
 import { mutateMockData } from "@/store/serverStore"
 
 type DiscountUser = {
@@ -39,7 +40,7 @@ export async function PUT(req: Request) {
 
       userStore[userIndex].discount = parsed.data.discount
       userStore[userIndex].tierName = parsed.data.tierName.toUpperCase()
-      return { ...userStore[userIndex] }
+      return toSafeUserResponse(userStore[userIndex])
     })
 
     return NextResponse.json({ success: true, user })
