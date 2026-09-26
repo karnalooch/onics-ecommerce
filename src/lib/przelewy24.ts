@@ -1,8 +1,9 @@
 import { createHash, timingSafeEqual } from "node:crypto"
 import { moneyToMinorUnits } from "@/lib/payments"
-import type {
-  InventoryProduct,
-  InventoryReservationOrder,
+import {
+  releaseInventory,
+  type InventoryProduct,
+  type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
 
 export type Przelewy24RuntimeOptions = {
@@ -38,8 +39,22 @@ export type Przelewy24Notification = {
   sign: string
 }
 
+export type Przelewy24RefundNotification = {
+  orderId: number
+  sessionId: string
+  merchantId: number
+  requestId: string
+  refundsUuid: string
+  amount: number
+  currency: string
+  timestamp: number
+  status: 0 | 1
+  sign: string
+}
+
 export type Przelewy24StoredOrder = InventoryReservationOrder & {
   id: string
+  status?: string | null
   paymentProvider?: unknown
   totalPriceFinal?: number | null
   paymentStatus?: string | null
@@ -51,6 +66,19 @@ export type Przelewy24StoredOrder = InventoryReservationOrder & {
   paidAt?: string | null
   paymentUpdatedAt?: string | null
   paymentReconciledAt?: string | null
+  refundedAt?: string | null
+  refundStatus?: string | null
+  refundRequestedAt?: string | null
+  refundUpdatedAt?: string | null
+  returnStatus?: "REQUESTED" | "RECEIVED" | "REFUND_PENDING" | "COMPLETED" | null
+  returnRequestedAt?: string | null
+  returnReceivedAt?: string | null
+  returnUpdatedAt?: string | null
+  returnCompletedAt?: string | null
+  p24RefundAttempt?: number | null
+  p24RefundRequestId?: string | null
+  p24RefundsUuid?: string | null
+  p24LastRefundNotificationSign?: string | null
 }
 
 function numericCredential(value: string | null | undefined) {
@@ -454,4 +482,343 @@ export function applyVerifiedPrzelewy24Payment(
 
   void products
   return "paid" as const
+}
+
+
+export function verifyPrzelewy24RefundNotificationSignature(
+  notification: Przelewy24RefundNotification,
+  config: Przelewy24Config
+) {
+  if (notification.merchantId !== config.merchantId) {
+    return false
+  }
+
+  const expected = calculatePrzelewy24Sign({
+    orderId: notification.orderId,
+    sessionId: notification.sessionId,
+    refundsUuid: notification.refundsUuid,
+    merchantId: notification.merchantId,
+    amount: notification.amount,
+    currency: notification.currency,
+    status: notification.status,
+    crc: config.crc,
+  })
+
+  return safeEqualHex(notification.sign, expected)
+}
+
+function refundAttemptIds(orderId: string, attempt: number) {
+  const digest = createHash("sha256")
+    .update(`${orderId}:przelewy24-refund:${attempt}`, "utf8")
+    .digest("hex")
+
+  return {
+    requestId: `onics-${digest.slice(0, 32)}`,
+    refundsUuid: digest.slice(0, 32),
+  }
+}
+
+function assertPrzelewy24ReturnOrder(order: Przelewy24StoredOrder) {
+  if (order.paymentProvider !== "PRZELEWY24") {
+    throw new Error("PRZELEWY24_REQUIRED")
+  }
+}
+
+export function requestPrzelewy24Return(
+  order: Przelewy24StoredOrder,
+  now = new Date().toISOString()
+) {
+  assertPrzelewy24ReturnOrder(order)
+
+  if (
+    order.status === "RETURNED" &&
+    order.returnStatus === "COMPLETED"
+  ) {
+    return "completed" as const
+  }
+  if (order.status !== "SHIPPED") {
+    throw new Error("PRZELEWY24_RETURN_INVALID_ORDER_STATUS")
+  }
+  if (order.paymentStatus !== "PAID") {
+    throw new Error("PRZELEWY24_RETURN_PAYMENT_REQUIRED")
+  }
+
+  if (order.returnStatus === "REQUESTED") return "requested" as const
+  if (
+    order.returnStatus === "RECEIVED" ||
+    order.returnStatus === "REFUND_PENDING"
+  ) {
+    return "received" as const
+  }
+  if (order.returnStatus) {
+    throw new Error("PRZELEWY24_RETURN_INVALID_STATE")
+  }
+
+  order.returnStatus = "REQUESTED"
+  order.returnRequestedAt = order.returnRequestedAt ?? now
+  order.returnUpdatedAt = now
+  return "requested" as const
+}
+
+export function receivePrzelewy24Return(
+  order: Przelewy24StoredOrder,
+  now = new Date().toISOString()
+) {
+  assertPrzelewy24ReturnOrder(order)
+
+  if (
+    order.status === "RETURNED" &&
+    order.returnStatus === "COMPLETED"
+  ) {
+    return "completed" as const
+  }
+  if (order.status !== "SHIPPED") {
+    throw new Error("PRZELEWY24_RETURN_INVALID_ORDER_STATUS")
+  }
+  if (order.paymentStatus !== "PAID") {
+    throw new Error("PRZELEWY24_RETURN_PAYMENT_REQUIRED")
+  }
+  if (
+    order.returnStatus === "RECEIVED" ||
+    order.returnStatus === "REFUND_PENDING"
+  ) {
+    return "received" as const
+  }
+  if (order.returnStatus !== "REQUESTED") {
+    throw new Error("PRZELEWY24_RETURN_NOT_REQUESTED")
+  }
+
+  order.returnStatus = "RECEIVED"
+  order.returnReceivedAt = order.returnReceivedAt ?? now
+  order.returnUpdatedAt = now
+  return "received" as const
+}
+
+export function stagePrzelewy24Refund(
+  order: Przelewy24StoredOrder,
+  now = new Date().toISOString()
+) {
+  assertPrzelewy24ReturnOrder(order)
+
+  if (
+    order.status === "RETURNED" &&
+    order.returnStatus === "COMPLETED" &&
+    order.paymentStatus === "REFUNDED"
+  ) {
+    return {
+      outcome: "completed" as const,
+      requestId: order.p24RefundRequestId ?? "",
+      refundsUuid: order.p24RefundsUuid ?? "",
+    }
+  }
+  if (order.status !== "SHIPPED") {
+    throw new Error("PRZELEWY24_RETURN_INVALID_ORDER_STATUS")
+  }
+  if (order.paymentStatus !== "PAID") {
+    throw new Error("PRZELEWY24_REFUND_REQUIRES_PAID")
+  }
+  if (!order.p24OrderId || !order.p24SessionId) {
+    throw new Error("PRZELEWY24_REFUND_IDENTITY_MISSING")
+  }
+  if (order.returnStatus !== "RECEIVED" &&
+      order.returnStatus !== "REFUND_PENDING") {
+    throw new Error("PRZELEWY24_RETURN_NOT_RECEIVED")
+  }
+
+  if (
+    order.refundStatus === "pending" &&
+    order.p24RefundRequestId &&
+    order.p24RefundsUuid
+  ) {
+    order.returnStatus = "REFUND_PENDING"
+    return {
+      outcome: "unchanged" as const,
+      requestId: order.p24RefundRequestId,
+      refundsUuid: order.p24RefundsUuid,
+    }
+  }
+
+  const attempt =
+    order.refundStatus === "failed"
+      ? Math.max(1, Number(order.p24RefundAttempt ?? 1) + 1)
+      : Math.max(1, Number(order.p24RefundAttempt ?? 1))
+  const ids = refundAttemptIds(order.id, attempt)
+
+  order.p24RefundAttempt = attempt
+  order.p24RefundRequestId = ids.requestId
+  order.p24RefundsUuid = ids.refundsUuid
+  order.refundStatus = "pending"
+  order.refundRequestedAt = now
+  order.refundUpdatedAt = now
+  order.returnStatus = "REFUND_PENDING"
+  order.returnUpdatedAt = now
+
+  return {
+    outcome: "staged" as const,
+    ...ids,
+  }
+}
+
+export async function requestPrzelewy24Refund(
+  config: Przelewy24Config,
+  input: {
+    orderId: number
+    sessionId: string
+    amount: number
+    requestId: string
+    refundsUuid: string
+    description?: string
+  }
+) {
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/v1/transaction/refund`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: basicAuth(config),
+      },
+      body: JSON.stringify({
+        requestId: input.requestId,
+        refunds: [
+          {
+            orderId: input.orderId,
+            sessionId: input.sessionId,
+            amount: input.amount,
+            ...(input.description
+              ? { description: input.description.slice(0, 35) }
+              : {}),
+          },
+        ],
+        refundsUuid: input.refundsUuid,
+        urlStatus: `${config.appUrl}/api/webhooks/przelewy24/refund`,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    }
+  )
+
+  const payload = await response.json().catch(() => null)
+  const serialized = JSON.stringify(payload ?? {})
+
+  if (
+    response.status === 400 &&
+    serialized.includes("Request already exists")
+  ) {
+    return { accepted: true, duplicate: true } as const
+  }
+
+  if (!response.ok) {
+    throw new Error("PRZELEWY24_REFUND_REQUEST_FAILED")
+  }
+
+  const data =
+    payload &&
+    typeof payload === "object" &&
+    "data" in payload &&
+    Array.isArray((payload as { data?: unknown }).data)
+      ? (payload as { data: Array<Record<string, unknown>> }).data
+      : []
+
+  const matching = data.find(
+    (entry) =>
+      Number(entry.orderId) === input.orderId &&
+      String(entry.sessionId ?? "") === input.sessionId
+  )
+
+  if (matching && matching.status === false) {
+    throw new Error("PRZELEWY24_REFUND_REJECTED")
+  }
+
+  return { accepted: true, duplicate: false } as const
+}
+
+export function validatePrzelewy24RefundNotificationForOrder(
+  order: Przelewy24StoredOrder,
+  notification: Przelewy24RefundNotification
+) {
+  assertPrzelewy24ReturnOrder(order)
+
+  if (
+    order.p24OrderId !== notification.orderId ||
+    order.p24SessionId !== notification.sessionId ||
+    order.p24RefundRequestId !== notification.requestId ||
+    order.p24RefundsUuid !== notification.refundsUuid
+  ) {
+    throw new Error("PRZELEWY24_REFUND_ORDER_MISMATCH")
+  }
+
+  if (
+    notification.currency !== "PLN" ||
+    notification.amount !==
+      moneyToMinorUnits(Number(order.totalPriceFinal ?? 0))
+  ) {
+    throw new Error("PRZELEWY24_REFUND_AMOUNT_MISMATCH")
+  }
+
+  return true
+}
+
+export function applyPrzelewy24RefundNotification(
+  products: InventoryProduct[],
+  order: Przelewy24StoredOrder,
+  notification: Przelewy24RefundNotification,
+  now = new Date().toISOString()
+) {
+  validatePrzelewy24RefundNotificationForOrder(order, notification)
+
+  if (
+    order.paymentStatus === "REFUNDED" &&
+    order.status === "RETURNED" &&
+    order.returnStatus === "COMPLETED"
+  ) {
+    order.p24LastRefundNotificationSign =
+      order.p24LastRefundNotificationSign ?? notification.sign
+    return "completed" as const
+  }
+
+  order.p24LastRefundNotificationSign = notification.sign
+  order.refundUpdatedAt = now
+
+  if (notification.status === 1) {
+    order.refundStatus = "failed"
+    order.returnStatus = "RECEIVED"
+    order.returnUpdatedAt = now
+    return "failed" as const
+  }
+
+  if (order.paymentStatus !== "PAID") {
+    throw new Error("PRZELEWY24_REFUND_REQUIRES_PAID")
+  }
+  if (order.status !== "SHIPPED") {
+    throw new Error("PRZELEWY24_RETURN_INVALID_ORDER_STATUS")
+  }
+  if (
+    order.returnStatus !== "RECEIVED" &&
+    order.returnStatus !== "REFUND_PENDING"
+  ) {
+    throw new Error("PRZELEWY24_RETURN_NOT_RECEIVED")
+  }
+  if (order.inventoryReservationStatus !== "FINALIZED") {
+    throw new Error("PRZELEWY24_RETURN_INVENTORY_NOT_FINALIZED")
+  }
+  if (!order.items?.length) {
+    throw new Error("INVENTORY_RESERVATION_MISSING_ITEMS")
+  }
+
+  if (!order.inventoryRefundRestockedAt) {
+    releaseInventory(products, order.items)
+    order.inventoryRefundRestockedAt = now
+  }
+
+  order.refundStatus = "succeeded"
+  order.paymentStatus = "REFUNDED"
+  order.refundedAt = order.refundedAt ?? now
+  order.paymentUpdatedAt = now
+  order.paymentReconciledAt = now
+  order.status = "RETURNED"
+  order.returnStatus = "COMPLETED"
+  order.returnUpdatedAt = now
+  order.returnCompletedAt = order.returnCompletedAt ?? now
+
+  return "completed" as const
 }
