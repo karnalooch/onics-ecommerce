@@ -293,10 +293,7 @@ export default function CartPage() {
     setSubmitting(action);
     try {
       if (action === "PDF") {
-        // Generowanie oferty PDF lokalnie dla instalatora
-        alert("Generuję dokument PDF... (symulacja)");
-        window.print();
-        setSubmitting(null);
+        router.push("/koszyk/oferta");
         return;
       }
 
@@ -625,7 +622,7 @@ export default function CartPage() {
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-950 dark:border-gray-800"
                   >
                     <FileText className="w-5 h-5 text-gray-500" />
-                    {submitting === "PDF" ? "Przetwarzanie..." : "Tworzenie oferty (Generuj PDF)"}
+                    {submitting === "PDF" ? "Przygotowywanie..." : "Przygotuj ofertę PDF"}
                   </Button>
                   
                   <Button 
