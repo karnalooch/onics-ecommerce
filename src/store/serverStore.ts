@@ -104,6 +104,7 @@ function normalizePaymentOperationEvents(value: unknown): PaymentOperationEvent[
       if (
         typeof entry.id !== "string" ||
         typeof entry.createdAt !== "string" ||
+        !Number.isFinite(Date.parse(entry.createdAt)) ||
         !isPaymentProviderId(entry.provider) ||
         entry.operation !== "RECONCILE" ||
         (entry.outcome !== "SUCCESS" &&
@@ -117,7 +118,9 @@ function normalizePaymentOperationEvents(value: unknown): PaymentOperationEvent[
         entry.failed < 0 ||
         typeof entry.manualReview !== "number" ||
         !Number.isSafeInteger(entry.manualReview) ||
-        entry.manualReview < 0
+        entry.manualReview < 0 ||
+        entry.failed > entry.processed ||
+        entry.manualReview > entry.processed
       ) {
         return []
       }
