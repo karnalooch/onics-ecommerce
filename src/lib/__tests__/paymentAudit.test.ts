@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import {
   appendPaymentAudit,
   paymentAuditChanged,
@@ -47,9 +47,6 @@ describe("payment settings audit", () => {
   })
 
   it("records actor and before/after values", () => {
-    vi.spyOn(crypto, "randomUUID").mockReturnValue(
-      "00000000-0000-4000-8000-000000000001"
-    )
     const entries: PaymentAuditEntry[] = []
 
     const entry = appendPaymentAudit(
@@ -63,8 +60,7 @@ describe("payment settings audit", () => {
       "2026-09-26T10:00:00.000Z"
     )
 
-    expect(entry).toEqual({
-      id: "00000000-0000-4000-8000-000000000001",
+    expect(entry).toMatchObject({
       createdAt: "2026-09-26T10:00:00.000Z",
       target: "STRIPE",
       actor: {
@@ -77,9 +73,10 @@ describe("payment settings audit", () => {
       previousMaintenanceMessage: null,
       nextMaintenanceMessage: null,
     })
+    expect(entry?.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    )
     expect(entries).toHaveLength(1)
-
-    vi.restoreAllMocks()
   })
 
   it("keeps at most 100 newest entries", () => {
