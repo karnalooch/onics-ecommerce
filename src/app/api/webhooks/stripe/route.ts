@@ -6,12 +6,17 @@ import {
 } from "@/lib/payments"
 import { mutateMockData } from "@/store/serverStore"
 import {
+  applyStripeRefundSnapshot,
+  type StripeCancelableOrder,
+  type StripeRefundStatus,
+} from "@/lib/refunds"
+import {
   applyStripeInventoryTransition,
   type InventoryProduct,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
 
-type StoredOrder = InventoryReservationOrder & {
+type StoredOrder = StripeCancelableOrder & InventoryReservationOrder & {
   id: string
   totalPriceFinal?: number
   paymentStatus?: string | null
@@ -20,11 +25,78 @@ type StoredOrder = InventoryReservationOrder & {
   stripeLastEventId?: string | null
   paidAt?: string | null
   paymentUpdatedAt?: string | null
+  stripeLastRefundEventId?: string | null
 }
 
 function getPaymentIntentId(session: Stripe.Checkout.Session) {
   if (typeof session.payment_intent === "string") return session.payment_intent
   return session.payment_intent?.id ?? null
+}
+
+function getRefundPaymentIntentId(refund: Stripe.Refund) {
+  const value = (
+    refund as Stripe.Refund & {
+      payment_intent?: string | { id?: string } | null
+    }
+  ).payment_intent
+
+  if (typeof value === "string") return value
+  return value?.id ?? null
+}
+
+function getRefundStatus(value: unknown): StripeRefundStatus {
+  const status = String(value ?? "")
+  if (
+    status === "pending" ||
+    status === "requires_action" ||
+    status === "succeeded" ||
+    status === "failed" ||
+    status === "canceled"
+  ) {
+    return status
+  }
+  throw new Error("STRIPE_REFUND_UNKNOWN_STATUS")
+}
+
+async function applyRefundStatus(
+  eventId: string,
+  refund: Stripe.Refund
+) {
+  return mutateMockData((db) => {
+    const orderId = refund.metadata?.order_id || null
+    const refundIntentId = getRefundPaymentIntentId(refund)
+    const order = (db.orders as StoredOrder[]).find(
+      (candidate) =>
+        (orderId && candidate.id === orderId) ||
+        candidate.stripeRefundId === refund.id ||
+        (refundIntentId &&
+          candidate.stripePaymentIntentId === refundIntentId)
+    )
+
+    if (!order) {
+      throw new Error(`Nie znaleziono zamówienia dla refundu Stripe ${refund.id}.`)
+    }
+
+    if (order.stripeLastRefundEventId === eventId) {
+      return { order, duplicate: true }
+    }
+
+    applyStripeRefundSnapshot(
+      db.products as InventoryProduct[],
+      order,
+      {
+        orderId,
+        refundId: refund.id,
+        paymentIntentId: refundIntentId,
+        amount: refund.amount,
+        currency: refund.currency,
+        status: getRefundStatus(refund.status),
+      }
+    )
+
+    order.stripeLastRefundEventId = eventId
+    return { order, duplicate: false }
+  })
 }
 
 async function applyCheckoutStatus(
@@ -128,24 +200,45 @@ export async function POST(req: Request) {
   }
 
   try {
-    switch (event.type) {
+    // stripe@15 predates some current public refund event literals
+    // (notably refund.failed), so keep runtime handling forward-compatible.
+    const eventType = event.type as string
+    switch (eventType) {
       case "checkout.session.completed": {
-        const session = event.data.object
+        const session = event.data.object as Stripe.Checkout.Session
         if (session.payment_status === "paid") {
           await applyCheckoutStatus(event.id, session, "PAID")
         }
         break
       }
       case "checkout.session.async_payment_succeeded": {
-        await applyCheckoutStatus(event.id, event.data.object, "PAID")
+        await applyCheckoutStatus(
+          event.id,
+          event.data.object as Stripe.Checkout.Session,
+          "PAID"
+        )
         break
       }
       case "checkout.session.async_payment_failed": {
-        await applyCheckoutStatus(event.id, event.data.object, "FAILED")
+        await applyCheckoutStatus(
+          event.id,
+          event.data.object as Stripe.Checkout.Session,
+          "FAILED"
+        )
         break
       }
       case "checkout.session.expired": {
-        await applyCheckoutStatus(event.id, event.data.object, "EXPIRED")
+        await applyCheckoutStatus(
+          event.id,
+          event.data.object as Stripe.Checkout.Session,
+          "EXPIRED"
+        )
+        break
+      }
+      case "refund.created":
+      case "refund.updated":
+      case "refund.failed": {
+        await applyRefundStatus(event.id, event.data.object as Stripe.Refund)
         break
       }
       default:

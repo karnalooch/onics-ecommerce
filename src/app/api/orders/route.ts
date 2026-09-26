@@ -75,6 +75,7 @@ type StoredOrder = InventoryReservationOrder & {
   items?: Array<z.infer<typeof AdminOrderItemSchema>>
   stripeCheckoutSessionId?: string | null
   paymentStatus?: string | null
+  refundStatus?: string | null
   user?: {
     id?: string
     email?: string
@@ -239,7 +240,8 @@ export async function PUT(req: Request) {
         currentOrder.stripeCheckoutSessionId,
         currentOrder.paymentStatus,
         currentOrder.status,
-        parsed.data.status
+        parsed.data.status,
+        currentOrder.refundStatus
       )
       if (statusTransition !== "ok") {
         throw new Error(`ORDER_STATUS_${statusTransition.toUpperCase().replaceAll("-", "_")}`)
@@ -314,6 +316,19 @@ export async function PUT(req: Request) {
         {
           error:
             "Zamówienie Stripe musi być opłacone przed potwierdzeniem lub wysyłką.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_STATUS_REFUND_IN_PROGRESS"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nie można przekazać zamówienia do logistyki, dopóki refund Stripe jest w toku.",
         },
         { status: 409 }
       )

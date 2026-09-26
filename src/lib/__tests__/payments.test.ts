@@ -5,6 +5,7 @@ import {
   resolveStripeCheckoutConfig,
   validateOptionalStripeReadiness,
   verifyCheckoutPayment,
+  verifyStripeRefund,
 } from "@/lib/payments"
 
 describe("Stripe payment verification", () => {
@@ -53,13 +54,49 @@ describe("Stripe payment verification", () => {
     ).toBe(false)
   })
 
-  it("never downgrades an already paid order", () => {
+  it("never downgrades an already paid or refunded order", () => {
+    expect(nextPaymentStatus("REFUNDED", "PAID")).toBe("REFUNDED")
+    expect(nextPaymentStatus("REFUNDED", "FAILED")).toBe("REFUNDED")
     expect(nextPaymentStatus("PAID", "FAILED")).toBe("PAID")
     expect(nextPaymentStatus("PAID", "EXPIRED")).toBe("PAID")
     expect(nextPaymentStatus("PENDING", "PAID")).toBe("PAID")
   })
-})
+  it("verifies a full PLN refund against the original order", () => {
+    expect(
+      verifyStripeRefund(
+        {
+          ...order,
+          stripePaymentIntentId: "pi_123",
+        },
+        {
+          orderId: "ORD-123",
+          refundId: "re_123",
+          paymentIntentId: "pi_123",
+          amount: 12345,
+          currency: "pln",
+          status: "succeeded",
+        }
+      )
+    ).toEqual({ ok: true })
 
+    expect(
+      verifyStripeRefund(
+        {
+          ...order,
+          stripePaymentIntentId: "pi_123",
+        },
+        {
+          orderId: "ORD-123",
+          refundId: "re_partial",
+          paymentIntentId: "pi_123",
+          amount: 100,
+          currency: "pln",
+          status: "succeeded",
+        }
+      ).ok
+    ).toBe(false)
+  })
+})
 
 describe("Stripe runtime configuration", () => {
   it("requires webhook verification and an explicit HTTPS origin in production", () => {

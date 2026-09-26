@@ -3,6 +3,7 @@ import {
   adjustInventoryReservation,
   applyOrderInventoryTransition,
   applyStripeInventoryTransition,
+  applyStripeRefundInventory,
   hasActiveReservationForProduct,
   releaseInventory,
   reserveInventory,
@@ -339,6 +340,72 @@ describe("inventory reservations", () => {
           : "INVENTORY_FINALIZED_ITEMS_IMMUTABLE"
       )
     }
+  })
+
+  it("restocks a succeeded Stripe refund exactly once and blocks late checkout replay", () => {
+    const products = [{ id: "p1", stock: 2 }]
+    const order: InventoryReservationOrder = {
+      items: [{ id: "p1", quantity: 3 }],
+      inventoryReservationSource: "STRIPE",
+      inventoryReservationStatus: "FINALIZED",
+      inventoryFinalizedAt: "2026-09-26T08:00:00.000Z",
+    }
+
+    expect(
+      applyStripeRefundInventory(
+        products,
+        order,
+        "2026-09-26T09:00:00.000Z"
+      )
+    ).toBe("restocked")
+    expect(products[0].stock).toBe(5)
+    expect(order.inventoryRefundRestockedAt).toBe(
+      "2026-09-26T09:00:00.000Z"
+    )
+
+    expect(
+      applyStripeRefundInventory(
+        products,
+        order,
+        "2026-09-26T10:00:00.000Z"
+      )
+    ).toBe("unchanged")
+    expect(products[0].stock).toBe(5)
+
+    expect(
+      applyStripeInventoryTransition(
+        products,
+        order,
+        "PAID",
+        "PAID",
+        "2026-09-26T11:00:00.000Z"
+      )
+    ).toBe("unchanged")
+    expect(products[0].stock).toBe(5)
+  })
+
+  it("does not inflate stock for pre-reservation legacy Stripe refunds", () => {
+    const products = [{ id: "p1", stock: 5 }]
+    const order: InventoryReservationOrder = {
+      items: [{ id: "p1", quantity: 3 }],
+    }
+
+    expect(applyStripeRefundInventory(products, order)).toBe("legacy-unmanaged")
+    expect(products[0].stock).toBe(5)
+  })
+
+  it("fails closed if refund inventory was already released", () => {
+    const products = [{ id: "p1", stock: 5 }]
+    const order: InventoryReservationOrder = {
+      items: [{ id: "p1", quantity: 3 }],
+      inventoryReservationSource: "STRIPE",
+      inventoryReservationStatus: "RELEASED",
+    }
+
+    expect(() => applyStripeRefundInventory(products, order)).toThrow(
+      "INVENTORY_REFUND_INVALID_STATE"
+    )
+    expect(products[0].stock).toBe(5)
   })
 
   it("leaves legacy Stripe orders unmanaged", () => {
