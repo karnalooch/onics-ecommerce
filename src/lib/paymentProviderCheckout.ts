@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import Stripe from "stripe"
 import { resolveCartItems } from "@/lib/commerce"
 import {
@@ -11,6 +12,7 @@ import {
   type PaymentMethodId,
 } from "@/lib/paymentMethods"
 import {
+  applyOrderInventoryTransition,
   reserveInventory,
   type InventoryProduct,
 } from "@/lib/inventoryReservations"
@@ -169,6 +171,220 @@ function assertPaymentStillAvailable(
   }
   if (!isPaymentMethodEnabled(settings, method)) {
     throw new Error("PAYMENT_METHOD_DISABLED")
+  }
+}
+
+type Przelewy24RegistrationResponse = {
+  data?: {
+    token?: unknown
+  }
+}
+
+function resolvePrzelewy24SandboxConfig(requestUrl: string) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("PAYMENT_PROVIDER_NOT_CONFIGURED")
+  }
+
+  const operational =
+    getPaymentProviderDefinition("PRZELEWY24").operationalStatus()
+  if (!operational.configured) {
+    throw new Error("PAYMENT_PROVIDER_NOT_CONFIGURED")
+  }
+
+  const merchantId = Number(process.env.P24_MERCHANT_ID)
+  const posId = Number(process.env.P24_POS_ID)
+  const apiKey = process.env.P24_API_KEY?.trim() ?? ""
+  const crc = process.env.P24_CRC?.trim() ?? ""
+
+  if (
+    !Number.isSafeInteger(merchantId) ||
+    merchantId <= 0 ||
+    !Number.isSafeInteger(posId) ||
+    posId <= 0 ||
+    !apiKey ||
+    !crc
+  ) {
+    throw new Error("PAYMENT_PROVIDER_NOT_CONFIGURED")
+  }
+
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
+  const appUrl = configuredAppUrl
+    ? new URL(configuredAppUrl).origin
+    : new URL(requestUrl).origin
+
+  return {
+    merchantId,
+    posId,
+    apiKey,
+    crc,
+    appUrl,
+    apiBaseUrl: "https://sandbox.przelewy24.pl",
+  }
+}
+
+async function cancelFailedPrzelewy24Registration(orderId: string) {
+  await mutateMockData((db) => {
+    const order = (db.orders as Array<Record<string, unknown>>).find(
+      (candidate) =>
+        candidate.id === orderId &&
+        candidate.paymentProvider === "PRZELEWY24"
+    )
+    if (!order || order.status === "CANCELLED") return
+
+    applyOrderInventoryTransition(
+      db.products as InventoryProduct[],
+      order as Parameters<typeof applyOrderInventoryTransition>[1],
+      order.items as Parameters<typeof applyOrderInventoryTransition>[2],
+      "CANCELLED"
+    )
+    order.status = "CANCELLED"
+    order.paymentStatus = "EXPIRED"
+  })
+}
+
+async function createPrzelewy24Checkout(
+  input: PaymentCheckoutInput
+): Promise<PaymentCheckoutResult> {
+  const p24 = resolvePrzelewy24SandboxConfig(input.requestUrl)
+  const { storedUser, resolved } = resolveCheckout(
+    input.snapshot.users as StoredUser[],
+    input.snapshot.products as Parameters<typeof resolveCartItems>[1],
+    input.sessionUser,
+    input.items
+  )
+
+  const email = storedUser.email?.trim() || input.sessionUser.email?.trim()
+  if (!email) {
+    throw new Error("Przelewy24 wymaga adresu e-mail klienta.")
+  }
+
+  const orderId = `ORD-${crypto.randomUUID()}`
+  const amount = moneyToMinorUnits(resolved.total)
+
+  await mutateMockData((db) => {
+    assertPaymentStillAvailable(
+      db.paymentControl,
+      db.paymentMethods,
+      "PRZELEWY24"
+    )
+
+    const fresh = resolveCheckout(
+      db.users as StoredUser[],
+      db.products as Parameters<typeof resolveCartItems>[1],
+      input.sessionUser,
+      input.items
+    )
+
+    if (JSON.stringify(fresh.resolved) !== JSON.stringify(resolved)) {
+      throw new Error("CHECKOUT_STATE_CHANGED")
+    }
+
+    reserveInventory(
+      db.products as InventoryProduct[],
+      fresh.resolved.items
+    )
+    const now = new Date().toISOString()
+
+    db.orders.unshift({
+      id: orderId,
+      orderType: "ORDER",
+      createdAt: now,
+      status: "PENDING_VERIFICATION",
+      estimatedDeliveryDays: null,
+      totalPriceOrig: fresh.resolved.total,
+      totalPriceFinal: fresh.resolved.total,
+      items: fresh.resolved.items,
+      user: {
+        id: fresh.storedUser.id,
+        email: fresh.storedUser.email,
+        companyName: fresh.storedUser.companyName,
+        nip: fresh.storedUser.nip ?? null,
+      },
+      paymentProvider: "PRZELEWY24",
+      paymentStatus: "PENDING",
+      p24SessionId: orderId,
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+      inventoryReservedAt: now,
+      inventoryReleasedAt: null,
+      inventoryFinalizedAt: null,
+      inventoryReReservedAt: null,
+    })
+  })
+
+  const sign = createHash("sha384")
+    .update(
+      JSON.stringify({
+        sessionId: orderId,
+        merchantId: p24.merchantId,
+        amount,
+        currency: "PLN",
+        crc: p24.crc,
+      }),
+      "utf8"
+    )
+    .digest("hex")
+
+  try {
+    const response = await fetch(
+      `${p24.apiBaseUrl}/api/v1/transaction/register`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization:
+            "Basic " +
+            Buffer.from(`${p24.posId}:${p24.apiKey}`).toString("base64"),
+        },
+        body: JSON.stringify({
+          merchantId: p24.merchantId,
+          posId: p24.posId,
+          sessionId: orderId,
+          amount,
+          currency: "PLN",
+          description: `ONICS ${orderId}`,
+          email,
+          country: "PL",
+          language: "pl",
+          urlReturn:
+            `${p24.appUrl}/oferty/zamowienia?payment=success&provider=PRZELEWY24&session_id=${encodeURIComponent(orderId)}`,
+          sign,
+        }),
+      }
+    )
+
+    const payload =
+      (await response.json().catch(() => null)) as
+        | Przelewy24RegistrationResponse
+        | null
+    const token = payload?.data?.token
+
+    if (!response.ok || typeof token !== "string" || !token.trim()) {
+      throw new Error("PRZELEWY24_REGISTRATION_FAILED")
+    }
+
+    return {
+      orderId,
+      paymentMethod: "PRZELEWY24",
+      nextAction: {
+        type: "REDIRECT",
+        url: `${p24.apiBaseUrl}/trnRequest/${encodeURIComponent(token)}`,
+      },
+    }
+  } catch (error) {
+    try {
+      await cancelFailedPrzelewy24Registration(orderId)
+    } catch (compensationError) {
+      console.error(
+        "Nie udało się zwolnić rezerwacji po błędzie Przelewy24:",
+        compensationError
+      )
+    }
+
+    console.error("Rejestracja transakcji Przelewy24 nie powiodła się.")
+    throw new Error(
+      "Nie udało się rozpocząć płatności Przelewy24. Spróbuj ponownie."
+    )
   }
 }
 
@@ -427,6 +643,9 @@ const paymentCheckoutAdapters = {
   },
   BANK_TRANSFER: {
     createCheckout: createBankTransferCheckout,
+  },
+  PRZELEWY24: {
+    createCheckout: createPrzelewy24Checkout,
   },
 } satisfies Record<PaymentMethodId, PaymentCheckoutAdapter>
 
