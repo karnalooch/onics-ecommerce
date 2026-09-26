@@ -61,6 +61,17 @@ type PaymentMethod = {
   }
   available: boolean
   updatedAt: string | null
+  operations: {
+    totalOrders: number
+    ordersRequiringAttention: number
+    pendingPayments: number
+    pendingRefunds: number
+    failedRefunds: number
+    openReturns: number
+    lastReconciledAt: string | null
+    lastErrorAt: string | null
+    actionCounts: Record<string, number>
+  }
 }
 
 const CONFIGURATION_ISSUE_LABELS: Record<string, string> = {
@@ -635,6 +646,60 @@ export default function AdminPaymentsPage() {
                         )}
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 mt-6">
+                      {[
+                        ["DO OBSŁUGI", method.operations.ordersRequiringAttention],
+                        ["PŁATNOŚĆ OCZEKUJE", method.operations.pendingPayments],
+                        ["REFUND W TOKU", method.operations.pendingRefunds],
+                        ["OTWARTE RMA", method.operations.openReturns],
+                        ["BŁĘDY REFUNDU", method.operations.failedRefunds],
+                        ["ZAMÓWIENIA", method.operations.totalOrders],
+                      ].map(([label, value]) => (
+                        <div
+                          key={String(label)}
+                          className="border border-slate-100 bg-slate-50 px-3 py-3"
+                        >
+                          <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                            {label}
+                          </div>
+                          <div className="text-xl font-black tabular-nums text-slate-950 mt-1">
+                            {value}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {(method.operations.lastReconciledAt ||
+                      method.operations.lastErrorAt ||
+                      method.operations.ordersRequiringAttention > 0) && (
+                      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        {method.operations.lastReconciledAt && (
+                          <span>
+                            Ostatni reconcile:{" "}
+                            {new Date(
+                              method.operations.lastReconciledAt
+                            ).toLocaleString("pl-PL")}
+                          </span>
+                        )}
+                        {method.operations.lastErrorAt && (
+                          <span className="text-red-600">
+                            Ostatni błąd:{" "}
+                            {new Date(
+                              method.operations.lastErrorAt
+                            ).toLocaleString("pl-PL")}
+                          </span>
+                        )}
+                        {method.operations.ordersRequiringAttention > 0 && (
+                          <a
+                            href="/admin/orders"
+                            className="text-primary hover:underline"
+                          >
+                            OBSŁUŻ ZAMÓWIENIA →
+                          </a>
+                        )}
+                      </div>
+                    )}
 
                     <div className="grid gap-4 md:grid-cols-[1fr_140px] mt-7">
                       <label className="space-y-2">
