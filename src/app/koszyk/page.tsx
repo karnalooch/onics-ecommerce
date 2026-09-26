@@ -68,7 +68,15 @@ const ORDER_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
 
 export default function CartPage() {
   const { data: session } = useSession();
-  const { items, addItem, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
+  const {
+    items,
+    addItem,
+    removeItem,
+    updateQuantity,
+    replaceItems,
+    getTotalPrice,
+    clearCart,
+  } = useCartStore();
   const [mounted, setMounted] = useState(false);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<CheckoutPaymentMethod[]>([]);
@@ -81,7 +89,9 @@ export default function CartPage() {
   const [manualPaymentConfirmation, setManualPaymentConfirmation] = useState<ManualPaymentConfirmation | null>(null);
   const [importPreview, setImportPreview] = useState<OrderImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
+  const [refreshingCart, setRefreshingCart] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const lastCartPreviewKeyRef = useRef("");
   const router = useRouter();
 
   // Zabezpieczenie przez Hydration Mismatch przy renderze Local Storage
@@ -153,6 +163,90 @@ export default function CartPage() {
   const isAuthenticated = Boolean(session?.user);
   const isB2B = transactionAccess === "allowed";
   const requiresPricing = cartRequiresPricing(items);
+  const sessionIdentity = session?.user as
+    | { id?: string; email?: string | null }
+    | undefined;
+  const cartPreviewKey = [
+    sessionIdentity?.id || sessionIdentity?.email || "anonymous",
+    ...items.map((item) => `${item.id}:${item.quantity}`),
+  ].join("|");
+
+  useEffect(() => {
+    if (!mounted || !isB2B || items.length === 0) return;
+    if (lastCartPreviewKeyRef.current === cartPreviewKey) return;
+
+    lastCartPreviewKeyRef.current = cartPreviewKey;
+    let cancelled = false;
+    setRefreshingCart(true);
+
+    fetch("/api/cart/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({
+        items: items.map((item) => ({
+          id: item.id,
+          quantity: item.quantity,
+        })),
+      }),
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(
+            data?.error || "Nie udało się odświeżyć bieżących cen koszyka."
+          );
+        }
+        if (!Array.isArray(data?.items)) {
+          throw new Error("Serwer zwrócił nieprawidłowy podgląd koszyka.");
+        }
+
+        if (cancelled) return;
+
+        const nextItems = data.items.map((item: any) => ({
+          id: String(item.id),
+          sku: String(item.sku),
+          name: String(item.name),
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+        }));
+        const changed =
+          nextItems.length !== items.length ||
+          nextItems.some((item: any, index: number) => {
+            const current = items[index];
+            return (
+              !current ||
+              current.id !== item.id ||
+              current.sku !== item.sku ||
+              current.name !== item.name ||
+              current.price !== item.price ||
+              current.quantity !== item.quantity
+            );
+          });
+
+        if (changed) {
+          replaceItems(nextItems);
+          toast.info("Koszyk zaktualizowano do bieżących cen i danych katalogu.");
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          toast.warning(
+            error instanceof Error
+              ? error.message
+              : "Nie udało się odświeżyć bieżących cen koszyka."
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setRefreshingCart(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cartPreviewKey, isB2B, items, mounted, replaceItems]);
+
   const availablePaymentMethods = paymentControlEnabled
     ? paymentMethods.filter((method) => method.available)
     : [];
@@ -249,6 +343,11 @@ export default function CartPage() {
   };
 
   const handlePaymentCheckout = async (method: CheckoutPaymentMethod) => {
+    if (refreshingCart) {
+      toast.info("Odświeżam bieżące ceny koszyka. Spróbuj ponownie za chwilę.");
+      return;
+    }
+
     if (requiresPricing) {
       toast.error(
         "Koszyk zawiera pozycje bez aktywnej ceny. Najpierw wyślij zapytanie cenowe."
@@ -320,6 +419,11 @@ export default function CartPage() {
   };
 
   const handleAction = async (action: "PDF" | "INQUIRY" | "ORDER") => {
+    if (refreshingCart) {
+      toast.info("Odświeżam bieżące ceny koszyka. Spróbuj ponownie za chwilę.");
+      return;
+    }
+
     if (action !== "INQUIRY" && requiresPricing) {
       toast.error(
         "Pozycje bez aktywnej ceny można teraz wysłać jako zapytanie. Oferta PDF i zamówienie będą dostępne po wycenie."
@@ -665,9 +769,11 @@ export default function CartPage() {
                        : `${getTotalPrice().toFixed(2)} PLN`}
                    </div>
                    <div className="text-xs text-muted-foreground mt-1">
-                     {requiresPricing
-                       ? "Pozycje bez aktywnej ceny nie są wliczone do sumy."
-                       : "(bez VAT)"}
+                     {refreshingCart
+                       ? "Odświeżanie bieżących cen z serwera..."
+                       : requiresPricing
+                         ? "Pozycje bez aktywnej ceny nie są wliczone do sumy."
+                         : "(bez VAT)"}
                    </div>
                 </div>
               </div>
@@ -689,7 +795,7 @@ export default function CartPage() {
 
                   <Button 
                     onClick={() => handleAction("PDF")} 
-                    disabled={submitting !== null || requiresPricing}
+                    disabled={submitting !== null || requiresPricing || refreshingCart}
                     variant="outline"
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-950 dark:border-gray-800"
                   >
@@ -699,7 +805,7 @@ export default function CartPage() {
                   
                   <Button 
                     onClick={() => handleAction("INQUIRY")} 
-                    disabled={submitting !== null}
+                    disabled={submitting !== null || refreshingCart}
                     variant="outline"
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-white border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:bg-gray-950 dark:border-gray-800"
                   >
@@ -709,7 +815,7 @@ export default function CartPage() {
 
                   <Button 
                     onClick={() => handleAction("ORDER")} 
-                    disabled={submitting !== null || requiresPricing}
+                    disabled={submitting !== null || requiresPricing || refreshingCart}
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-green-600 hover:bg-green-700 text-white shadow-md border-none"
                   >
                     <ShoppingBag className="w-5 h-5" />
@@ -720,7 +826,7 @@ export default function CartPage() {
                     <Button
                       key={method.id}
                       onClick={() => handlePaymentCheckout(method)}
-                      disabled={submitting !== null || requiresPricing}
+                      disabled={submitting !== null || requiresPricing || refreshingCart}
                       className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-slate-950 hover:bg-slate-800 text-white shadow-md border-none"
                     >
                       {submitting === method.id ? (
