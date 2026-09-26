@@ -17,7 +17,9 @@ const BASE_SECURITY_HEADERS: SecurityHeader[] = [
   { key: "X-DNS-Prefetch-Control", value: "off" },
 ]
 
-export function getSecurityHeaders(nodeEnv = process.env.NODE_ENV) {
+export function getSecurityHeaders(
+  nodeEnv: string | undefined = process.env.NODE_ENV
+) {
   const headers = BASE_SECURITY_HEADERS.map((header) => ({ ...header }))
 
   if (nodeEnv === "production") {
