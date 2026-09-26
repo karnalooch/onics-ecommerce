@@ -52,6 +52,12 @@ export function ProductsDashboardClient({
       const data = await res.json();
       setKnowledgeSources(data.sources || []);
       setProcessedSources(data.processedSources || []);
+      if (Array.isArray(data.registry?.categories)) {
+        setLocalCategories(data.registry.categories);
+      }
+      if (Array.isArray(data.registry?.manufacturers)) {
+        setLocalManufacturers(data.registry.manufacturers);
+      }
     }
   }, []);
 
@@ -119,7 +125,7 @@ export function ProductsDashboardClient({
         setStagingPayload(
           stagingPayload.filter((item) => !committedIds.has(item.tempId))
         );
-        await refreshAllData();
+        await Promise.all([refreshAllData(), fetchKnowledgeData()]);
 
         const deferred = Number(result.deferredStockCount || 0);
         if (deferred > 0) {
