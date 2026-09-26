@@ -77,6 +77,51 @@ describe("payment provider operations summary", () => {
     expect(operations.BANK_TRANSFER.actionCounts.RECEIVE_RETURN).toBe(1)
   })
 
+  it("uses bounded operation events for the latest reconcile outcome", () => {
+    const operations = describePaymentProviderOperations(
+      [
+        {
+          paymentProvider: "STRIPE",
+          status: "CONFIRMED",
+          paymentStatus: "PAID",
+          paymentReconciledAt: "2026-09-26T09:00:00.000Z",
+        },
+      ],
+      [
+        {
+          id: "event-1",
+          createdAt: "2026-09-26T10:00:00.000Z",
+          provider: "STRIPE",
+          operation: "RECONCILE",
+          outcome: "PARTIAL",
+          processed: 4,
+          failed: 1,
+          manualReview: 1,
+        },
+        {
+          id: "event-2",
+          createdAt: "2026-09-26T09:45:00.000Z",
+          provider: "STRIPE",
+          operation: "RECONCILE",
+          outcome: "SUCCESS",
+          processed: 2,
+          failed: 0,
+          manualReview: 0,
+        },
+      ]
+    )
+
+    expect(operations.STRIPE).toMatchObject({
+      lastReconciledAt: "2026-09-26T10:00:00.000Z",
+      lastOperationAt: "2026-09-26T10:00:00.000Z",
+      lastOperationOutcome: "PARTIAL",
+      lastOperationProcessed: 4,
+      lastOperationFailed: 1,
+      lastOperationManualReview: 1,
+      lastErrorAt: "2026-09-26T10:00:00.000Z",
+    })
+  })
+
   it("ignores invalid timestamps and keeps empty summaries for providers with no orders", () => {
     const operations = describePaymentProviderOperations([
       {
