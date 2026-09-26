@@ -400,9 +400,10 @@ function assertOptionalPersistedPaymentMethods(value: unknown) {
     }
     if (
       config.displayOrder !== undefined &&
-      (!Number.isSafeInteger(config.displayOrder) ||
-        Number(config.displayOrder) < 0 ||
-        Number(config.displayOrder) > 999)
+      (typeof config.displayOrder !== "number" ||
+        !Number.isSafeInteger(config.displayOrder) ||
+        config.displayOrder < 0 ||
+        config.displayOrder > 999)
     ) {
       throw new Error(
         `DATABASE_FIELD_INVALID:paymentMethods.${id}.displayOrder`
