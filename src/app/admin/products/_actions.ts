@@ -18,6 +18,8 @@ import {
 } from "@/lib/inventoryReservations";
 import {
   assertCatalogClassification,
+  hasCategoryProductReference,
+  hasManufacturerProductReference,
   hasSkuConflict,
 } from "@/lib/catalog";
 
@@ -755,8 +757,9 @@ export async function bulkAddProductsToInventoryAction(items: any[]): Promise<Ac
 }
 
 /**
- * Inteligentne zarządzanie strukturą (Kategorie / Producenci)
- * IMPLEMENTACJA: Usuwanie przenosi produkty na BIURKO (Safety First)
+ * Inteligentne zarządzanie strukturą (Kategorie / Producenci).
+ * Referencjonowana struktura nie może być usunięta; najpierw trzeba
+ * jawnie przenieść produkty do innej kategorii / producenta.
  */
 export async function manageStructureAction(
   type: "category" | "subcategory" | "manufacturer",
@@ -779,39 +782,18 @@ export async function manageStructureAction(
 
         if (action === "delete") {
           const manufacturerName = manufacturers[idx].name;
-          const orphanedProducts = products.filter(
-            (product) => product.manufacturer === manufacturerName
-          );
           if (
-            orphanedProducts.some((product) =>
-              hasInventoryLifecycleDependencyForProduct(
-                db.orders as InventoryReservationOrder[],
-                String(product.id)
-              )
-            )
+            hasManufacturerProductReference(products, manufacturerName)
           ) {
-            throw new Error("STRUCTURE_HAS_INVENTORY_LIFECYCLE");
+            throw new Error("MANUFACTURER_IN_USE");
           }
-          const orphanedIds = new Set(
-            orphanedProducts.map((product) => product.id)
-          );
-          for (let index = products.length - 1; index >= 0; index -= 1) {
-            if (orphanedIds.has(products[index].id)) products.splice(index, 1);
-          }
-          manufacturers.splice(idx, 1);
 
+          manufacturers.splice(idx, 1);
           return {
-            revalidateProducts: true,
+            revalidateProducts: false,
             state: {
               success: true as const,
-              message:
-                `Producent ${manufacturerName} usunięty. ${orphanedProducts.length} produktów trafiło na Biurko do ponownej klasyfikacji.`,
-              data: orphanedProducts.map((product) => ({
-                ...product,
-                tempId: `orphaned_${product.id}`,
-                qualityLevel: "LOW",
-                qualityReason: `Usunięto producenta: ${manufacturerName}`
-              }))
+              message: `Producent ${manufacturerName} usunięty.`
             }
           };
         }
@@ -840,41 +822,16 @@ export async function manageStructureAction(
 
         if (action === "delete") {
           const categoryName = categories[idx].name;
-          const orphanedProducts = products.filter(
-            (product) => product.categoryId === id
-          );
-          if (
-            orphanedProducts.some((product) =>
-              hasInventoryLifecycleDependencyForProduct(
-                db.orders as InventoryReservationOrder[],
-                String(product.id)
-              )
-            )
-          ) {
-            throw new Error("STRUCTURE_HAS_INVENTORY_LIFECYCLE");
+          if (hasCategoryProductReference(products, id)) {
+            throw new Error("CATEGORY_IN_USE");
           }
-          const orphanedIds = new Set(
-            orphanedProducts.map((product) => product.id)
-          );
-          for (let index = products.length - 1; index >= 0; index -= 1) {
-            if (orphanedIds.has(products[index].id)) products.splice(index, 1);
-          }
-          categories.splice(idx, 1);
 
+          categories.splice(idx, 1);
           return {
-            revalidateProducts: true,
+            revalidateProducts: false,
             state: {
               success: true as const,
-              message:
-                `Kategoria ${categoryName} usunięta. ${orphanedProducts.length} produktów trafiło na Biurko.`,
-              data: orphanedProducts.map((product) => ({
-                ...product,
-                tempId: `orphaned_${product.id}`,
-                categoryId: null,
-                subcategoryId: null,
-                qualityLevel: "LOW",
-                qualityReason: `Usunięto kategorię: ${categoryName}`
-              }))
+              message: `Kategoria ${categoryName} usunięta.`
             }
           };
         }
@@ -902,6 +859,20 @@ export async function manageStructureAction(
     }
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
+    }
+    if (error instanceof Error && error.message === "MANUFACTURER_IN_USE") {
+      return {
+        success: false,
+        error:
+          "Nie można usunąć producenta przypisanego do produktów. Najpierw przenieś produkty do innego producenta."
+      };
+    }
+    if (error instanceof Error && error.message === "CATEGORY_IN_USE") {
+      return {
+        success: false,
+        error:
+          "Nie można usunąć kategorii przypisanej do produktów. Najpierw przenieś produkty do innej kategorii."
+      };
     }
     if (
       error instanceof Error &&
