@@ -5,8 +5,13 @@ import {
   verifyCheckoutPayment,
 } from "@/lib/payments"
 import { mutateMockData } from "@/store/serverStore"
+import {
+  applyStripeInventoryTransition,
+  type InventoryProduct,
+  type InventoryReservationOrder,
+} from "@/lib/inventoryReservations"
 
-type StoredOrder = {
+type StoredOrder = InventoryReservationOrder & {
   id: string
   totalPriceFinal?: number
   paymentStatus?: string | null
@@ -67,6 +72,13 @@ async function applyCheckoutStatus(
     if (alreadyApplied) {
       return { order, duplicate: true }
     }
+
+    applyStripeInventoryTransition(
+      db.products as InventoryProduct[],
+      order,
+      paymentStatus,
+      incomingStatus
+    )
 
     order.paymentStatus = paymentStatus
     order.stripePaymentIntentId =

@@ -4,6 +4,7 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
 import { moneyToMinorUnits, resolveStripeCheckoutConfig } from "@/lib/payments"
+import { reserveInventory } from "@/lib/inventoryReservations"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const CartSchema = z.object({
@@ -174,6 +175,12 @@ export async function POST(req: Request) {
           throw new Error("CHECKOUT_STATE_CHANGED")
         }
 
+        reserveInventory(
+          db.products as Parameters<typeof reserveInventory>[0],
+          fresh.resolved.items
+        )
+        const reservedAt = new Date().toISOString()
+
         db.orders.unshift({
           id: orderId,
           orderType: "ORDER",
@@ -194,6 +201,11 @@ export async function POST(req: Request) {
           stripeCheckoutSessionId: session.id,
           stripePaymentIntentId: null,
           paidAt: null,
+          inventoryReservationStatus: "RESERVED",
+          inventoryReservedAt: reservedAt,
+          inventoryReleasedAt: null,
+          inventoryFinalizedAt: null,
+          inventoryReReservedAt: null,
         })
       })
     } catch (persistenceError) {
@@ -211,14 +223,24 @@ export async function POST(req: Request) {
       orderId,
     })
   } catch (error) {
+    const code = error instanceof Error ? error.message : ""
+    const inventoryConflict =
+      code === "INVENTORY_NOT_AVAILABLE" ||
+      code === "INVENTORY_PRODUCT_NOT_FOUND" ||
+      /Brak wymaganej ilości produktu/.test(code)
     const message =
-      error instanceof Error && error.message === "CHECKOUT_STATE_CHANGED"
+      code === "CHECKOUT_STATE_CHANGED"
         ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
-        : error instanceof Error
-          ? error.message
-          : "Błąd serwera."
+        : inventoryConflict
+          ? "Stan magazynowy zmienił się podczas tworzenia płatności. Odśwież koszyk i spróbuj ponownie."
+          : error instanceof Error
+            ? error.message
+            : "Błąd serwera."
 
     console.error("Błąd generowania bramki checkout:", error)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json(
+      { error: message },
+      { status: inventoryConflict ? 409 : 500 }
+    )
   }
 }

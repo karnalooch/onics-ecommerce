@@ -9,6 +9,10 @@ import { getKnowledge } from "@/lib/knowledge/parser"
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { hasSkuConflict } from "@/lib/catalog"
+import {
+  hasActiveReservationForProduct,
+  type InventoryReservationOrder,
+} from "@/lib/inventoryReservations"
 
 export const dynamic = "force-dynamic"
 
@@ -427,6 +431,14 @@ export async function DELETE(req: Request) {
       const productStore = db.products as ProductRecord[]
       const index = productStore.findIndex((product) => product.id === id)
       if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
+      if (
+        hasActiveReservationForProduct(
+          db.orders as InventoryReservationOrder[],
+          id
+        )
+      ) {
+        throw new Error("PRODUCT_HAS_ACTIVE_RESERVATION")
+      }
       productStore.splice(index, 1)
     })
 
@@ -436,6 +448,18 @@ export async function DELETE(req: Request) {
       return NextResponse.json(
         { error: "Nie znaleziono produktu." },
         { status: 404 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "PRODUCT_HAS_ACTIVE_RESERVATION"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nie można usunąć produktu z aktywną rezerwacją płatności Stripe.",
+        },
+        { status: 409 }
       )
     }
 
