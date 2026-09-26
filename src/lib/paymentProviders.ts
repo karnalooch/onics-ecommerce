@@ -50,6 +50,11 @@ export type PaymentProviderOperationalStatus = {
 export type PaymentProviderDefinition = {
   id: PaymentProviderId
   kind: PaymentProviderKind
+  settingsDefaults: {
+    enabled: boolean
+    displayName: string
+    displayOrder: number
+  }
   capabilities: PaymentProviderCapabilities
   disabledMessage: string
   misconfiguredMessage: string
@@ -155,6 +160,11 @@ const paymentProviderRegistry = {
   STRIPE: {
     id: "STRIPE",
     kind: "REDIRECT",
+    settingsDefaults: {
+      enabled: true,
+      displayName: "Stripe",
+      displayOrder: 10,
+    },
     capabilities: {
       checkout: true,
       webhook: true,
@@ -171,6 +181,11 @@ const paymentProviderRegistry = {
   BANK_TRANSFER: {
     id: "BANK_TRANSFER",
     kind: "MANUAL",
+    settingsDefaults: {
+      enabled: false,
+      displayName: "Przelew bankowy",
+      displayOrder: 20,
+    },
     capabilities: {
       checkout: true,
       webhook: false,
