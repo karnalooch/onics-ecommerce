@@ -5,6 +5,7 @@ import {
   applyStripeInventoryTransition,
   applyStripeRefundInventory,
   hasActiveReservationForProduct,
+  hasInventoryLifecycleDependencyForProduct,
   releaseInventory,
   reserveInventory,
   shouldDeferProductStockWrite,
@@ -151,6 +152,71 @@ describe("inventory reservations", () => {
 
     expect(hasActiveReservationForProduct(orders, "p1")).toBe(true)
     expect(hasActiveReservationForProduct(orders, "p2")).toBe(false)
+  })
+
+  it("protects products until their inventory lifecycle can no longer mutate stock", () => {
+    const productId = "p1"
+
+    expect(
+      hasInventoryLifecycleDependencyForProduct(
+        [
+          {
+            items: [{ id: productId, quantity: 1 }],
+            inventoryReservationStatus: "RESERVED",
+          },
+        ],
+        productId
+      )
+    ).toBe(true)
+
+    expect(
+      hasInventoryLifecycleDependencyForProduct(
+        [
+          {
+            items: [{ id: productId, quantity: 1 }],
+            inventoryReservationStatus: "FINALIZED",
+          },
+        ],
+        productId
+      )
+    ).toBe(true)
+
+    expect(
+      hasInventoryLifecycleDependencyForProduct(
+        [
+          {
+            items: [{ id: productId, quantity: 1 }],
+            inventoryReservationStatus: "BROKEN",
+          },
+        ],
+        productId
+      )
+    ).toBe(true)
+
+    expect(
+      hasInventoryLifecycleDependencyForProduct(
+        [
+          {
+            items: [{ id: productId, quantity: 1 }],
+            inventoryReservationStatus: "RELEASED",
+          },
+        ],
+        productId
+      )
+    ).toBe(false)
+
+    expect(
+      hasInventoryLifecycleDependencyForProduct(
+        [
+          {
+            items: [{ id: productId, quantity: 1 }],
+            inventoryReservationStatus: "FINALIZED",
+            inventoryRefundRestockedAt: "2026-09-26T18:00:00.000Z",
+          },
+        ],
+        productId
+      )
+    ).toBe(false)
   })
 
   it("defers stock changes while a product has an active reservation", () => {
