@@ -3,6 +3,7 @@ import { z } from "zod"
 import { POST as postBankTransferAction } from "@/app/api/orders/bank-transfer/route"
 import { POST as postStripeCancel } from "@/app/api/orders/cancel/route"
 import { POST as postStripeReturn } from "@/app/api/orders/return/route"
+import { POST as postPrzelewy24Return } from "@/app/api/orders/przelewy24-return/route"
 import { PUT as putOrder } from "@/app/api/orders/route"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
@@ -132,6 +133,14 @@ export async function POST(req: Request) {
         break
       case "STRIPE_RETURN":
         response = await postStripeReturn(
+          forwardedRequest(req, "POST", {
+            id: parsed.data.id,
+            action: target.action,
+          })
+        )
+        break
+      case "PRZELEWY24_RETURN":
+        response = await postPrzelewy24Return(
           forwardedRequest(req, "POST", {
             id: parsed.data.id,
             action: target.action,
