@@ -5,6 +5,7 @@ import type {
 import {
   getPaymentProviderDefinition,
   paymentProviderOperationalStatus,
+  type PaymentProviderCapabilities,
   type PaymentProviderId,
   type PaymentRuntimeOptions,
 } from "@/lib/paymentProviders"
@@ -25,6 +26,7 @@ export type PaymentMethodAvailability = {
   displayOrder: number
   maintenanceMessage: string | null
   kind: "REDIRECT" | "MANUAL"
+  capabilities: PaymentProviderCapabilities
   available: boolean
   updatedAt: string | null
 }
@@ -77,6 +79,7 @@ export function describePaymentMethods(
       displayOrder: config.displayOrder,
       maintenanceMessage: config.maintenanceMessage,
       kind: provider.kind,
+      capabilities: { ...provider.capabilities },
       available: config.enabled && operational.configured,
       updatedAt: config.updatedAt,
     }
