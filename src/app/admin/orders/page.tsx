@@ -18,6 +18,7 @@ export default function AdminOrdersPage() {
   const [deliveryDays, setDeliveryDays] = useState<string>("5");
   const [editableItems, setEditableItems] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const stripeAmountsLocked = Boolean(validatingOrder?.stripeCheckoutSessionId);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -38,13 +39,19 @@ export default function AdminOrdersPage() {
   const openVerificationModal = (order: any) => {
     setValidatingOrder(order);
     setDeliveryDays(order.estimatedDeliveryDays?.toString() || "3");
-    setEditableItems([...order.items]);
+    setEditableItems((order.items ?? []).map((item: any) => ({ ...item })));
   }
 
   const updateItemPrice = (index: number, newPrice: string) => {
-    const updated = [...editableItems];
-    updated[index].price = parseFloat(newPrice) || 0;
-    setEditableItems(updated);
+    if (stripeAmountsLocked) return;
+
+    setEditableItems((items) =>
+      items.map((item, itemIndex) =>
+        itemIndex === index
+          ? { ...item, price: parseFloat(newPrice) || 0 }
+          : item
+      )
+    );
   }
 
   const confirmOrder = async () => {
@@ -60,13 +67,23 @@ export default function AdminOrdersPage() {
           items: editableItems
         })
       });
-      if (res.ok) {
-        toast.success("LOG: Zamówienie zweryfikowane. Alert wysłany do klienta.");
-        setValidatingOrder(null);
-        fetchOrders();
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(
+          data?.error || "Nie udało się zapisać weryfikacji zamówienia."
+        );
       }
-    } catch {
-      toast.error("FAULT: Błąd zapisu weryfikacji.");
+
+      toast.success("LOG: Zamówienie zweryfikowane. Alert wysłany do klienta.");
+      setValidatingOrder(null);
+      fetchOrders();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "FAULT: Błąd zapisu weryfikacji."
+      );
     } finally {
       setSaving(false);
     }
@@ -263,6 +280,13 @@ export default function AdminOrdersPage() {
                     {/* ITEM REDEFINITION GRID */}
                     <div className="space-y-4">
                        <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-[0.2em] italic border-b border-slate-100 pb-2">Korekta Stawek Indeksowych</h4>
+                       {stripeAmountsLocked && (
+                          <div className="border-l-4 border-primary bg-primary/5 px-4 py-3">
+                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">
+                                Kwoty zablokowane przez sesję Stripe. Możesz nadal zmienić termin i status zamówienia.
+                             </p>
+                          </div>
+                       )}
                        <div className="bg-slate-50 border border-slate-100">
                           <table className="w-full text-left">
                              <thead>
@@ -289,7 +313,12 @@ export default function AdminOrdersPage() {
                                             type="number" 
                                             value={item.price}
                                             onChange={(e) => updateItemPrice(idx, e.target.value)}
-                                            className="w-28 h-10 bg-white border border-slate-200 text-right px-4 text-sm font-black text-primary italic outline-none focus:border-primary transition-all tabular-nums"
+                                            disabled={stripeAmountsLocked}
+                                            className={`w-28 h-10 bg-white border border-slate-200 text-right px-4 text-sm font-black italic outline-none transition-all tabular-nums ${
+                                               stripeAmountsLocked
+                                                  ? "cursor-not-allowed text-slate-400 opacity-60"
+                                                  : "text-primary focus:border-primary"
+                                            }`}
                                             step="0.01"
                                          />
                                       </td>
