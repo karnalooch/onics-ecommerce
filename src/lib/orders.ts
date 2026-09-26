@@ -87,3 +87,27 @@ export function validateStripeOrderStatusTransition(
 
   return "ok"
 }
+
+
+export function validateReservedOrderStatusTransition(
+  inventoryReservationSource: string | null | undefined,
+  currentStatus: OrderStatus | string | null | undefined,
+  nextStatus: OrderStatus
+): "ok" | "invalid-transition" {
+  if (inventoryReservationSource !== "ORDER") return "ok"
+  if (currentStatus === nextStatus) return "ok"
+
+  if (currentStatus === "PENDING_VERIFICATION") {
+    return nextStatus === "CONFIRMED" || nextStatus === "CANCELLED"
+      ? "ok"
+      : "invalid-transition"
+  }
+
+  if (currentStatus === "CONFIRMED") {
+    return nextStatus === "SHIPPED" || nextStatus === "CANCELLED"
+      ? "ok"
+      : "invalid-transition"
+  }
+
+  return "invalid-transition"
+}
