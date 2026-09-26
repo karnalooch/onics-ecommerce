@@ -42,6 +42,12 @@ export default function AdminOrdersPage() {
     Boolean(validatingOrder?.stripeCheckoutSessionId) &&
     (validatingOrder?.status === "SHIPPED" ||
       validatingOrder?.status === "RETURNED");
+  const bankTransferReturnEligible =
+    isBankTransfer &&
+    (validatingOrder?.status === "SHIPPED" ||
+      validatingOrder?.status === "RETURNED") &&
+    (validatingOrder?.paymentStatus === "PAID" ||
+      validatingOrder?.paymentStatus === "REFUNDED");
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -186,6 +192,79 @@ export default function AdminOrdersPage() {
         error instanceof Error
           ? error.message
           : "FAULT: Błąd rozliczenia przelewu bankowego."
+      );
+    } finally {
+      setBankTransferUpdating(false);
+    }
+  }
+
+  const handleBankTransferReturnAction = async (
+    action: "REQUEST_RETURN" | "RECEIVE_RETURN" | "CONFIRM_RETURN_REFUND"
+  ) => {
+    if (!validatingOrder?.id || !bankTransferReturnEligible) return;
+
+    if (action === "REQUEST_RETURN") {
+      if (
+        !window.confirm(
+          "Otworzyć RMA dla wysłanego zamówienia opłaconego przelewem?"
+        )
+      ) {
+        return;
+      }
+    } else if (action === "RECEIVE_RETURN") {
+      if (
+        !window.confirm(
+          "Potwierdzić fizyczny odbiór zwracanego towaru? Środki nie zostaną jeszcze oznaczone jako zwrócone."
+        )
+      ) {
+        return;
+      }
+    } else {
+      const typed = window.prompt(
+        'Potwierdź, że środki zostały zwrócone klientowi poza systemem. Wpisz dokładnie: ZWROT'
+      );
+      if (typed !== "ZWROT") {
+        toast.error("Finalizacja RMA została anulowana.");
+        return;
+      }
+    }
+
+    setBankTransferUpdating(true);
+    try {
+      const res = await fetch("/api/orders/bank-transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: validatingOrder.id,
+          action,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(
+          data?.error || "Nie udało się obsłużyć RMA przelewu."
+        );
+      }
+
+      if (action === "REQUEST_RETURN") {
+        toast.success("RMA przelewu zostało otwarte.");
+      } else if (action === "RECEIVE_RETURN") {
+        toast.success(
+          "Odbiór towaru potwierdzony. Oczekuje na wykonanie i potwierdzenie zwrotu środków."
+        );
+      } else {
+        toast.success(
+          "RMA zakończone: zwrot środków potwierdzony, towar przywrócony na magazyn."
+        );
+      }
+
+      setValidatingOrder(data?.order ?? validatingOrder);
+      await fetchOrders();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "FAULT: Błąd RMA przelewu bankowego."
       );
     } finally {
       setBankTransferUpdating(false);
@@ -556,7 +635,7 @@ export default function AdminOrdersPage() {
                        {paymentAmountsLocked && (
                           <div className="border-l-4 border-primary bg-primary/5 px-4 py-3">
                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">
-                                Kwoty zablokowane przez sesję Stripe. Realizacja jest możliwa dopiero po potwierdzeniu płatności.
+                                Kwoty zablokowane przez utworzony checkout płatniczy. Nie można zmienić wartości po przekazaniu klientowi danych płatności.
                              </p>
                           </div>
                        )}
@@ -732,6 +811,32 @@ export default function AdminOrdersPage() {
                                : validatingOrder?.returnStatus === "RECEIVED"
                                  ? "FINALIZUJ_REFUND"
                                  : "SPRAWDŹ_REFUND"}
+                       </button>
+                    )}
+
+                    {bankTransferReturnEligible &&
+                     validatingOrder?.status === "SHIPPED" &&
+                     validatingOrder?.returnStatus !== "COMPLETED" && (
+                       <button
+                         onClick={() =>
+                           handleBankTransferReturnAction(
+                             !validatingOrder?.returnStatus
+                               ? "REQUEST_RETURN"
+                               : validatingOrder?.returnStatus === "REQUESTED"
+                                 ? "RECEIVE_RETURN"
+                                 : "CONFIRM_RETURN_REFUND"
+                           )
+                         }
+                         disabled={bankTransferUpdating || saving || cancelling}
+                         className="flex-1 min-w-[210px] h-14 border-2 border-blue-400/50 text-blue-300 font-black text-[10px] uppercase tracking-widest hover:border-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                       >
+                         {bankTransferUpdating
+                           ? "RMA_PROCESSING..."
+                           : !validatingOrder?.returnStatus
+                             ? "OTWÓRZ_RMA_PRZELEWU"
+                             : validatingOrder?.returnStatus === "REQUESTED"
+                               ? "POTWIERDŹ_ODBIÓR_TOWARU"
+                               : "POTWIERDŹ_ZWROT_ŚRODKÓW"}
                        </button>
                     )}
 
