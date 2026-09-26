@@ -135,7 +135,7 @@ export async function createOfferPdf(input: OfferPdfInput) {
   const newPage = () => {
     page = pdf.addPage([pageWidth, pageHeight])
     y = pageHeight - margin
-    page.drawText("CEL-TRONICS — OFERTA B2B (cd.)", {
+    page.drawText("CEL-TRONICS - OFERTA B2B (cd.)", {
       x: margin,
       y,
       size: 11,
@@ -151,7 +151,7 @@ export async function createOfferPdf(input: OfferPdfInput) {
   for (const item of input.items) {
     if (y < 110) newPage()
 
-    const label = `${normalizePdfText(item.sku)} — ${fitText(item.name, 42)}`
+    const label = `${normalizePdfText(item.sku)} - ${fitText(item.name, 42)}`
     page.drawText(label, { x: margin + 6, y: y + 5, size: 8, font })
     page.drawText(String(item.quantity), { x: 358, y: y + 5, size: 8, font })
     page.drawText(money(item.price), { x: 397, y: y + 5, size: 8, font })
