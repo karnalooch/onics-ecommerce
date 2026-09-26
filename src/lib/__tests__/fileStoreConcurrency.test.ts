@@ -4,6 +4,7 @@ import path from "path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { getDbLockSettings, readDb, writeDb } from "@/lib/jsonDb"
 import { mutateMockData } from "@/store/serverStore"
+import { reserveInventory } from "@/lib/inventoryReservations"
 
 const originalDbPath = process.env.CELTRONICS_DB_PATH
 const lockEnvNames = [
@@ -131,6 +132,42 @@ describe("file store concurrency", () => {
       "ORD-FAST",
       "ORD-SLOW",
     ])
+  })
+
+  it("serializes competing inventory reservations so stock cannot oversell", async () => {
+    expect(
+      writeDb({
+        ...emptyDb(),
+        products: [{ id: "p1", sku: "SKU-1", stock: 5 }],
+      })
+    ).toBe(true)
+
+    const reserve = (orderId: string) =>
+      mutateMockData(async (db) => {
+        reserveInventory(
+          db.products as Parameters<typeof reserveInventory>[0],
+          [{ id: "p1", quantity: 4 }]
+        )
+        await new Promise((resolve) => setTimeout(resolve, 25))
+        db.orders.push({
+          id: orderId,
+          items: [{ id: "p1", quantity: 4 }],
+          inventoryReservationStatus: "RESERVED",
+        })
+      })
+
+    const results = await Promise.allSettled([
+      reserve("ORD-A"),
+      reserve("ORD-B"),
+    ])
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
+
+    const db = readDb()
+    expect(db.products[0].stock).toBe(1)
+    expect(db.orders).toHaveLength(1)
+    expect(["ORD-A", "ORD-B"]).toContain(db.orders[0].id)
   })
 
   it("does not overwrite the database when the current file is malformed", async () => {
