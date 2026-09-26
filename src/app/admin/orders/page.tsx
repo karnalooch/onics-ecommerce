@@ -682,24 +682,26 @@ export default function AdminOrdersPage() {
                  <div className="p-6 bg-slate-950 flex flex-wrap items-center gap-4">
                     {isManualPayment &&
                      canConfirmPayment && (
-                       <>
-                         <button
-                           onClick={() => settleManualPayment("CONFIRM_PAYMENT")}
-                           disabled={manualPaymentUpdating || saving || returning}
-                           className="flex-1 min-w-[190px] h-14 border-2 border-green-400/50 text-green-300 font-black text-[10px] uppercase tracking-widest hover:border-green-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
-                         >
-                           {manualPaymentUpdating
-                             ? "ROZLICZANIE..."
-                             : "POTWIERDŹ_WPŁYW"}
-                         </button>
-                         <button
-                           onClick={cancelPaymentOrder}
-                           disabled={manualPaymentUpdating || saving || returning}
-                           className="flex-1 min-w-[190px] h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
-                         >
-                           ANULUJ_OCZEKUJĄCĄ_PŁATNOŚĆ
-                         </button>
-                       </>
+                       <button
+                         onClick={() => settleManualPayment("CONFIRM_PAYMENT")}
+                         disabled={manualPaymentUpdating || saving || returning}
+                         className="flex-1 min-w-[190px] h-14 border-2 border-green-400/50 text-green-300 font-black text-[10px] uppercase tracking-widest hover:border-green-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                       >
+                         {manualPaymentUpdating
+                           ? "ROZLICZANIE..."
+                           : "POTWIERDŹ_WPŁYW"}
+                       </button>
+                    )}
+
+                    {isManualPayment &&
+                     canCancelPayment && (
+                       <button
+                         onClick={cancelPaymentOrder}
+                         disabled={manualPaymentUpdating || saving || returning}
+                         className="flex-1 min-w-[190px] h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                       >
+                         ANULUJ_OCZEKUJĄCĄ_PŁATNOŚĆ
+                       </button>
                     )}
 
                     {isManualPayment &&
