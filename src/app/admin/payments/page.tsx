@@ -11,6 +11,12 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+type PaymentControl = {
+  enabled: boolean
+  maintenanceMessage: string | null
+  updatedAt: string | null
+}
+
 type PaymentMethod = {
   id: "STRIPE"
   name: string
@@ -21,7 +27,9 @@ type PaymentMethod = {
 }
 
 export default function AdminPaymentsPage() {
+  const [control, setControl] = useState<PaymentControl | null>(null)
   const [methods, setMethods] = useState<PaymentMethod[]>([])
+  const [maintenanceMessage, setMaintenanceMessage] = useState("")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
 
@@ -35,6 +43,8 @@ export default function AdminPaymentsPage() {
       if (!response.ok) {
         throw new Error(data?.error || "Nie udało się pobrać metod płatności.")
       }
+      setControl(data?.control ?? null)
+      setMaintenanceMessage(data?.control?.maintenanceMessage ?? "")
       setMethods(data?.methods ?? [])
     } catch (error) {
       toast.error(
@@ -50,6 +60,54 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     loadMethods()
   }, [loadMethods])
+
+  const saveGlobalControl = async (nextEnabled: boolean) => {
+    if (
+      !nextEnabled &&
+      !window.confirm(
+        "Wyłączyć wszystkie nowe płatności online? Istniejące transakcje, webhooki, refundy i RMA nadal będą obsługiwane."
+      )
+    ) {
+      return
+    }
+
+    setSaving("GLOBAL")
+    try {
+      const response = await fetch("/api/payment-methods", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scope: "GLOBAL",
+          enabled: nextEnabled,
+          maintenanceMessage: maintenanceMessage.trim() || null,
+        }),
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Nie udało się zmienić globalnego stanu płatności."
+        )
+      }
+
+      setControl(data?.control ?? null)
+      setMaintenanceMessage(data?.control?.maintenanceMessage ?? "")
+      setMethods(data?.methods ?? [])
+      toast.success(
+        nextEnabled
+          ? "Nowe płatności online zostały włączone."
+          : "Nowe płatności online zostały globalnie wyłączone."
+      )
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się zmienić globalnego stanu płatności."
+      )
+    } finally {
+      setSaving(null)
+    }
+  }
 
   const toggleMethod = async (method: PaymentMethod) => {
     const nextEnabled = !method.enabled
@@ -140,6 +198,84 @@ export default function AdminPaymentsPage() {
           </div>
         </div>
       </div>
+
+      {!loading && control && (
+        <section className="bg-slate-950 text-white shadow-sm">
+          <div className="p-8 grid gap-8 xl:grid-cols-[1fr_360px] xl:items-end">
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <Power className={`w-6 h-6 ${control.enabled ? "text-green-400" : "text-red-300"}`} />
+                <h2 className="text-xl font-black uppercase italic tracking-tight">
+                  Główny przełącznik płatności online
+                </h2>
+                <span
+                  className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest ${
+                    control.enabled
+                      ? "bg-green-400/15 text-green-300"
+                      : "bg-red-400/15 text-red-300"
+                  }`}
+                >
+                  {control.enabled ? "ONLINE" : "MAINTENANCE"}
+                </span>
+              </div>
+
+              <p className="text-sm text-slate-300 leading-relaxed max-w-3xl">
+                Ten przełącznik blokuje tworzenie wszystkich nowych płatności
+                online niezależnie od ustawień pojedynczych operatorów. Nie
+                zatrzymuje obsługi istniejących transakcji.
+              </p>
+
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  Komunikat dla klienta podczas przerwy
+                </label>
+                <textarea
+                  value={maintenanceMessage}
+                  onChange={(event) =>
+                    setMaintenanceMessage(event.target.value.slice(0, 160))
+                  }
+                  rows={3}
+                  maxLength={160}
+                  placeholder="Płatności online są chwilowo niedostępne. Spróbuj ponownie później."
+                  className="w-full bg-white/5 border border-white/15 px-4 py-3 text-sm text-white outline-none focus:border-primary resize-none"
+                />
+                <div className="text-right text-[9px] font-black text-slate-500">
+                  {maintenanceMessage.length}/160
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => saveGlobalControl(!control.enabled)}
+                disabled={saving !== null}
+                className={`h-14 px-6 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+                  control.enabled
+                    ? "bg-red-500/15 text-red-200 border border-red-400/30 hover:bg-red-500/25"
+                    : "bg-green-500 text-slate-950 hover:bg-green-400"
+                }`}
+              >
+                {saving === "GLOBAL" ? (
+                  <RefreshCcw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Power className="w-4 h-4" />
+                )}
+                {control.enabled
+                  ? "WYŁĄCZ WSZYSTKIE PŁATNOŚCI"
+                  : "WŁĄCZ PŁATNOŚCI ONLINE"}
+              </button>
+
+              <button
+                onClick={() => saveGlobalControl(control.enabled)}
+                disabled={saving !== null}
+                className="h-11 px-6 border border-white/15 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:border-white/40 disabled:opacity-40"
+              >
+                ZAPISZ KOMUNIKAT
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {loading ? (
         <div className="h-64 border border-slate-100 bg-white flex items-center justify-center">

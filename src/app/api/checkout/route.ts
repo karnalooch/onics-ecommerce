@@ -4,7 +4,10 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
 import { moneyToMinorUnits, resolveStripeCheckoutConfig } from "@/lib/payments"
-import { isPaymentMethodEnabled } from "@/lib/paymentMethods"
+import {
+  isPaymentControlEnabled,
+  isPaymentMethodEnabled,
+} from "@/lib/paymentMethods"
 import { reserveInventory } from "@/lib/inventoryReservations"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
@@ -82,6 +85,16 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   const snapshot = initializeMockData()
+  if (!isPaymentControlEnabled(snapshot.paymentControl)) {
+    return NextResponse.json(
+      {
+        error:
+          snapshot.paymentControl.maintenanceMessage ||
+          "Płatności online są obecnie wyłączone przez administratora.",
+      },
+      { status: 503 }
+    )
+  }
   if (!isPaymentMethodEnabled(snapshot.paymentMethods, "STRIPE")) {
     return NextResponse.json(
       { error: "Płatność Stripe została wyłączona przez administratora." },
@@ -166,6 +179,13 @@ export async function POST(req: Request) {
 
     try {
       await mutateMockData((db) => {
+        if (!isPaymentControlEnabled(db.paymentControl)) {
+          throw new Error("PAYMENTS_DISABLED")
+        }
+        if (!isPaymentMethodEnabled(db.paymentMethods, "STRIPE")) {
+          throw new Error("PAYMENT_METHOD_DISABLED")
+        }
+
         const fresh = resolveCheckout(
           db.users as StoredUser[],
           db.products as Parameters<typeof resolveCartItems>[1],
@@ -231,19 +251,25 @@ export async function POST(req: Request) {
       code === "INVENTORY_NOT_AVAILABLE" ||
       code === "INVENTORY_PRODUCT_NOT_FOUND" ||
       /Brak wymaganej ilości produktu/.test(code)
+    const paymentDisabled =
+      code === "PAYMENTS_DISABLED" || code === "PAYMENT_METHOD_DISABLED"
     const message =
       code === "CHECKOUT_STATE_CHANGED"
         ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
-        : inventoryConflict
-          ? "Stan magazynowy zmienił się podczas tworzenia płatności. Odśwież koszyk i spróbuj ponownie."
-          : error instanceof Error
-            ? error.message
-            : "Błąd serwera."
+        : code === "PAYMENTS_DISABLED"
+          ? "Płatności online zostały wyłączone przez administratora."
+          : code === "PAYMENT_METHOD_DISABLED"
+            ? "Płatność Stripe została wyłączona przez administratora."
+            : inventoryConflict
+              ? "Stan magazynowy zmienił się podczas tworzenia płatności. Odśwież koszyk i spróbuj ponownie."
+              : error instanceof Error
+                ? error.message
+                : "Błąd serwera."
 
     console.error("Błąd generowania bramki checkout:", error)
     return NextResponse.json(
       { error: message },
-      { status: inventoryConflict ? 409 : 500 }
+      { status: paymentDisabled ? 503 : inventoryConflict ? 409 : 500 }
     )
   }
 }

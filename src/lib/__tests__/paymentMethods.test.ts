@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest"
 import {
+  describePaymentControl,
   describePaymentMethods,
+  isPaymentControlEnabled,
   isPaymentMethodEnabled,
+  resolvePaymentAvailability,
   stripeOperationalStatus,
 } from "@/lib/paymentMethods"
-import type { PaymentMethodSettings } from "@/store/serverStore"
+import type {
+  PaymentControlSettings,
+  PaymentMethodSettings,
+} from "@/store/serverStore"
 
 function settings(enabled: boolean): PaymentMethodSettings {
   return {
@@ -15,10 +21,41 @@ function settings(enabled: boolean): PaymentMethodSettings {
   }
 }
 
+function control(enabled: boolean): PaymentControlSettings {
+  return {
+    enabled,
+    maintenanceMessage: enabled ? null : "Przerwa techniczna",
+    updatedAt: null,
+  }
+}
+
 describe("payment method management", () => {
-  it("uses the persisted admin switch as the checkout gate", () => {
+  it("uses the persisted provider switch as a checkout gate", () => {
     expect(isPaymentMethodEnabled(settings(true), "STRIPE")).toBe(true)
     expect(isPaymentMethodEnabled(settings(false), "STRIPE")).toBe(false)
+  })
+
+  it("requires both global and provider switches for payment availability", () => {
+    expect(isPaymentControlEnabled(control(true))).toBe(true)
+    expect(isPaymentControlEnabled(control(false))).toBe(false)
+
+    expect(
+      resolvePaymentAvailability(control(true), settings(true), "STRIPE")
+    ).toBe(true)
+    expect(
+      resolvePaymentAvailability(control(false), settings(true), "STRIPE")
+    ).toBe(false)
+    expect(
+      resolvePaymentAvailability(control(true), settings(false), "STRIPE")
+    ).toBe(false)
+  })
+
+  it("exposes a safe global maintenance snapshot", () => {
+    expect(describePaymentControl(control(false))).toEqual({
+      enabled: false,
+      maintenanceMessage: "Przerwa techniczna",
+      updatedAt: null,
+    })
   })
 
   it("requires the Stripe secret for availability", () => {
