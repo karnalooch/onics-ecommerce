@@ -9,6 +9,7 @@ import {
   resolveOrderPaymentProvider,
   type PaymentProviderId,
 } from "@/lib/paymentProviders"
+import type { PaymentOperationEvent } from "@/store/serverStore"
 
 export type PaymentProviderOperationsOrder = PaymentAdminActionOrder & {
   id?: unknown
@@ -26,6 +27,10 @@ export type PaymentProviderOperationsSummary = {
   openReturns: number
   lastReconciledAt: string | null
   lastErrorAt: string | null
+  lastOperationOutcome: PaymentOperationEvent["outcome"] | null
+  lastOperationProcessed: number
+  lastOperationFailed: number
+  lastOperationManualReview: number
   actionCounts: Record<PaymentAdminAction, number>
 }
 
@@ -56,7 +61,8 @@ function laterTimestamp(
 }
 
 export function describePaymentProviderOperations(
-  orders: PaymentProviderOperationsOrder[]
+  orders: PaymentProviderOperationsOrder[],
+  events: PaymentOperationEvent[] = []
 ): Record<PaymentProviderId, PaymentProviderOperationsSummary> {
   const summaries = Object.fromEntries(
     PAYMENT_PROVIDER_IDS.map((provider) => [
@@ -71,6 +77,10 @@ export function describePaymentProviderOperations(
         openReturns: 0,
         lastReconciledAt: null,
         lastErrorAt: null,
+        lastOperationOutcome: null,
+        lastOperationProcessed: 0,
+        lastOperationFailed: 0,
+        lastOperationManualReview: 0,
         actionCounts: emptyActionCounts(),
       } satisfies PaymentProviderOperationsSummary,
     ])
@@ -127,6 +137,29 @@ export function describePaymentProviderOperations(
       summary.lastReconciledAt,
       order.paymentReconciledAt
     )
+  }
+
+  for (const event of events) {
+    const summary = summaries[event.provider]
+    const currentOperationAt = summary.lastReconciledAt
+
+    if (
+      !currentOperationAt ||
+      Date.parse(event.createdAt) > Date.parse(currentOperationAt)
+    ) {
+      summary.lastReconciledAt = event.createdAt
+      summary.lastOperationOutcome = event.outcome
+      summary.lastOperationProcessed = event.processed
+      summary.lastOperationFailed = event.failed
+      summary.lastOperationManualReview = event.manualReview
+    }
+
+    if (event.outcome !== "SUCCESS") {
+      summary.lastErrorAt = laterTimestamp(
+        summary.lastErrorAt,
+        event.createdAt
+      )
+    }
   }
 
   return summaries
