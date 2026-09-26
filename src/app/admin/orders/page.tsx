@@ -18,6 +18,7 @@ export default function AdminOrdersPage() {
   const [deliveryDays, setDeliveryDays] = useState<string>("5");
   const [editableItems, setEditableItems] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const stripeAmountsLocked = Boolean(validatingOrder?.stripeCheckoutSessionId);
   const stripeFulfillmentLocked =
     Boolean(validatingOrder?.stripeCheckoutSessionId) &&
@@ -55,6 +56,58 @@ export default function AdminOrdersPage() {
           : item
       )
     );
+  }
+
+  const cancelStripeOrder = async () => {
+    if (!validatingOrder?.stripeCheckoutSessionId) return;
+    if (
+      !window.confirm(
+        validatingOrder.paymentStatus === "PAID"
+          ? "Uruchomić pełny refund Stripe i anulować zamówienie po jego powodzeniu?"
+          : "Wygasić sesję Stripe, zwolnić rezerwację i anulować zamówienie?"
+      )
+    ) {
+      return;
+    }
+
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/orders/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: validatingOrder.id }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok && res.status !== 202) {
+        throw new Error(
+          data?.error || "Nie udało się anulować zamówienia Stripe."
+        );
+      }
+
+      if (res.status === 202) {
+        toast.success(
+          "Refund Stripe został zlecony i oczekuje na końcowe potwierdzenie."
+        );
+      } else {
+        toast.success(
+          data?.paymentStatus === "REFUNDED"
+            ? "Refund Stripe zakończony. Zamówienie anulowane."
+            : "Sesja Stripe wygaszona. Rezerwacja magazynowa zwolniona."
+        );
+      }
+
+      setValidatingOrder(null);
+      await fetchOrders();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "FAULT: Błąd anulowania zamówienia Stripe."
+      );
+    } finally {
+      setCancelling(false);
+    }
   }
 
   const confirmOrder = async () => {
@@ -360,15 +413,37 @@ export default function AdminOrdersPage() {
                     </div>
                  )}
                  <div className="p-6 bg-slate-950 flex items-center gap-4">
+                    {validatingOrder?.stripeCheckoutSessionId &&
+                     validatingOrder?.status !== "CANCELLED" &&
+                     validatingOrder?.status !== "SHIPPED" && (
+                       <button
+                         onClick={cancelStripeOrder}
+                         disabled={
+                           cancelling ||
+                           validatingOrder?.refundStatus === "pending" ||
+                           validatingOrder?.refundStatus === "requires_action"
+                         }
+                         className="flex-1 h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                       >
+                         {cancelling
+                           ? "ANULOWANIE..."
+                           : validatingOrder?.refundStatus === "pending" ||
+                               validatingOrder?.refundStatus === "requires_action"
+                             ? "REFUND_W_TOKU"
+                             : validatingOrder?.paymentStatus === "PAID"
+                               ? "ANULUJ_I_REFUND"
+                               : "ANULUJ_PŁATNOŚĆ"}
+                       </button>
+                    )}
                     <button 
                        onClick={() => setValidatingOrder(null)}
                        className="flex-1 h-14 border-2 border-white/20 text-white font-black text-[11px] uppercase tracking-widest hover:border-white transition-all active-press italic"
                     >
-                       ANULUJ_WERYFIKACJĘ
+                       ZAMKNIJ
                     </button>
                     <button 
                        onClick={confirmOrder}
-                       disabled={saving || stripeFulfillmentLocked}
+                       disabled={saving || cancelling || stripeFulfillmentLocked}
                        className={`flex-1 h-14 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 transition-all italic ${
                           saving || stripeFulfillmentLocked
                              ? "bg-slate-700 text-slate-400 cursor-not-allowed"
