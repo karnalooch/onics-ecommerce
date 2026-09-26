@@ -14,6 +14,7 @@ export type InventoryReservationStatus = "RESERVED" | "FINALIZED" | "RELEASED"
 export type InventoryReservationOrder = {
   items?: InventoryItem[]
   inventoryReservationStatus?: InventoryReservationStatus | string | null
+  inventoryReservationSource?: "STRIPE" | "ORDER" | string | null
   inventoryReservedAt?: string | null
   inventoryReleasedAt?: string | null
   inventoryFinalizedAt?: string | null
@@ -109,6 +110,118 @@ export function releaseInventory(
 ) {
   const changes = planStockChange(products, items, "release")
   for (const change of changes) change.product.stock = change.stock
+}
+
+function inventoryQuantities(items: InventoryItem[]) {
+  return aggregateItems(items)
+}
+
+function inventoryShapeEqual(a: InventoryItem[], b: InventoryItem[]) {
+  const left = inventoryQuantities(a)
+  const right = inventoryQuantities(b)
+  if (left.size !== right.size) return false
+
+  for (const [productId, quantity] of left) {
+    if (right.get(productId) !== quantity) return false
+  }
+
+  return true
+}
+
+export function adjustInventoryReservation(
+  products: InventoryProduct[],
+  currentItems: InventoryItem[],
+  nextItems: InventoryItem[]
+) {
+  const current = inventoryQuantities(currentItems)
+  const next = inventoryQuantities(nextItems)
+  const productMap = new Map(
+    products.map((product) => [String(product.id ?? ""), product] as const)
+  )
+  const productIds = new Set([...current.keys(), ...next.keys()])
+  const changes: Array<{ product: InventoryProduct; stock: number }> = []
+
+  for (const productId of productIds) {
+    const delta = (next.get(productId) ?? 0) - (current.get(productId) ?? 0)
+    if (delta === 0) continue
+
+    const product = productMap.get(productId)
+    if (!product) throw new Error("INVENTORY_PRODUCT_NOT_FOUND")
+
+    const stock = Number(product.stock ?? 0)
+    if (!Number.isFinite(stock) || stock < 0) {
+      throw new Error("INVENTORY_INVALID_STOCK")
+    }
+
+    if (delta > 0 && stock < delta) {
+      throw new Error("INVENTORY_NOT_AVAILABLE")
+    }
+
+    changes.push({
+      product,
+      stock: delta > 0 ? stock - delta : stock + Math.abs(delta),
+    })
+  }
+
+  for (const change of changes) change.product.stock = change.stock
+}
+
+export function applyOrderInventoryTransition(
+  products: InventoryProduct[],
+  order: InventoryReservationOrder,
+  nextItems: InventoryItem[],
+  nextStatus: string,
+  now = new Date().toISOString()
+) {
+  if (order.inventoryReservationSource !== "ORDER") {
+    return "unmanaged" as const
+  }
+
+  const reservationStatus = order.inventoryReservationStatus
+  if (
+    reservationStatus !== "RESERVED" &&
+    reservationStatus !== "FINALIZED" &&
+    reservationStatus !== "RELEASED"
+  ) {
+    throw new Error("INVENTORY_RESERVATION_INVALID_STATE")
+  }
+  if (!order.items?.length) {
+    throw new Error("INVENTORY_RESERVATION_MISSING_ITEMS")
+  }
+
+  if (reservationStatus === "FINALIZED") {
+    if (!inventoryShapeEqual(order.items, nextItems)) {
+      throw new Error("INVENTORY_FINALIZED_ITEMS_IMMUTABLE")
+    }
+    return "unchanged" as const
+  }
+
+  if (reservationStatus === "RELEASED") {
+    if (!inventoryShapeEqual(order.items, nextItems)) {
+      throw new Error("INVENTORY_RELEASED_ITEMS_IMMUTABLE")
+    }
+    return "unchanged" as const
+  }
+
+  if (nextStatus === "CANCELLED") {
+    if (!inventoryShapeEqual(order.items, nextItems)) {
+      throw new Error("INVENTORY_CANCEL_ITEMS_IMMUTABLE")
+    }
+    releaseInventory(products, order.items)
+    order.inventoryReservationStatus = "RELEASED"
+    order.inventoryReleasedAt = order.inventoryReleasedAt ?? now
+    return "released" as const
+  }
+
+  adjustInventoryReservation(products, order.items, nextItems)
+
+  if (nextStatus === "SHIPPED") {
+    order.inventoryReservationStatus = "FINALIZED"
+    order.inventoryFinalizedAt = order.inventoryFinalizedAt ?? now
+    return "finalized" as const
+  }
+
+  return "reserved" as const
 }
 
 export function applyStripeInventoryTransition(
