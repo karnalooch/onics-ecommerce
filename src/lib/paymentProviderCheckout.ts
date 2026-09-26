@@ -22,6 +22,7 @@ import {
   type PaymentMethodSettings,
 } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
+import { isCommerceTransactionRole } from "@/lib/commerceAccess"
 import {
   assertPaymentProviderCapability,
   getPaymentProviderDefinition,
@@ -128,6 +129,10 @@ type PaymentCheckoutAdapter = {
 function assertCheckoutUser(user: StoredUser | undefined) {
   if (!user || user.isBlocked) {
     throw new Error("Konto jest niedostępne.")
+  }
+
+  if (!isCommerceTransactionRole(user.roleType)) {
+    throw new Error("CHECKOUT_ROLE_NOT_ALLOWED")
   }
 
   if (user.roleType === "BIZ" && !user.isApproved) {
