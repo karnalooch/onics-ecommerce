@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   applyPrzelewy24RefundNotification,
   applyReconciledPrzelewy24Payment,
@@ -11,6 +11,7 @@ import {
   resolvePrzelewy24Config,
   stagePrzelewy24Refund,
   stagePrzelewy24Verification,
+  testPrzelewy24Access,
   validatePrzelewy24NotificationForOrder,
   verifyPrzelewy24NotificationSignature,
   verifyPrzelewy24RefundNotificationSignature,
@@ -63,6 +64,10 @@ function notification(
     ...overrides,
   }
 }
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe("Przelewy24 production protocol", () => {
   it("requires production credentials and a clean HTTPS public origin", () => {
@@ -119,6 +124,63 @@ describe("Przelewy24 production protocol", () => {
       appUrl: "http://localhost:3001",
       environment: "sandbox",
     })
+  })
+
+  it("verifies P24 API access before provider activation", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(testPrzelewy24Access(config())).resolves.toBe(true)
+    expect(fetchMock).toHaveBeenCalledOnce()
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe("https://secure.przelewy24.pl/api/v1/testAccess")
+    expect(init.method).toBe("GET")
+    expect(init.headers).toMatchObject({
+      Authorization:
+        "Basic " +
+        Buffer.from("123456:api-key").toString("base64"),
+    })
+  })
+
+  it.each([
+    [401, { data: false }, "PRZELEWY24_ACCESS_UNAUTHORIZED"],
+    [400, { data: false }, "PRZELEWY24_ACCESS_REJECTED"],
+    [503, { data: false }, "PRZELEWY24_ACCESS_UNAVAILABLE"],
+    [200, { data: "unexpected" }, "PRZELEWY24_ACCESS_REJECTED"],
+  ])(
+    "fails closed when testAccess returns HTTP %s",
+    async (status, payload, expectedError) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response(JSON.stringify(payload), {
+            status,
+            headers: { "Content-Type": "application/json" },
+          })
+        )
+      )
+
+      await expect(testPrzelewy24Access(config())).rejects.toThrow(
+        expectedError
+      )
+    }
+  )
+
+  it("fails closed when the P24 access probe cannot reach the provider", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network unavailable"))
+    )
+
+    await expect(testPrzelewy24Access(config())).rejects.toThrow(
+      "PRZELEWY24_ACCESS_UNAVAILABLE"
+    )
   })
 
   it("calculates the SHA-384 notification checksum with the documented field order", () => {

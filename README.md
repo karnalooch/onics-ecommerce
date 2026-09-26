@@ -134,6 +134,22 @@ NEXT_PUBLIC_APP_URL=https://your-production-host.example
 
 Stripe is optional, but production payment configuration is fail-closed: enabling it requires `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and an explicit HTTPS `NEXT_PUBLIC_APP_URL` containing only the application origin. Production checkout never derives success/cancel URLs from the incoming request host. Checkout sessions are linked to local order IDs. Signed webhook events update the local payment truth and reject mismatched order IDs, sessions, currencies or amounts.
 
+## Przelewy24
+
+Przelewy24 is an optional payment provider and is disabled by default. Production configuration requires:
+
+```bash
+P24_MERCHANT_ID=...
+P24_POS_ID=...
+P24_API_KEY=...
+P24_CRC=...
+NEXT_PUBLIC_APP_URL=https://your-production-host.example
+```
+
+The admin control plane fails closed before enabling Przelewy24. After validating local configuration it calls the provider's authenticated `GET /api/v1/testAccess` endpoint **before** acquiring the file-store write lock or persisting the enabled state. Invalid credentials, provider rejection, malformed responses, network failures and provider outages leave the provider disabled. The response exposed to the admin contains only a safe failure category; credentials and raw provider payloads are never returned.
+
+Payment capture is notification-driven: a customer redirect never marks an order paid. A signed status notification is validated locally, then `transaction/verify` must succeed before the local order becomes `PAID` and its inventory reservation is finalized. Refunds use durable request identities and signed asynchronous refund notifications. Provider-aware reconciliation can recover missed payment notifications and safely retry unresolved refund requests without inventing meanings for undocumented refund status codes.
+
 ## Storage files
 
 The repository contains development seed data under `src/data/db.json`. It is not a production persistence target.

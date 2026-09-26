@@ -13,6 +13,7 @@ import {
   getPaymentProviderDefinition,
 } from "@/lib/paymentProviders"
 import { describePaymentProviderOperations } from "@/lib/paymentProviderOperations"
+import { runPaymentProviderActivationPreflight } from "@/lib/paymentProviderActivation"
 import {
   initializeMockData,
   mutateMockData,
@@ -32,6 +33,48 @@ function describeAdminPaymentMethods(
     ...method,
     operations: operations[method.id],
   }))
+}
+
+async function validatePaymentProviderActivation(
+  method: PaymentMethodId
+) {
+  const status = paymentMethodOperationalStatus(method)
+  if (!status.configured) {
+    return NextResponse.json(
+      {
+        error: getPaymentProviderDefinition(method).misconfiguredMessage,
+        configurationIssues: status.configurationIssues,
+      },
+      { status: 409 }
+    )
+  }
+
+  const preflight = await runPaymentProviderActivationPreflight(method)
+  if (preflight.ok) return null
+
+  console.warn(
+    `Payment provider activation preflight failed: ${method} ${preflight.reason}`
+  )
+
+  const unavailable = preflight.reason === "PROVIDER_UNAVAILABLE"
+  const error =
+    preflight.reason === "CREDENTIALS_REJECTED"
+      ? "Operator płatności odrzucił dane dostępowe. Sprawdź konfigurację API."
+      : unavailable
+        ? "Nie udało się zweryfikować połączenia z operatorem płatności. Spróbuj ponownie po przywróceniu dostępności."
+        : "Operator płatności odrzucił test dostępu. Sprawdź konfigurację konta i API."
+
+  return NextResponse.json(
+    {
+      error,
+      provider: method,
+      activationCheck: {
+        status: "FAILED",
+        reason: preflight.reason,
+      },
+    },
+    { status: unavailable ? 503 : 409 }
+  )
 }
 
 const UpdatePaymentSettingsSchema = z.union([
@@ -100,6 +143,20 @@ export async function PUT(req: Request) {
 
   if (parsed.data.scope === "GLOBAL") {
     const globalUpdate = parsed.data
+    const activationSnapshot = initializeMockData()
+
+    if (
+      globalUpdate.enabled &&
+      !activationSnapshot.paymentControl.enabled
+    ) {
+      for (const method of PAYMENT_PROVIDER_IDS) {
+        if (!activationSnapshot.paymentMethods[method]?.enabled) continue
+        const activationError =
+          await validatePaymentProviderActivation(method)
+        if (activationError) return activationError
+      }
+    }
+
     const result = await mutateMockData((db) => {
       const paymentControl = db.paymentControl as PaymentControlSettings
       const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
@@ -142,17 +199,13 @@ export async function PUT(req: Request) {
   const methodUpdate = parsed.data
   const method = methodUpdate.id as PaymentMethodId
 
-  if (methodUpdate.enabled === true) {
-    const status = paymentMethodOperationalStatus(method)
-    if (!status.configured) {
-      return NextResponse.json(
-        {
-          error: getPaymentProviderDefinition(method).misconfiguredMessage,
-          configurationIssues: status.configurationIssues,
-        },
-        { status: 409 }
-      )
-    }
+  const activationSnapshot = initializeMockData()
+  if (
+    methodUpdate.enabled === true &&
+    activationSnapshot.paymentMethods[method]?.enabled !== true
+  ) {
+    const activationError = await validatePaymentProviderActivation(method)
+    if (activationError) return activationError
   }
 
   await mutateMockData((db) => {

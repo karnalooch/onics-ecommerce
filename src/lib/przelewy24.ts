@@ -287,6 +287,41 @@ function basicAuth(config: Przelewy24Config) {
   )
 }
 
+export async function testPrzelewy24Access(
+  config: Przelewy24Config
+) {
+  let response: Response
+
+  try {
+    response = await fetch(`${config.apiBaseUrl}/api/v1/testAccess`, {
+      method: "GET",
+      headers: {
+        Authorization: basicAuth(config),
+      },
+      signal: AbortSignal.timeout(10_000),
+    })
+  } catch {
+    throw new Error("PRZELEWY24_ACCESS_UNAVAILABLE")
+  }
+
+  if (response.status === 401) {
+    throw new Error("PRZELEWY24_ACCESS_UNAUTHORIZED")
+  }
+  if (response.status >= 500) {
+    throw new Error("PRZELEWY24_ACCESS_UNAVAILABLE")
+  }
+
+  const payload = (await response.json().catch(() => null)) as
+    | { data?: unknown }
+    | null
+
+  if (!response.ok || payload?.data !== true) {
+    throw new Error("PRZELEWY24_ACCESS_REJECTED")
+  }
+
+  return true
+}
+
 export async function registerPrzelewy24Transaction(
   config: Przelewy24Config,
   input: {
