@@ -39,7 +39,10 @@ fixed to `sku` and `quantity`.
 
 The import endpoint only creates a preview. The cart is mutated in the browser
 only after the user reviews and explicitly accepts the preview. If an imported
-SKU already exists in the browser cart, quantities are added together. Final
-checkout and order creation repeat the normal server-side catalog, pricing and
-stock validation for the combined cart, so the preview is never treated as a
-stock reservation or final order validation.
+SKU already exists in the browser cart, quantities are added together only when
+the combined quantity remains within the shared 1..10000 cart-item contract.
+Rows that would exceed that boundary are skipped with an explicit client
+warning instead of corrupting the persisted cart. Final checkout and order
+creation repeat the normal server-side catalog, pricing and stock validation
+for the combined cart, so the preview is never treated as a stock reservation
+or final order validation.
