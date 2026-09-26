@@ -21,7 +21,10 @@ import {
   type PaymentMethodSettings,
 } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
-import { assertPaymentProviderCapability } from "@/lib/paymentProviders"
+import {
+  assertPaymentProviderCapability,
+  getPaymentProviderDefinition,
+} from "@/lib/paymentProviders"
 
 export type PaymentCheckoutItem = {
   id: string
@@ -53,26 +56,63 @@ type PaymentCheckoutInput = {
   snapshot: ReturnType<typeof initializeMockData>
 }
 
-export type PaymentCheckoutResult =
-  | {
-      orderId: string
-      paymentMethod: "BANK_TRANSFER"
-      status: "AWAITING_TRANSFER"
-      bankTransfer: {
-        recipient: string
-        accountNumber: string
-        iban: string
-        title: string
-        amount: number
-        currency: "PLN"
+export type PaymentCheckoutManualField = {
+  label: string
+  value: string
+  monospace?: boolean
+}
+
+export type PaymentCheckoutResult = {
+  orderId: string
+  paymentMethod: PaymentMethodId
+  nextAction:
+    | {
+        type: "REDIRECT"
+        url: string
       }
+    | {
+        type: "MANUAL"
+        title: string
+        fields: PaymentCheckoutManualField[]
+        amount?: number
+        currency?: string
+        note?: string
+      }
+}
+
+export function assertPaymentCheckoutResultContract(
+  method: PaymentMethodId,
+  result: PaymentCheckoutResult
+) {
+  const provider = getPaymentProviderDefinition(method)
+
+  if (
+    result.paymentMethod !== method ||
+    result.nextAction.type !== provider.kind ||
+    !result.orderId
+  ) {
+    throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
+  }
+
+  if (result.nextAction.type === "REDIRECT") {
+    if (!result.nextAction.url) {
+      throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
     }
-  | {
-      id: string
-      url: string
-      orderId: string
-      paymentMethod: "STRIPE"
-    }
+    return result
+  }
+
+  if (
+    !result.nextAction.title ||
+    result.nextAction.fields.length === 0 ||
+    result.nextAction.fields.some(
+      (field) => !field.label.trim() || !field.value.trim()
+    )
+  ) {
+    throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
+  }
+
+  return result
+}
 
 type PaymentCheckoutAdapter = {
   createCheckout: (
@@ -210,14 +250,29 @@ async function createBankTransferCheckout(
   return {
     orderId,
     paymentMethod: "BANK_TRANSFER",
-    status: "AWAITING_TRANSFER",
-    bankTransfer: {
-      recipient: bankConfig.recipient,
-      accountNumber: bankConfig.accountNumber,
-      iban: bankConfig.iban,
-      title: orderId,
+    nextAction: {
+      type: "MANUAL",
+      title: "Dane do przelewu",
+      fields: [
+        {
+          label: "Odbiorca",
+          value: bankConfig.recipient,
+        },
+        {
+          label: "IBAN",
+          value: bankConfig.iban,
+          monospace: true,
+        },
+        {
+          label: "Tytuł przelewu",
+          value: orderId,
+          monospace: true,
+        },
+      ],
       amount: resolved.total,
       currency: "PLN",
+      note:
+        "Zachowaj dokładny tytuł przelewu — identyfikuje on płatność z zamówieniem.",
     },
   }
 }
@@ -357,10 +412,12 @@ async function createStripeCheckout(
   }
 
   return {
-    id: session.id,
-    url: sessionUrl,
     orderId,
     paymentMethod: "STRIPE",
+    nextAction: {
+      type: "REDIRECT",
+      url: sessionUrl,
+    },
   }
 }
 
@@ -377,7 +434,9 @@ export async function createPaymentCheckout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
   assertPaymentProviderCapability(input.method, "checkout")
-  return paymentCheckoutAdapters[input.method].createCheckout(input)
+  const result =
+    await paymentCheckoutAdapters[input.method].createCheckout(input)
+  return assertPaymentCheckoutResultContract(input.method, result)
 }
 
 export function listPaymentCheckoutAdapterIds(): PaymentMethodId[] {
