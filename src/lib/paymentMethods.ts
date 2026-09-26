@@ -2,8 +2,19 @@ import type {
   PaymentControlSettings,
   PaymentMethodSettings,
 } from "@/store/serverStore"
+import {
+  getPaymentProviderDefinition,
+  paymentProviderOperationalStatus,
+  type PaymentProviderId,
+  type PaymentRuntimeOptions,
+} from "@/lib/paymentProviders"
 
-export type PaymentMethodId = keyof PaymentMethodSettings
+export {
+  bankTransferOperationalStatus,
+  stripeOperationalStatus,
+} from "@/lib/paymentProviders"
+
+export type PaymentMethodId = PaymentProviderId
 
 export type PaymentMethodAvailability = {
   id: PaymentMethodId
@@ -16,15 +27,6 @@ export type PaymentMethodAvailability = {
   kind: "REDIRECT" | "MANUAL"
   available: boolean
   updatedAt: string | null
-}
-
-type PaymentRuntimeOptions = {
-  nodeEnv?: string
-  stripeSecretKey?: string | null
-  stripeWebhookSecret?: string | null
-  appUrl?: string | null
-  bankTransferRecipient?: string | null
-  bankTransferAccountNumber?: string | null
 }
 
 export function isPaymentControlEnabled(
@@ -48,72 +50,11 @@ export function resolvePaymentAvailability(
   return control.enabled && settings[method].enabled
 }
 
-export function stripeOperationalStatus(
-  options: PaymentRuntimeOptions = {}
-) {
-  const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV
-  const stripeSecretKey =
-    options.stripeSecretKey ?? process.env.STRIPE_SECRET_KEY
-  const stripeWebhookSecret =
-    options.stripeWebhookSecret ?? process.env.STRIPE_WEBHOOK_SECRET
-  const appUrl = options.appUrl ?? process.env.NEXT_PUBLIC_APP_URL
-
-  const hasSecretKey = Boolean(stripeSecretKey?.trim())
-  const hasWebhookSecret = Boolean(stripeWebhookSecret?.trim())
-
-  let productionAppUrlConfigured = nodeEnv !== "production"
-  if (nodeEnv === "production" && appUrl?.trim()) {
-    try {
-      const parsed = new URL(appUrl.trim())
-      productionAppUrlConfigured =
-        parsed.protocol === "https:" &&
-        !parsed.username &&
-        !parsed.password &&
-        parsed.pathname === "/" &&
-        !parsed.search &&
-        !parsed.hash
-    } catch {
-      productionAppUrlConfigured = false
-    }
-  }
-
-  return {
-    configured:
-      hasSecretKey &&
-      (nodeEnv !== "production" ||
-        (hasWebhookSecret && productionAppUrlConfigured)),
-    webhookConfigured: hasWebhookSecret,
-  }
-}
-
-export function bankTransferOperationalStatus(
-  options: PaymentRuntimeOptions = {}
-) {
-  const recipient =
-    options.bankTransferRecipient ?? process.env.BANK_TRANSFER_RECIPIENT
-  const accountNumber =
-    options.bankTransferAccountNumber ??
-    process.env.BANK_TRANSFER_ACCOUNT_NUMBER
-
-  const normalizedAccount = accountNumber
-    ?.replace(/^PL/i, "")
-    .replace(/\s+/g, "")
-
-  return {
-    configured:
-      Boolean(recipient?.trim()) &&
-      Boolean(normalizedAccount && /^\d{26}$/.test(normalizedAccount)),
-    webhookConfigured: false,
-  }
-}
-
 export function paymentMethodOperationalStatus(
   method: PaymentMethodId,
   options: PaymentRuntimeOptions = {}
 ) {
-  return method === "STRIPE"
-    ? stripeOperationalStatus(options)
-    : bankTransferOperationalStatus(options)
+  return paymentProviderOperationalStatus(method, options)
 }
 
 export function describePaymentMethods(
@@ -123,7 +64,8 @@ export function describePaymentMethods(
   const methods: PaymentMethodAvailability[] = (
     Object.keys(settings) as PaymentMethodId[]
   ).map((id) => {
-    const operational = paymentMethodOperationalStatus(id, options)
+    const provider = getPaymentProviderDefinition(id)
+    const operational = provider.operationalStatus(options)
     const config = settings[id]
 
     return {
@@ -134,7 +76,7 @@ export function describePaymentMethods(
       webhookConfigured: operational.webhookConfigured,
       displayOrder: config.displayOrder,
       maintenanceMessage: config.maintenanceMessage,
-      kind: id === "STRIPE" ? "REDIRECT" : "MANUAL",
+      kind: provider.kind,
       available: config.enabled && operational.configured,
       updatedAt: config.updatedAt,
     }
