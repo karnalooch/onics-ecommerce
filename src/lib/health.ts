@@ -1,4 +1,5 @@
 import fs from "fs"
+import { needsAdminBootstrap } from "@/lib/adminBootstrap"
 import { getDbLockSettings } from "@/lib/jsonDb"
 import { resolveKnowledgeUploadRoot } from "@/lib/knowledge/files"
 import { resolvePersistentPath } from "@/lib/storageConfig"
@@ -13,6 +14,7 @@ type ReadinessOptions = {
 }
 
 type ReadinessCheck = "ok" | "error"
+type DatabaseRoot = Record<string, unknown>
 
 export type ReadinessResult = {
   ready: boolean
@@ -20,6 +22,7 @@ export type ReadinessResult = {
     configuration: ReadinessCheck
     database: ReadinessCheck
     uploads: ReadinessCheck
+    adminBootstrap: ReadinessCheck
   }
 }
 
@@ -49,6 +52,18 @@ function requireProductionSecret(
   }
 }
 
+function readDatabaseRoot(options: ReadinessOptions): DatabaseRoot {
+  const dbPath = resolveDatabasePath(options)
+  fs.accessSync(dbPath, fs.constants.R_OK | fs.constants.W_OK)
+  const parsed: unknown = JSON.parse(fs.readFileSync(dbPath, "utf-8"))
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Database root must be a JSON object.")
+  }
+
+  return parsed as DatabaseRoot
+}
+
 function validateConfiguration(options: ReadinessOptions) {
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV
   resolveDatabasePath(options)
@@ -57,6 +72,15 @@ function validateConfiguration(options: ReadinessOptions) {
 
   requireProductionSecret(nodeEnv, "AUTH_SECRET", options.authSecret ?? process.env.AUTH_SECRET)
   requireProductionSecret(nodeEnv, "NEXTAUTH_SECRET", options.nextAuthSecret ?? process.env.NEXTAUTH_SECRET)
+}
+
+function validateAdminBootstrap(options: ReadinessOptions) {
+  const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV
+  if (nodeEnv !== "production") return
+
+  const database = readDatabaseRoot(options)
+  if (!needsAdminBootstrap(database.users)) return
+
   requireProductionSecret(
     nodeEnv,
     "ADMIN_BOOTSTRAP_PASSWORD",
@@ -65,13 +89,7 @@ function validateConfiguration(options: ReadinessOptions) {
 }
 
 function validateDatabase(options: ReadinessOptions) {
-  const dbPath = resolveDatabasePath(options)
-  fs.accessSync(dbPath, fs.constants.R_OK | fs.constants.W_OK)
-  const parsed: unknown = JSON.parse(fs.readFileSync(dbPath, "utf-8"))
-
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("Database root must be a JSON object.")
-  }
+  readDatabaseRoot(options)
 }
 
 function validateUploads(options: ReadinessOptions) {
@@ -101,6 +119,7 @@ export function evaluateReadiness(
     configuration: check(() => validateConfiguration(options)),
     database: check(() => validateDatabase(options)),
     uploads: check(() => validateUploads(options)),
+    adminBootstrap: check(() => validateAdminBootstrap(options)),
   }
 
   return {
