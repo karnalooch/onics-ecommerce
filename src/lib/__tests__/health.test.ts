@@ -35,6 +35,9 @@ function readyOptions() {
     authSecret: "test-auth-secret",
     nextAuthSecret: "test-nextauth-secret",
     adminBootstrapPassword: "test-admin-password",
+    stripeSecretKey: "",
+    stripeWebhookSecret: "",
+    appUrl: "",
   }
 }
 
@@ -63,6 +66,7 @@ describe("production readiness", () => {
         database: "ok",
         uploads: "ok",
         adminBootstrap: "ok",
+        payments: "ok",
       },
     })
   })
@@ -135,6 +139,47 @@ describe("production readiness", () => {
     ).toMatchObject({
       ready: true,
       checks: { adminBootstrap: "ok" },
+    })
+  })
+  it("reports payment failure for incomplete production Stripe configuration", () => {
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        stripeSecretKey: "sk_test",
+        stripeWebhookSecret: "",
+        appUrl: "https://shop.example.com",
+      })
+    ).toMatchObject({
+      ready: false,
+      checks: { payments: "error" },
+    })
+  })
+
+  it("reports payment failure for a non-HTTPS production app URL", () => {
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        stripeSecretKey: "sk_test",
+        stripeWebhookSecret: "whsec_test",
+        appUrl: "http://shop.example.com",
+      })
+    ).toMatchObject({
+      ready: false,
+      checks: { payments: "error" },
+    })
+  })
+
+  it("accepts complete production Stripe configuration", () => {
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        stripeSecretKey: "sk_test",
+        stripeWebhookSecret: "whsec_test",
+        appUrl: "https://shop.example.com",
+      })
+    ).toMatchObject({
+      ready: true,
+      checks: { payments: "ok" },
     })
   })
 })
