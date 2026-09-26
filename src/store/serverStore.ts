@@ -35,6 +35,17 @@ export type PaymentControlSettings = {
   updatedAt: string | null
 }
 
+export type PaymentOperationEvent = {
+  id: string
+  createdAt: string
+  provider: PaymentProviderId
+  operation: "RECONCILE"
+  outcome: "SUCCESS" | "PARTIAL" | "FAILED"
+  processed: number
+  failed: number
+  manualReview: number
+}
+
 export type PaymentAuditEntry = {
   id: string
   createdAt: string
@@ -66,6 +77,7 @@ type ServerDb = {
   paymentMethods: PaymentMethodSettings
   paymentControl: PaymentControlSettings
   paymentAudit: PaymentAuditEntry[]
+  paymentOperationEvents: PaymentOperationEvent[]
   [key: string]: unknown
 }
 
@@ -81,6 +93,49 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : []
+}
+
+function normalizePaymentOperationEvents(value: unknown): PaymentOperationEvent[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter(isRecord)
+    .flatMap((entry) => {
+      if (
+        typeof entry.id !== "string" ||
+        typeof entry.createdAt !== "string" ||
+        !isPaymentProviderId(entry.provider) ||
+        entry.operation !== "RECONCILE" ||
+        (entry.outcome !== "SUCCESS" &&
+          entry.outcome !== "PARTIAL" &&
+          entry.outcome !== "FAILED") ||
+        typeof entry.processed !== "number" ||
+        !Number.isSafeInteger(entry.processed) ||
+        entry.processed < 0 ||
+        typeof entry.failed !== "number" ||
+        !Number.isSafeInteger(entry.failed) ||
+        entry.failed < 0 ||
+        typeof entry.manualReview !== "number" ||
+        !Number.isSafeInteger(entry.manualReview) ||
+        entry.manualReview < 0
+      ) {
+        return []
+      }
+
+      return [
+        {
+          id: entry.id,
+          createdAt: entry.createdAt,
+          provider: entry.provider,
+          operation: "RECONCILE" as const,
+          outcome: entry.outcome,
+          processed: entry.processed,
+          failed: entry.failed,
+          manualReview: entry.manualReview,
+        },
+      ]
+    })
+    .slice(0, 100)
 }
 
 function normalizePaymentAudit(value: unknown): PaymentAuditEntry[] {
@@ -239,6 +294,9 @@ function normalizeDb(input: unknown): ServerDb {
     paymentMethods: normalizePaymentMethods(source.paymentMethods),
     paymentControl: normalizePaymentControl(source.paymentControl),
     paymentAudit: normalizePaymentAudit(source.paymentAudit),
+    paymentOperationEvents: normalizePaymentOperationEvents(
+      source.paymentOperationEvents
+    ),
     knowledgeMeta: {
       sources: stringArray(knowledgeMeta.sources),
       processedSources: stringArray(knowledgeMeta.processedSources),
@@ -265,6 +323,7 @@ export function initializeMockData() {
     paymentMethods: db.paymentMethods,
     paymentControl: db.paymentControl,
     paymentAudit: db.paymentAudit,
+    paymentOperationEvents: db.paymentOperationEvents,
     knowledgeMeta: db.knowledgeMeta,
   }
 }
