@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   calculateCustomerUnitPrice,
+  calculateDiscountedUnitPrice,
   clampDiscount,
   resolveCartItems,
 } from "@/lib/commerce"
@@ -23,6 +24,12 @@ describe("commerce pricing", () => {
   it("applies explicit B2B discount only to BIZ users", () => {
     expect(calculateCustomerUnitPrice(product, { role: "BIZ", discount: 15 })).toBe(85)
     expect(calculateCustomerUnitPrice(product, { role: "ADMIN", discount: 15 })).toBe(100)
+  })
+
+  it("exposes the same explicit-discount formula for trusted admin pricing tools", () => {
+    expect(calculateDiscountedUnitPrice(product, 15)).toBe(85)
+    expect(calculateDiscountedUnitPrice(product, -10)).toBe(100)
+    expect(calculateDiscountedUnitPrice(product, 125)).toBe(0)
   })
 
   it("resolves prices from the server catalog and ignores client prices", () => {
