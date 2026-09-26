@@ -26,8 +26,12 @@ export const AdminQuoteUpdateSchema = z.discriminatedUnion("status", [
   RejectedQuoteUpdateSchema,
 ])
 
+export function isQuoteAdminActionable(currentStatus: unknown) {
+  return currentStatus === "PENDING" || currentStatus === "INQUIRY"
+}
+
 export function assertQuoteAdminTransition(currentStatus: unknown) {
-  if (currentStatus !== "PENDING" && currentStatus !== "INQUIRY") {
+  if (!isQuoteAdminActionable(currentStatus)) {
     throw new Error("QUOTE_NOT_ACTIONABLE")
   }
 }
