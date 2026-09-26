@@ -13,19 +13,20 @@ export function useCartOwnerBinding(options: {
 }) {
   const ownerKey = useCartStore((state) => state.ownerKey)
   const bindOwner = useCartStore((state) => state.bindOwner)
-  const [hydrated, setHydrated] = useState(() =>
-    useCartStore.persist.hasHydrated()
-  )
+  const [hydrated, setHydrated] = useState(false)
   const [boundMarker, setBoundMarker] = useState<string | null>(null)
 
   useEffect(() => {
+    const persistApi = useCartStore.persist
+    if (!persistApi) return
+
     const markHydrated = () => setHydrated(true)
 
-    if (useCartStore.persist.hasHydrated()) {
+    if (persistApi.hasHydrated()) {
       markHydrated()
     }
 
-    return useCartStore.persist.onFinishHydration(markHydrated)
+    return persistApi.onFinishHydration(markHydrated)
   }, [])
 
   const expectedMarker = markerFor(options.identityKey)
