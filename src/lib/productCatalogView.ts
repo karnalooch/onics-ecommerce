@@ -176,7 +176,7 @@ export type ProductCatalogKnowledgeEntry = {
   manufacturer?: string
   category?: string
   subcategory?: string
-  price?: number
+  price?: number | null
   specs?: string
 }
 
