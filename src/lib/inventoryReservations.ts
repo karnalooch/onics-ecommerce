@@ -73,6 +73,17 @@ function planStockChange(
   return changes
 }
 
+export function hasActiveReservationForProduct(
+  orders: InventoryReservationOrder[],
+  productId: string
+) {
+  return orders.some(
+    (order) =>
+      order.inventoryReservationStatus === "RESERVED" &&
+      (order.items ?? []).some((item) => String(item.id) === String(productId))
+  )
+}
+
 export function reserveInventory(
   products: InventoryProduct[],
   items: InventoryItem[]
