@@ -8,6 +8,7 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
+import { hasSkuConflict } from "@/lib/catalog"
 
 export const dynamic = "force-dynamic"
 
@@ -327,6 +328,10 @@ export async function POST(req: Request) {
   try {
     const newProduct = await mutateMockData((db) => {
       const productStore = db.products as ProductRecord[]
+      if (hasSkuConflict(productStore, parsed.data.sku)) {
+        throw new Error("SKU_EXISTS")
+      }
+
       const product: ProductRecord = {
         ...parsed.data,
         id: `p_${crypto.randomUUID()}`,
@@ -337,6 +342,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json(newProduct, { status: 201 })
   } catch (error) {
+    if (error instanceof Error && error.message === "SKU_EXISTS") {
+      return NextResponse.json(
+        { error: "Produkt z tym SKU już istnieje." },
+        { status: 409 }
+      )
+    }
+
     console.error("Product create persistence error:", error)
     return NextResponse.json(
       { error: "Nie udało się zapisać produktu." },
@@ -368,6 +380,9 @@ export async function PUT(req: Request) {
       )
 
       if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
+      if (hasSkuConflict(productStore, parsed.data.sku, parsed.data.id)) {
+        throw new Error("SKU_EXISTS")
+      }
 
       productStore[index] = {
         ...productStore[index],
@@ -382,6 +397,12 @@ export async function PUT(req: Request) {
       return NextResponse.json(
         { error: "Nie znaleziono produktu." },
         { status: 404 }
+      )
+    }
+    if (error instanceof Error && error.message === "SKU_EXISTS") {
+      return NextResponse.json(
+        { error: "Produkt z tym SKU już istnieje." },
+        { status: 409 }
       )
     }
 
