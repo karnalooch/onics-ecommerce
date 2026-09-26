@@ -4,6 +4,7 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { mutateMockData } from "@/store/serverStore"
 import { calculateCustomerUnitPrice, roundMoney } from "@/lib/commerce"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
 const QuoteSchema = z.object({
   productId: z.string().min(1),
@@ -45,15 +46,6 @@ type StoredQuote = {
   [key: string]: unknown
 }
 
-function findStoredUser(users: StoredUser[], sessionUser: SessionUser) {
-  return users.find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
-  )
-}
-
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
   if (!authCheck.authorized) return authCheck.response
@@ -72,7 +64,7 @@ export async function POST(req: Request) {
       const users = db.users as StoredUser[]
       const products = db.products as StoredProduct[]
       const orders = db.orders as StoredQuote[]
-      const storedUser = findStoredUser(users, sessionUser)
+      const storedUser = findStoredUserBySession(users, sessionUser)
 
       if (!storedUser || storedUser.isBlocked) {
         throw new Error("ACCOUNT_UNAVAILABLE")
@@ -214,12 +206,9 @@ export async function PUT(req: Request) {
       let totalPriceFinal = Number(quote.totalPriceFinal || 0)
 
       if (parsed.data.status === "QUOTED") {
-        const customer = users.find(
-          (user) =>
-            (quote.user?.id && user.id === quote.user.id) ||
-            (quote.user?.email &&
-              user.email?.toLowerCase() === quote.user.email.toLowerCase())
-        )
+        const customer = quote.user
+          ? findStoredUserBySession(users, quote.user)
+          : undefined
 
         if (quote.productId) {
           const product = products.find(

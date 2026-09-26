@@ -25,6 +25,20 @@ describe("session identity binding", () => {
     ).toBeUndefined()
   })
 
+  it("does not grant ownership when a reused email belongs to a different stable id", () => {
+    const storedOwner = {
+      id: "u_original",
+      email: "reused@example.com",
+    }
+
+    expect(
+      findStoredUserBySession([storedOwner], {
+        id: "u_new",
+        email: "reused@example.com",
+      })
+    ).toBeUndefined()
+  })
+
   it("supports normalized email fallback for legacy sessions without an id", () => {
     expect(
       findStoredUserBySession(users, {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
 export const dynamic = "force-dynamic"
 
@@ -28,15 +29,6 @@ type StoredUser = {
   isBlocked?: boolean
 }
 
-function findStoredUser(users: StoredUser[], sessionUser: SessionUser) {
-  return users.find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
-  )
-}
-
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
   if (!authCheck.authorized) return authCheck.response
@@ -51,9 +43,9 @@ export async function GET() {
   return NextResponse.json(
     repairs.filter(
       (repair: { user?: { id?: string; email?: string } }) =>
-        (sessionUser.id && repair.user?.id === sessionUser.id) ||
-        (sessionUser.email &&
-          repair.user?.email?.toLowerCase() === sessionUser.email.toLowerCase())
+        repair.user
+          ? Boolean(findStoredUserBySession([repair.user], sessionUser))
+          : false
     )
   )
 }
@@ -73,7 +65,10 @@ export async function POST(req: Request) {
 
     const sessionUser = authCheck.user as SessionUser
     const repair = await mutateMockData((db) => {
-      const storedUser = findStoredUser(db.users as StoredUser[], sessionUser)
+      const storedUser = findStoredUserBySession(
+        db.users as StoredUser[],
+        sessionUser
+      )
 
       if (!storedUser || storedUser.isBlocked) {
         throw new Error("ACCOUNT_UNAVAILABLE")

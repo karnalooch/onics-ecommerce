@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
 type SessionUser = { id?: string; email?: string | null; role?: string }
 type ProfileUser = {
@@ -22,22 +23,13 @@ const UpdateProfileSchema = z.object({
   address: z.string().trim().max(250).optional().default(""),
 })
 
-function findUser(users: ProfileUser[], sessionUser: SessionUser) {
-  return users.find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
-  )
-}
-
 export async function GET() {
   const authCheck = await authorizeAPI(["BIZ", "ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
   const sessionUser = authCheck.user as SessionUser
   const { users } = initializeMockData()
-  const user = findUser(users as ProfileUser[], sessionUser)
+  const user = findStoredUserBySession(users as ProfileUser[], sessionUser)
 
   if (!user) {
     return NextResponse.json({ error: "Nie znaleziono profilu." }, { status: 404 })
@@ -71,7 +63,7 @@ export async function PUT(req: Request) {
   try {
     const sessionUser = authCheck.user as SessionUser
     const result = await mutateMockData((db) => {
-      const user = findUser(db.users as ProfileUser[], sessionUser)
+      const user = findStoredUserBySession(db.users as ProfileUser[], sessionUser)
       if (!user) throw new Error("PROFILE_NOT_FOUND")
       if (user.isBlocked) throw new Error("ACCOUNT_BLOCKED")
 
