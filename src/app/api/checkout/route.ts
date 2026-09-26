@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { COMMERCE_TRANSACTION_ROLES } from "@/lib/commerceAccess"
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
 import {
   createPaymentCheckout,
   type PaymentCheckoutSessionUser,
@@ -23,7 +24,7 @@ const CartSchema = z.object({
     .array(
       z.object({
         id: z.string().min(1),
-        quantity: z.coerce.number().int().min(1).max(10000),
+        quantity: z.coerce.number().int().min(1).max(CART_ITEM_QUANTITY_MAX),
       })
     )
     .min(1)
