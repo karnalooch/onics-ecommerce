@@ -23,11 +23,17 @@ export default function AdminOrdersPage() {
   const [bankTransferUpdating, setBankTransferUpdating] = useState(false);
   const paymentLifecycle = validatingOrder?.paymentLifecycle ?? null;
   const paymentProvider = paymentLifecycle?.provider ?? null;
+  const paymentKind = paymentLifecycle?.kind ?? null;
   const paymentCapabilities = paymentLifecycle?.capabilities ?? null;
+  const canCancelPayment = Boolean(paymentCapabilities?.cancel);
+  const canRefundPayment = Boolean(paymentCapabilities?.refund);
+  const canManageRma = Boolean(paymentCapabilities?.rma);
+  const canManuallySettlePayment = Boolean(
+    paymentCapabilities?.manualSettlement
+  );
   const isStripePayment = paymentProvider === "STRIPE";
-  const isBankTransfer =
-    paymentProvider === "BANK_TRANSFER" &&
-    Boolean(paymentCapabilities?.manualSettlement);
+  const isBankTransfer = paymentProvider === "BANK_TRANSFER";
+  const isManualPayment = paymentKind === "MANUAL";
   const paymentAmountsLocked = Boolean(paymentProvider);
   const paymentRefundInProgress =
     validatingOrder?.refundStatus === "pending" ||
@@ -40,12 +46,15 @@ export default function AdminOrdersPage() {
     validatingOrder?.status === "CONFIRMED";
   const stripeReturnEligible =
     isStripePayment &&
-    Boolean(paymentCapabilities?.rma) &&
+    canManageRma &&
+    canRefundPayment &&
     (validatingOrder?.status === "SHIPPED" ||
       validatingOrder?.status === "RETURNED");
   const bankTransferReturnEligible =
     isBankTransfer &&
-    Boolean(paymentCapabilities?.rma) &&
+    canManageRma &&
+    canRefundPayment &&
+    canManuallySettlePayment &&
     (validatingOrder?.status === "SHIPPED" ||
       validatingOrder?.status === "RETURNED") &&
     (validatingOrder?.paymentStatus === "PAID" ||
@@ -86,11 +95,7 @@ export default function AdminOrdersPage() {
   }
 
   const cancelStripeOrder = async () => {
-    if (
-      !validatingOrder?.stripeCheckoutSessionId ||
-      !isStripePayment ||
-      !paymentCapabilities?.cancel
-    ) return;
+    if (!validatingOrder?.id || !isStripePayment || !canCancelPayment) return;
     if (
       !window.confirm(
         validatingOrder.paymentStatus === "PAID"
@@ -147,7 +152,7 @@ export default function AdminOrdersPage() {
     if (
       !validatingOrder?.id ||
       !isBankTransfer ||
-      !paymentCapabilities?.manualSettlement
+      !canManuallySettlePayment
     ) return;
 
     if (action === "CONFIRM_PAYMENT") {
@@ -285,7 +290,7 @@ export default function AdminOrdersPage() {
     if (
       !validatingOrder?.id ||
       !isBankTransfer ||
-      !paymentCapabilities?.cancel ||
+      !canCancelPayment ||
       validatingOrder?.paymentStatus !== "PENDING"
     ) {
       return;
@@ -712,28 +717,21 @@ export default function AdminOrdersPage() {
                     </div>
                  </div>
 
-                 {orderCanAdvance && stripeFulfillmentLocked && (
+                 {orderCanAdvance && paymentFulfillmentLocked && (
                     <div className="px-6 py-4 bg-amber-50 border-t border-amber-200">
                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">
-                          {stripeRefundInProgress
-                            ? `Refund Stripe jest w toku (${validatingOrder?.refundStatus}). Zamówienia nie można przekazać do logistyki.`
-                            : `Oczekiwanie na płatność Stripe (${validatingOrder?.paymentStatus || "PENDING"}). Zamówienia nie można jeszcze przekazać do logistyki.`}
-                       </p>
-                    </div>
-                 )}
-                 {orderCanAdvance && bankTransferFulfillmentLocked && (
-                    <div className="px-6 py-4 bg-blue-50 border-t border-blue-200">
-                       <p className="text-[10px] font-black uppercase tracking-widest text-blue-900">
-                          Oczekiwanie na zaksięgowanie przelewu
-                          {validatingOrder?.bankTransferReference
-                            ? ` · ${validatingOrder.bankTransferReference}`
-                            : ""}.
-                          Zamówienia nie można przekazać do logistyki przed potwierdzeniem wpływu.
+                          {paymentRefundInProgress
+                            ? `Refund ${paymentProvider ?? "płatności"} jest w toku (${validatingOrder?.refundStatus}). Zamówienia nie można przekazać do logistyki.`
+                            : isManualPayment
+                              ? `Oczekiwanie na ręczne rozliczenie płatności ${paymentProvider ?? ""} (${validatingOrder?.paymentStatus || "PENDING"}). Zamówienia nie można jeszcze przekazać do logistyki.`
+                              : `Oczekiwanie na potwierdzenie płatności ${paymentProvider ?? ""} (${validatingOrder?.paymentStatus || "PENDING"}). Zamówienia nie można jeszcze przekazać do logistyki.`}
                        </p>
                     </div>
                  )}
                  <div className="p-6 bg-slate-950 flex flex-wrap items-center gap-4">
                     {isBankTransfer &&
+                     canManuallySettlePayment &&
+                     canCancelPayment &&
                      validatingOrder?.status !== "CANCELLED" &&
                      validatingOrder?.status !== "SHIPPED" &&
                      validatingOrder?.status !== "RETURNED" &&
@@ -759,6 +757,8 @@ export default function AdminOrdersPage() {
                     )}
 
                     {isBankTransfer &&
+                     canManuallySettlePayment &&
+                     canRefundPayment &&
                      validatingOrder?.paymentStatus === "PAID" &&
                      validatingOrder?.status !== "CANCELLED" &&
                      validatingOrder?.status !== "SHIPPED" &&
@@ -774,7 +774,8 @@ export default function AdminOrdersPage() {
                        </button>
                     )}
 
-                    {validatingOrder?.stripeCheckoutSessionId &&
+                    {isStripePayment &&
+                     canCancelPayment &&
                      validatingOrder?.status !== "CANCELLED" &&
                      validatingOrder?.status !== "SHIPPED" &&
                      validatingOrder?.status !== "RETURNED" && (
@@ -783,15 +784,13 @@ export default function AdminOrdersPage() {
                          disabled={
                            cancelling ||
                            returning ||
-                           validatingOrder?.refundStatus === "pending" ||
-                           validatingOrder?.refundStatus === "requires_action"
+                           paymentRefundInProgress
                          }
                          className="flex-1 min-w-[180px] h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
                        >
                          {cancelling
                            ? "ANULOWANIE..."
-                           : validatingOrder?.refundStatus === "pending" ||
-                               validatingOrder?.refundStatus === "requires_action"
+                           : paymentRefundInProgress
                              ? "REFUND_W_TOKU"
                              : validatingOrder?.paymentStatus === "PAID"
                                ? "ANULUJ_I_REFUND"
@@ -884,13 +883,13 @@ export default function AdminOrdersPage() {
                          {saving ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
                          {saving
                             ? "PROPAGACJA_PARAMETRÓW..."
-                            : stripeFulfillmentLocked
-                              ? stripeRefundInProgress
+                            : paymentFulfillmentLocked
+                              ? paymentRefundInProgress
                                 ? "REFUND_W_TOKU"
-                                : "OCZEKIWANIE_NA_PŁATNOŚĆ"
-                              : bankTransferFulfillmentLocked
-                                ? "OCZEKIWANIE_NA_PRZELEW"
-                                : validatingOrder?.status === "PENDING_VERIFICATION"
+                                : isManualPayment
+                                  ? "OCZEKIWANIE_NA_ROZLICZENIE"
+                                  : "OCZEKIWANIE_NA_PŁATNOŚĆ"
+                              : validatingOrder?.status === "PENDING_VERIFICATION"
                                 ? "ZATWIERDŹ_DO_LOGISTYKI"
                                 : "OZNACZ_JAKO_WYSŁANE"}
                       </button>
