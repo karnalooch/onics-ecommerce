@@ -65,7 +65,7 @@ const ImportItemSchema = z
     price: z.coerce.number().min(0).optional(),
     stock: z.coerce.number().min(0).optional(),
     manufacturer: z.string().trim().optional(),
-    specs: z.string().max(20000).optional(),
+    specs: z.string().optional(),
     categoryId: z.string().trim().nullable().optional(),
     subcategoryId: z.string().trim().nullable().optional(),
     isNewCategory: z.boolean().optional(),
