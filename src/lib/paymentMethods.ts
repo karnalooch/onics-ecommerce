@@ -13,6 +13,7 @@ import {
 
 export {
   bankTransferOperationalStatus,
+  przelewy24OperationalStatus,
   stripeOperationalStatus,
 } from "@/lib/paymentProviders"
 
