@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Check, MessageSquare, Trash2, X } from "lucide-react"
+import { toast } from "sonner"
 
 type AdminActionProps = {
   actionType: "approveUser" | "deleteUser" | "processQuote"
@@ -30,11 +31,24 @@ export default function AdminActions({
       const response = await fetch(input, init)
       const payload = await response.json().catch(() => ({}))
       if (!response.ok) {
-        window.alert(payload.error || "Operacja nie powiodła się.")
-        return
+        toast.error(
+          typeof payload?.error === "string"
+            ? payload.error
+            : "Operacja nie powiodła się."
+        )
+        return false
       }
-      if (successMessage) window.alert(successMessage)
+
+      if (successMessage) toast.success(successMessage)
       router.refresh()
+      return true
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Błąd połączenia z serwerem."
+      )
+      return false
     } finally {
       setLoading(false)
     }
@@ -44,11 +58,15 @@ export default function AdminActions({
     return (
       <button
         onClick={() =>
-          void run("/api/users", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: userId, isApproved: true }),
-          })
+          void run(
+            "/api/users",
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: userId, isApproved: true }),
+            },
+            "Konto partnera zostało zatwierdzone."
+          )
         }
         disabled={loading}
         className="pill-action flex items-center gap-2 bg-status-success text-white"
@@ -63,9 +81,11 @@ export default function AdminActions({
       <button
         onClick={() => {
           if (!window.confirm("Trwale usunąć konto partnera?")) return
-          void run(`/api/users?id=${encodeURIComponent(userId)}`, {
-            method: "DELETE",
-          })
+          void run(
+            `/api/users?id=${encodeURIComponent(userId)}`,
+            { method: "DELETE" },
+            "Konto partnera zostało usunięte."
+          )
         }}
         disabled={loading}
         className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-red-600"
@@ -86,10 +106,34 @@ export default function AdminActions({
     }
 
     const quote = async () => {
-      const delivery = window.prompt("Czas realizacji w dniach roboczych:")
-      if (delivery === null) return
-      const discount = window.prompt("Dodatkowy rabat % (0-100):", "0")
-      if (discount === null) return
+      const deliveryInput = window.prompt("Czas realizacji w dniach roboczych:")
+      if (deliveryInput === null) return
+
+      const deliveryTimeDays = Number(deliveryInput)
+      if (
+        !Number.isInteger(deliveryTimeDays) ||
+        deliveryTimeDays < 1 ||
+        deliveryTimeDays > 365
+      ) {
+        toast.error("Czas realizacji musi być liczbą całkowitą od 1 do 365 dni.")
+        return
+      }
+
+      const discountInput = window.prompt(
+        "Dodatkowy rabat % (0-100):",
+        "0"
+      )
+      if (discountInput === null) return
+
+      const additionalDiscount = Number(discountInput)
+      if (
+        !Number.isFinite(additionalDiscount) ||
+        additionalDiscount < 0 ||
+        additionalDiscount > 100
+      ) {
+        toast.error("Dodatkowy rabat musi mieścić się w zakresie 0–100%.")
+        return
+      }
 
       await run(
         "/api/quotes",
@@ -99,8 +143,8 @@ export default function AdminActions({
           body: JSON.stringify({
             id: quoteId,
             status: "QUOTED",
-            deliveryTimeDays: Number(delivery),
-            additionalDiscount: Number(discount),
+            deliveryTimeDays,
+            additionalDiscount,
           }),
         },
         "Wycena została zapisana."
@@ -120,16 +164,20 @@ export default function AdminActions({
         <button
           onClick={() => {
             if (!window.confirm("Odrzucić to zapytanie?")) return
-            void run("/api/quotes", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: quoteId,
-                status: "REJECTED",
-                deliveryTimeDays: null,
-                additionalDiscount: 0,
-              }),
-            })
+            void run(
+              "/api/quotes",
+              {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: quoteId,
+                  status: "REJECTED",
+                  deliveryTimeDays: null,
+                  additionalDiscount: 0,
+                }),
+              },
+              "Zapytanie zostało odrzucone."
+            )
           }}
           disabled={loading}
           className="flex h-8 w-8 items-center justify-center text-muted-foreground hover:text-red-600"
