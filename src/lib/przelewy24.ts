@@ -358,6 +358,7 @@ export function validatePrzelewy24NotificationForOrder(
 
   if (
     notification.currency !== "PLN" ||
+    notification.originAmount !== notification.amount ||
     notification.amount !==
       moneyToMinorUnits(Number(order.totalPriceFinal ?? 0))
   ) {
@@ -383,10 +384,11 @@ export function stagePrzelewy24Verification(
   validatePrzelewy24NotificationForOrder(order, notification)
 
   if (
-    order.paymentStatus === "PAID" &&
+    (order.paymentStatus === "PAID" ||
+      order.paymentStatus === "REFUNDED") &&
     order.p24OrderId === notification.orderId
   ) {
-    return "already-paid" as const
+    return "already-final" as const
   }
 
   const pending = order.p24VerificationPending
@@ -416,7 +418,8 @@ export function applyVerifiedPrzelewy24Payment(
   validatePrzelewy24NotificationForOrder(order, notification)
 
   if (
-    order.paymentStatus === "PAID" &&
+    (order.paymentStatus === "PAID" ||
+      order.paymentStatus === "REFUNDED") &&
     order.p24OrderId === notification.orderId
   ) {
     order.p24LastNotificationSign =
