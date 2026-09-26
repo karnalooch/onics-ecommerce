@@ -24,15 +24,18 @@ export default function AdminOrdersPage() {
   const paymentLifecycle = validatingOrder?.paymentLifecycle ?? null;
   const paymentProvider = paymentLifecycle?.provider ?? null;
   const paymentKind = paymentLifecycle?.kind ?? null;
-  const paymentCapabilities = paymentLifecycle?.capabilities ?? null;
-  const canCancelPayment = Boolean(paymentCapabilities?.cancel);
-  const canRefundPayment = Boolean(paymentCapabilities?.refund);
-  const canManageRma = Boolean(paymentCapabilities?.rma);
-  const canManuallySettlePayment = Boolean(
-    paymentCapabilities?.manualSettlement
+  const paymentAdminActions = new Set<string>(
+    validatingOrder?.paymentAdminActions ?? []
+  );
+  const canCancelPayment = paymentAdminActions.has("CANCEL");
+  const canConfirmPayment = paymentAdminActions.has("CONFIRM_PAYMENT");
+  const canConfirmRefund = paymentAdminActions.has("CONFIRM_REFUND");
+  const canRequestReturn = paymentAdminActions.has("REQUEST_RETURN");
+  const canReceiveReturn = paymentAdminActions.has("RECEIVE_RETURN");
+  const canConfirmReturnRefund = paymentAdminActions.has(
+    "CONFIRM_RETURN_REFUND"
   );
   const isManualPayment = paymentKind === "MANUAL";
-  const isAutomatedPayment = Boolean(paymentProvider) && !isManualPayment;
   const paymentAmountsLocked = Boolean(paymentProvider);
   const paymentRefundInProgress =
     validatingOrder?.refundStatus === "pending" ||
@@ -43,22 +46,6 @@ export default function AdminOrdersPage() {
   const orderCanAdvance =
     validatingOrder?.status === "PENDING_VERIFICATION" ||
     validatingOrder?.status === "CONFIRMED";
-  const automatedReturnEligible =
-    isAutomatedPayment &&
-    canManageRma &&
-    canRefundPayment &&
-    (validatingOrder?.status === "SHIPPED" ||
-      validatingOrder?.status === "RETURNED");
-  const manualReturnEligible =
-    isManualPayment &&
-    canManageRma &&
-    canRefundPayment &&
-    canManuallySettlePayment &&
-    (validatingOrder?.status === "SHIPPED" ||
-      validatingOrder?.status === "RETURNED") &&
-    (validatingOrder?.paymentStatus === "PAID" ||
-      validatingOrder?.paymentStatus === "REFUNDED");
-
   const fetchOrders = useCallback(async () => {
     try {
       const res = await fetch("/api/orders");
@@ -95,7 +82,6 @@ export default function AdminOrdersPage() {
 
   const cancelPaymentOrder = async () => {
     if (!validatingOrder?.id || !canCancelPayment) return;
-    if (isManualPayment && validatingOrder?.paymentStatus !== "PENDING") return;
 
     if (
       !window.confirm(
@@ -151,11 +137,9 @@ export default function AdminOrdersPage() {
   const settleManualPayment = async (
     action: "CONFIRM_PAYMENT" | "CONFIRM_REFUND"
   ) => {
-    if (
-      !validatingOrder?.id ||
-      !isManualPayment ||
-      !canManuallySettlePayment
-    ) return;
+    const actionAvailable =
+      action === "CONFIRM_PAYMENT" ? canConfirmPayment : canConfirmRefund;
+    if (!validatingOrder?.id || !isManualPayment || !actionAvailable) return;
 
     if (action === "CONFIRM_PAYMENT") {
       if (
@@ -217,7 +201,13 @@ export default function AdminOrdersPage() {
   const handleManualReturnAction = async (
     action: "REQUEST_RETURN" | "RECEIVE_RETURN" | "CONFIRM_RETURN_REFUND"
   ) => {
-    if (!validatingOrder?.id || !manualReturnEligible) return;
+    const actionAvailable =
+      action === "REQUEST_RETURN"
+        ? canRequestReturn
+        : action === "RECEIVE_RETURN"
+          ? canReceiveReturn
+          : canConfirmReturnRefund;
+    if (!validatingOrder?.id || !isManualPayment || !actionAvailable) return;
 
     if (action === "REQUEST_RETURN") {
       if (
@@ -338,7 +328,9 @@ export default function AdminOrdersPage() {
   const handleAutomatedReturnAction = async (
     action: "REQUEST_RETURN" | "RECEIVE_RETURN"
   ) => {
-    if (!validatingOrder?.id || !automatedReturnEligible) return;
+    const actionAvailable =
+      action === "REQUEST_RETURN" ? canRequestReturn : canReceiveReturn;
+    if (!validatingOrder?.id || isManualPayment || !actionAvailable) return;
 
     const confirmation =
       action === "REQUEST_RETURN"
@@ -367,7 +359,7 @@ export default function AdminOrdersPage() {
         toast.success(
           "Zwrot przez operatora płatności jest w toku. RMA pozostaje otwarte."
         );
-      } else if (data?.returnStatus === "COMPLETED") {
+      } else if (data?.order?.returnStatus === "COMPLETED") {
         toast.success(
           "RMA zakończone: zwrot potwierdzony, towar zwrócony na magazyn."
         );
@@ -377,10 +369,13 @@ export default function AdminOrdersPage() {
         toast.success("Odbiór zwrotu zapisany. Finalizacja zwrotu rozpoczęta.");
       }
 
-      setValidatingOrder((current: any) => ({
-        ...current,
-        ...(data ?? {}),
-      }));
+      setValidatingOrder(
+        data?.order ??
+          ((current: any) => ({
+            ...current,
+            ...(data ?? {}),
+          }))
+      );
       await fetchOrders();
     } catch (error) {
       toast.error(
@@ -686,12 +681,7 @@ export default function AdminOrdersPage() {
                  )}
                  <div className="p-6 bg-slate-950 flex flex-wrap items-center gap-4">
                     {isManualPayment &&
-                     canManuallySettlePayment &&
-                     canCancelPayment &&
-                     validatingOrder?.status !== "CANCELLED" &&
-                     validatingOrder?.status !== "SHIPPED" &&
-                     validatingOrder?.status !== "RETURNED" &&
-                     validatingOrder?.paymentStatus === "PENDING" && (
+                     canConfirmPayment && (
                        <>
                          <button
                            onClick={() => settleManualPayment("CONFIRM_PAYMENT")}
@@ -713,12 +703,7 @@ export default function AdminOrdersPage() {
                     )}
 
                     {isManualPayment &&
-                     canManuallySettlePayment &&
-                     canRefundPayment &&
-                     validatingOrder?.paymentStatus === "PAID" &&
-                     validatingOrder?.status !== "CANCELLED" &&
-                     validatingOrder?.status !== "SHIPPED" &&
-                     validatingOrder?.status !== "RETURNED" && (
+                     canConfirmRefund && (
                        <button
                          onClick={() => settleManualPayment("CONFIRM_REFUND")}
                          disabled={manualPaymentUpdating || saving || returning}
@@ -730,11 +715,8 @@ export default function AdminOrdersPage() {
                        </button>
                     )}
 
-                    {isAutomatedPayment &&
-                     canCancelPayment &&
-                     validatingOrder?.status !== "CANCELLED" &&
-                     validatingOrder?.status !== "SHIPPED" &&
-                     validatingOrder?.status !== "RETURNED" && (
+                    {!isManualPayment &&
+                     canCancelPayment && (
                        <button
                          onClick={cancelPaymentOrder}
                          disabled={
@@ -754,15 +736,14 @@ export default function AdminOrdersPage() {
                        </button>
                     )}
 
-                    {automatedReturnEligible &&
-                     validatingOrder?.status === "SHIPPED" &&
-                     validatingOrder?.returnStatus !== "COMPLETED" && (
+                    {!isManualPayment &&
+                     (canRequestReturn || canReceiveReturn) && (
                        <button
                          onClick={() =>
                            handleAutomatedReturnAction(
-                             validatingOrder?.returnStatus
-                               ? "RECEIVE_RETURN"
-                               : "REQUEST_RETURN"
+                             canRequestReturn
+                               ? "REQUEST_RETURN"
+                               : "RECEIVE_RETURN"
                            )
                          }
                          disabled={returning || cancelling}
@@ -770,7 +751,7 @@ export default function AdminOrdersPage() {
                        >
                          {returning
                            ? "RMA_PROCESSING..."
-                           : !validatingOrder?.returnStatus
+                           : canRequestReturn
                              ? "OTWÓRZ_RMA"
                              : validatingOrder?.returnStatus === "REQUESTED"
                                ? "TOWAR_ODEBRANY_REFUND"
@@ -780,15 +761,16 @@ export default function AdminOrdersPage() {
                        </button>
                     )}
 
-                    {manualReturnEligible &&
-                     validatingOrder?.status === "SHIPPED" &&
-                     validatingOrder?.returnStatus !== "COMPLETED" && (
+                    {isManualPayment &&
+                     (canRequestReturn ||
+                       canReceiveReturn ||
+                       canConfirmReturnRefund) && (
                        <button
                          onClick={() =>
                            handleManualReturnAction(
-                             !validatingOrder?.returnStatus
+                             canRequestReturn
                                ? "REQUEST_RETURN"
-                               : validatingOrder?.returnStatus === "REQUESTED"
+                               : canReceiveReturn
                                  ? "RECEIVE_RETURN"
                                  : "CONFIRM_RETURN_REFUND"
                            )
@@ -798,9 +780,9 @@ export default function AdminOrdersPage() {
                        >
                          {manualPaymentUpdating
                            ? "RMA_PROCESSING..."
-                           : !validatingOrder?.returnStatus
+                           : canRequestReturn
                              ? "OTWÓRZ_RMA_PŁATNOŚCI"
-                             : validatingOrder?.returnStatus === "REQUESTED"
+                             : canReceiveReturn
                                ? "POTWIERDŹ_ODBIÓR_TOWARU"
                                : "POTWIERDŹ_ZWROT_ŚRODKÓW"}
                        </button>
