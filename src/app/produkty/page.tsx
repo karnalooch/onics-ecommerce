@@ -13,7 +13,9 @@ import { initializeMockData } from "@/store/serverStore"
 import {
   buildCatalogCategoryOptions,
   buildProductCatalogView,
+  getProductCatalogDescription,
   matchesCatalogCategory,
+  matchesProductCatalogQuery,
   type ProductCatalogCategory,
   type ProductCatalogRecord,
   type ProductCatalogUser,
@@ -75,18 +77,11 @@ export default async function ConsumerCatalogPage({
 
   const categories = buildCatalogCategoryOptions(products)
 
-  const normalizedQuery = normalize(query)
-  const visibleProducts = products.filter((product) => {
-    const matchesQuery =
-      !normalizedQuery ||
-      [product.name, product.sku, product.manufacturer, product.specs]
-        .map(normalize)
-        .some((value) => value.includes(normalizedQuery))
-
-    const matchesCategory = matchesCatalogCategory(product, activeCategory)
-
-    return matchesQuery && matchesCategory
-  })
+  const visibleProducts = products.filter(
+    (product) =>
+      matchesProductCatalogQuery(product, query) &&
+      matchesCatalogCategory(product, activeCategory)
+  )
 
   const categoryHref = (category?: string) => {
     const next = new URLSearchParams()
@@ -212,7 +207,7 @@ export default async function ConsumerCatalogPage({
                       {product.name || "Produkt bez nazwy"}
                     </h2>
                     <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 text-muted-foreground">
-                      {product.specs || getCategoryLabel(product)}
+                      {getProductCatalogDescription(product) || getCategoryLabel(product)}
                     </p>
                   </div>
 
