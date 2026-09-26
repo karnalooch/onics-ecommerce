@@ -5,6 +5,7 @@ import {
   calculatePrzelewy24Sign,
   describePrzelewy24Runtime,
   resolvePrzelewy24Config,
+  stagePrzelewy24Verification,
   validatePrzelewy24NotificationForOrder,
   verifyPrzelewy24NotificationSignature,
   type Przelewy24Notification,
@@ -167,6 +168,46 @@ describe("Przelewy24 production protocol", () => {
     ).toThrow("PRZELEWY24_AMOUNT_MISMATCH")
   })
 
+  it("durably stages the notification before provider verification", () => {
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-1",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PENDING",
+      p24SessionId: "ORD-P24-1",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+      items: [{ id: "p1", quantity: 1 }],
+    }
+
+    expect(
+      stagePrzelewy24Verification(
+        order,
+        notification(),
+        "2026-09-26T10:30:00.000Z"
+      )
+    ).toBe("staged")
+    expect(order.p24VerificationPending).toMatchObject({
+      sessionId: "ORD-P24-1",
+      orderId: 987654321,
+      amount: 12345,
+      currency: "PLN",
+    })
+    expect(order.p24VerificationPendingAt).toBe(
+      "2026-09-26T10:30:00.000Z"
+    )
+
+    expect(stagePrzelewy24Verification(order, notification())).toBe(
+      "unchanged"
+    )
+    expect(() =>
+      stagePrzelewy24Verification(
+        order,
+        notification({ orderId: 987654322 })
+      )
+    ).toThrow("PRZELEWY24_PENDING_NOTIFICATION_MISMATCH")
+  })
+
   it("finalizes a reserved payment exactly once on notification replay", () => {
     const products: InventoryProduct[] = [{ id: "p1", stock: 9 }]
     const order: Przelewy24StoredOrder = {
@@ -198,6 +239,8 @@ describe("Przelewy24 production protocol", () => {
       paidAt: "2026-09-26T11:00:00.000Z",
     })
     expect(products[0].stock).toBe(9)
+    expect(order.p24VerificationPending).toBeNull()
+    expect(order.p24VerificationPendingAt).toBeNull()
 
     expect(
       applyVerifiedPrzelewy24Payment(
