@@ -1,18 +1,23 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
+import { getSecurityHeaders } from "./src/lib/securityHeaders"
 
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   images: {
-    remotePatterns: [
-      {
-        protocol: 'http',
-        hostname: '127.0.0.1',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-      }
-    ],
+    remotePatterns: [],
+    dangerouslyAllowLocalIP: false,
+    maximumRedirects: 0,
+    maximumResponseBody: 5_000_000,
+    qualities: [75],
   },
-};
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: getSecurityHeaders(),
+      },
+    ]
+  },
+}
 
-export default nextConfig;
+export default nextConfig
