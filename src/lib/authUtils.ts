@@ -1,6 +1,7 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 import { initializeMockData } from "@/store/serverStore"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
 export type UserRole = "ADMIN" | "BIZ" | "RETAIL"
 
@@ -20,10 +21,6 @@ type StoredUser = {
   nip?: string | null
   discount?: number
   tierName?: string
-}
-
-function normalizeEmail(value: unknown) {
-  return String(value ?? "").trim().toLowerCase()
 }
 
 function isUserRole(value: unknown): value is UserRole {
@@ -50,11 +47,9 @@ export async function authorizeAPI(requiredRoles: UserRole[] = []) {
 
   const sessionUser = session.user as SessionUser
   const { users } = initializeMockData()
-  const storedUser = (users as StoredUser[]).find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        normalizeEmail(user.email) === normalizeEmail(sessionUser.email))
+  const storedUser = findStoredUserBySession(
+    users as StoredUser[],
+    sessionUser
   )
 
   if (!storedUser) {
@@ -92,7 +87,15 @@ export async function authorizeAPI(requiredRoles: UserRole[] = []) {
   return {
     authorized: true as const,
     session,
-    user: session.user,
+    user: {
+      ...session.user,
+      id: storedUser.id ?? sessionUser.id,
+      email: storedUser.email ?? sessionUser.email,
+      name:
+        storedUser.companyName ||
+        storedUser.username ||
+        session.user.name,
+    },
     currentUser: storedUser,
     currentRole,
   }
