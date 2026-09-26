@@ -54,7 +54,10 @@ export async function GET() {
   const visibleMethods =
     authCheck.currentRole === "ADMIN"
       ? methods
-      : methods.map(({ configurationIssues: _configurationIssues, ...method }) => method)
+      : methods.map(({ configurationIssues, ...method }) => {
+          void configurationIssues
+          return method
+        })
 
   return NextResponse.json({
     control: describePaymentControl(snapshot.paymentControl),
