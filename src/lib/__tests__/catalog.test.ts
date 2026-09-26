@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildWfMagCatalogProduct,
   ensureManufacturerRecord,
   findRemovedReferencedSubcategoryIds,
   hasCategoryProductReference,
@@ -8,6 +9,51 @@ import {
   indexCatalogProductsBySku,
   validateCatalogClassification,
 } from "@/lib/catalog"
+
+describe("WF-Mag live product boundary", () => {
+  it("persists only live catalog fields and drops staging metadata", () => {
+    const product = buildWfMagCatalogProduct(
+      {
+        sku: "  SKU-1  ",
+        name: " Centrala ",
+        price: 123.45,
+        stock: 7,
+        manufacturer: " SATEL ",
+        specs: "Specyfikacja",
+        tempId: "stg-1",
+        qualityLevel: "LOW",
+        qualityReason: "Nowy produkt",
+        knowledgeMatched: false,
+        isValid: true,
+        isNewCategory: true,
+        xlsCategoryName: "Alarmy",
+      },
+      {
+        id: "p1",
+        categoryId: "c1",
+        subcategoryId: "s1",
+      }
+    )
+
+    expect(product).toEqual({
+      id: "p1",
+      sku: "SKU-1",
+      name: "Centrala",
+      price: 123.45,
+      stock: 7,
+      manufacturer: "SATEL",
+      categoryId: "c1",
+      subcategoryId: "s1",
+      specs: "Specyfikacja",
+      seoDescription: "",
+    })
+    expect(product).not.toHaveProperty("tempId")
+    expect(product).not.toHaveProperty("qualityLevel")
+    expect(product).not.toHaveProperty("knowledgeMatched")
+    expect(product).not.toHaveProperty("isNewCategory")
+    expect(product).not.toHaveProperty("xlsCategoryName")
+  })
+})
 
 describe("catalog SKU uniqueness", () => {
   const products = [
