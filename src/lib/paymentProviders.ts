@@ -56,6 +56,13 @@ export type PaymentProviderOrderIdentity = {
   bankTransferAccountNumber?: unknown
 }
 
+export type PaymentProviderLifecycleDescriptor = {
+  provider: PaymentProviderId
+  kind: PaymentProviderKind
+  capabilities: PaymentProviderCapabilities
+  inferredFromLegacyFields: boolean
+}
+
 type StoredPaymentProviderId = keyof PaymentMethodSettings
 
 const providerIdsMatchStore: Record<StoredPaymentProviderId, true> = {
@@ -207,6 +214,21 @@ export function resolveOrderPaymentProvider(
   }
 
   return null
+}
+
+export function describeOrderPaymentLifecycle(
+  order: PaymentProviderOrderIdentity
+): PaymentProviderLifecycleDescriptor | null {
+  const provider = resolveOrderPaymentProvider(order)
+  if (!provider) return null
+
+  const definition = getPaymentProviderDefinition(provider)
+  return {
+    provider,
+    kind: definition.kind,
+    capabilities: { ...definition.capabilities },
+    inferredFromLegacyFields: !isPaymentProviderId(order.paymentProvider),
+  }
 }
 
 export function supportsPaymentProviderCapability(

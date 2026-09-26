@@ -17,6 +17,7 @@ import {
   type InventoryProduct,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
+import { describeOrderPaymentLifecycle } from "@/lib/paymentProviders"
 
 export const dynamic = "force-dynamic"
 
@@ -87,6 +88,13 @@ type StoredOrder = InventoryReservationOrder & {
   [key: string]: unknown
 }
 
+function withPaymentLifecycle(order: StoredOrder) {
+  return {
+    ...order,
+    paymentLifecycle: describeOrderPaymentLifecycle(order),
+  }
+}
+
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
   if (!authCheck.authorized) return authCheck.response
@@ -96,7 +104,7 @@ export async function GET() {
   const orderStore = orders as StoredOrder[]
 
   if (authCheck.currentRole === "ADMIN") {
-    return NextResponse.json(orderStore)
+    return NextResponse.json(orderStore.map(withPaymentLifecycle))
   }
 
   const ownOrders = orderStore.filter((order) =>
@@ -105,7 +113,7 @@ export async function GET() {
       : false
   )
 
-  return NextResponse.json(ownOrders)
+  return NextResponse.json(ownOrders.map(withPaymentLifecycle))
 }
 
 export async function POST(req: Request) {
@@ -195,7 +203,10 @@ export async function POST(req: Request) {
       return order
     })
 
-    return NextResponse.json(newOrder, { status: 201 })
+    return NextResponse.json(
+      withPaymentLifecycle(newOrder as StoredOrder),
+      { status: 201 }
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : "Błąd serwera."
     const inventoryConflict =
@@ -320,7 +331,7 @@ export async function PUT(req: Request) {
       return nextOrder
     })
 
-    return NextResponse.json(updatedOrder)
+    return NextResponse.json(withPaymentLifecycle(updatedOrder))
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 })

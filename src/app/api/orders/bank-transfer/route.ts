@@ -15,6 +15,7 @@ import {
 } from "@/lib/manualReturns"
 import {
   assertPaymentProviderCapability,
+  describeOrderPaymentLifecycle,
   resolveOrderPaymentProvider,
   type PaymentProviderCapability,
 } from "@/lib/paymentProviders"
@@ -122,7 +123,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       outcome: result.outcome,
-      order: result.order,
+      order: {
+        ...result.order,
+        paymentLifecycle: describeOrderPaymentLifecycle(result.order),
+      },
     })
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
