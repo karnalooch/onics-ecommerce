@@ -17,6 +17,12 @@ export {
 
 export type PaymentMethodId = PaymentProviderId
 
+export type PaymentProviderState =
+  | "ready"
+  | "misconfigured"
+  | "disabled"
+  | "maintenance"
+
 export type PaymentMethodAvailability = {
   id: PaymentMethodId
   name: string
@@ -27,6 +33,8 @@ export type PaymentMethodAvailability = {
   maintenanceMessage: string | null
   kind: "REDIRECT" | "MANUAL"
   capabilities: PaymentProviderCapabilities
+  state: PaymentProviderState
+  configurationIssues: string[]
   available: boolean
   updatedAt: string | null
 }
@@ -59,6 +67,17 @@ export function paymentMethodOperationalStatus(
   return paymentProviderOperationalStatus(method, options)
 }
 
+export function resolvePaymentProviderState(
+  config: PaymentMethodSettings[PaymentMethodId],
+  operational: ReturnType<typeof paymentProviderOperationalStatus>
+): PaymentProviderState {
+  if (!config.enabled) {
+    return config.maintenanceMessage ? "maintenance" : "disabled"
+  }
+  if (!operational.configured) return "misconfigured"
+  return "ready"
+}
+
 export function describePaymentMethods(
   settings: PaymentMethodSettings,
   options: PaymentRuntimeOptions = {}
@@ -69,6 +88,7 @@ export function describePaymentMethods(
     const provider = getPaymentProviderDefinition(id)
     const operational = provider.operationalStatus(options)
     const config = settings[id]
+    const state = resolvePaymentProviderState(config, operational)
 
     return {
       id,
@@ -80,7 +100,9 @@ export function describePaymentMethods(
       maintenanceMessage: config.maintenanceMessage,
       kind: provider.kind,
       capabilities: { ...provider.capabilities },
-      available: config.enabled && operational.configured,
+      state,
+      configurationIssues: [...operational.configurationIssues],
+      available: state === "ready",
       updatedAt: config.updatedAt,
     }
   })
@@ -95,6 +117,11 @@ export function describePaymentMethods(
 export function describePaymentControl(control: PaymentControlSettings) {
   return {
     enabled: control.enabled,
+    state: control.enabled
+      ? ("ready" as const)
+      : control.maintenanceMessage
+        ? ("maintenance" as const)
+        : ("disabled" as const),
     maintenanceMessage: control.maintenanceMessage,
     updatedAt: control.updatedAt,
   }
