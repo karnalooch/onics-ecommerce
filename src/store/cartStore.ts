@@ -54,7 +54,7 @@ export const useCartStore = create<CartStore>()(
 
           set({
             items: currentItems.map((i) =>
-              i.id === item.id ? { ...i, quantity: nextQuantity } : i
+              i.id === safeItem.id ? { ...i, quantity: nextQuantity } : i
             ),
           });
           return true;
