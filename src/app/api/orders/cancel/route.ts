@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     !order.stripeCheckoutSessionId
   ) {
     return NextResponse.json(
-      { error: "To zamówienie nie jest powiązane z obsługiwanym anulowaniem Stripe." },
+      { error: "To zamówienie nie jest powiązane z płatnością Stripe." },
       { status: 409 }
     )
   }
