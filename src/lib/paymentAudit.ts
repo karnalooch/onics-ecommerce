@@ -8,6 +8,7 @@ export type PaymentAuditActor = {
 
 export type PaymentAuditChange = {
   target: "GLOBAL" | "STRIPE"
+  operation?: "SETTING_CHANGE" | "EMERGENCY_SHUTDOWN"
   previousEnabled: boolean
   nextEnabled: boolean
   previousMaintenanceMessage?: string | null
@@ -16,6 +17,7 @@ export type PaymentAuditChange = {
 
 export function paymentAuditChanged(change: PaymentAuditChange) {
   return (
+    change.operation === "EMERGENCY_SHUTDOWN" ||
     change.previousEnabled !== change.nextEnabled ||
     (change.previousMaintenanceMessage ?? null) !==
       (change.nextMaintenanceMessage ?? null)
@@ -34,6 +36,7 @@ export function appendPaymentAudit(
     id: crypto.randomUUID(),
     createdAt: now,
     target: change.target,
+    operation: change.operation ?? "SETTING_CHANGE",
     actor: {
       id: actor.id ? String(actor.id) : null,
       email: actor.email ?? null,
