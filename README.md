@@ -88,7 +88,7 @@ The file-backed store is an interim persistence layer. It is suitable only for a
 The application exposes two uncached operational endpoints:
 
 - `GET /api/health/live` — process liveness only; returns HTTP 200 while the Next.js server can answer requests.
-- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required session secrets and lock settings are valid, the JSON database is readable/writable and valid, the private upload root exists and is readable/writable, any unsealed active admin still has a bootstrap secret available, and optional Stripe configuration is complete when enabled. Otherwise it returns HTTP 503.
+- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required session secrets and lock settings are valid, the JSON database is readable/writable and valid, the private upload root exists and is readable/writable, any unsealed active admin still has a bootstrap secret available, and every payment provider that is effectively enabled by the persisted global/per-provider control plane has complete local runtime configuration. Disabled providers do not affect readiness. The health endpoint never contacts an external payment provider; network credential probes remain an explicit activation-time operation. Otherwise readiness returns HTTP 503.
 
 The readiness payload reports only coarse check states (`ok` / `error`) and does not expose filesystem paths, secrets or raw exception messages.
 
