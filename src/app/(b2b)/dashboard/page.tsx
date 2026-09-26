@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { InstallerTier } from "@/components/ui/InstallerTier"
 import { initializeMockData } from "@/store/serverStore"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { StatCard } from "./_components/StatCard"
 import { QuickActionTerminal } from "./_components/QuickActionTerminal"
 
@@ -33,6 +34,9 @@ type StoredUser = {
   email?: string
   companyName?: string
   nip?: string | null
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
   discount?: number
   tierName?: string
 }
@@ -52,12 +56,14 @@ type RepairRecord = {
 
 function belongsTo(
   recordUser: { id?: string; email?: string } | undefined,
-  sessionUser: DashboardUser
+  currentUser: StoredUser
 ) {
   return Boolean(
-    (sessionUser.id && recordUser?.id === sessionUser.id) ||
-      (sessionUser.email &&
-        recordUser?.email?.toLowerCase() === sessionUser.email.toLowerCase())
+    recordUser &&
+      findStoredUserBySession([recordUser], {
+        id: currentUser.id,
+        email: currentUser.email,
+      })
   )
 }
 
@@ -65,23 +71,30 @@ export default async function DashboardPage() {
   const session = await auth()
   const sessionUser = session?.user as DashboardUser | undefined
 
-  if (!sessionUser || sessionUser.role !== "BIZ" || !sessionUser.isApproved) {
+  if (!sessionUser) {
     redirect("/logowanie")
   }
 
   const { users, orders, repairs } = initializeMockData()
-  const storedUser = (users as StoredUser[]).find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  const storedUser = findStoredUserBySession(
+    users as StoredUser[],
+    sessionUser
   )
 
+  if (
+    !storedUser ||
+    storedUser.isBlocked ||
+    storedUser.roleType !== "BIZ" ||
+    !storedUser.isApproved
+  ) {
+    redirect("/logowanie")
+  }
+
   const ownOrders = (orders as OrderRecord[]).filter((order) =>
-    belongsTo(order.user, sessionUser)
+    belongsTo(order.user, storedUser)
   )
   const ownRepairs = (repairs as RepairRecord[]).filter((repair) =>
-    belongsTo(repair.user, sessionUser)
+    belongsTo(repair.user, storedUser)
   )
   const activeRma = ownRepairs.filter(
     (repair) => !["DONE", "COMPLETED", "RETURNED", "REJECTED"].includes(repair.status || "")
@@ -96,10 +109,10 @@ export default async function DashboardPage() {
     })
     .reduce((sum, order) => sum + Number(order.totalPriceFinal || 0), 0)
 
-  const discount = Number(storedUser?.discount ?? sessionUser.discount ?? 0)
-  const tierName = storedUser?.tierName || sessionUser.tierName || "BASIC"
-  const companyName = storedUser?.companyName || sessionUser.name || "Partner B2B"
-  const nip = storedUser?.nip || sessionUser.nip || "Brak NIP"
+  const discount = Number(storedUser.discount ?? 0)
+  const tierName = storedUser.tierName || "BASIC"
+  const companyName = storedUser.companyName || sessionUser.name || "Partner B2B"
+  const nip = storedUser.nip || "Brak NIP"
 
   return (
     <div className="flex flex-col gap-10 animate-in fade-in duration-500">
