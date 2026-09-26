@@ -33,6 +33,7 @@ describe("authoritative cart repricing wiring", () => {
     )
 
     expect(hook).toContain('fetch("/api/cart/preview"')
+    expect(hook).toContain("validateAuthoritativeCartPreview(")
     expect(hook).toContain("replaceItems(nextItems)")
     expect(cartPage).toContain("useAuthoritativeCart")
     expect(miniCart).toContain("useAuthoritativeCart")
