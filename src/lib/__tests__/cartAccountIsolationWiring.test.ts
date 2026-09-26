@@ -28,7 +28,7 @@ describe("persisted cart account isolation wiring", () => {
     expect(hook).toContain("bindOwner(options.identityKey)")
   })
 
-  it("gates storefront and full cart rendering on the bound owner", () => {
+  it("gates storefront, full cart and offer preview on the bound owner", () => {
     const shop = fs.readFileSync(
       path.join(process.cwd(), "src/app/sklep/ShopDashboardClient.tsx"),
       "utf8"
@@ -37,11 +37,19 @@ describe("persisted cart account isolation wiring", () => {
       path.join(process.cwd(), "src/app/koszyk/page.tsx"),
       "utf8"
     )
+    const offer = fs.readFileSync(
+      path.join(process.cwd(), "src/app/koszyk/oferta/page.tsx"),
+      "utf8"
+    )
 
     expect(shop).toContain("useCartOwnerBinding")
     expect(shop).toContain("if (!cartOwnerReady)")
     expect(cart).toContain("useCartOwnerBinding")
     expect(cart).toContain("if (!mounted || !cartOwnerReady)")
     expect(cart).toContain('resolved: sessionStatus !== "loading"')
+    expect(offer).toContain("useCartOwnerBinding")
+    expect(offer).toContain("if (!mounted || !cartOwnerReady) return")
+    expect(offer).toContain("if (!mounted || !cartOwnerReady || loading)")
+    expect(offer).toContain('resolved: sessionStatus !== "loading"')
   })
 })

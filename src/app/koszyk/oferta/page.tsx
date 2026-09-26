@@ -1,11 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { ArrowLeft, Loader2, Printer, ShieldCheck } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { COMPANY_PUBLIC } from "@/lib/company"
 import { useCartStore } from "@/store/cartStore"
+import { buildCartOwnerKey } from "@/lib/cartIdentity"
+import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding"
 
 type OfferPreview = {
   reference: string
@@ -29,7 +32,16 @@ type OfferPreview = {
 
 export default function CartOfferPage() {
   const router = useRouter()
+  const { data: session, status: sessionStatus } = useSession()
   const items = useCartStore((state) => state.items)
+  const sessionIdentity = session?.user as
+    | { id?: string; email?: string | null }
+    | undefined
+  const cartOwnerKey = buildCartOwnerKey(sessionIdentity)
+  const { cartOwnerReady } = useCartOwnerBinding({
+    identityKey: cartOwnerKey,
+    resolved: sessionStatus !== "loading",
+  })
   const [mounted, setMounted] = useState(false)
   const [preview, setPreview] = useState<OfferPreview | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,7 +52,7 @@ export default function CartOfferPage() {
   }, [])
 
   useEffect(() => {
-    if (!mounted) return
+    if (!mounted || !cartOwnerReady) return
 
     if (items.length === 0) {
       setLoading(false)
@@ -86,9 +98,9 @@ export default function CartOfferPage() {
     return () => {
       cancelled = true
     }
-  }, [items, mounted])
+  }, [cartOwnerReady, items, mounted])
 
-  if (!mounted || loading) {
+  if (!mounted || !cartOwnerReady || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="flex items-center gap-3 text-muted-foreground">
