@@ -288,6 +288,7 @@ async function createStripeCheckout(
     }
     throw new Error("Stripe nie zwrócił adresu płatności.")
   }
+  const sessionUrl = session.url
 
   try {
     await mutateMockData((db) => {
@@ -356,7 +357,7 @@ async function createStripeCheckout(
 
   return {
     id: session.id,
-    url: session.url,
+    url: sessionUrl,
     orderId,
     paymentMethod: "STRIPE",
   }
