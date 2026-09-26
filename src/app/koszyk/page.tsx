@@ -282,7 +282,7 @@ export default function CartPage() {
             </div>
           </div>
 
-          {/* SIDEBAR RIGHT (Import XML + Podsumowanie z 3 przyciskami ze screena nr 1 i promptu) */}
+          {/* SIDEBAR RIGHT — podsumowanie i akcje B2B */}
           <div className="space-y-6">
             <div className="border rounded-2xl p-6 shadow-sm bg-gray-50 dark:bg-gray-900/50">
               <h3 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Podsumowanie</h3>
