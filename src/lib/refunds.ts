@@ -57,6 +57,16 @@ export function applyStripeRefundSnapshot(
     throw new Error("STRIPE_REFUND_ID_MISMATCH")
   }
 
+  // A succeeded refund is terminal. Older pending/created events can arrive
+  // later and must not reopen a refunded order.
+  if (
+    order.paymentStatus === "REFUNDED" ||
+    order.refundStatus === "succeeded"
+  ) {
+    order.stripeRefundId = order.stripeRefundId ?? refund.refundId
+    return "succeeded" as const
+  }
+
   order.stripeRefundId = refund.refundId
   order.refundStatus = refund.status
   order.refundRequestedAt = order.refundRequestedAt ?? now
