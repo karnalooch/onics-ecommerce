@@ -4,6 +4,7 @@ import {
   findRemovedReferencedSubcategoryIds,
   hasCategoryProductReference,
   hasSkuConflict,
+  indexCatalogProductsBySku,
   validateCatalogClassification,
 } from "@/lib/catalog"
 
@@ -23,6 +24,28 @@ describe("catalog SKU uniqueness", () => {
 
   it("detects conflicts when editing to another product's SKU", () => {
     expect(hasSkuConflict(products, "xyz-999", "p1")).toBe(true)
+  })
+
+  it("indexes import identity only by SKU even when product names collide", () => {
+    const collidingNames = [
+      { id: "p1", sku: "OLD-001", name: "Centrala alarmowa" },
+      { id: "p2", sku: "OLD-002", name: "Centrala alarmowa" },
+    ]
+
+    const index = indexCatalogProductsBySku(collidingNames)
+
+    expect(index.get("old-001")).toBe(collidingNames[0])
+    expect(index.get("old-002")).toBe(collidingNames[1])
+    expect(index.get("new-003")).toBeUndefined()
+  })
+
+  it("fails closed when the persisted catalog already contains duplicate SKUs", () => {
+    expect(() =>
+      indexCatalogProductsBySku([
+        { id: "p1", sku: "ABC-123" },
+        { id: "p2", sku: " abc-123 " },
+      ])
+    ).toThrow("CATALOG_DUPLICATE_SKU")
   })
 })
 
