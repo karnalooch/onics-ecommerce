@@ -20,9 +20,12 @@ export default function AdminOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const stripeAmountsLocked = Boolean(validatingOrder?.stripeCheckoutSessionId);
+  const stripeRefundInProgress =
+    validatingOrder?.refundStatus === "pending" ||
+    validatingOrder?.refundStatus === "requires_action";
   const stripeFulfillmentLocked =
     Boolean(validatingOrder?.stripeCheckoutSessionId) &&
-    validatingOrder?.paymentStatus !== "PAID";
+    (validatingOrder?.paymentStatus !== "PAID" || stripeRefundInProgress);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -408,7 +411,9 @@ export default function AdminOrdersPage() {
                  {stripeFulfillmentLocked && (
                     <div className="px-6 py-4 bg-amber-50 border-t border-amber-200">
                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">
-                          Oczekiwanie na płatność Stripe ({validatingOrder?.paymentStatus || "PENDING"}). Zamówienia nie można jeszcze przekazać do logistyki.
+                          {stripeRefundInProgress
+                            ? `Refund Stripe jest w toku (${validatingOrder?.refundStatus}). Zamówienia nie można przekazać do logistyki.`
+                            : `Oczekiwanie na płatność Stripe (${validatingOrder?.paymentStatus || "PENDING"}). Zamówienia nie można jeszcze przekazać do logistyki.`}
                        </p>
                     </div>
                  )}
@@ -454,7 +459,9 @@ export default function AdminOrdersPage() {
                        {saving
                           ? "PROPAGACJA_PARAMETRÓW..."
                           : stripeFulfillmentLocked
-                            ? "OCZEKIWANIE_NA_PŁATNOŚĆ"
+                            ? stripeRefundInProgress
+                              ? "REFUND_W_TOKU"
+                              : "OCZEKIWANIE_NA_PŁATNOŚĆ"
                             : "ZATWIERDŹ_DO_LOGISTYKI"}
                     </button>
                  </div>
