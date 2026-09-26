@@ -51,6 +51,7 @@ describe("payment method management", () => {
         nodeEnv: "production",
         stripeSecretKey: "sk_live_123",
         stripeWebhookSecret: "",
+        appUrl: "https://shop.example.com",
       }).configured
     ).toBe(false)
 
@@ -59,6 +60,16 @@ describe("payment method management", () => {
         nodeEnv: "production",
         stripeSecretKey: "sk_live_123",
         stripeWebhookSecret: "whsec_123",
+        appUrl: "http://shop.example.com",
+      }).configured
+    ).toBe(false)
+
+    expect(
+      stripeOperationalStatus({
+        nodeEnv: "production",
+        stripeSecretKey: "sk_live_123",
+        stripeWebhookSecret: "whsec_123",
+        appUrl: "https://shop.example.com",
       }).configured
     ).toBe(true)
   })
@@ -68,6 +79,7 @@ describe("payment method management", () => {
       nodeEnv: "production",
       stripeSecretKey: "sk_live_secret",
       stripeWebhookSecret: "whsec_secret",
+      appUrl: "https://shop.example.com",
     })
 
     expect(methods).toEqual([
