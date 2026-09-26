@@ -10,6 +10,7 @@ import { calculateCustomerUnitPrice } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   assertCatalogClassification,
+  buildWfMagCatalogProduct,
   ensureManufacturerRecord,
   hasSkuConflict,
   indexCatalogProductsBySku,
@@ -64,6 +65,7 @@ const ImportItemSchema = z
     price: z.coerce.number().min(0).optional(),
     stock: z.coerce.number().min(0).optional(),
     manufacturer: z.string().trim().optional(),
+    specs: z.string().max(20000).optional(),
     categoryId: z.string().trim().nullable().optional(),
     subcategoryId: z.string().trim().nullable().optional(),
     isNewCategory: z.boolean().optional(),
@@ -333,15 +335,11 @@ export async function POST(req: Request) {
             }
             updatedCount += 1
           } else {
-            const newProduct = {
-              ...item,
+            const newProduct = buildWfMagCatalogProduct(item, {
               id: `p_${crypto.randomUUID()}`,
-              sku: item.sku || "",
-              name: item.name || item.sku || "Produkt",
               categoryId,
               subcategoryId,
-              seoDescription: "",
-            } as ProductRecord
+            }) as ProductRecord
             productStore.push(newProduct)
             productBySku.set(normalize(newProduct.sku), newProduct)
             addedCount += 1
