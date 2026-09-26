@@ -39,6 +39,32 @@ describe("authoritative cart repricing wiring", () => {
     expect(shopPage).toContain("cartOwnerKey={cartOwnerKey}")
   })
 
+  it("surfaces current stock without replacing final server validation", () => {
+    const snapshot = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/cartSnapshot.ts"),
+      "utf8"
+    )
+    const hook = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/useAuthoritativeCart.ts"),
+      "utf8"
+    )
+    const cartPage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/koszyk/page.tsx"),
+      "utf8"
+    )
+    const miniCart = fs.readFileSync(
+      path.join(process.cwd(), "src/app/sklep/_components/MiniCart.tsx"),
+      "utf8"
+    )
+
+    expect(snapshot).toContain("availableStock")
+    expect(hook).toContain("availableStockById")
+    expect(cartPage).toContain("const hasStockConflict = stockConflictItems.length > 0")
+    expect(cartPage).toContain('action === "ORDER" && hasStockConflict')
+    expect(cartPage).toContain("Zmniejsz ilość przed uruchomieniem płatności")
+    expect(miniCart).toContain("Popraw dostępność")
+  })
+
   it("keeps transaction actions paused while repricing is running", () => {
     const cartPage = fs.readFileSync(
       path.join(process.cwd(), "src/app/koszyk/page.tsx"),
