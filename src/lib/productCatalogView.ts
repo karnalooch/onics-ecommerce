@@ -171,65 +171,115 @@ export function matchesProductCatalogQuery(
     .some((value) => value.includes(normalizedQuery))
 }
 
+export type ProductCatalogKnowledgeEntry = {
+  model?: string
+  manufacturer?: string
+  category?: string
+  subcategory?: string
+  price?: number | null
+  specs?: string
+}
+
+export type ProductCatalogKnowledge = Record<
+  string,
+  ProductCatalogKnowledgeEntry
+>
+
+export function projectProductCatalogKnowledge(
+  productStore: ProductCatalogRecord[],
+  categories: ProductCatalogCategory[],
+  knowledge: ProductCatalogKnowledge,
+  options: { includeVirtual: boolean }
+): ProductCatalogRecord[] {
+  const knowledgeBySku = new Map(
+    Object.entries(knowledge).map(([sku, entry]) => [
+      normalize(sku),
+      { sku, entry },
+    ])
+  )
+  const existingSkus = new Set(
+    productStore.map((product) => normalize(product.sku))
+  )
+
+  const enrichedProducts = productStore.map((product) => {
+    const knowledgeMatch = knowledgeBySku.get(normalize(product.sku))
+    const entry = knowledgeMatch?.entry
+    if (!entry) return product
+
+    return {
+      ...product,
+      manufacturer:
+        product.manufacturer && product.manufacturer !== "NIEZNANY"
+          ? product.manufacturer
+          : entry.manufacturer || "NIEZNANY",
+      catalogSpecs: entry.specs || "",
+      catalogPrice: entry.price || 0,
+      isIqSynced: true,
+    }
+  })
+
+  const virtualDevices: ProductCatalogRecord[] = options.includeVirtual
+    ? Array.from(knowledgeBySku.values())
+        .filter(({ sku }) => !existingSkus.has(normalize(sku)))
+        .map(({ sku, entry }) => {
+          const classification = resolveKnowledgeClassification(
+            entry.category,
+            entry.subcategory,
+            categories
+          )
+
+          return {
+            id: `virtual_${sku}`,
+            sku,
+            name: entry.model || sku,
+            manufacturer: entry.manufacturer || "NIEZNANY",
+            price: 0,
+            catalogPrice: entry.price || 0,
+            stock: 0,
+            isVirtual: true,
+            seoDescription: entry.specs || "",
+            catalogSpecs: entry.specs || "",
+            ...classification,
+          }
+        })
+    : []
+
+  return projectProductCatalogClassification(
+    [...enrichedProducts, ...virtualDevices],
+    categories
+  )
+}
+
+async function buildProductCatalogFromKnowledge(
+  productStore: ProductCatalogRecord[],
+  categories: ProductCatalogCategory[],
+  includeVirtual: boolean
+): Promise<ProductCatalogRecord[]> {
+  try {
+    const store = await getKnowledge()
+    return projectProductCatalogKnowledge(
+      productStore,
+      categories,
+      store.knowledge,
+      { includeVirtual }
+    )
+  } catch {
+    return projectProductCatalogClassification([...productStore], categories)
+  }
+}
+
+export async function buildStoredProductCatalog(
+  productStore: ProductCatalogRecord[],
+  categories: ProductCatalogCategory[]
+): Promise<ProductCatalogRecord[]> {
+  return buildProductCatalogFromKnowledge(productStore, categories, false)
+}
+
 export async function buildUnifiedProductCatalog(
   productStore: ProductCatalogRecord[],
   categories: ProductCatalogCategory[]
 ): Promise<ProductCatalogRecord[]> {
-  let unifiedProducts: ProductCatalogRecord[]
-
-  try {
-    const store = await getKnowledge()
-    const existingSkus = new Set(
-      productStore.map((product) => normalize(product.sku))
-    )
-
-    const virtualDevices: ProductCatalogRecord[] = Object.keys(store.knowledge)
-      .filter((key) => !existingSkus.has(normalize(key)))
-      .map((key) => {
-        const entry = store.knowledge[key]
-        const classification = resolveKnowledgeClassification(
-          entry.category,
-          entry.subcategory,
-          categories
-        )
-
-        return {
-          id: `virtual_${key}`,
-          sku: key,
-          name: entry.model || key,
-          manufacturer: entry.manufacturer || "NIEZNANY",
-          price: 0,
-          catalogPrice: entry.price || 0,
-          stock: 0,
-          isVirtual: true,
-          seoDescription: entry.specs || "",
-          catalogSpecs: entry.specs || "",
-          ...classification,
-        }
-      })
-
-    const enrichedProducts = productStore.map((product) => {
-      const entry = store.knowledge[product.sku]
-      if (!entry) return product
-
-      return {
-        ...product,
-        manufacturer:
-          product.manufacturer && product.manufacturer !== "NIEZNANY"
-            ? product.manufacturer
-            : entry.manufacturer || "NIEZNANY",
-        catalogSpecs: entry.specs || "",
-        catalogPrice: entry.price || 0,
-        isIqSynced: true,
-      }
-    })
-
-    unifiedProducts = [...enrichedProducts, ...virtualDevices]
-  } catch {
-    unifiedProducts = [...productStore]
-  }
-
-  return projectProductCatalogClassification(unifiedProducts, categories)
+  return buildProductCatalogFromKnowledge(productStore, categories, true)
 }
 
 export function projectProductCatalogForSession(

@@ -56,7 +56,7 @@ export function ProductCard({ product, isB2B }: IProductCardProps) {
         </div>
 
         <p className="text-sm text-slate-500 font-medium line-clamp-2 mb-6 flex-grow">
-           {product.seoDescription || "Wysokiej klasy komponent systemów zabezpieczeń spełniający normy profesjonalnej certyfikacji."}
+           {product.specs || product.catalogSpecs || product.seoDescription || "Wysokiej klasy komponent systemów zabezpieczeń spełniający normy profesjonalnej certyfikacji."}
         </p>
 
         <div className="pt-6 border-t border-slate-100 flex items-center justify-between mt-auto">

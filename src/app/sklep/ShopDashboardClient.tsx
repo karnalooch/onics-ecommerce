@@ -18,8 +18,23 @@ export function ShopDashboardClient({ initialProducts, categories, role }: IShop
   const isB2B = role === "BIZ" || role === "ADMIN";
 
   const filteredProducts = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
     return initialProducts.filter((p: any) => {
-      const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+      const matchSearch =
+        !normalizedSearch ||
+        [
+          p.name,
+          p.sku,
+          p.manufacturer,
+          p.specs,
+          p.catalogSpecs,
+          p.seoDescription,
+          p.categoryName,
+          p.subcategoryName,
+        ]
+          .map((value) => String(value ?? "").toLowerCase())
+          .some((value) => value.includes(normalizedSearch));
       const matchCat = !selectedCatId || p.categoryId === selectedCatId;
       return matchSearch && matchCat;
     });

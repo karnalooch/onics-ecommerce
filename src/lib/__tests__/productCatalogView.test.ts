@@ -8,6 +8,7 @@ import {
   matchesProductCatalogQuery,
   projectProductCatalogClassification,
   projectProductCatalogForSession,
+  projectProductCatalogKnowledge,
   type ProductCatalogCategory,
   type ProductCatalogRecord,
 } from "@/lib/productCatalogView"
@@ -87,6 +88,68 @@ describe("product catalog classification projection", () => {
     expect(matchesCatalogCategory(projected[0], "cat_alarm")).toBe(true)
     expect(matchesCatalogCategory(projected[0], "Alarmy")).toBe(true)
     expect(matchesCatalogCategory(projected[0], "cat_cctv")).toBe(false)
+  })
+})
+
+describe("product catalog Knowledge projection", () => {
+  const knowledge = {
+    "SKU-1": {
+      manufacturer: "IQ Manufacturer",
+      specs: "PoE, IP67",
+      price: 140,
+    },
+    "VIRTUAL-2": {
+      model: "Virtual Camera",
+      manufacturer: "Virtual Manufacturer",
+      category: "CCTV",
+      subcategory: "Kamery",
+      specs: "4K",
+      price: 250,
+    },
+  }
+
+  it("enriches stored SKUs case-insensitively without adding virtual products", () => {
+    const projected = projectProductCatalogKnowledge(
+      [
+        {
+          ...product,
+          sku: "sku-1",
+          manufacturer: "NIEZNANY",
+          categoryId: "cat_alarm",
+        },
+      ],
+      categories,
+      knowledge,
+      { includeVirtual: false }
+    )
+
+    expect(projected).toHaveLength(1)
+    expect(projected[0].sku).toBe("sku-1")
+    expect(projected[0].manufacturer).toBe("IQ Manufacturer")
+    expect(projected[0].catalogSpecs).toBe("PoE, IP67")
+    expect(projected[0].catalogPrice).toBe(140)
+    expect(projected[0].isIqSynced).toBe(true)
+    expect(projected[0].isVirtual).not.toBe(true)
+    expect(projected[0].categoryName).toBe("Alarmy")
+  })
+
+  it("adds Knowledge-only devices only to the unified browsing projection", () => {
+    const projected = projectProductCatalogKnowledge(
+      [{ ...product, sku: "sku-1" }],
+      categories,
+      knowledge,
+      { includeVirtual: true }
+    )
+
+    const virtual = projected.find((candidate) => candidate.sku === "VIRTUAL-2")
+
+    expect(projected).toHaveLength(2)
+    expect(virtual?.isVirtual).toBe(true)
+    expect(virtual?.name).toBe("Virtual Camera")
+    expect(virtual?.categoryId).toBe("cat_cctv")
+    expect(virtual?.subcategoryId).toBe("sub_camera")
+    expect(virtual?.categoryName).toBe("CCTV")
+    expect(virtual?.subcategoryName).toBe("Kamery")
   })
 })
 
@@ -215,6 +278,29 @@ describe("product catalog session projection", () => {
 
     expect(projected.price).toBe(100)
     expect(projected.priceHidden).toBe(false)
+  })
+})
+
+describe("storefront catalog-content wiring", () => {
+  it("enriches persisted storefront products without injecting virtual SKUs", () => {
+    const shopPage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/sklep/page.tsx"),
+      "utf8"
+    )
+    const shopClient = fs.readFileSync(
+      path.join(process.cwd(), "src/app/sklep/ShopDashboardClient.tsx"),
+      "utf8"
+    )
+    const productCard = fs.readFileSync(
+      path.join(process.cwd(), "src/app/sklep/_components/ProductCard.tsx"),
+      "utf8"
+    )
+
+    expect(shopPage).toContain("buildStoredProductCatalog")
+    expect(shopPage).not.toContain("buildUnifiedProductCatalog")
+    expect(shopClient).toContain("catalogSpecs")
+    expect(shopClient).toContain("categoryName")
+    expect(productCard).toContain("product.catalogSpecs")
   })
 })
 
