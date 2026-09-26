@@ -11,8 +11,10 @@ import {
   preserveSalePriceForKnowledgeUpdate,
   pricingForKnowledgeCreatedProduct,
 } from "@/lib/knowledge/pricingBoundary";
+import { hasSkuConflict } from "@/lib/catalog";
 import {
   hasInventoryLifecycleDependencyForProduct,
+  shouldDeferProductStockWrite,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations";
 
@@ -114,8 +116,27 @@ export async function saveProductAction(data: any): Promise<ActionState> {
       const existingIdx = products.findIndex((product) => product.id === data.id);
 
       if (existingIdx !== -1) {
-        products[existingIdx] = { ...products[existingIdx], ...validated.data };
+        const current = products[existingIdx];
+        if (hasSkuConflict(products, validated.data.sku, current.id)) {
+          throw new Error("SKU_EXISTS");
+        }
+        if (
+          shouldDeferProductStockWrite(
+            db.orders as InventoryReservationOrder[],
+            String(current.id),
+            current.stock,
+            validated.data.stock
+          )
+        ) {
+          throw new Error("PRODUCT_STOCK_RESERVED");
+        }
+
+        products[existingIdx] = { ...current, ...validated.data };
         return { created: false, product: products[existingIdx] };
+      }
+
+      if (hasSkuConflict(products, validated.data.sku)) {
+        throw new Error("SKU_EXISTS");
       }
 
       const newProduct = {
@@ -132,7 +153,20 @@ export async function saveProductAction(data: any): Promise<ActionState> {
     return result.created
       ? { success: true, message: "Produkt dodany", data: result.product }
       : { success: true, message: "Produkt zaktualizowany" };
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === "SKU_EXISTS") {
+      return { success: false, error: "Produkt z tym SKU już istnieje" };
+    }
+    if (
+      error instanceof Error &&
+      error.message === "PRODUCT_STOCK_RESERVED"
+    ) {
+      return {
+        success: false,
+        error:
+          "Nie można zmienić stanu magazynowego produktu podczas aktywnej rezerwacji zamówienia."
+      };
+    }
     return { success: false, error: "Błąd zapisu produktu" };
   }
 }
@@ -194,6 +228,7 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
       const categories = db.categories as any[];
       let updatedCount = 0;
       let addedCount = 0;
+      let deferredStockCount = 0;
 
       const junkWords = [
         "NIEZNANY", "INNE", "NIESKLASYFIKOWANE", "POZOSTAŁE",
@@ -282,7 +317,20 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
 
         if (existing) {
           existing.price = item.price;
-          existing.stock = item.stock;
+          if (item.stock !== undefined) {
+            if (
+              shouldDeferProductStockWrite(
+                db.orders as InventoryReservationOrder[],
+                String(existing.id),
+                existing.stock,
+                item.stock
+              )
+            ) {
+              deferredStockCount += 1;
+            } else {
+              existing.stock = item.stock;
+            }
+          }
           existing.manufacturer = item.manufacturer || existing.manufacturer;
           if (item.specs) existing.specs = item.specs;
           if (finalCategoryId) {
@@ -305,14 +353,14 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
         }
       });
 
-      return { updatedCount, addedCount };
+      return { updatedCount, addedCount, deferredStockCount };
     });
 
     revalidatePath("/admin/products");
     return {
       success: true,
       message:
-        `Unified Import zakończony. Zaktualizowano/Aktywowano: ${result.updatedCount}, Dodano nowych: ${result.addedCount}`
+        `Unified Import zakończony. Zaktualizowano/Aktywowano: ${result.updatedCount}, Dodano nowych: ${result.addedCount}, Stock odroczony przez aktywne rezerwacje: ${result.deferredStockCount}`
     };
   } catch {
     return { success: false, error: "Błąd podczas masowego importu" };
@@ -337,6 +385,7 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
         ] as const)
       );
       let autoAddedCount = 0;
+      let deferredStockCount = 0;
 
       const enriched = items
         .map((item) => {
@@ -382,9 +431,25 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
             };
 
             if (existingIdx !== undefined) {
+              const current = products[existingIdx];
+              const { stock: incomingStock, ...enrichedWithoutStock } =
+                enrichedItem;
+              const deferStock =
+                incomingStock !== undefined &&
+                shouldDeferProductStockWrite(
+                  db.orders as InventoryReservationOrder[],
+                  String(current.id),
+                  current.stock,
+                  incomingStock
+                );
+              if (deferStock) deferredStockCount += 1;
+
               products[existingIdx] = {
-                ...products[existingIdx],
-                ...enrichedItem,
+                ...current,
+                ...enrichedWithoutStock,
+                ...(incomingStock !== undefined && !deferStock
+                  ? { stock: incomingStock }
+                  : {}),
                 ...iqData,
                 isAutoSynced: true
               };
@@ -406,15 +471,15 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
         })
         .filter(Boolean);
 
-      return { autoAddedCount, enriched };
+      return { autoAddedCount, enriched, deferredStockCount };
     });
 
     return {
       success: true,
       message:
         result.autoAddedCount > 0
-          ? `Zsynchronizowano. Dodano/Zaktualizowano automatycznie: ${result.autoAddedCount}. Reszta (${result.enriched.length}) wymaga uwagi na Biurku.`
-          : "Synchronizacja zakończona. Wszystkie pozycje wymagają weryfikacji.",
+          ? `Zsynchronizowano. Dodano/Zaktualizowano automatycznie: ${result.autoAddedCount}. Reszta (${result.enriched.length}) wymaga uwagi na Biurku. Stock odroczony przez aktywne rezerwacje: ${result.deferredStockCount}.`
+          : `Synchronizacja zakończona. Wszystkie pozycje wymagają weryfikacji. Stock odroczony przez aktywne rezerwacje: ${result.deferredStockCount}.`,
       data: result.enriched
     };
   } catch {
