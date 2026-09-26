@@ -200,7 +200,10 @@ export async function POST(req: Request) {
   }
 
   try {
-    switch (event.type) {
+    // stripe@15 predates some current public refund event literals
+    // (notably refund.failed), so keep runtime handling forward-compatible.
+    const eventType = event.type as string
+    switch (eventType) {
       case "checkout.session.completed": {
         const session = event.data.object
         if (session.payment_status === "paid") {
@@ -223,7 +226,7 @@ export async function POST(req: Request) {
       case "refund.created":
       case "refund.updated":
       case "refund.failed": {
-        await applyRefundStatus(event.id, event.data.object)
+        await applyRefundStatus(event.id, event.data.object as Stripe.Refund)
         break
       }
       default:
