@@ -129,8 +129,15 @@ export async function POST(req: Request) {
         const existing = (db.orders as Przelewy24StoredOrder[]).find(
           (candidate) => candidate.id === order.id
         )
+        const outcome =
+          existing?.refundStatus === "succeeded"
+            ? ("completed" as const)
+            : existing?.refundStatus === "failed"
+              ? ("failed" as const)
+              : ("unchanged" as const)
+
         return {
-          outcome: "completed" as const,
+          outcome,
           paymentStatus: existing?.paymentStatus ?? null,
           refundStatus: existing?.refundStatus ?? null,
           returnStatus: existing?.returnStatus ?? null,
