@@ -23,6 +23,10 @@ import {
   PaymentWebhookBodyTooLargeError,
   readPaymentWebhookBody,
 } from "@/lib/paymentWebhookIngress"
+import {
+  hasProcessedPaymentWebhookEvent,
+  recordProcessedPaymentWebhookEvent,
+} from "@/lib/paymentWebhookLedger"
 
 type StoredOrder = StripeCancelableOrder & InventoryReservationOrder & {
   id: string
@@ -70,7 +74,22 @@ async function applyRefundStatus(
   eventId: string,
   refund: Stripe.Refund
 ) {
+  const eventIdentity = {
+    provider: "STRIPE" as const,
+    kind: "REFUND" as const,
+    externalId: eventId,
+  }
+
   return mutateMockData((db) => {
+    if (
+      hasProcessedPaymentWebhookEvent(
+        db.paymentWebhookEvents,
+        eventIdentity
+      )
+    ) {
+      return { order: null, duplicate: true }
+    }
+
     const orderId = refund.metadata?.order_id || null
     const refundIntentId = getRefundPaymentIntentId(refund)
     const order = (db.orders as StoredOrder[]).find(
@@ -86,6 +105,10 @@ async function applyRefundStatus(
     }
 
     if (order.stripeLastRefundEventId === eventId) {
+      recordProcessedPaymentWebhookEvent(
+        db.paymentWebhookEvents,
+        eventIdentity
+      )
       return { order, duplicate: true }
     }
 
@@ -103,6 +126,10 @@ async function applyRefundStatus(
     )
 
     order.stripeLastRefundEventId = eventId
+    recordProcessedPaymentWebhookEvent(
+      db.paymentWebhookEvents,
+      eventIdentity
+    )
     return { order, duplicate: false }
   })
 }
@@ -112,7 +139,22 @@ async function applyCheckoutStatus(
   session: Stripe.Checkout.Session,
   incomingStatus: "PAID" | "FAILED" | "EXPIRED"
 ) {
+  const eventIdentity = {
+    provider: "STRIPE" as const,
+    kind: "PAYMENT" as const,
+    externalId: eventId,
+  }
+
   return mutateMockData((db) => {
+    if (
+      hasProcessedPaymentWebhookEvent(
+        db.paymentWebhookEvents,
+        eventIdentity
+      )
+    ) {
+      return { order: null, duplicate: true }
+    }
+
     const orderId = session.metadata?.order_id || null
     const order = (db.orders as StoredOrder[]).find(
       (candidate) =>
@@ -150,6 +192,10 @@ async function applyCheckoutStatus(
       order.stripeLastEventId === eventId
 
     if (alreadyApplied) {
+      recordProcessedPaymentWebhookEvent(
+        db.paymentWebhookEvents,
+        eventIdentity
+      )
       return { order, duplicate: true }
     }
 
@@ -170,6 +216,10 @@ async function applyCheckoutStatus(
       order.paidAt = new Date().toISOString()
     }
 
+    recordProcessedPaymentWebhookEvent(
+      db.paymentWebhookEvents,
+      eventIdentity
+    )
     return { order, duplicate: false }
   })
 }
