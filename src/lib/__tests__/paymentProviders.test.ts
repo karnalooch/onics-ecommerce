@@ -94,6 +94,13 @@ describe("payment provider registry", () => {
     expect(
       resolveOrderPaymentProvider({ paymentProvider: "UNKNOWN" })
     ).toBeNull()
+
+    expect(
+      resolveOrderPaymentProvider({
+        paymentProvider: "UNKNOWN",
+        stripeCheckoutSessionId: "cs_should_not_override_explicit_provider",
+      })
+    ).toBeNull()
   })
 
   it("routes operational readiness through provider definitions", () => {
