@@ -5,23 +5,28 @@ import { useState, useMemo } from "react";
 import { ShopSidebar } from "./_components/ShopSidebar";
 import { ProductGrid } from "./_components/ProductGrid";
 import { MiniCart } from "./_components/MiniCart";
+import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding";
 
 interface IShopDashboardClientProps {
   initialProducts: any[];
   categories: any[];
   role: string;
-  cartIdentityKey: string;
+  cartOwnerKey: string;
 }
 
 export function ShopDashboardClient({
   initialProducts,
   categories,
   role,
-  cartIdentityKey,
+  cartOwnerKey,
 }: IShopDashboardClientProps) {
   const [search, setSearch] = useState("");
   const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
   const isB2B = role === "BIZ" || role === "ADMIN";
+  const { cartOwnerReady } = useCartOwnerBinding({
+    identityKey: cartOwnerKey,
+    resolved: true,
+  });
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -46,6 +51,14 @@ export function ShopDashboardClient({
     });
   }, [initialProducts, search, selectedCatId]);
 
+  if (!cartOwnerReady) {
+    return (
+      <div className="mt-12 flex min-h-[240px] items-center justify-center">
+        <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mt-12 items-start animate-in fade-in duration-1000">
        {/* Left: Advanced Filtering */}
@@ -69,7 +82,7 @@ export function ShopDashboardClient({
 
        {/* Right: Smart Terminal (Cart) */}
        <div className="lg:col-span-3">
-          <MiniCart isB2B={isB2B} identityKey={cartIdentityKey} />
+          <MiniCart isB2B={isB2B} identityKey={cartOwnerKey} />
        </div>
     </div>
   );
