@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const KnowledgeEntrySchema = z.object({
   specs: z.string().min(1),
-  price: z.number().nullable(),
+  price: z.number().finite().nonnegative().max(100_000_000).nullable(),
   currency: z.string().default('PLN'),
   source: z.string().optional(),
   date: z.string().optional(),

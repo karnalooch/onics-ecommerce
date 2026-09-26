@@ -5,6 +5,7 @@ import * as path from 'path';
 import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema, ProgressCallback, ParserOptions } from './types';
 
 import { ToolkitParser } from './ToolkitParser';
+import { preserveSalePriceForKnowledgeUpdate, pricingForKnowledgeCreatedProduct } from './pricingBoundary';
 
 // Knowledge storage is now fully integrated into db.json via serverStore
 
@@ -36,7 +37,7 @@ export function buildKnowledgeFromDb(db: KnowledgeDbSnapshot): KnowledgeStore {
     knowledgeMap[product.sku] = {
       model: product.name,
       specs: product.specs || product.seoDescription || "",
-      price: product.catalogPrice || product.price || 0,
+      price: product.catalogPrice ?? product.price ?? 0,
       manufacturer: product.manufacturer,
       currency: "PLN",
       lastUpdated: product.lastUpdated || new Date().toISOString()
@@ -137,11 +138,17 @@ export async function saveKnowledge(data: KnowledgeStore) {
       );
 
       if (existingIdx !== undefined) {
+        const pricing = preserveSalePriceForKnowledgeUpdate(
+          products[existingIdx],
+          entry.price
+        );
+
         products[existingIdx] = {
           ...products[existingIdx],
           name: entry.model || products[existingIdx].name,
           specs: entry.specs || products[existingIdx].specs,
-          price: entry.price || products[existingIdx].price,
+          price: pricing.price,
+          catalogPrice: pricing.catalogPrice,
           manufacturer: entry.manufacturer || products[existingIdx].manufacturer,
           categoryId: categoryId || products[existingIdx].categoryId,
           subcategoryId: subcategoryId || products[existingIdx].subcategoryId,
@@ -149,12 +156,14 @@ export async function saveKnowledge(data: KnowledgeStore) {
         };
       } else {
         const newIndex = products.length;
+        const pricing = pricingForKnowledgeCreatedProduct(entry.price);
         products.push({
           id: `p_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
           sku,
           name: entry.model || sku,
           manufacturer: entry.manufacturer || "Nieznany",
-          price: entry.price || 0,
+          price: pricing.price,
+          catalogPrice: pricing.catalogPrice,
           stock: 0,
           specs: entry.specs || "",
           categoryId,
