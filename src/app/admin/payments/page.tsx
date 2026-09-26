@@ -70,6 +70,10 @@ type PaymentMethod = {
     openReturns: number
     lastReconciledAt: string | null
     lastErrorAt: string | null
+    lastOperationOutcome: "SUCCESS" | "PARTIAL" | "FAILED" | null
+    lastOperationProcessed: number
+    lastOperationFailed: number
+    lastOperationManualReview: number
     actionCounts: Record<string, number>
   }
 }
@@ -280,6 +284,8 @@ export default function AdminPaymentsPage() {
           `${method.name} zsynchronizowany: zaktualizowano ${updated}, bez zmian ${unchanged}.`
         )
       }
+
+      await loadMethods()
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -680,6 +686,9 @@ export default function AdminPaymentsPage() {
                             {new Date(
                               method.operations.lastReconciledAt
                             ).toLocaleString("pl-PL")}
+                            {method.operations.lastOperationOutcome
+                              ? ` · ${method.operations.lastOperationOutcome} · processed ${method.operations.lastOperationProcessed} · failed ${method.operations.lastOperationFailed} · review ${method.operations.lastOperationManualReview}`
+                              : ""}
                           </span>
                         )}
                         {method.operations.lastErrorAt && (
