@@ -5,6 +5,24 @@ export const PAYMENT_PROVIDER_IDS = ["STRIPE", "BANK_TRANSFER"] as const
 export type PaymentProviderId = (typeof PAYMENT_PROVIDER_IDS)[number]
 export type PaymentProviderKind = "REDIRECT" | "MANUAL"
 
+export const PAYMENT_PROVIDER_CAPABILITIES = [
+  "checkout",
+  "webhook",
+  "cancel",
+  "refund",
+  "reconcile",
+  "rma",
+  "manualSettlement",
+] as const
+
+export type PaymentProviderCapability =
+  (typeof PAYMENT_PROVIDER_CAPABILITIES)[number]
+
+export type PaymentProviderCapabilities = Record<
+  PaymentProviderCapability,
+  boolean
+>
+
 export type PaymentRuntimeOptions = {
   nodeEnv?: string
   stripeSecretKey?: string | null
@@ -22,11 +40,20 @@ export type PaymentProviderOperationalStatus = {
 export type PaymentProviderDefinition = {
   id: PaymentProviderId
   kind: PaymentProviderKind
+  capabilities: PaymentProviderCapabilities
   disabledMessage: string
   misconfiguredMessage: string
   operationalStatus: (
     options?: PaymentRuntimeOptions
   ) => PaymentProviderOperationalStatus
+}
+
+export type PaymentProviderOrderIdentity = {
+  paymentProvider?: unknown
+  stripeCheckoutSessionId?: unknown
+  bankTransferReference?: unknown
+  bankTransferIban?: unknown
+  bankTransferAccountNumber?: unknown
 }
 
 type StoredPaymentProviderId = keyof PaymentMethodSettings
@@ -101,6 +128,15 @@ const paymentProviderRegistry = {
   STRIPE: {
     id: "STRIPE",
     kind: "REDIRECT",
+    capabilities: {
+      checkout: true,
+      webhook: true,
+      cancel: true,
+      refund: true,
+      reconcile: true,
+      rma: true,
+      manualSettlement: false,
+    },
     disabledMessage: "Płatność Stripe została wyłączona przez administratora.",
     misconfiguredMessage: "Płatności online nie są skonfigurowane.",
     operationalStatus: stripeOperationalStatus,
@@ -108,6 +144,15 @@ const paymentProviderRegistry = {
   BANK_TRANSFER: {
     id: "BANK_TRANSFER",
     kind: "MANUAL",
+    capabilities: {
+      checkout: true,
+      webhook: false,
+      cancel: true,
+      refund: true,
+      reconcile: false,
+      rma: true,
+      manualSettlement: true,
+    },
     disabledMessage: "Przelew bankowy jest obecnie niedostępny.",
     misconfiguredMessage: "Przelew bankowy nie jest poprawnie skonfigurowany.",
     operationalStatus: bankTransferOperationalStatus,
@@ -125,6 +170,57 @@ export function paymentProviderOperationalStatus(
   options: PaymentRuntimeOptions = {}
 ) {
   return getPaymentProviderDefinition(id).operationalStatus(options)
+}
+
+export function isPaymentProviderId(value: unknown): value is PaymentProviderId {
+  return (
+    typeof value === "string" &&
+    (PAYMENT_PROVIDER_IDS as readonly string[]).includes(value)
+  )
+}
+
+export function resolveOrderPaymentProvider(
+  order: PaymentProviderOrderIdentity
+): PaymentProviderId | null {
+  if (isPaymentProviderId(order.paymentProvider)) {
+    return order.paymentProvider
+  }
+
+  if (
+    typeof order.stripeCheckoutSessionId === "string" &&
+    order.stripeCheckoutSessionId.trim()
+  ) {
+    return "STRIPE"
+  }
+
+  if (
+    (typeof order.bankTransferReference === "string" &&
+      order.bankTransferReference.trim()) ||
+    (typeof order.bankTransferIban === "string" &&
+      order.bankTransferIban.trim()) ||
+    (typeof order.bankTransferAccountNumber === "string" &&
+      order.bankTransferAccountNumber.trim())
+  ) {
+    return "BANK_TRANSFER"
+  }
+
+  return null
+}
+
+export function supportsPaymentProviderCapability(
+  id: PaymentProviderId,
+  capability: PaymentProviderCapability
+) {
+  return getPaymentProviderDefinition(id).capabilities[capability]
+}
+
+export function assertPaymentProviderCapability(
+  id: PaymentProviderId,
+  capability: PaymentProviderCapability
+) {
+  if (!supportsPaymentProviderCapability(id, capability)) {
+    throw new Error("PAYMENT_PROVIDER_CAPABILITY_UNSUPPORTED")
+  }
 }
 
 export function listPaymentProviderDefinitions() {
