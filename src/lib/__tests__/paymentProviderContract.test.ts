@@ -45,6 +45,14 @@ const harnesses = {
     legacyOrder: {
       stripeCheckoutSessionId: "cs_contract_legacy",
     },
+    checkoutResult: {
+      orderId: "ORD-CONTRACT-STRIPE-CHECKOUT",
+      paymentMethod: "STRIPE",
+      nextAction: {
+        type: "REDIRECT",
+        url: "https://checkout.example/contract",
+      },
+    },
     assertIdempotency: () => {
       const cancellationProducts: InventoryProduct[] = [
         { id: "p1", stock: 3 },
@@ -131,6 +139,24 @@ const harnesses = {
     ],
     legacyOrder: {
       bankTransferReference: "ORD-CONTRACT-LEGACY",
+    },
+    checkoutResult: {
+      orderId: "ORD-CONTRACT-BANK-CHECKOUT",
+      paymentMethod: "BANK_TRANSFER",
+      nextAction: {
+        type: "MANUAL",
+        title: "Dane do przelewu",
+        fields: [
+          { label: "Odbiorca", value: "ONICS Contract" },
+          {
+            label: "IBAN",
+            value: "PL12345678901234567890123456",
+            monospace: true,
+          },
+        ],
+        amount: 100,
+        currency: "PLN",
+      },
     },
     assertIdempotency: () => {
       const pending: BankTransferOrder = {
