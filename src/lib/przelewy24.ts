@@ -39,6 +39,32 @@ export type Przelewy24Notification = {
   sign: string
 }
 
+export type Przelewy24TransactionDetails = {
+  orderId: number
+  sessionId: string
+  status: number
+  amount: number
+  currency: string
+  statement?: string
+  paymentMethod?: number
+}
+
+export type Przelewy24RefundDetails = {
+  orderId: number
+  sessionId: string
+  amount: number
+  currency: string
+  refunds: Array<{
+    batchId?: number
+    requestId: string
+    date?: string
+    login?: string
+    description?: string
+    status: number
+    amount: number
+  }>
+}
+
 export type Przelewy24RefundNotification = {
   orderId: number
   sessionId: string
@@ -321,19 +347,20 @@ export async function registerPrzelewy24Transaction(
   }
 }
 
-export async function verifyPrzelewy24Transaction(
+export async function verifyPrzelewy24TransactionIdentity(
   config: Przelewy24Config,
-  notification: Przelewy24Notification
-) {
-  if (!verifyPrzelewy24NotificationSignature(notification, config)) {
-    throw new Error("PRZELEWY24_NOTIFICATION_SIGNATURE_INVALID")
+  transaction: {
+    sessionId: string
+    orderId: number
+    amount: number
+    currency: string
   }
-
+) {
   const sign = calculatePrzelewy24Sign({
-    sessionId: notification.sessionId,
-    orderId: notification.orderId,
-    amount: notification.amount,
-    currency: notification.currency,
+    sessionId: transaction.sessionId,
+    orderId: transaction.orderId,
+    amount: transaction.amount,
+    currency: transaction.currency,
     crc: config.crc,
   })
 
@@ -348,10 +375,10 @@ export async function verifyPrzelewy24Transaction(
       body: JSON.stringify({
         merchantId: config.merchantId,
         posId: config.posId,
-        sessionId: notification.sessionId,
-        amount: notification.amount,
-        currency: notification.currency,
-        orderId: notification.orderId,
+        sessionId: transaction.sessionId,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        orderId: transaction.orderId,
         sign,
       }),
       signal: AbortSignal.timeout(10_000),
@@ -372,6 +399,142 @@ export async function verifyPrzelewy24Transaction(
 
   return true
 }
+
+export async function verifyPrzelewy24Transaction(
+  config: Przelewy24Config,
+  notification: Przelewy24Notification
+) {
+  if (!verifyPrzelewy24NotificationSignature(notification, config)) {
+    throw new Error("PRZELEWY24_NOTIFICATION_SIGNATURE_INVALID")
+  }
+
+  return verifyPrzelewy24TransactionIdentity(config, {
+    sessionId: notification.sessionId,
+    orderId: notification.orderId,
+    amount: notification.amount,
+    currency: notification.currency,
+  })
+}
+
+export async function getPrzelewy24TransactionBySessionId(
+  config: Przelewy24Config,
+  sessionId: string
+): Promise<Przelewy24TransactionDetails | null> {
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/v1/transaction/by/sessionId/${encodeURIComponent(sessionId)}`,
+    {
+      headers: {
+        Authorization: basicAuth(config),
+      },
+      signal: AbortSignal.timeout(10_000),
+    }
+  )
+
+  if (response.status === 404) return null
+
+  const payload = (await response.json().catch(() => null)) as
+    | { data?: Record<string, unknown>; responseCode?: unknown }
+    | null
+  const data = payload?.data
+
+  if (
+    !response.ok ||
+    !data ||
+    !Number.isSafeInteger(data.orderId) ||
+    typeof data.sessionId !== "string" ||
+    !Number.isSafeInteger(data.status) ||
+    !Number.isSafeInteger(data.amount) ||
+    typeof data.currency !== "string"
+  ) {
+    throw new Error("PRZELEWY24_TRANSACTION_DETAILS_INVALID")
+  }
+
+  return {
+    orderId: Number(data.orderId),
+    sessionId: data.sessionId,
+    status: Number(data.status),
+    amount: Number(data.amount),
+    currency: data.currency,
+    statement:
+      typeof data.statement === "string" ? data.statement : undefined,
+    paymentMethod:
+      Number.isSafeInteger(data.paymentMethod)
+        ? Number(data.paymentMethod)
+        : undefined,
+  }
+}
+
+export async function getPrzelewy24RefundDetails(
+  config: Przelewy24Config,
+  orderId: number
+): Promise<Przelewy24RefundDetails | null> {
+  const response = await fetch(
+    `${config.apiBaseUrl}/api/v1/refund/by/orderId/${orderId}`,
+    {
+      headers: {
+        Authorization: basicAuth(config),
+      },
+      signal: AbortSignal.timeout(10_000),
+    }
+  )
+
+  if (response.status === 404) return null
+
+  const payload = (await response.json().catch(() => null)) as
+    | { data?: Record<string, unknown>; responseCode?: unknown }
+    | null
+  const data = payload?.data
+  const refunds =
+    data && Array.isArray(data.refunds) ? data.refunds : null
+
+  if (
+    !response.ok ||
+    !data ||
+    !Number.isSafeInteger(data.orderId) ||
+    typeof data.sessionId !== "string" ||
+    !Number.isSafeInteger(data.amount) ||
+    typeof data.currency !== "string" ||
+    !refunds
+  ) {
+    throw new Error("PRZELEWY24_REFUND_DETAILS_INVALID")
+  }
+
+  const normalized = refunds.flatMap((entry) => {
+    if (
+      typeof entry !== "object" ||
+      entry === null ||
+      typeof (entry as Record<string, unknown>).requestId !== "string" ||
+      !Number.isSafeInteger((entry as Record<string, unknown>).status) ||
+      !Number.isSafeInteger((entry as Record<string, unknown>).amount)
+    ) {
+      return []
+    }
+    const record = entry as Record<string, unknown>
+    return [{
+      batchId: Number.isSafeInteger(record.batchId)
+        ? Number(record.batchId)
+        : undefined,
+      requestId: String(record.requestId),
+      date: typeof record.date === "string" ? record.date : undefined,
+      login: typeof record.login === "string" ? record.login : undefined,
+      description:
+        typeof record.description === "string"
+          ? record.description
+          : undefined,
+      status: Number(record.status),
+      amount: Number(record.amount),
+    }]
+  })
+
+  return {
+    orderId: Number(data.orderId),
+    sessionId: data.sessionId,
+    amount: Number(data.amount),
+    currency: data.currency,
+    refunds: normalized,
+  }
+}
+
 
 export function validatePrzelewy24NotificationForOrder(
   order: Przelewy24StoredOrder,
@@ -402,6 +565,68 @@ export function validatePrzelewy24NotificationForOrder(
   }
 
   return true
+}
+
+export function applyReconciledPrzelewy24Payment(
+  products: InventoryProduct[],
+  order: Przelewy24StoredOrder,
+  transaction: Przelewy24TransactionDetails,
+  now = new Date().toISOString()
+) {
+  if (
+    order.paymentProvider !== "PRZELEWY24" ||
+    order.p24SessionId !== transaction.sessionId
+  ) {
+    throw new Error("PRZELEWY24_ORDER_MISMATCH")
+  }
+  if (
+    transaction.currency !== "PLN" ||
+    transaction.amount !==
+      moneyToMinorUnits(Number(order.totalPriceFinal ?? 0))
+  ) {
+    throw new Error("PRZELEWY24_AMOUNT_MISMATCH")
+  }
+  if (
+    order.p24OrderId !== undefined &&
+    order.p24OrderId !== null &&
+    order.p24OrderId !== transaction.orderId
+  ) {
+    throw new Error("PRZELEWY24_ORDER_ID_MISMATCH")
+  }
+
+  if (
+    (order.paymentStatus === "PAID" ||
+      order.paymentStatus === "REFUNDED") &&
+    order.p24OrderId === transaction.orderId
+  ) {
+    order.paymentReconciledAt = now
+    order.p24VerificationPending = null
+    order.p24VerificationPendingAt = null
+    return "unchanged" as const
+  }
+
+  if (
+    order.inventoryReservationStatus !== "RESERVED" &&
+    order.inventoryReservationStatus !== "FINALIZED"
+  ) {
+    throw new Error("PRZELEWY24_INVENTORY_NOT_RESERVED")
+  }
+
+  if (order.inventoryReservationStatus === "RESERVED") {
+    order.inventoryReservationStatus = "FINALIZED"
+    order.inventoryFinalizedAt = order.inventoryFinalizedAt ?? now
+  }
+
+  order.paymentStatus = "PAID"
+  order.p24OrderId = transaction.orderId
+  order.paymentUpdatedAt = now
+  order.paymentReconciledAt = now
+  order.paidAt = order.paidAt ?? now
+  order.p24VerificationPending = null
+  order.p24VerificationPendingAt = null
+
+  void products
+  return "paid" as const
 }
 
 export function stagePrzelewy24Verification(
