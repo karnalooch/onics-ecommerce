@@ -108,6 +108,17 @@ export async function POST(req: Request) {
     )
   }
 
+  const availableActions = listAvailablePaymentAdminActions(order)
+  if (!availableActions.includes(parsed.data.action)) {
+    return NextResponse.json(
+      {
+        error:
+          "Ta operacja płatnicza nie jest dostępna dla aktualnego stanu zamówienia.",
+      },
+      { status: 409 }
+    )
+  }
+
   try {
     const target = resolvePaymentAdminActionTarget(provider, parsed.data.action)
 
