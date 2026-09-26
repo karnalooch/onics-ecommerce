@@ -3,10 +3,6 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
-type VirtualProduct = {
-  isVirtual?: boolean
-}
-
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
@@ -46,12 +42,7 @@ export async function DELETE() {
 
   try {
     await mutateMockData((db) => {
-      const productStore = db.products as VirtualProduct[]
-
-      for (let index = productStore.length - 1; index >= 0; index -= 1) {
-        if (productStore[index].isVirtual) productStore.splice(index, 1)
-      }
-
+      db.knowledgeEntries = {};
       db.knowledgeMeta = {
         sources: [],
         processedSources: [],
@@ -61,7 +52,7 @@ export async function DELETE() {
 
     return NextResponse.json({
       success: true,
-      message: "Metadane źródeł i wirtualne wpisy zostały wyczyszczone.",
+      message: "Baza wiedzy i metadane źródeł zostały wyczyszczone bez zmiany live katalogu produktów.",
     })
   } catch (error) {
     console.error("DELETE Knowledge API Error:", error)
