@@ -75,6 +75,9 @@ export default function CartPage() {
   const [paymentControlEnabled, setPaymentControlEnabled] = useState(false);
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
+  const [transactionAccess, setTransactionAccess] = useState<
+    "loading" | "allowed" | "denied"
+  >("loading");
   const [manualPaymentConfirmation, setManualPaymentConfirmation] = useState<ManualPaymentConfirmation | null>(null);
   const [importPreview, setImportPreview] = useState<OrderImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
@@ -90,22 +93,38 @@ export default function CartPage() {
       setPaymentControlEnabled(false);
       setPaymentNotice(null);
       setPaymentMethodsLoaded(true);
+      setTransactionAccess("denied");
       return;
     }
 
     let cancelled = false;
     setPaymentMethodsLoaded(false);
+    setTransactionAccess("loading");
 
     fetch("/api/payment-methods", { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json().catch(() => null);
-        if (!response.ok) throw new Error(data?.error || "PAYMENT_METHODS_UNAVAILABLE");
+
+        if (response.status === 403) {
+          if (!cancelled) {
+            setPaymentMethods([]);
+            setPaymentControlEnabled(false);
+            setPaymentNotice(null);
+            setTransactionAccess("denied");
+          }
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(data?.error || "PAYMENT_METHODS_UNAVAILABLE");
+        }
 
         const controlEnabled = data?.control?.enabled !== false;
 
         if (!cancelled) {
           setPaymentMethods(data?.methods ?? []);
           setPaymentControlEnabled(controlEnabled);
+          setTransactionAccess("allowed");
           setPaymentNotice(
             controlEnabled
               ? null
@@ -118,6 +137,7 @@ export default function CartPage() {
         if (!cancelled) {
           setPaymentMethods([]);
           setPaymentControlEnabled(false);
+          setTransactionAccess("denied");
           setPaymentNotice("Nie udało się sprawdzić dostępności płatności.");
         }
       })
@@ -130,7 +150,8 @@ export default function CartPage() {
     };
   }, [session?.user]);
 
-  const isB2B = (session?.user as any)?.role === "BIZ" || (session?.user as any)?.role === "ADMIN";
+  const isAuthenticated = Boolean(session?.user);
+  const isB2B = transactionAccess === "allowed";
   const requiresPricing = cartRequiresPricing(items);
   const availablePaymentMethods = paymentControlEnabled
     ? paymentMethods.filter((method) => method.available)
@@ -651,7 +672,12 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {isB2B ? (
+              {transactionAccess === "loading" ? (
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-500 flex items-center gap-3">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Sprawdzanie uprawnień do zamówień B2B...
+                </div>
+              ) : isB2B ? (
                 <div className="space-y-3">
                   {requiresPricing && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] leading-relaxed text-amber-800">
@@ -718,9 +744,27 @@ export default function CartPage() {
                     Naciśnięcie Zamówienia rezerwuje kolejkę. Oczekuj potwierdzenia czasu dostawy przez Administratora.
                   </p>
                 </div>
+              ) : isAuthenticated ? (
+                <div className="space-y-3">
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
+                    Zakupy online są obecnie dostępne dla zatwierdzonych partnerów B2B.
+                    Konto detaliczne może przeglądać katalog i ceny bazowe, ale nie tworzy
+                    zamówień ani płatności.
+                  </div>
+                  <Button
+                    className="w-full h-12 rounded-xl"
+                    variant="outline"
+                    onClick={() => router.push("/kontakt")}
+                  >
+                    Skontaktuj się w sprawie zakupu
+                  </Button>
+                </div>
               ) : (
-                <Button className="w-full h-14 text-lg font-bold rounded-xl" onClick={() => router.push("/rejestracja")}>
-                  Zaloguj się aby Kupić
+                <Button
+                  className="w-full h-14 text-lg font-bold rounded-xl"
+                  onClick={() => router.push("/logowanie")}
+                >
+                  Zaloguj się jako partner B2B
                 </Button>
               )}
             </div>
