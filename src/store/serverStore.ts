@@ -10,11 +10,17 @@ type KnowledgeMeta = {
   lastUpdated: string | null
 }
 
+export type PaymentMethodConfig = {
+  enabled: boolean
+  displayName: string
+  displayOrder: number
+  maintenanceMessage: string | null
+  updatedAt: string | null
+}
+
 export type PaymentMethodSettings = {
-  STRIPE: {
-    enabled: boolean
-    updatedAt: string | null
-  }
+  STRIPE: PaymentMethodConfig
+  BANK_TRANSFER: PaymentMethodConfig
 }
 
 export type PaymentControlSettings = {
@@ -26,7 +32,7 @@ export type PaymentControlSettings = {
 export type PaymentAuditEntry = {
   id: string
   createdAt: string
-  target: "GLOBAL" | "STRIPE"
+  target: "GLOBAL" | "STRIPE" | "BANK_TRANSFER"
   operation: "SETTING_CHANGE" | "EMERGENCY_SHUTDOWN"
   actor: {
     id: string | null
@@ -37,6 +43,10 @@ export type PaymentAuditEntry = {
   nextEnabled: boolean
   previousMaintenanceMessage: string | null
   nextMaintenanceMessage: string | null
+  previousDisplayName: string | null
+  nextDisplayName: string | null
+  previousDisplayOrder: number | null
+  nextDisplayOrder: number | null
 }
 
 type ServerDb = {
@@ -75,7 +85,9 @@ function normalizePaymentAudit(value: unknown): PaymentAuditEntry[] {
     .flatMap((entry) => {
       const actor = isRecord(entry.actor) ? entry.actor : {}
       const target: PaymentAuditEntry["target"] | null =
-        entry.target === "GLOBAL" || entry.target === "STRIPE"
+        entry.target === "GLOBAL" ||
+        entry.target === "STRIPE" ||
+        entry.target === "BANK_TRANSFER"
           ? entry.target
           : null
 
@@ -115,6 +127,24 @@ function normalizePaymentAudit(value: unknown): PaymentAuditEntry[] {
             typeof entry.nextMaintenanceMessage === "string"
               ? entry.nextMaintenanceMessage
               : null,
+          previousDisplayName:
+            typeof entry.previousDisplayName === "string"
+              ? entry.previousDisplayName
+              : null,
+          nextDisplayName:
+            typeof entry.nextDisplayName === "string"
+              ? entry.nextDisplayName
+              : null,
+          previousDisplayOrder:
+            typeof entry.previousDisplayOrder === "number" &&
+            Number.isFinite(entry.previousDisplayOrder)
+              ? entry.previousDisplayOrder
+              : null,
+          nextDisplayOrder:
+            typeof entry.nextDisplayOrder === "number" &&
+            Number.isFinite(entry.nextDisplayOrder)
+              ? entry.nextDisplayOrder
+              : null,
         },
       ]
     })
@@ -137,19 +167,61 @@ function normalizePaymentControl(value: unknown): PaymentControlSettings {
   }
 }
 
-function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
+function normalizePaymentMethod(
+  value: unknown,
+  defaults: {
+    enabled: boolean
+    displayName: string
+    displayOrder: number
+  }
+): PaymentMethodConfig {
   const source = isRecord(value) ? value : {}
-  const stripe = isRecord(source.STRIPE) ? source.STRIPE : {}
+  const displayName =
+    typeof source.displayName === "string"
+      ? source.displayName.trim().slice(0, 80)
+      : ""
+  const maintenanceMessage =
+    typeof source.maintenanceMessage === "string"
+      ? source.maintenanceMessage.trim().slice(0, 160) || null
+      : null
+  const displayOrder =
+    typeof source.displayOrder === "number" &&
+    Number.isSafeInteger(source.displayOrder) &&
+    source.displayOrder >= 0 &&
+    source.displayOrder <= 999
+      ? source.displayOrder
+      : defaults.displayOrder
 
   return {
-    STRIPE: {
+    enabled:
+      typeof source.enabled === "boolean"
+        ? source.enabled
+        : defaults.enabled,
+    displayName: displayName || defaults.displayName,
+    displayOrder,
+    maintenanceMessage,
+    updatedAt:
+      typeof source.updatedAt === "string" ? source.updatedAt : null,
+  }
+}
+
+function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
+  const source = isRecord(value) ? value : {}
+
+  return {
+    STRIPE: normalizePaymentMethod(source.STRIPE, {
       // Preserve existing installations: Stripe stays available until an
       // administrator explicitly disables it.
-      enabled:
-        typeof stripe.enabled === "boolean" ? stripe.enabled : true,
-      updatedAt:
-        typeof stripe.updatedAt === "string" ? stripe.updatedAt : null,
-    },
+      enabled: true,
+      displayName: "Stripe",
+      displayOrder: 10,
+    }),
+    BANK_TRANSFER: normalizePaymentMethod(source.BANK_TRANSFER, {
+      // New providers default to disabled so upgrades remain fail-closed.
+      enabled: false,
+      displayName: "Przelew bankowy",
+      displayOrder: 20,
+    }),
   }
 }
 
