@@ -34,8 +34,14 @@ function getPaymentIntentId(session: Stripe.Checkout.Session) {
 }
 
 function getRefundPaymentIntentId(refund: Stripe.Refund) {
-  if (typeof refund.payment_intent === "string") return refund.payment_intent
-  return refund.payment_intent?.id ?? null
+  const value = (
+    refund as Stripe.Refund & {
+      payment_intent?: string | { id?: string } | null
+    }
+  ).payment_intent
+
+  if (typeof value === "string") return value
+  return value?.id ?? null
 }
 
 function getRefundStatus(value: unknown): StripeRefundStatus {
