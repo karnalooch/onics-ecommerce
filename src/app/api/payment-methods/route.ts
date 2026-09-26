@@ -9,6 +9,10 @@ import {
   type PaymentMethodId,
 } from "@/lib/paymentMethods"
 import {
+  PAYMENT_PROVIDER_IDS,
+  getPaymentProviderDefinition,
+} from "@/lib/paymentProviders"
+import {
   initializeMockData,
   mutateMockData,
   type PaymentAuditEntry,
@@ -25,7 +29,7 @@ const UpdatePaymentSettingsSchema = z.union([
   z
     .object({
       scope: z.literal("METHOD").optional(),
-      id: z.enum(["STRIPE", "BANK_TRANSFER"]),
+      id: z.enum(PAYMENT_PROVIDER_IDS),
       enabled: z.boolean().optional(),
       displayName: z.string().trim().min(1).max(80).optional(),
       displayOrder: z.coerce.number().int().min(0).max(999).optional(),
@@ -46,9 +50,18 @@ export async function GET() {
   if (!authCheck.authorized) return authCheck.response
 
   const snapshot = initializeMockData()
+  const methods = describePaymentMethods(snapshot.paymentMethods)
+  const visibleMethods =
+    authCheck.currentRole === "ADMIN"
+      ? methods
+      : methods.map(({ configurationIssues, ...method }) => {
+          void configurationIssues
+          return method
+        })
+
   return NextResponse.json({
     control: describePaymentControl(snapshot.paymentControl),
-    methods: describePaymentMethods(snapshot.paymentMethods),
+    methods: visibleMethods,
     ...(authCheck.currentRole === "ADMIN"
       ? { audit: snapshot.paymentAudit.slice(0, 20) }
       : {}),
@@ -120,10 +133,8 @@ export async function PUT(req: Request) {
     if (!status.configured) {
       return NextResponse.json(
         {
-          error:
-            method === "STRIPE"
-              ? "Nie można włączyć Stripe: konfiguracja serwerowa płatności lub webhooka jest niekompletna."
-              : "Nie można włączyć przelewu bankowego: odbiorca lub numer rachunku nie są poprawnie skonfigurowane.",
+          error: getPaymentProviderDefinition(method).misconfiguredMessage,
+          configurationIssues: status.configurationIssues,
         },
         { status: 409 }
       )

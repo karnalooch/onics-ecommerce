@@ -7,7 +7,7 @@ export type PaymentAuditActor = {
 }
 
 export type PaymentAuditChange = {
-  target: "GLOBAL" | "STRIPE" | "BANK_TRANSFER"
+  target: PaymentAuditEntry["target"]
   operation?: "SETTING_CHANGE" | "EMERGENCY_SHUTDOWN"
   previousEnabled: boolean
   nextEnabled: boolean

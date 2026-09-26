@@ -1,5 +1,3 @@
-import type { PaymentMethodSettings } from "@/store/serverStore"
-
 export const PAYMENT_PROVIDER_IDS = ["STRIPE", "BANK_TRANSFER"] as const
 
 export type PaymentProviderId = (typeof PAYMENT_PROVIDER_IDS)[number]
@@ -32,14 +30,31 @@ export type PaymentRuntimeOptions = {
   bankTransferAccountNumber?: string | null
 }
 
+export const PAYMENT_PROVIDER_CONFIGURATION_ISSUES = [
+  "CREDENTIALS_MISSING",
+  "WEBHOOK_SECRET_MISSING",
+  "PUBLIC_APP_URL_INVALID",
+  "RECIPIENT_MISSING",
+  "ACCOUNT_NUMBER_INVALID",
+] as const
+
+export type PaymentProviderConfigurationIssue =
+  (typeof PAYMENT_PROVIDER_CONFIGURATION_ISSUES)[number]
+
 export type PaymentProviderOperationalStatus = {
   configured: boolean
   webhookConfigured: boolean
+  configurationIssues: PaymentProviderConfigurationIssue[]
 }
 
 export type PaymentProviderDefinition = {
   id: PaymentProviderId
   kind: PaymentProviderKind
+  settingsDefaults: {
+    enabled: boolean
+    displayName: string
+    displayOrder: number
+  }
   capabilities: PaymentProviderCapabilities
   disabledMessage: string
   misconfiguredMessage: string
@@ -63,15 +78,6 @@ export type PaymentProviderLifecycleDescriptor = {
   inferredFromLegacyFields: boolean
 }
 
-type StoredPaymentProviderId = keyof PaymentMethodSettings
-
-const providerIdsMatchStore: Record<StoredPaymentProviderId, true> = {
-  STRIPE: true,
-  BANK_TRANSFER: true,
-}
-
-void providerIdsMatchStore
-
 export function stripeOperationalStatus(
   options: PaymentRuntimeOptions = {}
 ): PaymentProviderOperationalStatus {
@@ -84,6 +90,11 @@ export function stripeOperationalStatus(
 
   const hasSecretKey = Boolean(stripeSecretKey?.trim())
   const hasWebhookSecret = Boolean(stripeWebhookSecret?.trim())
+  const configurationIssues: PaymentProviderConfigurationIssue[] = []
+
+  if (!hasSecretKey) {
+    configurationIssues.push("CREDENTIALS_MISSING")
+  }
 
   let productionAppUrlConfigured = nodeEnv !== "production"
   if (nodeEnv === "production" && appUrl?.trim()) {
@@ -101,12 +112,19 @@ export function stripeOperationalStatus(
     }
   }
 
+  if (nodeEnv === "production") {
+    if (!hasWebhookSecret) {
+      configurationIssues.push("WEBHOOK_SECRET_MISSING")
+    }
+    if (!productionAppUrlConfigured) {
+      configurationIssues.push("PUBLIC_APP_URL_INVALID")
+    }
+  }
+
   return {
-    configured:
-      hasSecretKey &&
-      (nodeEnv !== "production" ||
-        (hasWebhookSecret && productionAppUrlConfigured)),
+    configured: configurationIssues.length === 0,
     webhookConfigured: hasWebhookSecret,
+    configurationIssues,
   }
 }
 
@@ -122,12 +140,19 @@ export function bankTransferOperationalStatus(
   const normalizedAccount = accountNumber
     ?.replace(/^PL/i, "")
     .replace(/\s+/g, "")
+  const configurationIssues: PaymentProviderConfigurationIssue[] = []
+
+  if (!recipient?.trim()) {
+    configurationIssues.push("RECIPIENT_MISSING")
+  }
+  if (!normalizedAccount || !/^\d{26}$/.test(normalizedAccount)) {
+    configurationIssues.push("ACCOUNT_NUMBER_INVALID")
+  }
 
   return {
-    configured:
-      Boolean(recipient?.trim()) &&
-      Boolean(normalizedAccount && /^\d{26}$/.test(normalizedAccount)),
+    configured: configurationIssues.length === 0,
     webhookConfigured: false,
+    configurationIssues,
   }
 }
 
@@ -135,6 +160,11 @@ const paymentProviderRegistry = {
   STRIPE: {
     id: "STRIPE",
     kind: "REDIRECT",
+    settingsDefaults: {
+      enabled: true,
+      displayName: "Stripe",
+      displayOrder: 10,
+    },
     capabilities: {
       checkout: true,
       webhook: true,
@@ -151,6 +181,11 @@ const paymentProviderRegistry = {
   BANK_TRANSFER: {
     id: "BANK_TRANSFER",
     kind: "MANUAL",
+    settingsDefaults: {
+      enabled: false,
+      displayName: "Przelew bankowy",
+      displayOrder: 20,
+    },
     capabilities: {
       checkout: true,
       webhook: false,

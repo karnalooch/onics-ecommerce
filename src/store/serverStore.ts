@@ -1,6 +1,12 @@
 // src/store/serverStore.ts
 // Współdzielony stan serwerowy oparty na trwałym pliku JSON
 import { readDb, readDbOrThrow, withDbWriteLock, writeDb } from "@/lib/jsonDb"
+import {
+  PAYMENT_PROVIDER_IDS,
+  getPaymentProviderDefinition,
+  isPaymentProviderId,
+  type PaymentProviderId,
+} from "@/lib/paymentProviders"
 
 type JsonRecord = Record<string, unknown>
 
@@ -18,10 +24,10 @@ export type PaymentMethodConfig = {
   updatedAt: string | null
 }
 
-export type PaymentMethodSettings = {
-  STRIPE: PaymentMethodConfig
-  BANK_TRANSFER: PaymentMethodConfig
-}
+export type PaymentMethodSettings = Record<
+  PaymentProviderId,
+  PaymentMethodConfig
+>
 
 export type PaymentControlSettings = {
   enabled: boolean
@@ -32,7 +38,7 @@ export type PaymentControlSettings = {
 export type PaymentAuditEntry = {
   id: string
   createdAt: string
-  target: "GLOBAL" | "STRIPE" | "BANK_TRANSFER"
+  target: "GLOBAL" | PaymentProviderId
   operation: "SETTING_CHANGE" | "EMERGENCY_SHUTDOWN"
   actor: {
     id: string | null
@@ -85,11 +91,11 @@ function normalizePaymentAudit(value: unknown): PaymentAuditEntry[] {
     .flatMap((entry) => {
       const actor = isRecord(entry.actor) ? entry.actor : {}
       const target: PaymentAuditEntry["target"] | null =
-        entry.target === "GLOBAL" ||
-        entry.target === "STRIPE" ||
-        entry.target === "BANK_TRANSFER"
-          ? entry.target
-          : null
+        entry.target === "GLOBAL"
+          ? "GLOBAL"
+          : isPaymentProviderId(entry.target)
+            ? entry.target
+            : null
 
       if (
         typeof entry.id !== "string" ||
@@ -208,21 +214,12 @@ function normalizePaymentMethod(
 function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
   const source = isRecord(value) ? value : {}
 
-  return {
-    STRIPE: normalizePaymentMethod(source.STRIPE, {
-      // Preserve existing installations: Stripe stays available until an
-      // administrator explicitly disables it.
-      enabled: true,
-      displayName: "Stripe",
-      displayOrder: 10,
-    }),
-    BANK_TRANSFER: normalizePaymentMethod(source.BANK_TRANSFER, {
-      // New providers default to disabled so upgrades remain fail-closed.
-      enabled: false,
-      displayName: "Przelew bankowy",
-      displayOrder: 20,
-    }),
-  }
+  return Object.fromEntries(
+    PAYMENT_PROVIDER_IDS.map((id) => {
+      const defaults = getPaymentProviderDefinition(id).settingsDefaults
+      return [id, normalizePaymentMethod(source[id], defaults)]
+    })
+  ) as PaymentMethodSettings
 }
 
 function normalizeDb(input: unknown): ServerDb {

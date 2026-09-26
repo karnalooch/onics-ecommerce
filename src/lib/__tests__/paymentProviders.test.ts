@@ -150,6 +150,7 @@ describe("payment provider registry", () => {
     ).toEqual({
       configured: true,
       webhookConfigured: false,
+      configurationIssues: [],
     })
 
     expect(
@@ -160,6 +161,41 @@ describe("payment provider registry", () => {
     ).toEqual({
       configured: true,
       webhookConfigured: false,
+      configurationIssues: [],
     })
   })
+  it("returns safe configuration issue codes instead of secret values", () => {
+    const stripe = getPaymentProviderDefinition("STRIPE").operationalStatus({
+      nodeEnv: "production",
+      stripeSecretKey: "",
+      stripeWebhookSecret: "",
+      appUrl: "http://shop.example.com",
+    })
+    expect(stripe).toEqual({
+      configured: false,
+      webhookConfigured: false,
+      configurationIssues: [
+        "CREDENTIALS_MISSING",
+        "WEBHOOK_SECRET_MISSING",
+        "PUBLIC_APP_URL_INVALID",
+      ],
+    })
+
+    const bankTransfer = getPaymentProviderDefinition(
+      "BANK_TRANSFER"
+    ).operationalStatus({
+      bankTransferRecipient: "",
+      bankTransferAccountNumber: "123",
+    })
+    expect(bankTransfer).toEqual({
+      configured: false,
+      webhookConfigured: false,
+      configurationIssues: ["RECIPIENT_MISSING", "ACCOUNT_NUMBER_INVALID"],
+    })
+
+    expect(JSON.stringify({ stripe, bankTransfer })).not.toContain(
+      "http://shop.example.com"
+    )
+  })
+
 })

@@ -14,6 +14,7 @@ import { toast } from "sonner"
 
 type PaymentControl = {
   enabled: boolean
+  state: "ready" | "disabled" | "maintenance"
   maintenanceMessage: string | null
   updatedAt: string | null
 }
@@ -21,7 +22,7 @@ type PaymentControl = {
 type PaymentAuditEntry = {
   id: string
   createdAt: string
-  target: "GLOBAL" | "STRIPE" | "BANK_TRANSFER"
+  target: string
   operation: "SETTING_CHANGE" | "EMERGENCY_SHUTDOWN"
   actor: {
     id: string | null
@@ -39,7 +40,7 @@ type PaymentAuditEntry = {
 }
 
 type PaymentMethod = {
-  id: "STRIPE" | "BANK_TRANSFER"
+  id: string
   name: string
   enabled: boolean
   configured: boolean
@@ -47,8 +48,34 @@ type PaymentMethod = {
   displayOrder: number
   maintenanceMessage: string | null
   kind: "REDIRECT" | "MANUAL"
+  state: "ready" | "misconfigured" | "disabled" | "maintenance"
+  configurationIssues: string[]
+  capabilities: {
+    checkout: boolean
+    webhook: boolean
+    cancel: boolean
+    refund: boolean
+    reconcile: boolean
+    rma: boolean
+    manualSettlement: boolean
+  }
   available: boolean
   updatedAt: string | null
+}
+
+const CONFIGURATION_ISSUE_LABELS: Record<string, string> = {
+  CREDENTIALS_MISSING: "brak danych uwierzytelniających",
+  WEBHOOK_SECRET_MISSING: "brak konfiguracji webhooka",
+  PUBLIC_APP_URL_INVALID: "nieprawidłowy publiczny URL aplikacji",
+  RECIPIENT_MISSING: "brak odbiorcy płatności",
+  ACCOUNT_NUMBER_INVALID: "nieprawidłowy numer rachunku",
+}
+
+const PROVIDER_STATE_LABELS: Record<PaymentMethod["state"], string> = {
+  ready: "GOTOWY",
+  misconfigured: "BŁĘDNA KONFIGURACJA",
+  disabled: "WYŁĄCZONY",
+  maintenance: "MAINTENANCE",
 }
 
 export default function AdminPaymentsPage() {
@@ -211,19 +238,19 @@ export default function AdminPaymentsPage() {
     }
   }
 
-  const reconcileStripe = async () => {
+  const reconcileProvider = async (method: PaymentMethod) => {
     setReconciling(true)
     try {
       const response = await fetch("/api/payment-methods/reconcile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ provider: method.id }),
       })
       const data = await response.json().catch(() => null)
 
       if (!response.ok && response.status !== 207) {
         throw new Error(
-          data?.error || "Nie udało się zsynchronizować Stripe."
+          data?.error || `Nie udało się zsynchronizować ${method.name}.`
         )
       }
 
@@ -235,18 +262,18 @@ export default function AdminPaymentsPage() {
 
       if (failed > 0 || review > 0) {
         toast.warning(
-          `Stripe: zaktualizowano ${updated}, bez zmian ${unchanged}, review ${review}, błędy ${failed}.`
+          `${method.name}: zaktualizowano ${updated}, bez zmian ${unchanged}, review ${review}, błędy ${failed}.`
         )
       } else {
         toast.success(
-          `Stripe zsynchronizowany: zaktualizowano ${updated}, bez zmian ${unchanged}.`
+          `${method.name} zsynchronizowany: zaktualizowano ${updated}, bez zmian ${unchanged}.`
         )
       }
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Nie udało się zsynchronizować Stripe."
+          : `Nie udało się zsynchronizować ${method.name}.`
       )
     } finally {
       setReconciling(false)
@@ -540,12 +567,16 @@ export default function AdminPaymentsPage() {
                           </h2>
                           <span
                             className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest ${
-                              method.enabled
+                              method.state === "ready"
                                 ? "bg-green-100 text-green-700"
-                                : "bg-slate-100 text-slate-500"
+                                : method.state === "misconfigured"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : method.state === "maintenance"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-slate-100 text-slate-500"
                             }`}
                           >
-                            {method.enabled ? "AKTYWNA" : "WYŁĄCZONA"}
+                            {PROVIDER_STATE_LABELS[method.state]}
                           </span>
                           <span className="px-3 py-1 text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500">
                             {method.kind === "REDIRECT" ? "BRAMKA" : "MANUAL"}
@@ -564,7 +595,7 @@ export default function AdminPaymentsPage() {
                             </span>
                           </div>
 
-                          {method.id === "STRIPE" ? (
+                          {method.capabilities.webhook && (
                             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
                               <Webhook
                                 className={`w-4 h-4 ${
@@ -580,12 +611,21 @@ export default function AdminPaymentsPage() {
                                   : "NIESKONFIGUROWANY"}
                               </span>
                             </div>
-                          ) : (
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              Wymaga odbiorcy i 26-cyfrowego rachunku
-                            </div>
                           )}
                         </div>
+
+                        {method.configurationIssues.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {method.configurationIssues.map((issue) => (
+                              <span
+                                key={issue}
+                                className="px-2.5 py-1 text-[8px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-100"
+                              >
+                                {CONFIGURATION_ISSUE_LABELS[issue] ?? issue}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                         {method.updatedAt && (
                           <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-4">
@@ -689,9 +729,9 @@ export default function AdminPaymentsPage() {
                             : "BRAK KONFIGURACJI"}
                     </button>
 
-                    {method.id === "STRIPE" && (
+                    {method.capabilities.reconcile && (
                       <button
-                        onClick={reconcileStripe}
+                        onClick={() => reconcileProvider(method)}
                         disabled={
                           reconciling ||
                           saving !== null ||
@@ -707,7 +747,7 @@ export default function AdminPaymentsPage() {
                         />
                         {reconciling
                           ? "SYNCHRONIZACJA..."
-                          : "SYNCHRONIZUJ STRIPE"}
+                          : `SYNCHRONIZUJ ${method.name}`}
                       </button>
                     )}
                   </div>
@@ -749,6 +789,11 @@ export default function AdminPaymentsPage() {
               const presentationChanged =
                 entry.previousDisplayName !== entry.nextDisplayName ||
                 entry.previousDisplayOrder !== entry.nextDisplayOrder
+              const targetName =
+                entry.target === "GLOBAL"
+                  ? "Wszystkie płatności"
+                  : methods.find((method) => method.id === entry.target)?.name ??
+                    entry.target
 
               return (
                 <div
@@ -764,11 +809,7 @@ export default function AdminPaymentsPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[11px] font-black uppercase tracking-widest text-slate-950">
-                          {entry.target === "GLOBAL"
-                            ? "Wszystkie płatności"
-                            : entry.target === "STRIPE"
-                              ? "Stripe"
-                              : "Przelew bankowy"}
+                          {targetName}
                         </span>
                         {entry.operation === "EMERGENCY_SHUTDOWN" && (
                           <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-red-700 text-white">
