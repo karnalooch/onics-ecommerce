@@ -17,6 +17,12 @@ export type PaymentMethodSettings = {
   }
 }
 
+export type PaymentControlSettings = {
+  enabled: boolean
+  maintenanceMessage: string | null
+  updatedAt: string | null
+}
+
 type ServerDb = {
   users: JsonRecord[]
   orders: JsonRecord[]
@@ -26,6 +32,7 @@ type ServerDb = {
   products: JsonRecord[]
   knowledgeMeta: KnowledgeMeta
   paymentMethods: PaymentMethodSettings
+  paymentControl: PaymentControlSettings
   [key: string]: unknown
 }
 
@@ -41,6 +48,22 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : []
+}
+
+function normalizePaymentControl(value: unknown): PaymentControlSettings {
+  const source = isRecord(value) ? value : {}
+  const maintenanceMessage =
+    typeof source.maintenanceMessage === "string"
+      ? source.maintenanceMessage.trim().slice(0, 160) || null
+      : null
+
+  return {
+    enabled:
+      typeof source.enabled === "boolean" ? source.enabled : true,
+    maintenanceMessage,
+    updatedAt:
+      typeof source.updatedAt === "string" ? source.updatedAt : null,
+  }
 }
 
 function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
@@ -74,6 +97,7 @@ function normalizeDb(input: unknown): ServerDb {
     manufacturers: recordArray(source.manufacturers),
     products: recordArray(source.products),
     paymentMethods: normalizePaymentMethods(source.paymentMethods),
+    paymentControl: normalizePaymentControl(source.paymentControl),
     knowledgeMeta: {
       sources: stringArray(knowledgeMeta.sources),
       processedSources: stringArray(knowledgeMeta.processedSources),
@@ -98,6 +122,7 @@ export function initializeMockData() {
     manufacturers: db.manufacturers,
     products: db.products,
     paymentMethods: db.paymentMethods,
+    paymentControl: db.paymentControl,
     knowledgeMeta: db.knowledgeMeta,
   }
 }
