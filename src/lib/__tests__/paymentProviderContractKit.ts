@@ -57,6 +57,33 @@ export function definePaymentProviderContract(
           harness.checkoutResult
         )
       ).toBe(harness.checkoutResult)
+      const invalidCheckoutResult: PaymentCheckoutResult =
+        provider.kind === "REDIRECT"
+          ? {
+              orderId: "ORD-CONTRACT-INVALID",
+              paymentMethod: harness.id,
+              nextAction: {
+                type: "MANUAL",
+                title: "Invalid",
+                fields: [{ label: "Invalid", value: "Invalid" }],
+              },
+            }
+          : {
+              orderId: "ORD-CONTRACT-INVALID",
+              paymentMethod: harness.id,
+              nextAction: {
+                type: "REDIRECT",
+                url: "https://invalid.example",
+              },
+            }
+
+      expect(() =>
+        assertPaymentCheckoutResultContract(
+          harness.id,
+          invalidCheckoutResult
+        )
+      ).toThrow("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
+
       expect(Object.keys(provider.capabilities).sort()).toEqual(
         [...PAYMENT_PROVIDER_CAPABILITIES].sort()
       )
