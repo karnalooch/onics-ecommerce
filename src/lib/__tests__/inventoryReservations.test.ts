@@ -154,6 +154,33 @@ describe("inventory reservations", () => {
     expect(products[0].stock).toBe(3)
   })
 
+  it("fails closed on corrupt managed reservation records", () => {
+    const products = [{ id: "p1", stock: 5 }]
+
+    expect(() =>
+      applyStripeInventoryTransition(
+        products,
+        {
+          items: [{ id: "p1", quantity: 2 }],
+          inventoryReservationStatus: "BROKEN",
+        },
+        "FAILED",
+        "FAILED"
+      )
+    ).toThrow("INVENTORY_RESERVATION_INVALID_STATE")
+    expect(products[0].stock).toBe(5)
+
+    expect(() =>
+      applyStripeInventoryTransition(
+        products,
+        { inventoryReservationStatus: "RESERVED" },
+        "EXPIRED",
+        "EXPIRED"
+      )
+    ).toThrow("INVENTORY_RESERVATION_MISSING_ITEMS")
+    expect(products[0].stock).toBe(5)
+  })
+
   it("leaves legacy Stripe orders unmanaged", () => {
     const products = [{ id: "p1", stock: 5 }]
     const order = { items: [{ id: "p1", quantity: 3 }] }
