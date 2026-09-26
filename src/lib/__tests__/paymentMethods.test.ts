@@ -302,7 +302,7 @@ describe("payment method management", () => {
         webhook: true,
         cancel: false,
         refund: true,
-        reconcile: false,
+        reconcile: true,
         rma: true,
         manualSettlement: false,
       },
