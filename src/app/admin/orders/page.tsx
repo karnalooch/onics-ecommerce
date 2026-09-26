@@ -20,7 +20,7 @@ export default function AdminOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [returning, setReturning] = useState(false);
-  const [manualPaymentUpdating, setBankTransferUpdating] = useState(false);
+  const [manualPaymentUpdating, setManualPaymentUpdating] = useState(false);
   const paymentLifecycle = validatingOrder?.paymentLifecycle ?? null;
   const paymentProvider = paymentLifecycle?.provider ?? null;
   const paymentKind = paymentLifecycle?.kind ?? null;
