@@ -1,7 +1,6 @@
 import { z } from "zod"
 
 export const CatalogProductInputSchema = z.object({
-  id: z.string().optional(),
   sku: z.string().trim().min(1),
   name: z.string().trim().min(2),
   price: z.coerce.number().min(0).nullable().optional(),
