@@ -28,6 +28,7 @@ export type PaymentAdminActionOrder = PaymentProviderOrderIdentity & {
 export type PaymentAdminActionTarget =
   | { handler: "STRIPE_CANCEL" }
   | { handler: "STRIPE_RETURN"; action: "REQUEST" | "RECEIVE" }
+  | { handler: "PRZELEWY24_RETURN"; action: "REQUEST" | "RECEIVE" }
   | {
       handler: "BANK_TRANSFER"
       action:
@@ -61,6 +62,16 @@ const providerTargets: Partial<
     CANCEL: { handler: "STRIPE_CANCEL" },
     REQUEST_RETURN: { handler: "STRIPE_RETURN", action: "REQUEST" },
     RECEIVE_RETURN: { handler: "STRIPE_RETURN", action: "RECEIVE" },
+  },
+  PRZELEWY24: {
+    REQUEST_RETURN: {
+      handler: "PRZELEWY24_RETURN",
+      action: "REQUEST",
+    },
+    RECEIVE_RETURN: {
+      handler: "PRZELEWY24_RETURN",
+      action: "RECEIVE",
+    },
   },
   BANK_TRANSFER: {
     CANCEL: { handler: "ORDER_CANCEL" },

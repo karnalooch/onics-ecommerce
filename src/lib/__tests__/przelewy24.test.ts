@@ -1,14 +1,20 @@
 import { createHash } from "node:crypto"
 import { describe, expect, it } from "vitest"
 import {
+  applyPrzelewy24RefundNotification,
   applyVerifiedPrzelewy24Payment,
   calculatePrzelewy24Sign,
   describePrzelewy24Runtime,
+  receivePrzelewy24Return,
+  requestPrzelewy24Return,
   resolvePrzelewy24Config,
+  stagePrzelewy24Refund,
   stagePrzelewy24Verification,
   validatePrzelewy24NotificationForOrder,
   verifyPrzelewy24NotificationSignature,
+  verifyPrzelewy24RefundNotificationSignature,
   type Przelewy24Notification,
+  type Przelewy24RefundNotification,
   type Przelewy24StoredOrder,
 } from "@/lib/przelewy24"
 import type { InventoryProduct } from "@/lib/inventoryReservations"
@@ -206,6 +212,95 @@ describe("Przelewy24 production protocol", () => {
         notification({ orderId: 987654322 })
       )
     ).toThrow("PRZELEWY24_PENDING_NOTIFICATION_MISMATCH")
+  })
+
+  it("verifies the documented Przelewy24 refund notification checksum", () => {
+    const refundBase = {
+      orderId: 987654321,
+      sessionId: "ORD-P24-1",
+      merchantId: 123456,
+      requestId: "onics-refund-request",
+      refundsUuid: "refund-uuid",
+      amount: 12345,
+      currency: "PLN",
+      timestamp: 1790430000,
+      status: 0 as const,
+    }
+    const sign = calculatePrzelewy24Sign({
+      orderId: refundBase.orderId,
+      sessionId: refundBase.sessionId,
+      refundsUuid: refundBase.refundsUuid,
+      merchantId: refundBase.merchantId,
+      amount: refundBase.amount,
+      currency: refundBase.currency,
+      status: refundBase.status,
+      crc: "crc-secret",
+    })
+
+    const refund: Przelewy24RefundNotification = {
+      ...refundBase,
+      sign,
+    }
+
+    expect(
+      verifyPrzelewy24RefundNotificationSignature(refund, config())
+    ).toBe(true)
+    expect(
+      verifyPrzelewy24RefundNotificationSignature(
+        { ...refund, amount: 1 },
+        config()
+      )
+    ).toBe(false)
+  })
+
+  it("keeps rejected refunds retryable with a new idempotency identity", () => {
+    const products: InventoryProduct[] = [{ id: "p1", stock: 8 }]
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-REFUND",
+      status: "SHIPPED",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PAID",
+      p24SessionId: "ORD-P24-REFUND",
+      p24OrderId: 987654321,
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "FINALIZED",
+      items: [{ id: "p1", quantity: 2 }],
+    }
+
+    expect(requestPrzelewy24Return(order)).toBe("requested")
+    expect(receivePrzelewy24Return(order)).toBe("received")
+    const first = stagePrzelewy24Refund(order)
+    expect(first.outcome).toBe("staged")
+
+    const rejected: Przelewy24RefundNotification = {
+      orderId: 987654321,
+      sessionId: "ORD-P24-REFUND",
+      merchantId: 123456,
+      requestId: first.requestId,
+      refundsUuid: first.refundsUuid,
+      amount: 12345,
+      currency: "PLN",
+      timestamp: 1790430000,
+      status: 1,
+      sign: "b".repeat(96),
+    }
+
+    expect(
+      applyPrzelewy24RefundNotification(products, order, rejected)
+    ).toBe("failed")
+    expect(order).toMatchObject({
+      paymentStatus: "PAID",
+      refundStatus: "failed",
+      returnStatus: "RECEIVED",
+    })
+    expect(products[0].stock).toBe(8)
+
+    const retry = stagePrzelewy24Refund(order)
+    expect(retry.outcome).toBe("staged")
+    expect(retry.requestId).not.toBe(first.requestId)
+    expect(retry.refundsUuid).not.toBe(first.refundsUuid)
+    expect(order.p24RefundAttempt).toBe(2)
   })
 
   it("finalizes a reserved payment exactly once on notification replay", () => {

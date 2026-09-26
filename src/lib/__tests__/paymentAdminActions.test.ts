@@ -32,6 +32,24 @@ describe("payment admin action dispatcher", () => {
     })
   })
 
+  it("routes Przelewy24 RMA behind the generic action contract", () => {
+    expect(
+      resolvePaymentAdminActionTarget("PRZELEWY24", "REQUEST_RETURN")
+    ).toEqual({
+      handler: "PRZELEWY24_RETURN",
+      action: "REQUEST",
+    })
+    expect(
+      resolvePaymentAdminActionTarget("PRZELEWY24", "RECEIVE_RETURN")
+    ).toEqual({
+      handler: "PRZELEWY24_RETURN",
+      action: "RECEIVE",
+    })
+    expect(() =>
+      resolvePaymentAdminActionTarget("PRZELEWY24", "CANCEL")
+    ).toThrow("PAYMENT_ADMIN_ACTION_UNSUPPORTED")
+  })
+
   it("routes manual bank-transfer operations behind the same action contract", () => {
     expect(
       resolvePaymentAdminActionTarget("BANK_TRANSFER", "CONFIRM_PAYMENT")
@@ -133,6 +151,34 @@ describe("payment admin action dispatcher", () => {
     expect(
       listAvailablePaymentAdminActions({
         paymentProvider: "STRIPE",
+        status: "SHIPPED",
+        paymentStatus: "PAID",
+        returnStatus: "REFUND_PENDING",
+        refundStatus: "pending",
+      })
+    ).toEqual(["RECEIVE_RETURN"])
+  })
+
+  it("exposes P24 RMA and retry actions without an unsafe unpaid cancel", () => {
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "PRZELEWY24",
+        status: "PENDING_VERIFICATION",
+        paymentStatus: "PENDING",
+      })
+    ).toEqual([])
+
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "PRZELEWY24",
+        status: "SHIPPED",
+        paymentStatus: "PAID",
+      })
+    ).toEqual(["REQUEST_RETURN"])
+
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "PRZELEWY24",
         status: "SHIPPED",
         paymentStatus: "PAID",
         returnStatus: "REFUND_PENDING",

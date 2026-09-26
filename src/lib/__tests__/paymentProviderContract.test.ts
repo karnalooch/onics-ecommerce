@@ -18,6 +18,14 @@ import {
   type PaymentProviderId,
 } from "@/lib/paymentProviders"
 import {
+  applyPrzelewy24RefundNotification,
+  receivePrzelewy24Return,
+  requestPrzelewy24Return,
+  stagePrzelewy24Refund,
+  type Przelewy24RefundNotification,
+  type Przelewy24StoredOrder,
+} from "@/lib/przelewy24"
+import {
   definePaymentProviderContract,
   type PaymentProviderContractHarness,
 } from "@/lib/__tests__/paymentProviderContractKit"
@@ -278,6 +286,72 @@ const harnesses = {
         type: "REDIRECT",
         url: "https://sandbox.przelewy24.pl/trnRequest/contract-token",
       },
+    },
+    assertIdempotency: () => {
+      const products: InventoryProduct[] = [{ id: "p1", stock: 3 }]
+      const order: Przelewy24StoredOrder = {
+        id: "ORD-CONTRACT-P24-RMA",
+        status: "SHIPPED",
+        paymentProvider: "PRZELEWY24",
+        totalPriceFinal: 100,
+        paymentStatus: "PAID",
+        p24SessionId: "ORD-CONTRACT-P24-RMA",
+        p24OrderId: 987654321,
+        inventoryReservationSource: "ORDER",
+        inventoryReservationStatus: "FINALIZED",
+        items: [{ id: "p1", quantity: 2 }],
+      }
+
+      expect(
+        requestPrzelewy24Return(order, "2026-09-26T16:00:00.000Z")
+      ).toBe("requested")
+      expect(
+        requestPrzelewy24Return(order, "2026-09-26T16:05:00.000Z")
+      ).toBe("requested")
+      expect(
+        receivePrzelewy24Return(order, "2026-09-26T17:00:00.000Z")
+      ).toBe("received")
+      expect(
+        receivePrzelewy24Return(order, "2026-09-26T17:05:00.000Z")
+      ).toBe("received")
+
+      const staged = stagePrzelewy24Refund(
+        order,
+        "2026-09-26T17:10:00.000Z"
+      )
+      expect(staged.outcome).toBe("staged")
+      expect(stagePrzelewy24Refund(order).outcome).toBe("unchanged")
+
+      const refund: Przelewy24RefundNotification = {
+        orderId: 987654321,
+        sessionId: "ORD-CONTRACT-P24-RMA",
+        merchantId: 123456,
+        requestId: staged.requestId,
+        refundsUuid: staged.refundsUuid,
+        amount: 10000,
+        currency: "PLN",
+        timestamp: 1790430000,
+        status: 0,
+        sign: "a".repeat(96),
+      }
+
+      expect(
+        applyPrzelewy24RefundNotification(
+          products,
+          order,
+          refund,
+          "2026-09-26T18:00:00.000Z"
+        )
+      ).toBe("completed")
+      expect(
+        applyPrzelewy24RefundNotification(
+          products,
+          order,
+          refund,
+          "2026-09-26T19:00:00.000Z"
+        )
+      ).toBe("completed")
+      expect(products[0].stock).toBe(5)
     },
   },
 } satisfies Record<PaymentProviderId, PaymentProviderContractHarness>
