@@ -41,3 +41,13 @@ export function requireQuoteBasePrice(price: unknown) {
 
   return basePrice
 }
+
+export function requirePositiveQuoteTotal(total: unknown) {
+  const finalTotal = Number(total)
+
+  if (!Number.isFinite(finalTotal) || finalTotal <= 0) {
+    throw new Error("QUOTE_TOTAL_NOT_POSITIVE")
+  }
+
+  return finalTotal
+}
