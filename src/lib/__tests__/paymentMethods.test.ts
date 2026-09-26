@@ -233,6 +233,10 @@ describe("payment method management", () => {
       appUrl: "https://shop.example.com",
       bankTransferRecipient: "ONICS Sp. z o.o.",
       bankTransferAccountNumber: "12345678901234567890123456",
+      p24MerchantId: "123456",
+      p24PosId: "123456",
+      p24ApiKey: "p24_secret",
+      p24Crc: "p24_crc",
     })
 
     expect(methods.map((method) => method.id)).toEqual([
