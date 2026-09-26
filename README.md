@@ -109,6 +109,8 @@ Production responses apply `nosniff`, deny framing, use a strict-origin referrer
 
 Image optimization does not allow remote image sources, does not allow local IP access, does not follow redirects, limits upstream image bodies to 5 MB, and keeps the Next.js 16 quality allowlist explicit at `[75]`. Add future remote image hosts only as narrow HTTPS `remotePatterns` with explicit port/path/query constraints.
 
+Public payment webhook ingress is bounded to 256 KiB per request. The application rejects oversized declared `Content-Length` values before consuming the body and also enforces the same limit while streaming the actual body, so chunked requests or understated lengths cannot bypass the cap. Stripe signature verification still receives the exact raw body bytes decoded as UTF-8 text, while Przelewy24 JSON is parsed only after the bounded read completes.
+
 ## Authentication
 
 Required session secrets include:

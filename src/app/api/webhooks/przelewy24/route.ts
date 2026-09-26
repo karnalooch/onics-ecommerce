@@ -15,6 +15,10 @@ import {
   type Przelewy24StoredOrder,
 } from "@/lib/przelewy24"
 import type { InventoryProduct } from "@/lib/inventoryReservations"
+import {
+  PaymentWebhookBodyTooLargeError,
+  readPaymentWebhookJson,
+} from "@/lib/paymentWebhookIngress"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const NotificationSchema = z.object({
@@ -40,9 +44,23 @@ export async function POST(req: Request) {
     )
   }
 
-  const parsed = NotificationSchema.safeParse(
-    await req.json().catch(() => null)
-  )
+  let payload: unknown
+  try {
+    payload = await readPaymentWebhookJson(req)
+  } catch (error) {
+    if (error instanceof PaymentWebhookBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Powiadomienie Przelewy24 jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    return NextResponse.json(
+      { error: "Nieprawidłowe powiadomienie Przelewy24." },
+      { status: 400 }
+    )
+  }
+
+  const parsed = NotificationSchema.safeParse(payload)
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Nieprawidłowe powiadomienie Przelewy24." },

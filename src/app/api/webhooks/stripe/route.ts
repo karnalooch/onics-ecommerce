@@ -19,6 +19,10 @@ import {
   assertPaymentProviderCapability,
   supportsPaymentProviderCapability,
 } from "@/lib/paymentProviders"
+import {
+  PaymentWebhookBodyTooLargeError,
+  readPaymentWebhookBody,
+} from "@/lib/paymentWebhookIngress"
 
 type StoredOrder = StripeCancelableOrder & InventoryReservationOrder & {
   id: string
@@ -197,7 +201,21 @@ export async function POST(req: Request) {
   }
 
   const stripe = new Stripe(stripeSecretKey)
-  const rawBody = await req.text()
+  let rawBody: string
+  try {
+    rawBody = await readPaymentWebhookBody(req)
+  } catch (error) {
+    if (error instanceof PaymentWebhookBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Webhook Stripe jest zbyt duży." },
+        { status: 413 }
+      )
+    }
+    return NextResponse.json(
+      { error: "Nieprawidłowe body webhooka Stripe." },
+      { status: 400 }
+    )
+  }
 
   let event: Stripe.Event
   try {
