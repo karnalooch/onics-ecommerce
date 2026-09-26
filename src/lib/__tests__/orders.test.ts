@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
   canReplaceOrderItems,
+  canReplacePaymentOrderItems,
   resolveEstimatedDeliveryDays,
+  validateBankTransferOrderStatusTransition,
   validateReservedOrderStatusTransition,
   validateStripeOrderStatusTransition,
 } from "@/lib/orders"
@@ -239,6 +241,86 @@ describe("B2B reserved order status transitions", () => {
         "STRIPE",
         "PENDING_VERIFICATION",
         "SHIPPED"
+      )
+    ).toBe("ok")
+  })
+})
+
+describe("bank-transfer order safety", () => {
+  const items = [
+    {
+      id: "p1",
+      sku: "SKU-1",
+      name: "Produkt",
+      quantity: 1,
+      price: 100,
+    },
+  ]
+
+  it("locks the quoted transfer amount once checkout exists", () => {
+    expect(
+      canReplacePaymentOrderItems(
+        "BANK_TRANSFER",
+        null,
+        [{ ...items[0], price: 120 }],
+        items
+      )
+    ).toBe(false)
+    expect(
+      canReplacePaymentOrderItems(
+        "BANK_TRANSFER",
+        null,
+        items.map((item) => ({ ...item })),
+        items
+      )
+    ).toBe(true)
+  })
+
+  it("keeps ordinary B2B order edits available", () => {
+    expect(
+      canReplacePaymentOrderItems(
+        undefined,
+        null,
+        [{ ...items[0], price: 120 }],
+        items
+      )
+    ).toBe(true)
+  })
+
+  it("requires confirmed funds before bank-transfer fulfillment", () => {
+    expect(
+      validateBankTransferOrderStatusTransition(
+        "BANK_TRANSFER",
+        "PENDING",
+        "PENDING_VERIFICATION",
+        "CONFIRMED"
+      )
+    ).toBe("payment-required")
+    expect(
+      validateBankTransferOrderStatusTransition(
+        "BANK_TRANSFER",
+        "PAID",
+        "PENDING_VERIFICATION",
+        "CONFIRMED"
+      )
+    ).toBe("ok")
+  })
+
+  it("requires explicit external refund confirmation before cancelling a paid transfer", () => {
+    expect(
+      validateBankTransferOrderStatusTransition(
+        "BANK_TRANSFER",
+        "PAID",
+        "CONFIRMED",
+        "CANCELLED"
+      )
+    ).toBe("manual-refund-required")
+    expect(
+      validateBankTransferOrderStatusTransition(
+        "BANK_TRANSFER",
+        "PENDING",
+        "PENDING_VERIFICATION",
+        "CANCELLED"
       )
     ).toBe("ok")
   })
