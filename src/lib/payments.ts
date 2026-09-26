@@ -17,6 +17,102 @@ export type PaymentVerificationResult =
   | { ok: true }
   | { ok: false; reason: string }
 
+type StripeRuntimeOptions = {
+  nodeEnv?: string
+  stripeSecretKey?: string | null
+  stripeWebhookSecret?: string | null
+  appUrl?: string | null
+  requestUrl?: string | null
+}
+
+function cleanSecret(value: string | null | undefined) {
+  const normalized = value?.trim()
+  return normalized || null
+}
+
+function resolveCheckoutBaseUrl(options: StripeRuntimeOptions) {
+  const configured = cleanSecret(options.appUrl)
+
+  if (!configured) {
+    if (options.nodeEnv === "production") {
+      throw new Error(
+        "NEXT_PUBLIC_APP_URL jest wymagane dla płatności Stripe w produkcji."
+      )
+    }
+    if (!options.requestUrl) {
+      throw new Error("Nie można ustalić adresu aplikacji dla Stripe.")
+    }
+    return new URL(options.requestUrl).origin
+  }
+
+  const parsed = new URL(configured)
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("NEXT_PUBLIC_APP_URL musi używać protokołu HTTP lub HTTPS.")
+  }
+  if (options.nodeEnv === "production" && parsed.protocol !== "https:") {
+    throw new Error("NEXT_PUBLIC_APP_URL musi używać HTTPS w produkcji.")
+  }
+  if (
+    parsed.username ||
+    parsed.password ||
+    parsed.pathname !== "/" ||
+    parsed.search ||
+    parsed.hash
+  ) {
+    throw new Error("NEXT_PUBLIC_APP_URL musi wskazywać wyłącznie origin aplikacji.")
+  }
+
+  return parsed.origin
+}
+
+export function resolveStripeCheckoutConfig(
+  options: StripeRuntimeOptions = {}
+) {
+  const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV
+  const stripeSecretKey = cleanSecret(
+    options.stripeSecretKey ?? process.env.STRIPE_SECRET_KEY
+  )
+  const stripeWebhookSecret = cleanSecret(
+    options.stripeWebhookSecret ?? process.env.STRIPE_WEBHOOK_SECRET
+  )
+
+  if (!stripeSecretKey) {
+    throw new Error("STRIPE_SECRET_KEY jest wymagane dla płatności online.")
+  }
+  if (nodeEnv === "production" && !stripeWebhookSecret) {
+    throw new Error(
+      "STRIPE_WEBHOOK_SECRET jest wymagane dla płatności Stripe w produkcji."
+    )
+  }
+
+  return {
+    stripeSecretKey,
+    appUrl: resolveCheckoutBaseUrl({
+      ...options,
+      nodeEnv,
+    }),
+  }
+}
+
+export function validateOptionalStripeReadiness(
+  options: StripeRuntimeOptions = {}
+) {
+  const stripeSecretKey = cleanSecret(
+    options.stripeSecretKey ?? process.env.STRIPE_SECRET_KEY
+  )
+  const stripeWebhookSecret = cleanSecret(
+    options.stripeWebhookSecret ?? process.env.STRIPE_WEBHOOK_SECRET
+  )
+
+  if (!stripeSecretKey && !stripeWebhookSecret) return
+
+  resolveStripeCheckoutConfig({
+    ...options,
+    stripeSecretKey,
+    stripeWebhookSecret,
+  })
+}
+
 export function moneyToMinorUnits(value: number): number {
   if (!Number.isFinite(value) || value < 0) {
     throw new Error("Nieprawidłowa wartość płatności.")
