@@ -126,7 +126,9 @@ export async function GET() {
       : false
   )
 
-  return NextResponse.json(ownOrders.map(withPaymentLifecycle))
+  return NextResponse.json(
+    ownOrders.map((order) => withPaymentLifecycle(order))
+  )
 }
 
 export async function POST(req: Request) {
