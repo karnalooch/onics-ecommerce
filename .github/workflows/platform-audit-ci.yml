@@ -111,6 +111,9 @@ jobs:
             exit 1
           fi
 
+      - name: Payment production acceptance
+        run: npm run test:payments
+
       - name: Run tests
         run: npm test -- --run
 
