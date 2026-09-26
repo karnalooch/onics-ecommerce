@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  bankTransferOperationalStatus,
   describePaymentControl,
   describePaymentMethods,
   isPaymentControlEnabled,
@@ -12,10 +13,23 @@ import type {
   PaymentMethodSettings,
 } from "@/store/serverStore"
 
-function settings(enabled: boolean): PaymentMethodSettings {
+function settings(
+  stripeEnabled: boolean,
+  bankEnabled = false
+): PaymentMethodSettings {
   return {
     STRIPE: {
-      enabled,
+      enabled: stripeEnabled,
+      displayName: "Stripe",
+      displayOrder: 20,
+      maintenanceMessage: null,
+      updatedAt: null,
+    },
+    BANK_TRANSFER: {
+      enabled: bankEnabled,
+      displayName: "Przelew tradycyjny",
+      displayOrder: 10,
+      maintenanceMessage: "Przelewy chwilowo wyłączone",
       updatedAt: null,
     },
   }
@@ -30,9 +44,12 @@ function control(enabled: boolean): PaymentControlSettings {
 }
 
 describe("payment method management", () => {
-  it("uses the persisted provider switch as a checkout gate", () => {
+  it("uses persisted provider switches as checkout gates", () => {
     expect(isPaymentMethodEnabled(settings(true), "STRIPE")).toBe(true)
     expect(isPaymentMethodEnabled(settings(false), "STRIPE")).toBe(false)
+    expect(isPaymentMethodEnabled(settings(true, true), "BANK_TRANSFER")).toBe(
+      true
+    )
   })
 
   it("requires both global and provider switches for payment availability", () => {
@@ -111,26 +128,60 @@ describe("payment method management", () => {
     ).toBe(true)
   })
 
-  it("exposes only operational flags and never Stripe secrets", () => {
-    const methods = describePaymentMethods(settings(false), {
+  it("requires recipient and a valid Polish account number for bank transfer", () => {
+    expect(
+      bankTransferOperationalStatus({
+        bankTransferRecipient: "ONICS Sp. z o.o.",
+        bankTransferAccountNumber: "12 3456 7890 1234 5678 9012 3456",
+      }).configured
+    ).toBe(true)
+
+    expect(
+      bankTransferOperationalStatus({
+        bankTransferRecipient: "ONICS Sp. z o.o.",
+        bankTransferAccountNumber: "123",
+      }).configured
+    ).toBe(false)
+  })
+
+  it("sorts providers and exposes safe operational metadata only", () => {
+    const methods = describePaymentMethods(settings(false, true), {
       nodeEnv: "production",
       stripeSecretKey: "sk_live_secret",
       stripeWebhookSecret: "whsec_secret",
       appUrl: "https://shop.example.com",
+      bankTransferRecipient: "ONICS Sp. z o.o.",
+      bankTransferAccountNumber: "12345678901234567890123456",
     })
 
-    expect(methods).toEqual([
-      {
-        id: "STRIPE",
-        name: "Stripe",
-        enabled: false,
-        configured: true,
-        webhookConfigured: true,
-        updatedAt: null,
-      },
+    expect(methods.map((method) => method.id)).toEqual([
+      "BANK_TRANSFER",
+      "STRIPE",
     ])
+    expect(methods[0]).toMatchObject({
+      id: "BANK_TRANSFER",
+      name: "Przelew tradycyjny",
+      enabled: true,
+      configured: true,
+      displayOrder: 10,
+      kind: "MANUAL",
+      available: true,
+    })
+    expect(methods[1]).toMatchObject({
+      id: "STRIPE",
+      name: "Stripe",
+      enabled: false,
+      configured: true,
+      webhookConfigured: true,
+      displayOrder: 20,
+      kind: "REDIRECT",
+      available: false,
+    })
 
     expect(JSON.stringify(methods)).not.toContain("sk_live_secret")
     expect(JSON.stringify(methods)).not.toContain("whsec_secret")
+    expect(JSON.stringify(methods)).not.toContain(
+      "12345678901234567890123456"
+    )
   })
 })
