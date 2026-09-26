@@ -12,6 +12,11 @@ import { User } from "@/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 
+async function readApiError(response: Response, fallback: string) {
+  const payload = await response.json().catch(() => ({}))
+  return typeof payload?.error === "string" ? payload.error : fallback
+}
+
 export default function AdminClientsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,10 +31,24 @@ export default function AdminClientsPage() {
   const loadUsers = useCallback(async () => {
     try {
       const res = await fetch("/api/users", { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error(
+          await readApiError(res, "Nie udało się pobrać rejestru partnerów.")
+        )
+      }
+
       const data = await res.json();
-      setUsers(Array.isArray(data) ? data : []);
+      if (!Array.isArray(data)) {
+        throw new Error("Serwer zwrócił nieprawidłowy rejestr partnerów.")
+      }
+
+      setUsers(data);
     } catch (e) {
-      toast.error("Błąd synchronizacji rejestru partnerów.");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : "Błąd synchronizacji rejestru partnerów."
+      );
     } finally {
       setLoading(false);
     }
@@ -46,12 +65,22 @@ export default function AdminClientsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, isBlocked: !currentlyBlocked })
       });
-      if (res.ok) {
-        toast.success(currentlyBlocked ? "Konto odblokowane" : "Konto zablokowane");
-        loadUsers();
+      if (!res.ok) {
+        toast.error(
+          await readApiError(
+            res,
+            currentlyBlocked
+              ? "Nie udało się odblokować konta."
+              : "Nie udało się zablokować konta."
+          )
+        )
+        return
       }
+
+      toast.success(currentlyBlocked ? "Konto odblokowane" : "Konto zablokowane");
+      loadUsers();
     } catch (e) {
-      toast.error("Błąd połączenia.");
+      toast.error(e instanceof Error ? e.message : "Błąd połączenia.");
     }
   };
 
@@ -59,12 +88,17 @@ export default function AdminClientsPage() {
     if (!confirm("⚠️ Czy na pewno chcesz trwale usunąć konto klienta?")) return;
     try {
       const res = await fetch(`/api/users?id=${id}`, { method: "DELETE" });
-      if (res.ok) {
-        toast.success("Konto zostało usunięte");
-        loadUsers();
+      if (!res.ok) {
+        toast.error(
+          await readApiError(res, "Nie udało się usunąć konta.")
+        )
+        return
       }
+
+      toast.success("Konto zostało usunięte");
+      loadUsers();
     } catch (e) {
-      toast.error("Błąd zapisu.");
+      toast.error(e instanceof Error ? e.message : "Błąd zapisu.");
     }
   };
 
@@ -88,13 +122,18 @@ export default function AdminClientsPage() {
           tierName: tempTier 
         })
       });
-      if (res.ok) {
-        toast.success(`Zapisano warunki handlowe dla ${selectedUser.username}`);
-        setIsDialogOpen(false);
-        loadUsers();
+      if (!res.ok) {
+        toast.error(
+          await readApiError(res, "Nie udało się zapisać warunków handlowych.")
+        )
+        return
       }
+
+      toast.success(`Zapisano warunki handlowe dla ${selectedUser.username}`);
+      setIsDialogOpen(false);
+      loadUsers();
     } catch (e) {
-      toast.error("Błąd połączenia.");
+      toast.error(e instanceof Error ? e.message : "Błąd połączenia.");
     } finally {
       setSaving(false);
     }
