@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { authorizeAPI } from "@/lib/authUtils";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -50,11 +51,8 @@ export default async function EditProductPage({ params }: { params: any }) {
   async function saveProduct(formData: FormData) {
     "use server";
 
-    const actionSession = await auth();
-    if (
-      !actionSession?.user ||
-      (actionSession.user as any).role !== "ADMIN"
-    ) {
+    const authCheck = await authorizeAPI(["ADMIN"]);
+    if (!authCheck.authorized) {
       throw new Error("Brak uprawnień administratora.");
     }
 
