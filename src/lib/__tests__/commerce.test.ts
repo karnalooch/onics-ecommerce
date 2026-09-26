@@ -37,6 +37,34 @@ describe("commerce pricing", () => {
     expect(result.total).toBe(180)
   })
 
+  it("aggregates duplicate product lines before validating stock", () => {
+    expect(() =>
+      resolveCartItems(
+        [
+          { id: "p1", quantity: 3 },
+          { id: "p1", quantity: 3 },
+        ],
+        [product],
+        { role: "BIZ" },
+        { requireStock: true }
+      )
+    ).toThrow(/Brak wymaganej ilości/)
+
+    const result = resolveCartItems(
+      [
+        { id: "p1", quantity: 2 },
+        { id: "p1", quantity: 2 },
+      ],
+      [product],
+      { role: "BIZ" },
+      { requireStock: true }
+    )
+
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].quantity).toBe(4)
+    expect(result.total).toBe(400)
+  })
+
   it("rejects missing stock and unknown products", () => {
     expect(() =>
       resolveCartItems(
