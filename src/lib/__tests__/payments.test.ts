@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   moneyToMinorUnits,
   nextPaymentStatus,
+  resolveStripeCheckoutConfig,
+  validateOptionalStripeReadiness,
   verifyCheckoutPayment,
 } from "@/lib/payments"
 
@@ -55,5 +57,84 @@ describe("Stripe payment verification", () => {
     expect(nextPaymentStatus("PAID", "FAILED")).toBe("PAID")
     expect(nextPaymentStatus("PAID", "EXPIRED")).toBe("PAID")
     expect(nextPaymentStatus("PENDING", "PAID")).toBe("PAID")
+  })
+})
+
+
+describe("Stripe runtime configuration", () => {
+  it("requires webhook verification and an explicit HTTPS origin in production", () => {
+    expect(() =>
+      resolveStripeCheckoutConfig({
+        nodeEnv: "production",
+        stripeSecretKey: "sk_test",
+        stripeWebhookSecret: "",
+        appUrl: "https://shop.example.com",
+      })
+    ).toThrow(/STRIPE_WEBHOOK_SECRET/)
+
+    expect(() =>
+      resolveStripeCheckoutConfig({
+        nodeEnv: "production",
+        stripeSecretKey: "sk_test",
+        stripeWebhookSecret: "whsec_test",
+        appUrl: "",
+        requestUrl: "https://attacker.example/api/checkout",
+      })
+    ).toThrow(/NEXT_PUBLIC_APP_URL/)
+
+    expect(() =>
+      resolveStripeCheckoutConfig({
+        nodeEnv: "production",
+        stripeSecretKey: "sk_test",
+        stripeWebhookSecret: "whsec_test",
+        appUrl: "http://shop.example.com",
+      })
+    ).toThrow(/HTTPS/)
+  })
+
+  it("returns a normalized configured production origin", () => {
+    expect(
+      resolveStripeCheckoutConfig({
+        nodeEnv: "production",
+        stripeSecretKey: " sk_test ",
+        stripeWebhookSecret: " whsec_test ",
+        appUrl: "https://shop.example.com",
+      })
+    ).toEqual({
+      stripeSecretKey: "sk_test",
+      appUrl: "https://shop.example.com",
+    })
+  })
+
+  it("allows request-origin fallback only outside production", () => {
+    expect(
+      resolveStripeCheckoutConfig({
+        nodeEnv: "development",
+        stripeSecretKey: "sk_test",
+        requestUrl: "http://localhost:3001/api/checkout",
+      })
+    ).toMatchObject({
+      appUrl: "http://localhost:3001",
+    })
+  })
+
+  it("treats Stripe as optional only when both server secrets are absent", () => {
+    expect(() =>
+      validateOptionalStripeReadiness({
+        nodeEnv: "production",
+        stripeSecretKey: "",
+        stripeWebhookSecret: "",
+        appUrl: "",
+      })
+    ).not.toThrow()
+
+    expect(() =>
+      validateOptionalStripeReadiness({
+        nodeEnv: "production",
+        stripeSecretKey: "sk_test",
+        stripeWebhookSecret: "",
+        appUrl: "https://shop.example.com",
+      })
+    ).toThrow(/STRIPE_WEBHOOK_SECRET/)
   })
 })
