@@ -2,6 +2,7 @@ import { auth, signOut } from '@/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { initializeMockData } from '@/store/serverStore';
+import { findStoredUserBySession } from '@/lib/sessionIdentity';
 import { 
   Package, 
   Wrench, 
@@ -43,12 +44,7 @@ export default async function B2BLayout({ children }: { children: React.ReactNod
     discount?: number
     tierName?: string
   }>;
-  const currentUser = userStore.find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
-  );
+  const currentUser = findStoredUserBySession(userStore, sessionUser);
 
   if (!currentUser || currentUser.isBlocked || currentUser.roleType !== 'BIZ') {
     redirect('/logowanie');
