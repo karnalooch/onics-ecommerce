@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 
 const CURRENT_ACCOUNT_ENTRYPOINTS = [
   "src/app/sklep/page.tsx",
+  "src/app/(b2b)/dashboard/page.tsx",
   "src/app/(b2b)/layout.tsx",
   "src/app/admin/layout.tsx",
 ] as const
@@ -20,8 +21,8 @@ describe("current account identity wiring", () => {
       }
 
       if (
-        /user\.id\s*===\s*sessionUser\.id/.test(source) ||
-        /user\.email[^\n]*sessionUser\.email/.test(source)
+        /(?:user|recordUser)\??\.id\s*===\s*sessionUser\.id/.test(source) ||
+        /(?:user|recordUser)\??\.email[\s\S]{0,160}sessionUser\.email/.test(source)
       ) {
         offenders.push(
           `${relativePath}: manually matches session id/email instead of using the stable resolver`
