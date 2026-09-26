@@ -111,6 +111,15 @@ export function readDb() {
   }
 }
 
+export function readDbStrict() {
+  try {
+    return readDbFile()
+  } catch (error) {
+    console.error("Krytyczny błąd odczytu bazy danych:", error)
+    throw new Error("Nie udało się bezpiecznie odczytać bazy danych.")
+  }
+}
+
 /**
  * W ścieżkach zapisu błąd odczytu nie może zostać zinterpretowany jako
  * "pusta baza". W przeciwnym razie uszkodzony/nieczytelny plik mógłby zostać
@@ -130,22 +139,58 @@ export function readDbOrThrow() {
  * częściowo zapisanego JSON-a po przerwaniu procesu. W produkcji
  * CELTRONICS_DB_PATH jest wymagane i musi wskazywać trwały, zapisywalny wolumen.
  */
+function syncDirectoryBestEffort(directory: string) {
+  if (process.platform === "win32") return
+
+  let directoryHandle: number | null = null
+  try {
+    directoryHandle = fs.openSync(directory, "r")
+    fs.fsyncSync(directoryHandle)
+  } catch (error) {
+    console.warn(
+      "[DB_WRITE] Nie udało się zsynchronizować metadanych katalogu po rename:",
+      error
+    )
+  } finally {
+    if (directoryHandle !== null) {
+      try {
+        fs.closeSync(directoryHandle)
+      } catch {
+        // Best-effort directory durability must not invalidate a completed rename.
+      }
+    }
+  }
+}
+
 export function writeDb(data: unknown) {
   const dbPath = getDbPath()
   const directory = path.dirname(dbPath)
   const tempPath = `${dbPath}.${process.pid}.${crypto.randomUUID()}.tmp`
+  let tempHandle: number | null = null
 
   try {
     fs.mkdirSync(directory, { recursive: true })
-    fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), {
+    tempHandle = fs.openSync(tempPath, "wx", 0o600)
+    fs.writeFileSync(tempHandle, JSON.stringify(data, null, 2), {
       encoding: "utf-8",
-      mode: 0o600,
-      flag: "wx",
     })
+    fs.fsyncSync(tempHandle)
+    fs.closeSync(tempHandle)
+    tempHandle = null
+
     fs.renameSync(tempPath, dbPath)
+    syncDirectoryBestEffort(directory)
     return true
   } catch (error) {
     console.error("Błąd zapisu bazy danych:", error)
+
+    if (tempHandle !== null) {
+      try {
+        fs.closeSync(tempHandle)
+      } catch {
+        // Cleanup failure must not hide the original persistence error.
+      }
+    }
 
     try {
       fs.rmSync(tempPath, { force: true })
