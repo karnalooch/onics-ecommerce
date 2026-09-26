@@ -8,6 +8,8 @@ import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
+  requirePositiveQuoteTotal,
+  requireQuoteBasePrice,
 } from "@/lib/quoteAdmin"
 
 const QuoteSchema = z.object({
@@ -208,33 +210,40 @@ export async function PUT(req: Request) {
           ? findStoredUserBySession(users, quote.user)
           : undefined
 
-        if (quote.productId) {
-          const product = products.find(
-            (entry) => String(entry.id) === quote.productId
-          )
-
-          if (product) {
-            const unitPrice = calculateCustomerUnitPrice(
-              {
-                id: String(product.id),
-                sku: String(product.sku || ""),
-                name: String(product.name || ""),
-                price: Number(product.price ?? 0),
-                stock: Number(product.stock ?? 0),
-              },
-              {
-                role: customer?.roleType,
-                discount: Number(customer?.discount ?? 0),
-              }
-            )
-            const quantity = Math.max(1, Number(quote.quantity || 1))
-            totalPriceFinal = roundMoney(
-              unitPrice *
-                quantity *
-                (1 - parsed.data.additionalDiscount / 100)
-            )
-          }
+        if (!quote.productId) {
+          throw new Error("QUOTE_PRODUCT_UNAVAILABLE")
         }
+
+        const product = products.find(
+          (entry) => String(entry.id) === quote.productId
+        )
+
+        if (!product) {
+          throw new Error("QUOTE_PRODUCT_UNAVAILABLE")
+        }
+
+        const basePrice = requireQuoteBasePrice(product.price)
+        const unitPrice = calculateCustomerUnitPrice(
+          {
+            id: String(product.id),
+            sku: String(product.sku || ""),
+            name: String(product.name || ""),
+            price: basePrice,
+            stock: Number(product.stock ?? 0),
+          },
+          {
+            role: customer?.roleType,
+            discount: Number(customer?.discount ?? 0),
+          }
+        )
+        const quantity = Math.max(1, Number(quote.quantity || 1))
+        totalPriceFinal = requirePositiveQuoteTotal(
+          roundMoney(
+            unitPrice *
+              quantity *
+              (1 - parsed.data.additionalDiscount / 100)
+          )
+        )
       }
 
       const nextQuote: StoredQuote = {
@@ -269,6 +278,24 @@ export async function PUT(req: Request) {
     if (error instanceof Error && error.message === "QUOTE_NOT_ACTIONABLE") {
       return NextResponse.json(
         { error: "Zapytanie zostało już rozpatrzone." },
+        { status: 409 }
+      )
+    }
+    if (error instanceof Error && error.message === "QUOTE_PRODUCT_UNAVAILABLE") {
+      return NextResponse.json(
+        { error: "Produkt z zapytania nie jest już dostępny w katalogu." },
+        { status: 409 }
+      )
+    }
+    if (error instanceof Error && error.message === "QUOTE_PRODUCT_NOT_PRICED") {
+      return NextResponse.json(
+        { error: "Produkt nie ma aktywnej ceny sprzedaży. Uzupełnij cenę przed wyceną." },
+        { status: 409 }
+      )
+    }
+    if (error instanceof Error && error.message === "QUOTE_TOTAL_NOT_POSITIVE") {
+      return NextResponse.json(
+        { error: "Rabat sprowadza wycenę do zera. Ustaw dodatnią cenę końcową." },
         { status: 409 }
       )
     }

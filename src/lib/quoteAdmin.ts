@@ -31,3 +31,23 @@ export function assertQuoteAdminTransition(currentStatus: unknown) {
     throw new Error("QUOTE_NOT_ACTIONABLE")
   }
 }
+
+export function requireQuoteBasePrice(price: unknown) {
+  const basePrice = Number(price)
+
+  if (!Number.isFinite(basePrice) || basePrice <= 0) {
+    throw new Error("QUOTE_PRODUCT_NOT_PRICED")
+  }
+
+  return basePrice
+}
+
+export function requirePositiveQuoteTotal(total: unknown) {
+  const finalTotal = Number(total)
+
+  if (!Number.isFinite(finalTotal) || finalTotal <= 0) {
+    throw new Error("QUOTE_TOTAL_NOT_POSITIVE")
+  }
+
+  return finalTotal
+}
