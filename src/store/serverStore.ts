@@ -23,6 +23,21 @@ export type PaymentControlSettings = {
   updatedAt: string | null
 }
 
+export type PaymentAuditEntry = {
+  id: string
+  createdAt: string
+  target: "GLOBAL" | "STRIPE"
+  actor: {
+    id: string | null
+    email: string | null
+    name: string | null
+  }
+  previousEnabled: boolean
+  nextEnabled: boolean
+  previousMaintenanceMessage: string | null
+  nextMaintenanceMessage: string | null
+}
+
 type ServerDb = {
   users: JsonRecord[]
   orders: JsonRecord[]
@@ -33,6 +48,7 @@ type ServerDb = {
   knowledgeMeta: KnowledgeMeta
   paymentMethods: PaymentMethodSettings
   paymentControl: PaymentControlSettings
+  paymentAudit: PaymentAuditEntry[]
   [key: string]: unknown
 }
 
@@ -48,6 +64,54 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : []
+}
+
+function normalizePaymentAudit(value: unknown): PaymentAuditEntry[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter(isRecord)
+    .flatMap((entry) => {
+      const actor = isRecord(entry.actor) ? entry.actor : {}
+      const target =
+        entry.target === "GLOBAL" || entry.target === "STRIPE"
+          ? entry.target
+          : null
+
+      if (
+        typeof entry.id !== "string" ||
+        typeof entry.createdAt !== "string" ||
+        !target ||
+        typeof entry.previousEnabled !== "boolean" ||
+        typeof entry.nextEnabled !== "boolean"
+      ) {
+        return []
+      }
+
+      return [
+        {
+          id: entry.id,
+          createdAt: entry.createdAt,
+          target,
+          actor: {
+            id: typeof actor.id === "string" ? actor.id : null,
+            email: typeof actor.email === "string" ? actor.email : null,
+            name: typeof actor.name === "string" ? actor.name : null,
+          },
+          previousEnabled: entry.previousEnabled,
+          nextEnabled: entry.nextEnabled,
+          previousMaintenanceMessage:
+            typeof entry.previousMaintenanceMessage === "string"
+              ? entry.previousMaintenanceMessage
+              : null,
+          nextMaintenanceMessage:
+            typeof entry.nextMaintenanceMessage === "string"
+              ? entry.nextMaintenanceMessage
+              : null,
+        },
+      ]
+    })
+    .slice(0, 100)
 }
 
 function normalizePaymentControl(value: unknown): PaymentControlSettings {
@@ -98,6 +162,7 @@ function normalizeDb(input: unknown): ServerDb {
     products: recordArray(source.products),
     paymentMethods: normalizePaymentMethods(source.paymentMethods),
     paymentControl: normalizePaymentControl(source.paymentControl),
+    paymentAudit: normalizePaymentAudit(source.paymentAudit),
     knowledgeMeta: {
       sources: stringArray(knowledgeMeta.sources),
       processedSources: stringArray(knowledgeMeta.processedSources),
@@ -123,6 +188,7 @@ export function initializeMockData() {
     products: db.products,
     paymentMethods: db.paymentMethods,
     paymentControl: db.paymentControl,
+    paymentAudit: db.paymentAudit,
     knowledgeMeta: db.knowledgeMeta,
   }
 }
