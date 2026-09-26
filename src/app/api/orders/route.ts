@@ -5,10 +5,17 @@ import { resolveCartItems } from "@/lib/commerce"
 import {
   canReplaceOrderItems,
   resolveEstimatedDeliveryDays,
+  validateReservedOrderStatusTransition,
   validateStripeOrderStatusTransition,
 } from "@/lib/orders"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
+import {
+  applyOrderInventoryTransition,
+  reserveInventory,
+  type InventoryProduct,
+  type InventoryReservationOrder,
+} from "@/lib/inventoryReservations"
 
 export const dynamic = "force-dynamic"
 
@@ -61,7 +68,7 @@ type StoredUser = {
   discount?: number
 }
 
-type StoredOrder = {
+type StoredOrder = InventoryReservationOrder & {
   id?: string
   status?: string
   estimatedDeliveryDays?: number | null
@@ -143,6 +150,17 @@ export async function POST(req: Request) {
         }
       )
 
+      const reservedAt = isHardOrder
+        ? new Date().toISOString()
+        : null
+
+      if (isHardOrder) {
+        reserveInventory(
+          db.products as InventoryProduct[],
+          resolved.items
+        )
+      }
+
       const order = {
         id: `ORD-${crypto.randomUUID()}`,
         orderType: parsed.data.orderType,
@@ -152,6 +170,16 @@ export async function POST(req: Request) {
         totalPriceOrig: resolved.total,
         totalPriceFinal: resolved.total,
         items: resolved.items,
+        ...(isHardOrder
+          ? {
+              inventoryReservationSource: "ORDER",
+              inventoryReservationStatus: "RESERVED",
+              inventoryReservedAt: reservedAt,
+              inventoryReleasedAt: null,
+              inventoryFinalizedAt: null,
+              inventoryReReservedAt: null,
+            }
+          : {}),
         user: {
           id: storedUser.id,
           email: storedUser.email,
@@ -167,16 +195,23 @@ export async function POST(req: Request) {
     return NextResponse.json(newOrder, { status: 201 })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Błąd serwera."
+    const inventoryConflict =
+      message === "INVENTORY_NOT_AVAILABLE" ||
+      message === "INVENTORY_PRODUCT_NOT_FOUND"
+    const publicMessage = inventoryConflict
+      ? "Stan magazynowy zmienił się podczas składania zamówienia. Odśwież koszyk i spróbuj ponownie."
+      : message
     const status =
       message === "Konto nie istnieje."
         ? 401
         : /zablokowane|oczekuje na zatwierdzenie/.test(message)
           ? 403
-          : /Nieprawidłowa ilość|nie istnieje w aktualnym katalogu|nie ma aktywnej ceny|Brak wymaganej ilości/.test(message)
+          : inventoryConflict ||
+              /Nieprawidłowa ilość|nie istnieje w aktualnym katalogu|nie ma aktywnej ceny|Brak wymaganej ilości/.test(message)
             ? 409
             : 500
 
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json({ error: publicMessage }, { status })
   }
 }
 
@@ -210,6 +245,16 @@ export async function PUT(req: Request) {
         throw new Error(`ORDER_STATUS_${statusTransition.toUpperCase().replaceAll("-", "_")}`)
       }
 
+      const reservedStatusTransition =
+        validateReservedOrderStatusTransition(
+          currentOrder.inventoryReservationSource,
+          currentOrder.status,
+          parsed.data.status
+        )
+      if (reservedStatusTransition !== "ok") {
+        throw new Error("ORDER_RESERVATION_INVALID_TRANSITION")
+      }
+
       if (
         !canReplaceOrderItems(
           currentOrder.stripeCheckoutSessionId,
@@ -221,6 +266,14 @@ export async function PUT(req: Request) {
       }
 
       const items = parsed.data.items ?? currentOrder.items ?? []
+
+      applyOrderInventoryTransition(
+        db.products as InventoryProduct[],
+        currentOrder,
+        items,
+        parsed.data.status
+      )
+
       const totalPriceFinal =
         Math.round(
           (items.reduce(
@@ -297,6 +350,51 @@ export async function PUT(req: Request) {
         {
           error:
             "Nieprawidłowe przejście statusu zamówienia Stripe. Wymagana kolejność to oczekiwanie → potwierdzone → wysłane.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_RESERVATION_INVALID_TRANSITION"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nieprawidłowe przejście statusu rezerwacji B2B. Wymagana kolejność to oczekiwanie → potwierdzone → wysłane, z możliwością anulowania przed wysyłką.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      [
+        "INVENTORY_FINALIZED_ITEMS_IMMUTABLE",
+        "INVENTORY_RELEASED_ITEMS_IMMUTABLE",
+        "INVENTORY_CANCEL_ITEMS_IMMUTABLE",
+      ].includes(error.message)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nie można zmienić ilości produktów po zwolnieniu lub finalizacji rezerwacji magazynowej.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      ["INVENTORY_NOT_AVAILABLE", "INVENTORY_PRODUCT_NOT_FOUND"].includes(
+        error.message
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Nie można zaktualizować rezerwacji: wymagany stan magazynowy nie jest już dostępny.",
         },
         { status: 409 }
       )
