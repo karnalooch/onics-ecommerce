@@ -171,9 +171,15 @@ export function przelewy24OperationalStatus(
   const crc = options.p24Crc ?? process.env.P24_CRC
   const configurationIssues: PaymentProviderConfigurationIssue[] = []
 
+  const validNumericCredential = (value: string | null | undefined) => {
+    if (!value?.trim() || !/^\d+$/.test(value.trim())) return false
+    const parsed = Number(value.trim())
+    return Number.isSafeInteger(parsed) && parsed > 0
+  }
+
   if (
-    !merchantId?.trim() ||
-    !posId?.trim() ||
+    !validNumericCredential(merchantId) ||
+    !validNumericCredential(posId) ||
     !apiKey?.trim() ||
     !crc?.trim()
   ) {
