@@ -9,6 +9,11 @@ import {
   type StorefrontProduct,
   type StorefrontUser,
 } from "@/lib/storefrontCatalog";
+import {
+  buildStoredProductCatalog,
+  type ProductCatalogCategory,
+  type ProductCatalogRecord,
+} from "@/lib/productCatalogView";
 import Link from "next/link";
 
 /**
@@ -25,8 +30,12 @@ export default async function SklepPage() {
     id?: string
     email?: string | null
   };
+  const catalogProducts = await buildStoredProductCatalog(
+    products as unknown as ProductCatalogRecord[],
+    categories as unknown as ProductCatalogCategory[]
+  );
   const storefront = buildStorefrontCatalogSnapshot(
-    products as unknown as StorefrontProduct[],
+    catalogProducts as unknown as StorefrontProduct[],
     users as StorefrontUser[],
     sessionUser
   );
@@ -46,7 +55,7 @@ export default async function SklepPage() {
        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div className="space-y-2">
             <h1 className="text-4xl font-black tracking-tighter uppercase italic">Katalog <span className="text-primary italic">Produktów</span></h1>
-            <p className="text-slate-500 font-medium">Dostęp do {products.length} profesjonalnych rozwiązań SSWiN i CCTV.</p>
+            <p className="text-slate-500 font-medium">Dostęp do {storefront.products.length} profesjonalnych rozwiązań SSWiN i CCTV.</p>
           </div>
           
           <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 px-6 py-3 rounded-[2rem] shadow-sm">
