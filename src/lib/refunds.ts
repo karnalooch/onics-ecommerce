@@ -29,6 +29,11 @@ export type StripeCancelableOrder = InventoryReservationOrder & {
   refundUpdatedAt?: string | null
   refundedAt?: string | null
   cancelledAt?: string | null
+  returnStatus?: "REQUESTED" | "RECEIVED" | "REFUND_PENDING" | "COMPLETED" | null
+  returnRequestedAt?: string | null
+  returnReceivedAt?: string | null
+  returnUpdatedAt?: string | null
+  returnCompletedAt?: string | null
 }
 
 export type RefundSnapshot = StripeRefundSnapshot & {
@@ -54,7 +59,11 @@ export function applyStripeRefundSnapshot(
   if (!verification.ok) throw new Error(verification.reason)
 
   if (order.stripeRefundId && order.stripeRefundId !== refund.refundId) {
-    throw new Error("STRIPE_REFUND_ID_MISMATCH")
+    const previousRefundFailed =
+      order.refundStatus === "failed" || order.refundStatus === "canceled"
+    if (!previousRefundFailed) {
+      throw new Error("STRIPE_REFUND_ID_MISMATCH")
+    }
   }
 
   // A succeeded refund is terminal. Older pending/created events can arrive
@@ -73,13 +82,38 @@ export function applyStripeRefundSnapshot(
   order.refundUpdatedAt = now
 
   if (refund.status !== "succeeded") {
+    if (
+      order.status === "SHIPPED" &&
+      (order.returnStatus === "RECEIVED" ||
+        order.returnStatus === "REFUND_PENDING")
+    ) {
+      order.returnStatus =
+        refund.status === "pending" || refund.status === "requires_action"
+          ? "REFUND_PENDING"
+          : "RECEIVED"
+      order.returnUpdatedAt = now
+    }
     return refund.status
   }
 
-  // A refund can be created outside this application. If the order has
-  // already shipped, reconcile the financial truth without pretending the
-  // goods returned to inventory or cancelling the shipment record.
+  // A shipped order can only return stock after the goods were physically
+  // received through the explicit RMA flow. A refund created outside this
+  // application still reconciles financial truth, but never invents a return.
   if (order.status === "SHIPPED") {
+    if (
+      order.returnStatus === "RECEIVED" ||
+      order.returnStatus === "REFUND_PENDING"
+    ) {
+      applyStripeRefundInventory(products, order, now)
+      order.paymentStatus = "REFUNDED"
+      order.status = "RETURNED"
+      order.refundedAt = order.refundedAt ?? now
+      order.returnStatus = "COMPLETED"
+      order.returnUpdatedAt = now
+      order.returnCompletedAt = order.returnCompletedAt ?? now
+      return "succeeded" as const
+    }
+
     order.paymentStatus = "REFUNDED"
     order.refundedAt = order.refundedAt ?? now
     return "succeeded" as const

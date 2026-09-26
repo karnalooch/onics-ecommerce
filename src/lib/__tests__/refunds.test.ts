@@ -140,6 +140,80 @@ describe("Stripe refund lifecycle", () => {
     expect(order.inventoryRefundRestockedAt).toBeUndefined()
   })
 
+  it("completes RMA and restocks when a shipped return refund succeeds", () => {
+    const products = [{ id: "p1", stock: 3 }]
+    const order = paidOrder()
+    order.status = "SHIPPED"
+    order.returnStatus = "RECEIVED"
+
+    expect(
+      applyStripeRefundSnapshot(
+        products,
+        order,
+        {
+          orderId: "ORD-1",
+          refundId: "re_rma",
+          paymentIntentId: "pi_1",
+          amount: 10000,
+          currency: "pln",
+          status: "succeeded",
+        },
+        "2026-09-26T12:30:00.000Z"
+      )
+    ).toBe("succeeded")
+
+    expect(products[0].stock).toBe(5)
+    expect(order.status).toBe("RETURNED")
+    expect(order.paymentStatus).toBe("REFUNDED")
+    expect(order.returnStatus).toBe("COMPLETED")
+    expect(order.returnCompletedAt).toBe("2026-09-26T12:30:00.000Z")
+  })
+
+  it("keeps received RMA open while refund is pending and retryable after failure", () => {
+    const products = [{ id: "p1", stock: 3 }]
+    const order = paidOrder()
+    order.status = "SHIPPED"
+    order.returnStatus = "RECEIVED"
+
+    expect(
+      applyStripeRefundSnapshot(products, order, {
+        orderId: "ORD-1",
+        refundId: "re_rma_1",
+        paymentIntentId: "pi_1",
+        amount: 10000,
+        currency: "pln",
+        status: "pending",
+      })
+    ).toBe("pending")
+    expect(order.returnStatus).toBe("REFUND_PENDING")
+    expect(products[0].stock).toBe(3)
+
+    expect(
+      applyStripeRefundSnapshot(products, order, {
+        orderId: "ORD-1",
+        refundId: "re_rma_1",
+        paymentIntentId: "pi_1",
+        amount: 10000,
+        currency: "pln",
+        status: "failed",
+      })
+    ).toBe("failed")
+    expect(order.returnStatus).toBe("RECEIVED")
+
+    expect(
+      applyStripeRefundSnapshot(products, order, {
+        orderId: "ORD-1",
+        refundId: "re_rma_2",
+        paymentIntentId: "pi_1",
+        amount: 10000,
+        currency: "pln",
+        status: "pending",
+      })
+    ).toBe("pending")
+    expect(order.stripeRefundId).toBe("re_rma_2")
+    expect(order.returnStatus).toBe("REFUND_PENDING")
+  })
+
   it("records failed refunds without cancelling the paid order", () => {
     const products = [{ id: "p1", stock: 3 }]
     const order = paidOrder()
