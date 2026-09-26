@@ -17,7 +17,7 @@ export function ProductCard({ product, isB2B }: IProductCardProps) {
   const { addItem } = useCartStore();
   const hasActivePrice = hasActiveCartPrice(product.price);
   const available = Number(product.stock ?? 0) > 0;
-  const canAdd = hasActivePrice ? available : true;
+  const canAdd = isB2B && (hasActivePrice ? available : true);
 
   const handleAddToCart = () => {
     addItem({ ...product, quantity: 1 });
@@ -80,6 +80,13 @@ export function ProductCard({ product, isB2B }: IProductCardProps) {
            <Button 
              onClick={handleAddToCart}
              disabled={!canAdd}
+             title={
+               !isB2B
+                 ? "Zakupy online są dostępne dla partnerów B2B."
+                 : hasActivePrice
+                   ? "Dodaj do koszyka"
+                   : "Dodaj do zapytania"
+             }
              className="h-12 w-12 rounded-2xl bg-slate-900 hover:bg-primary text-white shadow-xl shadow-slate-900/10 transition-all active:scale-95 group-hover:rotate-[360deg] duration-700"
              size="icon"
            >
