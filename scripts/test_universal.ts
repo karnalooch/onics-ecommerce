@@ -5,9 +5,13 @@ import * as XLSX from 'xlsx';
 
 async function runTest() {
   console.log('Rozpoczynam PEŁNĄ analizę cenników Universal Catalog Hub...');
+  const fixtureRoot = path.resolve(
+  process.env.CELTRONICS_FIXTURE_ROOT ||
+    path.join(process.cwd(), '.local', 'celtronics', 'catalog-fixtures')
+);
   const testDirs = [
-    path.join(process.cwd(), 'fixtures/catalogs/mkj_tests'),
-    path.join(process.cwd(), 'fixtures/catalogs/universal_mass_test')
+    path.join(fixtureRoot, 'mkj_tests'),
+    path.join(fixtureRoot, 'universal_mass_test')
   ];
 
   let totalParsed = 0;
