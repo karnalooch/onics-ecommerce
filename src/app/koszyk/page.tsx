@@ -177,10 +177,19 @@ export default function CartPage() {
     identityKey: cartOwnerKey,
     resolved: sessionStatus !== "loading",
   });
-  const { refreshingCart } = useAuthoritativeCart({
+  const { refreshingCart, availableStockById } = useAuthoritativeCart({
     enabled: mounted && cartOwnerReady && isB2B,
     identityKey: cartOwnerKey || "anonymous",
   });
+  const stockConflictItems = items.filter((item) => {
+    const availableStock = availableStockById[item.id];
+    return (
+      hasActiveCartPrice(item.price) &&
+      availableStock !== undefined &&
+      item.quantity > availableStock
+    );
+  });
+  const hasStockConflict = stockConflictItems.length > 0;
 
   const availablePaymentMethods = paymentControlEnabled
     ? paymentMethods.filter((method) => method.available)
@@ -290,6 +299,13 @@ export default function CartPage() {
       return;
     }
 
+    if (hasStockConflict) {
+      toast.error(
+        "Bieżący stan magazynowy jest niższy niż ilość w koszyku. Zmniejsz ilość przed uruchomieniem płatności."
+      );
+      return;
+    }
+
     setSubmitting(method.id);
     try {
       const response = await fetch("/api/checkout", {
@@ -362,6 +378,13 @@ export default function CartPage() {
     if (action !== "INQUIRY" && requiresPricing) {
       toast.error(
         "Pozycje bez aktywnej ceny można teraz wysłać jako zapytanie. Oferta PDF i zamówienie będą dostępne po wycenie."
+      );
+      return;
+    }
+
+    if (action === "ORDER" && hasStockConflict) {
+      toast.error(
+        "Bieżący stan magazynowy jest niższy niż ilość w koszyku. Zmniejsz ilość przed wysłaniem realnego zamówienia."
       );
       return;
     }
@@ -646,6 +669,19 @@ export default function CartPage() {
                       <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                         <span className="opacity-50">EAN/SKU:</span> {item.sku}
                       </div>
+                      {hasActiveCartPrice(item.price) &&
+                        availableStockById[item.id] !== undefined && (
+                          <div
+                            className={`text-[11px] mt-1 ${
+                              item.quantity >
+                              (availableStockById[item.id] ?? Number.POSITIVE_INFINITY)
+                                ? "text-red-600 font-semibold"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            Dostępne teraz: {availableStockById[item.id]} szt.
+                          </div>
+                        )}
                     </div>
                   </div>
                   
@@ -662,7 +698,26 @@ export default function CartPage() {
                         readOnly
                         className="w-8 text-center text-sm font-medium border-x focus:outline-none bg-transparent" 
                       />
-                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">+</button>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        disabled={
+                          hasActiveCartPrice(item.price) &&
+                          availableStockById[item.id] !== undefined &&
+                          item.quantity >=
+                            (availableStockById[item.id] ?? Number.POSITIVE_INFINITY)
+                        }
+                        title={
+                          hasActiveCartPrice(item.price) &&
+                          availableStockById[item.id] !== undefined &&
+                          item.quantity >=
+                            (availableStockById[item.id] ?? Number.POSITIVE_INFINITY)
+                            ? `Dostępne obecnie: ${availableStockById[item.id]} szt.`
+                            : "Zwiększ ilość"
+                        }
+                        className="w-8 flex items-center justify-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
 
@@ -734,6 +789,14 @@ export default function CartPage() {
                     </div>
                   )}
 
+                  {hasStockConflict && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[11px] leading-relaxed text-red-700">
+                      Bieżący stan magazynowy jest niższy niż ilość w koszyku dla
+                      {" "}{stockConflictItems.length} pozycji. Zmniejsz ilość przed realnym
+                      zamówieniem lub płatnością. Zapytanie i oferta PDF pozostają dostępne.
+                    </div>
+                  )}
+
                   <Button 
                     onClick={() => handleAction("PDF")} 
                     disabled={submitting !== null || requiresPricing || refreshingCart}
@@ -756,7 +819,12 @@ export default function CartPage() {
 
                   <Button 
                     onClick={() => handleAction("ORDER")} 
-                    disabled={submitting !== null || requiresPricing || refreshingCart}
+                    disabled={
+                      submitting !== null ||
+                      requiresPricing ||
+                      refreshingCart ||
+                      hasStockConflict
+                    }
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-green-600 hover:bg-green-700 text-white shadow-md border-none"
                   >
                     <ShoppingBag className="w-5 h-5" />
@@ -767,7 +835,12 @@ export default function CartPage() {
                     <Button
                       key={method.id}
                       onClick={() => handlePaymentCheckout(method)}
-                      disabled={submitting !== null || requiresPricing || refreshingCart}
+                      disabled={
+                        submitting !== null ||
+                        requiresPricing ||
+                        refreshingCart ||
+                        hasStockConflict
+                      }
                       className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-slate-950 hover:bg-slate-800 text-white shadow-md border-none"
                     >
                       {submitting === method.id ? (
