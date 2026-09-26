@@ -107,6 +107,51 @@ export function ProductsDashboardClient({
   const filtered = useMemo(() => products, [products]);
   const paginated = useMemo(() => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize), [filtered, currentPage, pageSize]);
 
+  const catalogStats = useMemo(() => {
+    const stockTotal = products.reduce(
+      (sum, product) => sum + Math.max(0, Number(product.stock) || 0),
+      0
+    );
+    const unpricedCount = products.filter(
+      (product) =>
+        !Number.isFinite(Number(product.price)) || Number(product.price) <= 0
+    ).length;
+    const incompleteCount = products.filter(
+      (product) =>
+        !String(product.sku || "").trim() ||
+        !String(product.name || "").trim() ||
+        !String(product.manufacturer || "").trim() ||
+        !product.categoryId
+    ).length;
+
+    return [
+      {
+        label: "Indeksy katalogowe",
+        value: products.length.toLocaleString("pl-PL"),
+        icon: <Package className="w-5 h-5 text-primary" />,
+        sector: "Katalog",
+      },
+      {
+        label: "Sztuki na stanie",
+        value: stockTotal.toLocaleString("pl-PL"),
+        icon: <HardDrive className="w-5 h-5 text-primary" />,
+        sector: "Magazyn",
+      },
+      {
+        label: "Pozycje bez ceny",
+        value: unpricedCount.toLocaleString("pl-PL"),
+        icon: <Activity className="w-5 h-5 text-primary" />,
+        sector: "Cennik",
+      },
+      {
+        label: "Do uzupełnienia",
+        value: incompleteCount.toLocaleString("pl-PL"),
+        icon: <ShieldCheck className="w-5 h-5 text-primary" />,
+        sector: "Jakość danych",
+      },
+    ];
+  }, [products]);
+
   if (activeView === "verify") {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
@@ -150,10 +195,10 @@ export function ProductsDashboardClient({
                  <span className="text-3xl font-extrabold text-foreground tabular-nums">{products.length}</span>
               </div>
               <div className="flex flex-col items-end pl-12 border-l border-black/5 dark:border-white/10">
-                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">System Operacyjny</span>
+                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Stan widoku</span>
                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-lg shadow-green-500/40 animate-pulse" />
-                    <span className="text-[12px] font-bold text-foreground uppercase tracking-tight">Active Online</span>
+                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-lg shadow-green-500/40" />
+                    <span className="text-[12px] font-bold text-foreground uppercase tracking-tight">Dane załadowane</span>
                  </div>
               </div>
            </div>
@@ -161,12 +206,7 @@ export function ProductsDashboardClient({
 
         {/* STATS STRIP (FLUENT CARDS) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           {[
-              { label: 'Oczekujące RMA', value: '12', icon: <Activity className="w-5 h-5 text-primary" />, sector: 'Serwis' },
-              { label: 'Inwentaryzacja', value: '1,400', icon: <HardDrive className="w-5 h-5 text-primary" />, sector: 'Magazyn' },
-              { label: 'Błędy Danych', value: '00', icon: <ShieldCheck className="w-5 h-5 text-green-500" />, sector: 'System' },
-              { label: 'Aktywne Oferty', value: '156', icon: <Package className="w-5 h-5 text-primary" />, sector: 'Sprzedaż' }
-           ].map((stat, i) => (
+           {catalogStats.map((stat, i) => (
               <div key={i} className="fluent-card p-8 flex items-center justify-between group active-press border-white/5 shadow-xl">
                  <div className="flex flex-col">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{stat.sector}</span>
