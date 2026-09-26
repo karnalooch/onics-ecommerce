@@ -1,11 +1,12 @@
 // src/app/sklep/_components/ProductCard.tsx
 "use client";
 
-import { ShoppingCart, ArrowRight, ShieldCheck } from "lucide-react";
+import { ShoppingCart, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/store/cartStore";
 import { toast } from "sonner";
+import { hasActiveCartPrice } from "@/lib/cartPricing";
 
 interface IProductCardProps {
   product: any;
@@ -14,13 +15,23 @@ interface IProductCardProps {
 
 export function ProductCard({ product, isB2B }: IProductCardProps) {
   const { addItem } = useCartStore();
+  const hasActivePrice = hasActiveCartPrice(product.price);
+  const available = Number(product.stock ?? 0) > 0;
+  const canAdd = hasActivePrice ? available : true;
 
   const handleAddToCart = () => {
     addItem({ ...product, quantity: 1 });
-    toast.success(`Dodano: ${product.name}`, {
-      icon: <ShoppingCart className="w-4 h-4 text-primary" />,
-      className: "rounded-2xl font-bold"
-    });
+    toast.success(
+      hasActivePrice
+        ? `Dodano do koszyka: ${product.name}`
+        : `Dodano do zapytania: ${product.name}`,
+      {
+        icon: hasActivePrice
+          ? <ShoppingCart className="w-4 h-4 text-primary" />
+          : <Send className="w-4 h-4 text-primary" />,
+        className: "rounded-2xl font-bold"
+      }
+    );
   };
 
   return (
@@ -63,16 +74,16 @@ export function ProductCard({ product, isB2B }: IProductCardProps) {
            <div className="flex flex-col">
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{isB2B ? "Twoja Cena B2B" : "Cena Brutto"}</span>
               <span className="text-2xl font-black text-slate-900 tracking-tight">
-                {product.price > 0 ? `${product.price.toLocaleString('pl-PL', { minimumFractionDigits: 2 })} zł` : "Na zapytanie"}
+                {hasActivePrice ? `${Number(product.price).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} zł` : "Na zapytanie"}
               </span>
            </div>
            <Button 
              onClick={handleAddToCart}
-             disabled={product.stock <= 0}
+             disabled={!canAdd}
              className="h-12 w-12 rounded-2xl bg-slate-900 hover:bg-primary text-white shadow-xl shadow-slate-900/10 transition-all active:scale-95 group-hover:rotate-[360deg] duration-700"
              size="icon"
            >
-             <ShoppingCart className="w-5 h-5" />
+             {hasActivePrice ? <ShoppingCart className="w-5 h-5" /> : <Send className="w-5 h-5" />}
            </Button>
         </div>
       </div>

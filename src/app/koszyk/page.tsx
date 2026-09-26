@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
 
 type CheckoutPaymentMethod = {
   id: string;
@@ -130,6 +131,7 @@ export default function CartPage() {
   }, [session?.user]);
 
   const isB2B = (session?.user as any)?.role === "BIZ" || (session?.user as any)?.role === "ADMIN";
+  const requiresPricing = cartRequiresPricing(items);
   const availablePaymentMethods = paymentControlEnabled
     ? paymentMethods.filter((method) => method.available)
     : [];
@@ -226,6 +228,13 @@ export default function CartPage() {
   };
 
   const handlePaymentCheckout = async (method: CheckoutPaymentMethod) => {
+    if (requiresPricing) {
+      toast.error(
+        "Koszyk zawiera pozycje bez aktywnej ceny. Najpierw wyślij zapytanie cenowe."
+      );
+      return;
+    }
+
     setSubmitting(method.id);
     try {
       const response = await fetch("/api/checkout", {
@@ -290,6 +299,13 @@ export default function CartPage() {
   };
 
   const handleAction = async (action: "PDF" | "INQUIRY" | "ORDER") => {
+    if (action !== "INQUIRY" && requiresPricing) {
+      toast.error(
+        "Pozycje bez aktywnej ceny można teraz wysłać jako zapytanie. Oferta PDF i zamówienie będą dostępne po wycenie."
+      );
+      return;
+    }
+
     setSubmitting(action);
 
     try {
@@ -568,7 +584,7 @@ export default function CartPage() {
                   </div>
                   
                   <div className="col-span-2 text-right font-medium">
-                    {item.price.toFixed(2)} PLN
+                    {hasActiveCartPrice(item.price) ? `${item.price.toFixed(2)} PLN` : "Na zapytanie"}
                   </div>
                   
                   <div className="col-span-2 flex justify-center">
@@ -585,7 +601,9 @@ export default function CartPage() {
                   </div>
 
                   <div className="col-span-2 text-right font-bold text-gray-700 dark:text-gray-300">
-                    {(item.price * item.quantity).toFixed(2)} PLN
+                    {hasActiveCartPrice(item.price)
+                      ? `${(item.price * item.quantity).toFixed(2)} PLN`
+                      : "Do wyceny"}
                   </div>
 
                   <div className="col-span-1 flex justify-end">
@@ -618,16 +636,34 @@ export default function CartPage() {
               <div className="flex justify-between items-end mb-8">
                 <span className="text-gray-600 dark:text-gray-400 font-medium text-lg">Suma:</span>
                 <div className="text-right">
-                   <div className="text-3xl font-extrabold text-primary">{getTotalPrice().toFixed(2)} PLN</div>
-                   <div className="text-xs text-muted-foreground mt-1">(bez VAT)</div>
+                   <div className="text-3xl font-extrabold text-primary">
+                     {requiresPricing
+                       ? getTotalPrice() > 0
+                         ? `${getTotalPrice().toFixed(2)} PLN + wycena`
+                         : "Do wyceny"
+                       : `${getTotalPrice().toFixed(2)} PLN`}
+                   </div>
+                   <div className="text-xs text-muted-foreground mt-1">
+                     {requiresPricing
+                       ? "Pozycje bez aktywnej ceny nie są wliczone do sumy."
+                       : "(bez VAT)"}
+                   </div>
                 </div>
               </div>
 
               {isB2B ? (
                 <div className="space-y-3">
+                  {requiresPricing && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] leading-relaxed text-amber-800">
+                      Koszyk zawiera pozycje bez aktywnej ceny. Możesz wysłać zapytanie
+                      cenowe; oferta PDF, realne zamówienie i płatność będą dostępne po
+                      wycenie.
+                    </div>
+                  )}
+
                   <Button 
                     onClick={() => handleAction("PDF")} 
-                    disabled={submitting !== null}
+                    disabled={submitting !== null || requiresPricing}
                     variant="outline"
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-white border-gray-200 hover:bg-gray-50 dark:bg-gray-950 dark:border-gray-800"
                   >
@@ -647,7 +683,7 @@ export default function CartPage() {
 
                   <Button 
                     onClick={() => handleAction("ORDER")} 
-                    disabled={submitting !== null}
+                    disabled={submitting !== null || requiresPricing}
                     className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-green-600 hover:bg-green-700 text-white shadow-md border-none"
                   >
                     <ShoppingBag className="w-5 h-5" />
@@ -658,7 +694,7 @@ export default function CartPage() {
                     <Button
                       key={method.id}
                       onClick={() => handlePaymentCheckout(method)}
-                      disabled={submitting !== null}
+                      disabled={submitting !== null || requiresPricing}
                       className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-slate-950 hover:bg-slate-800 text-white shadow-md border-none"
                     >
                       {submitting === method.id ? (
