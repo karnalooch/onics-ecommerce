@@ -207,10 +207,7 @@ function resolvePrzelewy24SandboxConfig(requestUrl: string) {
     throw new Error("PAYMENT_PROVIDER_NOT_CONFIGURED")
   }
 
-  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim()
-  const appUrl = configuredAppUrl
-    ? new URL(configuredAppUrl).origin
-    : new URL(requestUrl).origin
+  const appUrl = new URL(requestUrl).origin
 
   return {
     merchantId,
@@ -350,6 +347,7 @@ async function createPrzelewy24Checkout(
             `${p24.appUrl}/oferty/zamowienia?payment=success&provider=PRZELEWY24&session_id=${encodeURIComponent(orderId)}`,
           sign,
         }),
+        signal: AbortSignal.timeout(10_000),
       }
     )
 
@@ -371,7 +369,7 @@ async function createPrzelewy24Checkout(
         url: `${p24.apiBaseUrl}/trnRequest/${encodeURIComponent(token)}`,
       },
     }
-  } catch (error) {
+  } catch {
     try {
       await cancelFailedPrzelewy24Registration(orderId)
     } catch (compensationError) {
