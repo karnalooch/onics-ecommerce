@@ -51,6 +51,7 @@ jobs:
           src/lib/payments.ts
           src/lib/storageConfig.ts
           src/lib/health.ts
+          src/lib/rateLimit.ts
           src/lib/securityHeaders.ts
           src/store/serverStore.ts
           src/lib/knowledge/files.ts

@@ -92,6 +92,17 @@ The application exposes two uncached operational endpoints:
 
 The readiness payload reports only coarse check states (`ok` / `error`) and does not expose filesystem paths, secrets or raw exception messages.
 
+## Authentication throttling
+
+Public credential work is protected by an in-process fixed-window limiter before expensive bcrypt verification:
+
+- registration: 5 attempts per client / 15 minutes and 3 attempts per normalized e-mail / hour; blocked registration returns HTTP 429 with `Retry-After`
+- credentials login: 30 attempts per client / 15 minutes and 20 attempts per existing account / 15 minutes; blocked login remains indistinguishable from invalid credentials
+
+Client identity is taken from `CF-Connecting-IP`, then `X-Real-IP`, then the first `X-Forwarded-For` value. The production reverse proxy **must strip and overwrite** these incoming headers so clients cannot spoof them. If none is available, the limiter intentionally falls back to one shared `unknown` bucket.
+
+The limiter is bounded in memory and is appropriate for the current single-instance file-backed deployment. It is not a replacement for edge/shared rate limiting when the application moves to multiple processes or instances.
+
 ## HTTP security hardening
 
 Production responses apply `nosniff`, deny framing, use a strict-origin referrer policy, disable camera/microphone/geolocation permissions by default, and send one-year HSTS. The default Next.js `X-Powered-By` header is disabled.
