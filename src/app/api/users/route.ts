@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
+import { toSafeUserResponse } from "@/lib/userResponse"
 
 export const dynamic = "force-dynamic"
 
@@ -44,18 +45,12 @@ function hasOtherActiveAdmin(users: UserRecord[], excludedIndex: number) {
   return users.some((user, index) => index !== excludedIndex && isActiveAdmin(user))
 }
 
-function publicUser(user: UserRecord) {
-  const safeUser = { ...user }
-  delete safeUser.passwordHash
-  return safeUser
-}
-
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
   const { users } = initializeMockData()
-  return NextResponse.json((users as UserRecord[]).map(publicUser))
+  return NextResponse.json((users as UserRecord[]).map(toSafeUserResponse))
 }
 
 export async function PUT(req: Request) {
@@ -103,7 +98,7 @@ export async function PUT(req: Request) {
       }
 
       userStore[index] = nextUser
-      return publicUser(nextUser)
+      return toSafeUserResponse(nextUser)
     })
 
     return NextResponse.json(updated)
