@@ -13,7 +13,7 @@ export type InventoryReservationStatus = "RESERVED" | "FINALIZED" | "RELEASED"
 
 export type InventoryReservationOrder = {
   items?: InventoryItem[]
-  inventoryReservationStatus?: InventoryReservationStatus | null
+  inventoryReservationStatus?: InventoryReservationStatus | string | null
   inventoryReservedAt?: string | null
   inventoryReleasedAt?: string | null
   inventoryFinalizedAt?: string | null
