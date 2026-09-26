@@ -152,7 +152,7 @@ export async function PUT(req: Request) {
     }
   }
 
-  const result = await mutateMockData((db) => {
+  await mutateMockData((db) => {
     const paymentMethods = db.paymentMethods as PaymentMethodSettings
     const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
     const previous = paymentMethods[method]
