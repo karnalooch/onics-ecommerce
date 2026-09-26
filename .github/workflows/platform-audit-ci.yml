@@ -41,6 +41,7 @@ jobs:
       - name: Lint security and commerce core
         run: >
           npx eslint
+          next.config.ts
           src/auth.ts
           src/lib/commerce.ts
           src/lib/company.ts
@@ -50,6 +51,7 @@ jobs:
           src/lib/payments.ts
           src/lib/storageConfig.ts
           src/lib/health.ts
+          src/lib/securityHeaders.ts
           src/store/serverStore.ts
           src/lib/knowledge/files.ts
           src/lib/knowledge/KnowledgeContext.tsx
@@ -166,6 +168,36 @@ jobs:
 
           if ! curl --fail --silent --show-error http://127.0.0.1:3001/api/health/ready; then
             cat .ci/runtime/server.log
+            exit 1
+          fi
+
+          curl --fail --silent --show-error             -D .ci/runtime/headers.raw             -o /dev/null             http://127.0.0.1:3001/api/health/live
+          tr -d '\r' < .ci/runtime/headers.raw > .ci/runtime/headers.txt
+
+          grep -qi '^x-content-type-options: nosniff
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+ .ci/runtime/headers.txt
+          grep -qi '^x-frame-options: DENY
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+ .ci/runtime/headers.txt
+          grep -qi '^referrer-policy: strict-origin-when-cross-origin
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+ .ci/runtime/headers.txt
+          grep -qi '^strict-transport-security: max-age=31536000
+
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+ .ci/runtime/headers.txt
+
+          if grep -qi '^x-powered-by:' .ci/runtime/headers.txt; then
+            echo "X-Powered-By must not be exposed."
+            cat .ci/runtime/headers.txt
             exit 1
           fi
 
