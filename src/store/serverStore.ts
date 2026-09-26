@@ -2,6 +2,8 @@
 // Współdzielony stan serwerowy oparty na trwałym pliku JSON
 import { readDb, readDbOrThrow, withDbWriteLock, writeDb } from "@/lib/jsonDb"
 import {
+  PAYMENT_PROVIDER_IDS,
+  getPaymentProviderDefinition,
   isPaymentProviderId,
   type PaymentProviderId,
 } from "@/lib/paymentProviders"
@@ -212,21 +214,12 @@ function normalizePaymentMethod(
 function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
   const source = isRecord(value) ? value : {}
 
-  return {
-    STRIPE: normalizePaymentMethod(source.STRIPE, {
-      // Preserve existing installations: Stripe stays available until an
-      // administrator explicitly disables it.
-      enabled: true,
-      displayName: "Stripe",
-      displayOrder: 10,
-    }),
-    BANK_TRANSFER: normalizePaymentMethod(source.BANK_TRANSFER, {
-      // New providers default to disabled so upgrades remain fail-closed.
-      enabled: false,
-      displayName: "Przelew bankowy",
-      displayOrder: 20,
-    }),
-  }
+  return Object.fromEntries(
+    PAYMENT_PROVIDER_IDS.map((id) => {
+      const defaults = getPaymentProviderDefinition(id).settingsDefaults
+      return [id, normalizePaymentMethod(source[id], defaults)]
+    })
+  ) as PaymentMethodSettings
 }
 
 function normalizeDb(input: unknown): ServerDb {
