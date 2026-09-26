@@ -40,6 +40,23 @@ export function canReplaceOrderItems(
   return orderItemsEqual(incoming, current ?? [])
 }
 
+export function canReplacePaymentOrderItems(
+  paymentProvider: string | null | undefined,
+  stripeCheckoutSessionId: string | null | undefined,
+  incoming: OrderItemSnapshot[] | undefined,
+  current: OrderItemSnapshot[] | undefined
+) {
+  if (incoming === undefined) return true
+  if (
+    stripeCheckoutSessionId ||
+    paymentProvider === "STRIPE" ||
+    paymentProvider === "BANK_TRANSFER"
+  ) {
+    return orderItemsEqual(incoming, current ?? [])
+  }
+  return true
+}
+
 
 export type OrderStatus =
   | "PENDING_VERIFICATION"
@@ -119,4 +136,35 @@ export function validateReservedOrderStatusTransition(
   }
 
   return "invalid-transition"
+}
+
+export function validateBankTransferOrderStatusTransition(
+  paymentProvider: string | null | undefined,
+  paymentStatus: string | null | undefined,
+  currentStatus: OrderStatus | string | null | undefined,
+  nextStatus: OrderStatus
+):
+  | "ok"
+  | "payment-required"
+  | "manual-refund-required"
+  | "invalid-bank-transfer-status" {
+  if (paymentProvider !== "BANK_TRANSFER") return "ok"
+  if (currentStatus === nextStatus) return "ok"
+
+  if (nextStatus === "INQUIRY") {
+    return "invalid-bank-transfer-status"
+  }
+
+  if (nextStatus === "CANCELLED" && paymentStatus === "PAID") {
+    return "manual-refund-required"
+  }
+
+  if (
+    (nextStatus === "CONFIRMED" || nextStatus === "SHIPPED") &&
+    paymentStatus !== "PAID"
+  ) {
+    return "payment-required"
+  }
+
+  return "ok"
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Package, Clock, Truck, ShieldCheck } from "lucide-react"
+import { Loader2, Package, Clock, Truck, ShieldCheck, Landmark, XCircle, RotateCcw, MessageSquare } from "lucide-react"
 
 export default function B2BClientOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -58,6 +58,74 @@ export default function B2BClientOrdersPage() {
               </div>
 
               <CardContent className="p-6">
+                {order.paymentProvider === "BANK_TRANSFER" &&
+                 order.bankTransferIban && (
+                  <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
+                    <div className="flex items-start gap-3">
+                      <Landmark className="w-5 h-5 text-blue-700 mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <strong className="text-blue-950">
+                            Przelew bankowy
+                          </strong>
+                          <Badge
+                            variant={
+                              order.paymentStatus === "PAID"
+                                ? "default"
+                                : order.paymentStatus === "REFUNDED"
+                                  ? "secondary"
+                                  : "outline"
+                            }
+                          >
+                            {order.paymentStatus === "PAID"
+                              ? "ZAKSIĘGOWANY"
+                              : order.paymentStatus === "REFUNDED"
+                                ? "ZWRÓCONY"
+                                : "OCZEKUJE NA WPŁYW"}
+                          </Badge>
+                        </div>
+                        <div className="grid gap-2 mt-3 text-sm text-blue-950">
+                          <div>
+                            Odbiorca:{" "}
+                            <span className="font-semibold">
+                              {order.bankTransferRecipient}
+                            </span>
+                          </div>
+                          <div className="break-all">
+                            IBAN:{" "}
+                            <span className="font-mono font-semibold">
+                              {order.bankTransferIban}
+                            </span>
+                          </div>
+                          <div>
+                            Tytuł:{" "}
+                            <span className="font-mono font-semibold">
+                              {order.bankTransferReference}
+                            </span>
+                          </div>
+                          <div>
+                            Kwota:{" "}
+                            <span className="font-semibold">
+                              {Number(
+                                order.bankTransferAmount ??
+                                  order.totalPriceFinal
+                              ).toFixed(2)}{" "}
+                              {order.bankTransferCurrency || "PLN"}
+                            </span>
+                          </div>
+                        </div>
+                        {order.paymentStatus === "PENDING" && (
+                          <p className="text-xs text-blue-800 mt-3">
+                            Użyj dokładnie podanego tytułu przelewu. Status
+                            zmieni się po ręcznym potwierdzeniu wpływu przez
+                            administratora.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="md:col-span-2">
                     <h4 className="font-semibold mb-4 border-b pb-2">Zawartość pakietu</h4>
@@ -86,22 +154,73 @@ export default function B2BClientOrdersPage() {
                           <Clock className="w-5 h-5 shrink-0" />
                           <div>
                             <strong>Oczekuje na Weryfikację</strong>
-                            <p className="opacity-80 text-xs mt-1">Administrator musi potwierdzić ostateczne uwarunkowania cenowe oraz załączyć szacowany termin dostawy.</p>
+                            <p className="opacity-80 text-xs mt-1">
+                              {order.paymentProvider === "BANK_TRANSFER" &&
+                               order.paymentStatus !== "PAID"
+                                ? "Najpierw oczekujemy na potwierdzenie wpływu przelewu."
+                                : "Administrator musi potwierdzić ostateczne warunki i termin dostawy."}
+                            </p>
+                          </div>
+                        </div>
+                      ) : order.status === "CANCELLED" ? (
+                        <div className="bg-red-100 border-red-200 text-red-800 p-3 rounded-lg flex gap-3 text-sm">
+                          <XCircle className="w-5 h-5 shrink-0" />
+                          <div>
+                            <strong>Zamówienie Anulowane</strong>
+                            {order.paymentStatus === "REFUNDED" && (
+                              <p className="opacity-80 text-xs mt-1">
+                                Zwrot środków został potwierdzony.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : order.status === "RETURNED" ? (
+                        <div className="bg-amber-100 border-amber-200 text-amber-900 p-3 rounded-lg flex gap-3 text-sm">
+                          <RotateCcw className="w-5 h-5 shrink-0" />
+                          <div>
+                            <strong>Zamówienie Zwrócone</strong>
+                            <p className="opacity-80 text-xs mt-1">
+                              Proces zwrotu został zakończony.
+                            </p>
+                          </div>
+                        </div>
+                      ) : order.status === "INQUIRY" ? (
+                        <div className="bg-slate-100 border-slate-200 text-slate-700 p-3 rounded-lg flex gap-3 text-sm">
+                          <MessageSquare className="w-5 h-5 shrink-0" />
+                          <div>
+                            <strong>Zapytanie Handlowe</strong>
+                            <p className="opacity-80 text-xs mt-1">
+                              Oczekuje na odpowiedź zespołu handlowego.
+                            </p>
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-3">
                           <div className="bg-green-100 border-green-200 text-green-800 p-3 rounded-lg flex items-center gap-3 text-sm">
-                            <ShieldCheck className="w-5 h-5" />
-                            <strong>Zamówienie Potwierdzone</strong>
+                            {order.status === "SHIPPED" ? (
+                              <Truck className="w-5 h-5" />
+                            ) : (
+                              <ShieldCheck className="w-5 h-5" />
+                            )}
+                            <strong>
+                              {order.status === "SHIPPED"
+                                ? "Zamówienie Wysłane"
+                                : "Zamówienie Potwierdzone"}
+                            </strong>
                           </div>
-                          <div className="bg-white dark:bg-gray-950 border p-3 rounded-lg flex items-center gap-3 text-sm shadow-sm">
-                            <Truck className="w-5 h-5 text-blue-500" />
-                            <div>
-                              <div className="text-muted-foreground text-xs">Ustalony czas dostawy:</div>
-                              <strong className="text-base text-gray-800 dark:text-white">~ {order.estimatedDeliveryDays} dni roboczych</strong>
+                          {order.estimatedDeliveryDays && (
+                            <div className="bg-white dark:bg-gray-950 border p-3 rounded-lg flex items-center gap-3 text-sm shadow-sm">
+                              <Truck className="w-5 h-5 text-blue-500" />
+                              <div>
+                                <div className="text-muted-foreground text-xs">
+                                  Ustalony czas dostawy:
+                                </div>
+                                <strong className="text-base text-gray-800 dark:text-white">
+                                  ~ {order.estimatedDeliveryDays} dni roboczych
+                                </strong>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>
