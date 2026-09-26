@@ -59,10 +59,10 @@ export default async function AdminDashboard() {
         
         <div className="flex items-center gap-10">
            <div className="flex flex-col items-end">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status Systemu</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Stan panelu</span>
               <div className="flex items-center gap-2 mt-1">
-                 <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-lg shadow-green-500/40 animate-pulse" />
-                 <span className="text-[12px] font-bold text-foreground uppercase tracking-tight">Active Online</span>
+                 <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-lg shadow-green-500/40" />
+                 <span className="text-[12px] font-bold text-foreground uppercase tracking-tight">Dane załadowane</span>
               </div>
            </div>
         </div>
@@ -192,7 +192,7 @@ export default async function AdminDashboard() {
                     </div>
                     <div className="flex flex-col items-end leading-none">
                        <span className="text-[16px] font-extrabold text-foreground tabular-nums leading-none">
-                          {quote.totalPriceOrig.toFixed(2)}
+                          {Number(quote.totalPriceOrig ?? quote.totalPrice ?? 0).toFixed(2)}
                        </span>
                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">PLN</span>
                     </div>
@@ -206,9 +206,12 @@ export default async function AdminDashboard() {
               )}
             </div>
             
-            <button className="w-full mt-8 h-12 rounded-xl bg-primary/5 dark:bg-white/5 text-primary hover:bg-primary hover:text-white font-bold text-[11px] uppercase tracking-widest transition-all active-press border border-primary/10 shadow-sm">
-               Szczegółowy Log Zdarzeń
-            </button>
+            <Link
+              href="/admin/orders"
+              className="w-full mt-8 h-12 rounded-xl bg-primary/5 dark:bg-white/5 text-primary hover:bg-primary hover:text-white font-bold text-[11px] uppercase tracking-widest transition-all active-press border border-primary/10 shadow-sm flex items-center justify-center"
+            >
+               Pełen rejestr zamówień i ofert
+            </Link>
           </div>
         </div>
 
