@@ -10,6 +10,13 @@ type KnowledgeMeta = {
   lastUpdated: string | null
 }
 
+export type PaymentMethodSettings = {
+  STRIPE: {
+    enabled: boolean
+    updatedAt: string | null
+  }
+}
+
 type ServerDb = {
   users: JsonRecord[]
   orders: JsonRecord[]
@@ -18,6 +25,7 @@ type ServerDb = {
   manufacturers: JsonRecord[]
   products: JsonRecord[]
   knowledgeMeta: KnowledgeMeta
+  paymentMethods: PaymentMethodSettings
   [key: string]: unknown
 }
 
@@ -35,6 +43,22 @@ function stringArray(value: unknown): string[] {
     : []
 }
 
+function normalizePaymentMethods(value: unknown): PaymentMethodSettings {
+  const source = isRecord(value) ? value : {}
+  const stripe = isRecord(source.STRIPE) ? source.STRIPE : {}
+
+  return {
+    STRIPE: {
+      // Preserve existing installations: Stripe stays available until an
+      // administrator explicitly disables it.
+      enabled:
+        typeof stripe.enabled === "boolean" ? stripe.enabled : true,
+      updatedAt:
+        typeof stripe.updatedAt === "string" ? stripe.updatedAt : null,
+    },
+  }
+}
+
 function normalizeDb(input: unknown): ServerDb {
   const source = isRecord(input) ? input : {}
   const knowledgeMeta = isRecord(source.knowledgeMeta)
@@ -49,6 +73,7 @@ function normalizeDb(input: unknown): ServerDb {
     categories: recordArray(source.categories),
     manufacturers: recordArray(source.manufacturers),
     products: recordArray(source.products),
+    paymentMethods: normalizePaymentMethods(source.paymentMethods),
     knowledgeMeta: {
       sources: stringArray(knowledgeMeta.sources),
       processedSources: stringArray(knowledgeMeta.processedSources),
@@ -72,6 +97,7 @@ export function initializeMockData() {
     categories: db.categories,
     manufacturers: db.manufacturers,
     products: db.products,
+    paymentMethods: db.paymentMethods,
     knowledgeMeta: db.knowledgeMeta,
   }
 }

@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
-import { Trash2, FileText, Send, ShoppingBag, Loader2, UploadCloud, Info, ShieldCheck } from "lucide-react";
+import { Trash2, FileText, Send, ShoppingBag, Loader2, UploadCloud, Info, ShieldCheck, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner"; // Jeśli mamy sonner zainstalowane, jeśli nie to mock
@@ -12,13 +12,84 @@ export default function CartPage() {
   const { data: session } = useSession();
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
-  const [submitting, setSubmitting] = useState<"PDF" | "INQUIRY" | "ORDER" | null>(null);
+  const [submitting, setSubmitting] = useState<"PDF" | "INQUIRY" | "ORDER" | "STRIPE" | null>(null);
+  const [stripeAvailable, setStripeAvailable] = useState(false);
+  const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
   const router = useRouter();
 
   // Zabezpieczenie przez Hydration Mismatch przy renderze Local Storage
   useEffect(() => { setMounted(true); }, []);
 
+  useEffect(() => {
+    if (!session?.user) {
+      setStripeAvailable(false);
+      setPaymentMethodsLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+    setPaymentMethodsLoaded(false);
+
+    fetch("/api/payment-methods", { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(data?.error || "PAYMENT_METHODS_UNAVAILABLE");
+
+        const stripe = (data?.methods ?? []).find(
+          (method: { id?: string }) => method.id === "STRIPE"
+        );
+        if (!cancelled) {
+          setStripeAvailable(Boolean(stripe?.enabled && stripe?.configured));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStripeAvailable(false);
+      })
+      .finally(() => {
+        if (!cancelled) setPaymentMethodsLoaded(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user]);
+
   const isB2B = (session?.user as any)?.role === "BIZ" || (session?.user as any)?.role === "ADMIN";
+
+  const handleStripeCheckout = async () => {
+    setSubmitting("STRIPE");
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
+          })),
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Nie udało się uruchomić płatności online."
+        );
+      }
+      if (!data?.url) {
+        throw new Error("Bramka płatności nie zwróciła adresu przekierowania.");
+      }
+
+      window.location.assign(data.url);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się uruchomić płatności online."
+      );
+      setSubmitting(null);
+    }
+  };
 
   const handleAction = async (action: "PDF" | "INQUIRY" | "ORDER") => {
     setSubmitting(action);
@@ -208,6 +279,29 @@ export default function CartPage() {
                     <ShoppingBag className="w-5 h-5" />
                     {submitting === "ORDER" ? <Loader2 className="w-5 h-5 animate-spin" /> : "Wyślij realne ZAMÓWIENIE"}
                   </Button>
+
+                  {stripeAvailable && (
+                    <Button
+                      onClick={handleStripeCheckout}
+                      disabled={submitting !== null}
+                      className="w-full justify-start gap-3 rounded-xl h-12 font-semibold bg-slate-950 hover:bg-slate-800 text-white shadow-md border-none"
+                    >
+                      {submitting === "STRIPE" ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <CreditCard className="w-5 h-5" />
+                      )}
+                      Zapłać online przez Stripe
+                    </Button>
+                  )}
+
+                  {paymentMethodsLoaded && !stripeAvailable && (
+                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-500">
+                      Płatność online jest obecnie wyłączona. Nadal możesz wysłać
+                      zamówienie do ręcznej realizacji.
+                    </div>
+                  )}
+
                   <p className="text-[11px] text-muted-foreground text-center pt-2">
                     Naciśnięcie Zamówienia rezerwuje kolejkę. Oczekuj potwierdzenia czasu dostawy przez Administratora.
                   </p>
