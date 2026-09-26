@@ -6,8 +6,8 @@ import * as XLSX from 'xlsx';
 async function runTest() {
   console.log('Rozpoczynam PEŁNĄ analizę cenników Universal Catalog Hub...');
   const testDirs = [
-    path.join(process.cwd(), 'public/uploads/catalogs/universal_tests'),
-    path.join(process.cwd(), 'public/uploads/catalogs/universal_mass_test')
+    path.join(process.cwd(), 'fixtures/catalogs/mkj_tests'),
+    path.join(process.cwd(), 'fixtures/catalogs/universal_mass_test')
   ];
 
   let totalParsed = 0;
