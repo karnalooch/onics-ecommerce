@@ -12,6 +12,7 @@ import {
   assertCatalogClassification,
   ensureManufacturerRecord,
   hasSkuConflict,
+  indexCatalogProductsBySku,
   type CatalogManufacturerRecord,
 } from "@/lib/catalog"
 import {
@@ -239,12 +240,7 @@ export async function POST(req: Request) {
         const categoryStore = db.categories as CategoryRecord[]
         const manufacturerStore =
           db.manufacturers as CatalogManufacturerRecord[]
-        const productBySku = new Map(
-          productStore.map((product) => [normalize(product.sku), product] as const)
-        )
-        const productByName = new Map(
-          productStore.map((product) => [normalize(product.name), product] as const)
-        )
+        const productBySku = indexCatalogProductsBySku(productStore)
         const categoryByName = new Map(
           categoryStore.map((category) => [normalize(category.name), category] as const)
         )
@@ -259,10 +255,7 @@ export async function POST(req: Request) {
           const sku = normalize(item.sku)
           if (!sku) continue
 
-          let existing = productBySku.get(sku)
-          if (!existing && item.name) {
-            existing = productByName.get(normalize(item.name))
-          }
+          const existing = productBySku.get(sku)
 
           let categoryId = item.categoryId ?? null
           let subcategoryId = item.subcategoryId ?? null
@@ -351,7 +344,6 @@ export async function POST(req: Request) {
             } as ProductRecord
             productStore.push(newProduct)
             productBySku.set(normalize(newProduct.sku), newProduct)
-            productByName.set(normalize(newProduct.name), newProduct)
             addedCount += 1
           }
         }
@@ -367,6 +359,18 @@ export async function POST(req: Request) {
       const classificationResponse =
         catalogClassificationErrorResponse(error)
       if (classificationResponse) return classificationResponse
+      if (
+        error instanceof Error &&
+        error.message === "CATALOG_DUPLICATE_SKU"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Katalog zawiera zduplikowane SKU. Usuń konflikt przed importem WF-Mag.",
+          },
+          { status: 409 }
+        )
+      }
 
       console.error("WF-Mag import persistence error:", error)
       return NextResponse.json(

@@ -22,6 +22,23 @@ export function hasSkuConflict(
   )
 }
 
+export function indexCatalogProductsBySku<T extends CatalogSkuRecord>(
+  products: T[]
+) {
+  const index = new Map<string, T>()
+
+  for (const product of products) {
+    const sku = normalizeSku(product.sku)
+    if (!sku) continue
+    if (index.has(sku)) {
+      throw new Error("CATALOG_DUPLICATE_SKU")
+    }
+    index.set(sku, product)
+  }
+
+  return index
+}
+
 
 export type CatalogManufacturerRecord = {
   id: string
