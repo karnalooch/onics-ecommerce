@@ -4,8 +4,11 @@ import { redirect } from "next/navigation";
 import { initializeMockData } from "@/store/serverStore";
 import { ShopDashboardClient } from "./ShopDashboardClient";
 import { ShieldAlert, Clock, ArrowLeft } from "lucide-react";
-import { calculateCustomerUnitPrice } from "@/lib/commerce";
-import { findStoredUserBySession } from "@/lib/sessionIdentity";
+import {
+  buildStorefrontCatalogSnapshot,
+  type StorefrontProduct,
+  type StorefrontUser,
+} from "@/lib/storefrontCatalog";
 import Link from "next/link";
 
 /**
@@ -22,32 +25,21 @@ export default async function SklepPage() {
     id?: string
     email?: string | null
   };
-  const currentUser = findStoredUserBySession(
-    users as Array<{
-      id?: string
-      email?: string
-      roleType?: string
-      isApproved?: boolean
-      isBlocked?: boolean
-      discount?: number
-    }>,
+  const storefront = buildStorefrontCatalogSnapshot(
+    products as unknown as StorefrontProduct[],
+    users as StorefrontUser[],
     sessionUser
   );
 
-  if (!currentUser || currentUser.isBlocked) {
+  if (storefront.status === "denied") {
     redirect("/logowanie");
   }
 
-  const user = {
-    role: currentUser.roleType,
-    isApproved: Boolean(currentUser.isApproved),
-    discount: Number(currentUser.discount ?? 0),
-  };
-
-  // B2B Verification Check
-  if (user.role === "BIZ" && !user.isApproved) {
+  if (storefront.status === "pending") {
     return <PendingApprovalView />;
   }
+
+  const user = storefront.user;
 
   return (
     <div className="container mx-auto py-12 px-6 max-w-[1600px] min-h-screen">
@@ -66,24 +58,9 @@ export default async function SklepPage() {
        </header>
        
        <ShopDashboardClient
-         initialProducts={products.map((product: any) => ({
-           ...product,
-           price:
-             user.role === "BIZ"
-               ? calculateCustomerUnitPrice(
-                   {
-                     id: String(product.id),
-                     sku: String(product.sku || ""),
-                     name: String(product.name || ""),
-                     price: Number(product.price ?? 0),
-                     stock: Number(product.stock ?? 0),
-                   },
-                   { role: "BIZ", discount: Number(user.discount ?? 0) }
-                 )
-               : Number(product.price ?? 0),
-         }))}
+         initialProducts={storefront.products}
          categories={categories}
-         role={user.role || "RETAIL"}
+         role={user.role}
        />
     </div>
   );
