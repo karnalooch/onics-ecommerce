@@ -35,6 +35,17 @@ export function clampDiscount(value: unknown): number {
   return Math.min(100, Math.max(0, discount))
 }
 
+export function calculateDiscountedUnitPrice(
+  product: Pick<CommerceProduct, "price">,
+  discountValue: unknown
+): number {
+  const basePrice = Number(product.price)
+  if (!Number.isFinite(basePrice) || basePrice < 0) return 0
+
+  const discount = clampDiscount(discountValue)
+  return roundMoney(basePrice * (1 - discount / 100))
+}
+
 export function calculateCustomerUnitPrice(
   product: CommerceProduct,
   user?: CommerceUser | null
@@ -44,8 +55,7 @@ export function calculateCustomerUnitPrice(
 
   if (user?.role !== "BIZ") return roundMoney(basePrice)
 
-  const discount = clampDiscount(user.discount)
-  return roundMoney(basePrice * (1 - discount / 100))
+  return calculateDiscountedUnitPrice(product, user.discount)
 }
 
 export function resolveCartItems(
