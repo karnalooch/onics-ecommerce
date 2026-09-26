@@ -19,6 +19,10 @@ import {
   PaymentWebhookBodyTooLargeError,
   readPaymentWebhookJson,
 } from "@/lib/paymentWebhookIngress"
+import {
+  hasProcessedPaymentWebhookEvent,
+  recordProcessedPaymentWebhookEvent,
+} from "@/lib/paymentWebhookLedger"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const NotificationSchema = z.object({
@@ -79,6 +83,11 @@ export async function POST(req: Request) {
   }
 
   const notification = parsed.data as Przelewy24Notification
+  const eventIdentity = {
+    provider: "PRZELEWY24" as const,
+    kind: "PAYMENT" as const,
+    externalId: notification.sign,
+  }
 
   if (!verifyPrzelewy24NotificationSignature(notification, config)) {
     return NextResponse.json(
@@ -112,7 +121,16 @@ export async function POST(req: Request) {
   }
 
   try {
-    await mutateMockData((db) => {
+    const stageResult = await mutateMockData((db) => {
+      if (
+        hasProcessedPaymentWebhookEvent(
+          db.paymentWebhookEvents,
+          eventIdentity
+        )
+      ) {
+        return { duplicate: true }
+      }
+
       const fresh = (db.orders as Przelewy24StoredOrder[]).find(
         (candidate) =>
           candidate.p24SessionId === notification.sessionId ||
@@ -124,7 +142,17 @@ export async function POST(req: Request) {
       }
 
       stagePrzelewy24Verification(fresh, notification)
+      return { duplicate: false }
     })
+
+    if (stageResult.duplicate) {
+      return NextResponse.json({
+        received: true,
+        duplicate: true,
+        paymentStatus: order.paymentStatus,
+        orderId: order.p24OrderId ?? notification.orderId,
+      })
+    }
   } catch (error) {
     console.error("Przelewy24 verification intent persistence failed:", error)
     return NextResponse.json(
@@ -145,6 +173,25 @@ export async function POST(req: Request) {
 
   try {
     const result = await mutateMockData((db) => {
+      if (
+        hasProcessedPaymentWebhookEvent(
+          db.paymentWebhookEvents,
+          eventIdentity
+        )
+      ) {
+        const existing = (db.orders as Przelewy24StoredOrder[]).find(
+          (candidate) =>
+            candidate.p24SessionId === notification.sessionId ||
+            candidate.id === notification.sessionId
+        )
+        return {
+          outcome: "unchanged" as const,
+          paymentStatus: existing?.paymentStatus ?? null,
+          p24OrderId: existing?.p24OrderId ?? notification.orderId,
+          ledgerDuplicate: true,
+        }
+      }
+
       const fresh = (db.orders as Przelewy24StoredOrder[]).find(
         (candidate) =>
           candidate.p24SessionId === notification.sessionId ||
@@ -161,16 +208,23 @@ export async function POST(req: Request) {
         notification
       )
 
+      recordProcessedPaymentWebhookEvent(
+        db.paymentWebhookEvents,
+        eventIdentity
+      )
+
       return {
         outcome,
         paymentStatus: fresh.paymentStatus,
         p24OrderId: fresh.p24OrderId ?? null,
+        ledgerDuplicate: false,
       }
     })
 
     return NextResponse.json({
       received: true,
-      duplicate: result.outcome === "unchanged",
+      duplicate:
+        result.ledgerDuplicate || result.outcome === "unchanged",
       paymentStatus: result.paymentStatus,
       orderId: result.p24OrderId,
     })
