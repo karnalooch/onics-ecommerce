@@ -177,7 +177,7 @@ export default function CartPage() {
     identityKey: cartOwnerKey,
     resolved: sessionStatus !== "loading",
   });
-  const { refreshingCart, availableStockById } = useAuthoritativeCart({
+  const { refreshingCart, availableStockById, refreshCart } = useAuthoritativeCart({
     enabled: mounted && cartOwnerReady && isB2B,
     identityKey: cartOwnerKey || "anonymous",
   });
@@ -322,6 +322,7 @@ export default function CartPage() {
 
       const data = await response.json().catch(() => null);
       if (!response.ok) {
+        if (response.status === 409) refreshCart();
         throw new Error(
           data?.error || "Nie udało się uruchomić płatności."
         );
@@ -408,6 +409,7 @@ export default function CartPage() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        if (response.status === 409) refreshCart();
         throw new Error(
           typeof data?.error === "string"
             ? data.error

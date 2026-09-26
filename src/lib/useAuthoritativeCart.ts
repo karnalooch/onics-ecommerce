@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useCartStore, type CartItem } from "@/store/cartStore"
 
@@ -51,8 +51,14 @@ export function useAuthoritativeCart(options: {
   const replaceItems = useCartStore((state) => state.replaceItems)
   const lastPreviewKeyRef = useRef("")
   const [refreshingCart, setRefreshingCart] = useState(false)
+  const [refreshVersion, setRefreshVersion] = useState(0)
   const [availableStockById, setAvailableStockById] =
     useState<CartStockByProduct>({})
+
+  const refreshCart = useCallback(() => {
+    lastPreviewKeyRef.current = ""
+    setRefreshVersion((version) => version + 1)
+  }, [])
 
   const previewKey = [
     options.identityKey || "anonymous",
@@ -145,7 +151,7 @@ export function useAuthoritativeCart(options: {
     return () => {
       cancelled = true
     }
-  }, [items, options.enabled, previewKey, replaceItems])
+  }, [items, options.enabled, previewKey, refreshVersion, replaceItems])
 
-  return { refreshingCart, availableStockById }
+  return { refreshingCart, availableStockById, refreshCart }
 }

@@ -65,6 +65,33 @@ describe("authoritative cart repricing wiring", () => {
     expect(miniCart).toContain("Popraw dostępność")
   })
 
+  it("refreshes authoritative cart data after transaction conflicts", () => {
+    const hook = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/useAuthoritativeCart.ts"),
+      "utf8"
+    )
+    const cartPage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/koszyk/page.tsx"),
+      "utf8"
+    )
+    const checkoutRoute = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/checkout/route.ts"),
+      "utf8"
+    )
+
+    expect(hook).toContain("const refreshCart = useCallback")
+    expect(hook).toContain("setRefreshVersion((version) => version + 1)")
+    expect(hook).toContain("availableStockById, refreshCart")
+    expect(
+      cartPage.match(/if \(response\.status === 409\) refreshCart\(\);/g)
+    ).toHaveLength(2)
+    expect(checkoutRoute).toContain(
+      'const checkoutConflict = code === "CHECKOUT_STATE_CHANGED" || inventoryConflict'
+    )
+    expect(checkoutRoute).toContain("checkoutConflict")
+    expect(checkoutRoute).toContain("? 409")
+  })
+
   it("keeps transaction actions paused while repricing is running", () => {
     const cartPage = fs.readFileSync(
       path.join(process.cwd(), "src/app/koszyk/page.tsx"),
