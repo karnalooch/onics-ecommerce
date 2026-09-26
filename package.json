@@ -10,7 +10,8 @@
     "test": "vitest",
     "db:verify": "node scripts/storage/verify-db.mjs",
     "db:backup": "node scripts/storage/backup-db.mjs",
-    "db:restore": "node scripts/storage/restore-db.mjs"
+    "db:restore": "node scripts/storage/restore-db.mjs",
+    "test:payments": "vitest run src/lib/__tests__/paymentProductionAcceptance.test.ts src/lib/__tests__/paymentProviderContract.test.ts src/lib/__tests__/paymentWebhookIngress.test.ts src/lib/__tests__/paymentWebhookLedger.test.ts src/lib/__tests__/przelewy24.test.ts src/lib/__tests__/przelewy24Reconciliation.test.ts src/lib/__tests__/stripeReconciliation.test.ts src/lib/__tests__/refunds.test.ts src/lib/__tests__/inventoryReservations.test.ts src/lib/__tests__/manualPayments.test.ts src/lib/__tests__/manualReturns.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
