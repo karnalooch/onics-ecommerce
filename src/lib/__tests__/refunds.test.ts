@@ -112,6 +112,34 @@ describe("Stripe refund lifecycle", () => {
     expect(products[0].stock).toBe(5)
   })
 
+  it("reconciles an external refund after shipment without restocking or cancelling shipment", () => {
+    const products = [{ id: "p1", stock: 3 }]
+    const order = paidOrder()
+    order.status = "SHIPPED"
+
+    expect(
+      applyStripeRefundSnapshot(
+        products,
+        order,
+        {
+          orderId: "ORD-1",
+          refundId: "re_shipped",
+          paymentIntentId: "pi_1",
+          amount: 10000,
+          currency: "pln",
+          status: "succeeded",
+        },
+        "2026-09-26T09:30:00.000Z"
+      )
+    ).toBe("succeeded")
+
+    expect(products[0].stock).toBe(3)
+    expect(order.status).toBe("SHIPPED")
+    expect(order.paymentStatus).toBe("REFUNDED")
+    expect(order.refundStatus).toBe("succeeded")
+    expect(order.inventoryRefundRestockedAt).toBeUndefined()
+  })
+
   it("records failed refunds without cancelling the paid order", () => {
     const products = [{ id: "p1", stock: 3 }]
     const order = paidOrder()
