@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
+  isQuoteAdminActionable,
   requirePositiveQuoteTotal,
   requireQuoteBasePrice,
 } from "../quoteAdmin"
@@ -70,15 +71,19 @@ describe("quote admin invariants", () => {
     ).toBe(false)
   })
 
-  it("allows admin decisions only for actionable quote states", () => {
-    expect(() => assertQuoteAdminTransition("PENDING")).not.toThrow()
-    expect(() => assertQuoteAdminTransition("INQUIRY")).not.toThrow()
+  it("recognizes only pending quote states as actionable", () => {
+    expect(isQuoteAdminActionable("PENDING")).toBe(true)
+    expect(isQuoteAdminActionable("INQUIRY")).toBe(true)
 
     for (const status of ["QUOTED", "REJECTED", "CANCELLED", undefined]) {
+      expect(isQuoteAdminActionable(status)).toBe(false)
       expect(() => assertQuoteAdminTransition(status)).toThrow(
         "QUOTE_NOT_ACTIONABLE"
       )
     }
+
+    expect(() => assertQuoteAdminTransition("PENDING")).not.toThrow()
+    expect(() => assertQuoteAdminTransition("INQUIRY")).not.toThrow()
   })
 
   it("requires a positive finite catalog price before quoting", () => {
