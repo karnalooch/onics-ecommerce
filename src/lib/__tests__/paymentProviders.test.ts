@@ -66,9 +66,9 @@ describe("payment provider registry", () => {
       checkout: true,
       webhook: true,
       cancel: false,
-      refund: false,
+      refund: true,
       reconcile: false,
-      rma: false,
+      rma: true,
       manualSettlement: false,
     })
   })
