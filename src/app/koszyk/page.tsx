@@ -346,6 +346,7 @@ export default function CartPage() {
           <Info className="w-4 h-4 shrink-0 mt-0.5" />
           Obsługujemy bezpieczny format CELTRONICS_ORDER_XML_V1: wyłącznie SKU i ilość.
           Ceny, rabaty i stan magazynowy są zawsze sprawdzane na serwerze.
+          Jeśli SKU jest już w koszyku, ilości zostaną zsumowane i ponownie sprawdzone przy finalnym checkoutcie.
         </p>
 
         <div className="grid grid-cols-1 gap-2 w-full">
