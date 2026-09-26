@@ -8,6 +8,7 @@ import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
+  requirePositiveQuoteTotal,
   requireQuoteBasePrice,
 } from "@/lib/quoteAdmin"
 
@@ -236,10 +237,12 @@ export async function PUT(req: Request) {
           }
         )
         const quantity = Math.max(1, Number(quote.quantity || 1))
-        totalPriceFinal = roundMoney(
-          unitPrice *
-            quantity *
-            (1 - parsed.data.additionalDiscount / 100)
+        totalPriceFinal = requirePositiveQuoteTotal(
+          roundMoney(
+            unitPrice *
+              quantity *
+              (1 - parsed.data.additionalDiscount / 100)
+          )
         )
       }
 
@@ -287,6 +290,12 @@ export async function PUT(req: Request) {
     if (error instanceof Error && error.message === "QUOTE_PRODUCT_NOT_PRICED") {
       return NextResponse.json(
         { error: "Produkt nie ma aktywnej ceny sprzedaży. Uzupełnij cenę przed wyceną." },
+        { status: 409 }
+      )
+    }
+    if (error instanceof Error && error.message === "QUOTE_TOTAL_NOT_POSITIVE") {
+      return NextResponse.json(
+        { error: "Rabat sprowadza wycenę do zera. Ustaw dodatnią cenę końcową." },
         { status: 409 }
       )
     }
