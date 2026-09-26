@@ -111,6 +111,16 @@ export function applyStripeInventoryTransition(
 
   // Orders created before reservation support are intentionally unmanaged.
   if (!reservationStatus) return "legacy-unmanaged" as const
+  if (
+    reservationStatus !== "RESERVED" &&
+    reservationStatus !== "FINALIZED" &&
+    reservationStatus !== "RELEASED"
+  ) {
+    throw new Error("INVENTORY_RESERVATION_INVALID_STATE")
+  }
+  if (!order.items?.length) {
+    throw new Error("INVENTORY_RESERVATION_MISSING_ITEMS")
+  }
 
   if (paymentStatus === "PAID") {
     if (reservationStatus === "FINALIZED") return "unchanged" as const
@@ -118,8 +128,6 @@ export function applyStripeInventoryTransition(
     if (reservationStatus === "RELEASED") {
       reserveInventory(products, order.items ?? [])
       order.inventoryReReservedAt = now
-    } else if (reservationStatus !== "RESERVED") {
-      throw new Error("INVENTORY_RESERVATION_INVALID_STATE")
     }
 
     order.inventoryReservationStatus = "FINALIZED"
