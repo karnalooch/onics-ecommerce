@@ -21,6 +21,8 @@ export type PaymentProviderCapabilities = Record<
   boolean
 >
 
+import { describePrzelewy24Runtime } from "@/lib/przelewy24"
+
 export type PaymentRuntimeOptions = {
   nodeEnv?: string
   stripeSecretKey?: string | null
@@ -74,6 +76,7 @@ export type PaymentProviderOrderIdentity = {
   bankTransferReference?: unknown
   bankTransferIban?: unknown
   bankTransferAccountNumber?: unknown
+  p24SessionId?: unknown
 }
 
 export type PaymentProviderLifecycleDescriptor = {
@@ -164,38 +167,19 @@ export function bankTransferOperationalStatus(
 export function przelewy24OperationalStatus(
   options: PaymentRuntimeOptions = {}
 ): PaymentProviderOperationalStatus {
-  const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV
-  const merchantId = options.p24MerchantId ?? process.env.P24_MERCHANT_ID
-  const posId = options.p24PosId ?? process.env.P24_POS_ID
-  const apiKey = options.p24ApiKey ?? process.env.P24_API_KEY
-  const crc = options.p24Crc ?? process.env.P24_CRC
-  const configurationIssues: PaymentProviderConfigurationIssue[] = []
-
-  const validNumericCredential = (value: string | null | undefined) => {
-    if (!value?.trim() || !/^\d+$/.test(value.trim())) return false
-    const parsed = Number(value.trim())
-    return Number.isSafeInteger(parsed) && parsed > 0
-  }
-
-  if (
-    !validNumericCredential(merchantId) ||
-    !validNumericCredential(posId) ||
-    !apiKey?.trim() ||
-    !crc?.trim()
-  ) {
-    configurationIssues.push("CREDENTIALS_MISSING")
-  }
-
-  // #57 is intentionally sandbox-only. Production stays fail-closed until
-  // notification verification and the full lifecycle are implemented.
-  if (nodeEnv === "production") {
-    configurationIssues.push("PROVIDER_NOT_PRODUCTION_READY")
-  }
+  const status = describePrzelewy24Runtime({
+    nodeEnv: options.nodeEnv,
+    appUrl: options.appUrl,
+    merchantId: options.p24MerchantId,
+    posId: options.p24PosId,
+    apiKey: options.p24ApiKey,
+    crc: options.p24Crc,
+  })
 
   return {
-    configured: configurationIssues.length === 0,
-    webhookConfigured: false,
-    configurationIssues,
+    configured: status.configured,
+    webhookConfigured: status.webhookConfigured,
+    configurationIssues: [...status.configurationIssues],
   }
 }
 
@@ -252,7 +236,7 @@ const paymentProviderRegistry = {
     },
     capabilities: {
       checkout: true,
-      webhook: false,
+      webhook: true,
       cancel: false,
       refund: false,
       reconcile: false,
@@ -261,7 +245,7 @@ const paymentProviderRegistry = {
     },
     disabledMessage: "Przelewy24 jest obecnie niedostępne.",
     misconfiguredMessage:
-      "Przelewy24 nie jest skonfigurowane lub provider jest dostępny tylko w sandboxie.",
+      "Przelewy24 nie jest poprawnie skonfigurowane.",
     operationalStatus: przelewy24OperationalStatus,
   },
 } satisfies Record<PaymentProviderId, PaymentProviderDefinition>
@@ -311,6 +295,13 @@ export function resolveOrderPaymentProvider(
       order.bankTransferAccountNumber.trim())
   ) {
     return "BANK_TRANSFER"
+  }
+
+  if (
+    typeof order.p24SessionId === "string" &&
+    order.p24SessionId.trim()
+  ) {
+    return "PRZELEWY24"
   }
 
   return null
