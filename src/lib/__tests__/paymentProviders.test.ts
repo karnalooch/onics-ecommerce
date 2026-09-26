@@ -67,7 +67,7 @@ describe("payment provider registry", () => {
       webhook: true,
       cancel: false,
       refund: true,
-      reconcile: false,
+      reconcile: true,
       rma: true,
       manualSettlement: false,
     })
