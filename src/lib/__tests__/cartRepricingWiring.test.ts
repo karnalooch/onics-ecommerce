@@ -1,0 +1,58 @@
+import fs from "fs"
+import path from "path"
+import { describe, expect, it } from "vitest"
+
+describe("authoritative cart repricing wiring", () => {
+  it("protects the cart preview with the transaction-role boundary", () => {
+    const route = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/cart/preview/route.ts"),
+      "utf8"
+    )
+
+    expect(route).toContain("authorizeAPI([...COMMERCE_TRANSACTION_ROLES])")
+    expect(route).toContain("buildAuthoritativeCartSnapshot")
+    expect(route).toContain('"Cache-Control": "no-store"')
+  })
+
+  it("refreshes both storefront mini-cart and full cart through one hook", () => {
+    const hook = fs.readFileSync(
+      path.join(process.cwd(), "src/lib/useAuthoritativeCart.ts"),
+      "utf8"
+    )
+    const cartPage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/koszyk/page.tsx"),
+      "utf8"
+    )
+    const miniCart = fs.readFileSync(
+      path.join(process.cwd(), "src/app/sklep/_components/MiniCart.tsx"),
+      "utf8"
+    )
+    const shopPage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/sklep/page.tsx"),
+      "utf8"
+    )
+
+    expect(hook).toContain('fetch("/api/cart/preview"')
+    expect(hook).toContain("replaceItems(nextItems)")
+    expect(cartPage).toContain("useAuthoritativeCart")
+    expect(miniCart).toContain("useAuthoritativeCart")
+    expect(shopPage).toContain("cartIdentityKey=")
+  })
+
+  it("keeps transaction actions paused while repricing is running", () => {
+    const cartPage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/koszyk/page.tsx"),
+      "utf8"
+    )
+    const miniCart = fs.readFileSync(
+      path.join(process.cwd(), "src/app/sklep/_components/MiniCart.tsx"),
+      "utf8"
+    )
+
+    expect(cartPage).toContain("if (refreshingCart)")
+    expect(cartPage).toContain(
+      "submitting !== null || requiresPricing || refreshingCart"
+    )
+    expect(miniCart).toContain("disabled={refreshingCart}")
+  })
+})
