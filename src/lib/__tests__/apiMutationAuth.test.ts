@@ -14,7 +14,7 @@ type ExplicitMutationGuard = {
 
 const EXPLICIT_NON_SESSION_GUARDS: Record<string, ExplicitMutationGuard> = {
   "src/app/api/admin/import/route.ts:POST": {
-    markers: [
+    handlerMarkers: [
       "process.env.WF_MAG_SECRET",
       'req.headers.get("authorization")',
       "safeEqual(",
@@ -22,7 +22,7 @@ const EXPLICIT_NON_SESSION_GUARDS: Record<string, ExplicitMutationGuard> = {
     fileMarkers: ["crypto.timingSafeEqual("],
   },
   "src/app/api/register/route.ts:POST": {
-    markers: [
+    handlerMarkers: [
       "applicationRateLimiter.check(",
       'roleType: "BIZ"',
       "isApproved: false",
@@ -31,7 +31,7 @@ const EXPLICIT_NON_SESSION_GUARDS: Record<string, ExplicitMutationGuard> = {
     beforeMutationMarker: "mutateMockData(",
   },
   "src/app/api/webhooks/stripe/route.ts:POST": {
-    markers: [
+    handlerMarkers: [
       "process.env.STRIPE_WEBHOOK_SECRET",
       'req.headers.get("stripe-signature")',
       "stripe.webhooks.constructEvent(",
@@ -39,14 +39,14 @@ const EXPLICIT_NON_SESSION_GUARDS: Record<string, ExplicitMutationGuard> = {
     beforeMutationMarker: "applyCheckoutStatus(",
   },
   "src/app/api/webhooks/przelewy24/route.ts:POST": {
-    markers: [
+    handlerMarkers: [
       "resolvePrzelewy24Config()",
       "verifyPrzelewy24NotificationSignature(",
     ],
     beforeMutationMarker: "mutateMockData(",
   },
   "src/app/api/webhooks/przelewy24/refund/route.ts:POST": {
-    markers: [
+    handlerMarkers: [
       "resolvePrzelewy24Config()",
       "verifyPrzelewy24RefundNotificationSignature(",
     ],
