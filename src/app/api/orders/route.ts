@@ -89,12 +89,21 @@ type StoredOrder = InventoryReservationOrder & {
   [key: string]: unknown
 }
 
-function withPaymentLifecycle(order: StoredOrder) {
-  return {
+function withPaymentLifecycle(
+  order: StoredOrder,
+  includeAdminActions = false
+) {
+  const described = {
     ...order,
     paymentLifecycle: describeOrderPaymentLifecycle(order),
-    paymentAdminActions: listAvailablePaymentAdminActions(order),
   }
+
+  return includeAdminActions
+    ? {
+        ...described,
+        paymentAdminActions: listAvailablePaymentAdminActions(order),
+      }
+    : described
 }
 
 export async function GET() {
@@ -106,7 +115,9 @@ export async function GET() {
   const orderStore = orders as StoredOrder[]
 
   if (authCheck.currentRole === "ADMIN") {
-    return NextResponse.json(orderStore.map(withPaymentLifecycle))
+    return NextResponse.json(
+      orderStore.map((order) => withPaymentLifecycle(order, true))
+    )
   }
 
   const ownOrders = orderStore.filter((order) =>
@@ -333,7 +344,7 @@ export async function PUT(req: Request) {
       return nextOrder
     })
 
-    return NextResponse.json(withPaymentLifecycle(updatedOrder))
+    return NextResponse.json(withPaymentLifecycle(updatedOrder, true))
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 })
