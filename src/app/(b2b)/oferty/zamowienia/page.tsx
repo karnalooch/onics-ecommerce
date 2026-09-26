@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Package, Clock, Truck, ShieldCheck, Landmark } from "lucide-react"
+import { Loader2, Package, Clock, Truck, ShieldCheck, Landmark, XCircle, RotateCcw, MessageSquare } from "lucide-react"
 
 export default function B2BClientOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -154,22 +154,73 @@ export default function B2BClientOrdersPage() {
                           <Clock className="w-5 h-5 shrink-0" />
                           <div>
                             <strong>Oczekuje na Weryfikację</strong>
-                            <p className="opacity-80 text-xs mt-1">Administrator musi potwierdzić ostateczne uwarunkowania cenowe oraz załączyć szacowany termin dostawy.</p>
+                            <p className="opacity-80 text-xs mt-1">
+                              {order.paymentProvider === "BANK_TRANSFER" &&
+                               order.paymentStatus !== "PAID"
+                                ? "Najpierw oczekujemy na potwierdzenie wpływu przelewu."
+                                : "Administrator musi potwierdzić ostateczne warunki i termin dostawy."}
+                            </p>
+                          </div>
+                        </div>
+                      ) : order.status === "CANCELLED" ? (
+                        <div className="bg-red-100 border-red-200 text-red-800 p-3 rounded-lg flex gap-3 text-sm">
+                          <XCircle className="w-5 h-5 shrink-0" />
+                          <div>
+                            <strong>Zamówienie Anulowane</strong>
+                            {order.paymentStatus === "REFUNDED" && (
+                              <p className="opacity-80 text-xs mt-1">
+                                Zwrot środków został potwierdzony.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ) : order.status === "RETURNED" ? (
+                        <div className="bg-amber-100 border-amber-200 text-amber-900 p-3 rounded-lg flex gap-3 text-sm">
+                          <RotateCcw className="w-5 h-5 shrink-0" />
+                          <div>
+                            <strong>Zamówienie Zwrócone</strong>
+                            <p className="opacity-80 text-xs mt-1">
+                              Proces zwrotu został zakończony.
+                            </p>
+                          </div>
+                        </div>
+                      ) : order.status === "INQUIRY" ? (
+                        <div className="bg-slate-100 border-slate-200 text-slate-700 p-3 rounded-lg flex gap-3 text-sm">
+                          <MessageSquare className="w-5 h-5 shrink-0" />
+                          <div>
+                            <strong>Zapytanie Handlowe</strong>
+                            <p className="opacity-80 text-xs mt-1">
+                              Oczekuje na odpowiedź zespołu handlowego.
+                            </p>
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-3">
                           <div className="bg-green-100 border-green-200 text-green-800 p-3 rounded-lg flex items-center gap-3 text-sm">
-                            <ShieldCheck className="w-5 h-5" />
-                            <strong>Zamówienie Potwierdzone</strong>
+                            {order.status === "SHIPPED" ? (
+                              <Truck className="w-5 h-5" />
+                            ) : (
+                              <ShieldCheck className="w-5 h-5" />
+                            )}
+                            <strong>
+                              {order.status === "SHIPPED"
+                                ? "Zamówienie Wysłane"
+                                : "Zamówienie Potwierdzone"}
+                            </strong>
                           </div>
-                          <div className="bg-white dark:bg-gray-950 border p-3 rounded-lg flex items-center gap-3 text-sm shadow-sm">
-                            <Truck className="w-5 h-5 text-blue-500" />
-                            <div>
-                              <div className="text-muted-foreground text-xs">Ustalony czas dostawy:</div>
-                              <strong className="text-base text-gray-800 dark:text-white">~ {order.estimatedDeliveryDays} dni roboczych</strong>
+                          {order.estimatedDeliveryDays && (
+                            <div className="bg-white dark:bg-gray-950 border p-3 rounded-lg flex items-center gap-3 text-sm shadow-sm">
+                              <Truck className="w-5 h-5 text-blue-500" />
+                              <div>
+                                <div className="text-muted-foreground text-xs">
+                                  Ustalony czas dostawy:
+                                </div>
+                                <strong className="text-base text-gray-800 dark:text-white">
+                                  ~ {order.estimatedDeliveryDays} dni roboczych
+                                </strong>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>
