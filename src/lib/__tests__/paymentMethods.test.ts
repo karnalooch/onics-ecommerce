@@ -6,6 +6,7 @@ import {
   isPaymentControlEnabled,
   isPaymentMethodEnabled,
   resolvePaymentAvailability,
+  przelewy24OperationalStatus,
   stripeOperationalStatus,
 } from "@/lib/paymentMethods"
 import type {
@@ -30,6 +31,13 @@ function settings(
       displayName: "Przelew tradycyjny",
       displayOrder: 10,
       maintenanceMessage: "Przelewy chwilowo wyłączone",
+      updatedAt: null,
+    },
+    PRZELEWY24: {
+      enabled: false,
+      displayName: "Przelewy24",
+      displayOrder: 30,
+      maintenanceMessage: null,
       updatedAt: null,
     },
   }
@@ -165,6 +173,36 @@ describe("payment method management", () => {
     ).toBe(true)
   })
 
+  it("keeps Przelewy24 sandbox-only until its full lifecycle is implemented", () => {
+    expect(
+      przelewy24OperationalStatus({
+        nodeEnv: "test",
+        p24MerchantId: "123456",
+        p24PosId: "123456",
+        p24ApiKey: "api-key",
+        p24Crc: "crc",
+      })
+    ).toEqual({
+      configured: true,
+      webhookConfigured: false,
+      configurationIssues: [],
+    })
+
+    expect(
+      przelewy24OperationalStatus({
+        nodeEnv: "production",
+        p24MerchantId: "123456",
+        p24PosId: "123456",
+        p24ApiKey: "api-key",
+        p24Crc: "crc",
+      })
+    ).toEqual({
+      configured: false,
+      webhookConfigured: false,
+      configurationIssues: ["PROVIDER_NOT_PRODUCTION_READY"],
+    })
+  })
+
   it("requires recipient and a valid Polish account number for bank transfer", () => {
     expect(
       bankTransferOperationalStatus({
@@ -194,6 +232,7 @@ describe("payment method management", () => {
     expect(methods.map((method) => method.id)).toEqual([
       "BANK_TRANSFER",
       "STRIPE",
+      "PRZELEWY24",
     ])
     expect(methods[0]).toMatchObject({
       id: "BANK_TRANSFER",
