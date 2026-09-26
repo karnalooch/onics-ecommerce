@@ -119,19 +119,21 @@ function normalizePaymentWebhookEvents(value: unknown): PaymentWebhookEvent[] {
         !isPaymentProviderId(entry.provider) ||
         (entry.kind !== "PAYMENT" && entry.kind !== "REFUND") ||
         typeof entry.eventHash !== "string" ||
-        !/^[0-9a-f]{64}$/i.test(entry.eventHash) ||
-        seen.has(entry.eventHash)
+        !/^[0-9a-f]{64}$/i.test(entry.eventHash)
       ) {
         return []
       }
 
-      seen.add(entry.eventHash)
+      const eventHash = entry.eventHash.toLowerCase()
+      if (seen.has(eventHash)) return []
+
+      seen.add(eventHash)
       return [{
-        id: entry.id,
+        id: eventHash,
         createdAt: entry.createdAt,
         provider: entry.provider,
         kind: entry.kind as PaymentWebhookEvent["kind"],
-        eventHash: entry.eventHash.toLowerCase(),
+        eventHash,
       }]
     })
     .slice(0, 500)
