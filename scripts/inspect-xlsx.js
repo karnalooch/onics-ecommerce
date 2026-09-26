@@ -1,7 +1,11 @@
 const XLSX = require('xlsx');
 const path = require('path');
 
-const filePath = path.join(process.cwd(), 'public/uploads/catalogs/mkj_pelny_raport_enriched.xlsx');
+const fixtureRoot = path.resolve(
+  process.env.CELTRONICS_FIXTURE_ROOT ||
+    path.join(process.cwd(), '.local', 'celtronics', 'catalog-fixtures')
+);
+const filePath = path.join(fixtureRoot, 'mkj_pelny_raport_enriched.xlsx');
 
 try {
   const workbook = XLSX.readFile(filePath);
