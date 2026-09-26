@@ -2,7 +2,25 @@ import { NextResponse } from "next/server"
 import bcrypt from "bcrypt"
 import { z } from "zod"
 import { validateNip } from "@/lib/validation"
-import { mutateMockData } from "@/store/serverStore"
+import {
+  applicationRateLimiter,
+  getClientRateLimitKey,
+  type RateLimitResult,
+} from "@/lib/rateLimit"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
+
+const REGISTER_CLIENT_POLICY = { limit: 5, windowMs: 15 * 60_000 } as const
+const REGISTER_EMAIL_POLICY = { limit: 3, windowMs: 60 * 60_000 } as const
+
+function rateLimited(result: RateLimitResult) {
+  return NextResponse.json(
+    { error: "Zbyt wiele prób rejestracji. Spróbuj ponownie później." },
+    {
+      status: 429,
+      headers: { "Retry-After": String(result.retryAfterSeconds) },
+    }
+  )
+}
 
 const RegistrationSchema = z.object({
   email: z.string().trim().email("Nieprawidłowy adres e-mail").transform((value) => value.toLowerCase()),
@@ -22,6 +40,13 @@ const RegistrationSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    const clientLimit = applicationRateLimiter.check(
+      "register:client",
+      getClientRateLimitKey(req),
+      REGISTER_CLIENT_POLICY
+    )
+    if (!clientLimit.allowed) return rateLimited(clientLimit)
+
     const parsed = RegistrationSchema.safeParse(await req.json())
 
     if (!parsed.success) {
@@ -32,6 +57,26 @@ export async function POST(req: Request) {
     }
 
     const data = parsed.data
+    const emailLimit = applicationRateLimiter.check(
+      "register:email",
+      data.email,
+      REGISTER_EMAIL_POLICY
+    )
+    if (!emailLimit.allowed) return rateLimited(emailLimit)
+
+    const snapshot = initializeMockData()
+    if (
+      (snapshot.users as Array<{ email?: string }>).some(
+        (user) =>
+          String(user.email ?? "").trim().toLowerCase() === data.email
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Użytkownik o tym adresie e-mail już istnieje." },
+        { status: 409 }
+      )
+    }
+
     const passwordHash = await bcrypt.hash(data.password, 12)
     const newUser = {
       id: `u_${crypto.randomUUID()}`,
