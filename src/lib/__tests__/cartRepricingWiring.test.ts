@@ -81,7 +81,8 @@ describe("authoritative cart repricing wiring", () => {
 
     expect(hook).toContain("const refreshCart = useCallback")
     expect(hook).toContain("setRefreshVersion((version) => version + 1)")
-    expect(hook).toContain("availableStockById, refreshCart")
+    expect(hook).toContain("availableStockById,")
+    expect(hook).toContain("refreshCart,")
     expect(
       cartPage.match(/if \(response\.status === 409\) refreshCart\(\);/g)
     ).toHaveLength(2)
