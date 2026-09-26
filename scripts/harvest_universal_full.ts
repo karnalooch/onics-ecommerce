@@ -26,7 +26,7 @@ const URLS = [
   'https://www.universal.net.pl/files/cenniki/dahua/Dahua_Technology_Poland_Cennik_Q1_2026_03_23_Dystrybucja.xlsx',
   'https://www.universal.net.pl/files/cenniki/dahua/Dahua%20SSP.xlsx',
   'https://www.universal.net.pl/files/cenniki/elfon/ELFON-cennik-zbiorczy.xls',
-  'public/uploads/catalogs/Cennik_detaliczny_EMU_IQ_2023.xlsx',
+  'fixtures/catalogs/Cennik_detaliczny_EMU_IQ_2023.xlsx',
   'https://www.universal.net.pl/files/cenniki/ewimar/Cennik%20produkt%C3%B3w%20Ewimar%2002.04.2024r..xlsx',
   'https://www.universal.net.pl/files/cenniki/gde/GDEPOLSKA-CennikCOMMAX30.09.2024.pdf',
   'https://www.universal.net.pl/files/cenniki/gde/GDEPOLSKA-CennikSCOT30.09.2024.pdf',
@@ -59,24 +59,31 @@ async function downloadFile(url: string, dest: string) {
 }
 
 async function harvest() {
-  const downloadDir = path.join(process.cwd(), 'public/uploads/catalogs/universal_live');
+  const downloadDir = path.join(process.cwd(), '.local/celtronics/harvest/universal_live');
   if (!fs.existsSync(downloadDir)) fs.mkdirSync(downloadDir, { recursive: true });
 
   const summaryRows = [];
   const sheets: { name: string, data: any[] }[] = [];
 
-  for (const url of URLS) {
-    const filename = path.basename(decodeURIComponent(url));
-    const dest = path.join(downloadDir, filename);
+  for (const source of URLS) {
+    const isRemote = /^https?:\/\//i.test(source);
+    const filename = isRemote
+      ? path.basename(decodeURIComponent(new URL(source).pathname))
+      : path.basename(source);
+    const dest = isRemote
+      ? path.join(downloadDir, filename)
+      : path.resolve(process.cwd(), source);
     
     console.log(`\n>>> [HARVEST] ${filename}`);
     
     try {
-        if (!fs.existsSync(dest)) {
+        if (isRemote && !fs.existsSync(dest)) {
           console.log(`   Downloading...`);
-          await downloadFile(url, dest);
-        } else {
+          await downloadFile(source, dest);
+        } else if (isRemote) {
           console.log(`   Already exists, re-parsing...`);
+        } else {
+          console.log(`   Reading fixture: ${source}`);
         }
 
         const buffer = fs.readFileSync(dest);

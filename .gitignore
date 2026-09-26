@@ -26,6 +26,7 @@ node_modules/
 
 # local application data
 /.local/
+/public/uploads/catalogs/
 
 # debug
 npm-debug.log*

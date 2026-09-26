@@ -86,6 +86,15 @@ jobs:
             exit 1
           fi
 
+      - name: Reject public catalog assets
+        run: |
+          tracked_catalogs="$(git ls-files 'public/uploads/catalogs/**')"
+          if [ -n "$tracked_catalogs" ]; then
+            echo "Catalog binaries must not be tracked under public/uploads/catalogs."
+            printf '%s\n' "$tracked_catalogs"
+            exit 1
+          fi
+
       - name: Run tests
         run: npm test -- --run
 

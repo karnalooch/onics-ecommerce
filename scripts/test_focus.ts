@@ -7,10 +7,10 @@ async function runFocusedPDFTest() {
   console.log('POCZĄTEK SKONCENTROWANEJ ANALIZY PDF (V8 Heuristic)...');
   
   const filesToTest = [
-    'public/uploads/catalogs/Pulsar_Cennik_Detal_2023.pdf',
-    'public/uploads/catalogs/universal_mass_test/pdfs/BCS - BCS BASIC CENNIK 2026.pdf',
-    'public/uploads/catalogs/universal_mass_test/pdfs/BCS - BCS KONTROLA CENNIK 2026.pdf',
-    'public/uploads/catalogs/universal_mass_test/pdfs/BCS - BCS LINE CENNIK 2026.pdf'
+    'fixtures/catalogs/Pulsar_Cennik_Detal_2023.pdf',
+    'fixtures/catalogs/universal_mass_test/pdfs/BCS - BCS BASIC CENNIK 2026.pdf',
+    'fixtures/catalogs/universal_mass_test/pdfs/BCS - BCS KONTROLA CENNIK 2026.pdf',
+    'fixtures/catalogs/universal_mass_test/pdfs/BCS - BCS LINE CENNIK 2026.pdf'
   ];
 
   let totalParsed = 0;
