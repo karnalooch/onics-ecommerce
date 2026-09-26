@@ -19,10 +19,18 @@ const originalLockEnv = Object.fromEntries(
 
 let tempDir = ""
 
+function dbPath() {
+  return path.join(tempDir, "db.json")
+}
+
+function writeDb(users: unknown[] = []) {
+  fs.writeFileSync(dbPath(), JSON.stringify({ users }))
+}
+
 function readyOptions() {
   return {
     nodeEnv: "production",
-    dbPath: path.join(tempDir, "db.json"),
+    dbPath: dbPath(),
     uploadRoot: path.join(tempDir, "uploads"),
     authSecret: "test-auth-secret",
     nextAuthSecret: "test-nextauth-secret",
@@ -33,7 +41,7 @@ function readyOptions() {
 describe("production readiness", () => {
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "celtronics-health-"))
-    fs.writeFileSync(path.join(tempDir, "db.json"), JSON.stringify({ users: [] }))
+    writeDb()
     fs.mkdirSync(path.join(tempDir, "uploads"))
     for (const name of lockEnvNames) delete process.env[name]
   })
@@ -54,12 +62,13 @@ describe("production readiness", () => {
         configuration: "ok",
         database: "ok",
         uploads: "ok",
+        adminBootstrap: "ok",
       },
     })
   })
 
   it("reports database failure for malformed persisted JSON", () => {
-    fs.writeFileSync(path.join(tempDir, "db.json"), "{broken-json")
+    fs.writeFileSync(dbPath(), "{broken-json")
 
     expect(evaluateReadiness(readyOptions())).toMatchObject({
       ready: false,
@@ -85,6 +94,47 @@ describe("production readiness", () => {
     ).toMatchObject({
       ready: false,
       checks: { configuration: "error" },
+    })
+  })
+
+  it("requires the bootstrap secret while an active admin is unsealed", () => {
+    writeDb([
+      {
+        id: "u_admin",
+        roleType: "ADMIN",
+        isBlocked: false,
+      },
+    ])
+
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        adminBootstrapPassword: "",
+      })
+    ).toMatchObject({
+      ready: false,
+      checks: { adminBootstrap: "error" },
+    })
+  })
+
+  it("does not require the bootstrap secret after the admin is sealed", () => {
+    writeDb([
+      {
+        id: "u_admin",
+        roleType: "ADMIN",
+        isBlocked: false,
+        passwordHash: "sealed-hash",
+      },
+    ])
+
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        adminBootstrapPassword: "",
+      })
+    ).toMatchObject({
+      ready: true,
+      checks: { adminBootstrap: "ok" },
     })
   })
 })
