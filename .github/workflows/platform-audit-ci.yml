@@ -102,6 +102,15 @@ jobs:
             exit 1
           fi
 
+      - name: Reject tracked supplier catalog fixtures
+        run: |
+          tracked_fixtures="$(git ls-files 'fixtures/catalogs/**')"
+          if [ -n "$tracked_fixtures" ]; then
+            echo "Supplier catalog binaries must not be committed under fixtures/catalogs."
+            printf '%s\n' "$tracked_fixtures"
+            exit 1
+          fi
+
       - name: Run tests
         run: npm test -- --run
 
