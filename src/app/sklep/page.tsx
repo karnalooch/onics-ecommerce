@@ -5,6 +5,7 @@ import { initializeMockData } from "@/store/serverStore";
 import { ShopDashboardClient } from "./ShopDashboardClient";
 import { ShieldAlert, Clock, ArrowLeft } from "lucide-react";
 import { calculateCustomerUnitPrice } from "@/lib/commerce";
+import { findStoredUserBySession } from "@/lib/sessionIdentity";
 import Link from "next/link";
 
 /**
@@ -21,18 +22,16 @@ export default async function SklepPage() {
     id?: string
     email?: string | null
   };
-  const currentUser = (users as Array<{
-    id?: string
-    email?: string
-    roleType?: string
-    isApproved?: boolean
-    isBlocked?: boolean
-    discount?: number
-  }>).find(
-    (user) =>
-      (sessionUser.id && user.id === sessionUser.id) ||
-      (sessionUser.email &&
-        user.email?.toLowerCase() === sessionUser.email.toLowerCase())
+  const currentUser = findStoredUserBySession(
+    users as Array<{
+      id?: string
+      email?: string
+      roleType?: string
+      isApproved?: boolean
+      isBlocked?: boolean
+      discount?: number
+    }>,
+    sessionUser
   );
 
   if (!currentUser || currentUser.isBlocked) {
