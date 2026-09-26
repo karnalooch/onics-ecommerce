@@ -59,6 +59,7 @@ export default function AdminPaymentsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [emergencyRunning, setEmergencyRunning] = useState(false)
+  const [reconciling, setReconciling] = useState(false)
 
   const loadMethods = useCallback(async () => {
     setLoading(true)
@@ -207,6 +208,48 @@ export default function AdminPaymentsPage() {
       await loadMethods()
     } finally {
       setEmergencyRunning(false)
+    }
+  }
+
+  const reconcileStripe = async () => {
+    setReconciling(true)
+    try {
+      const response = await fetch("/api/payment-methods/reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok && response.status !== 207) {
+        throw new Error(
+          data?.error || "Nie udało się zsynchronizować Stripe."
+        )
+      }
+
+      const summary = data?.summary ?? {}
+      const updated = Number(summary.UPDATED ?? 0)
+      const review = Number(summary.MANUAL_REVIEW ?? 0)
+      const failed = Number(summary.FAILED ?? 0)
+      const unchanged = Number(summary.UNCHANGED ?? 0)
+
+      if (failed > 0 || review > 0) {
+        toast.warning(
+          `Stripe: zaktualizowano ${updated}, bez zmian ${unchanged}, review ${review}, błędy ${failed}.`
+        )
+      } else {
+        toast.success(
+          `Stripe zsynchronizowany: zaktualizowano ${updated}, bez zmian ${unchanged}.`
+        )
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się zsynchronizować Stripe."
+      )
+    } finally {
+      setReconciling(false)
     }
   }
 
@@ -645,6 +688,28 @@ export default function AdminPaymentsPage() {
                             ? `WŁĄCZ ${method.name}`
                             : "BRAK KONFIGURACJI"}
                     </button>
+
+                    {method.id === "STRIPE" && (
+                      <button
+                        onClick={reconcileStripe}
+                        disabled={
+                          reconciling ||
+                          saving !== null ||
+                          emergencyRunning ||
+                          !method.configured
+                        }
+                        className="h-11 px-6 border border-slate-200 text-slate-600 bg-white text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:border-slate-950 hover:text-slate-950 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCcw
+                          className={`w-4 h-4 ${
+                            reconciling ? "animate-spin" : ""
+                          }`}
+                        />
+                        {reconciling
+                          ? "SYNCHRONIZACJA..."
+                          : "SYNCHRONIZUJ STRIPE"}
+                      </button>
+                    )}
                   </div>
                 </div>
               </section>
