@@ -4,6 +4,7 @@ import {
   hasActiveReservationForProduct,
   releaseInventory,
   reserveInventory,
+  shouldDeferProductStockWrite,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
 
@@ -147,6 +148,20 @@ describe("inventory reservations", () => {
 
     expect(hasActiveReservationForProduct(orders, "p1")).toBe(true)
     expect(hasActiveReservationForProduct(orders, "p2")).toBe(false)
+  })
+
+  it("defers stock changes while a product has an active reservation", () => {
+    const orders = [
+      {
+        items: [{ id: "p1", quantity: 2 }],
+        inventoryReservationStatus: "RESERVED",
+      },
+    ]
+
+    expect(shouldDeferProductStockWrite(orders, "p1", 3, 5)).toBe(true)
+    expect(shouldDeferProductStockWrite(orders, "p1", 3, 3)).toBe(false)
+    expect(shouldDeferProductStockWrite(orders, "p2", 3, 5)).toBe(false)
+    expect(shouldDeferProductStockWrite(orders, "p1", 3, undefined)).toBe(false)
   })
 
   it("can release an explicit reservation directly", () => {
