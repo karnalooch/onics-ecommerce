@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
-import { Trash2, FileText, Send, ShoppingBag, Loader2, UploadCloud, Info, ShieldCheck, CreditCard } from "lucide-react";
+import { Trash2, FileText, Send, ShoppingBag, Loader2, ShieldCheck, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner"; // Jeśli mamy sonner zainstalowane, jeśli nie to mock
@@ -115,10 +115,37 @@ export default function CartPage() {
     setSubmitting(action);
     try {
       if (action === "PDF") {
-        // Generowanie oferty PDF lokalnie dla instalatora
-        alert("Generuję dokument PDF... (symulacja)");
-        window.print();
-        setSubmitting(null);
+        const response = await fetch("/api/offers/pdf", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map((item) => ({
+              id: item.id,
+              quantity: item.quantity,
+            })),
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+          throw new Error(
+            data?.error || "Nie udało się wygenerować oferty PDF."
+          );
+        }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const disposition = response.headers.get("content-disposition") || "";
+        const match = disposition.match(/filename="([^"]+)"/i);
+        const filename = match?.[1] || "oferta-CEL-TRONICS.pdf";
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        toast.success("Oferta PDF została wygenerowana.");
         return;
       }
 
@@ -126,27 +153,37 @@ export default function CartPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user: session?.user || { email: "gosc@anon.pl" },
-          items,
-          orderType: action, 
+          items: items.map((item) => ({
+            id: item.id,
+            quantity: item.quantity,
+          })),
+          orderType: action,
         }),
       });
 
-      if (response.ok) {
-        if (action === "ORDER") {
-          alert("✅ Zamówienie weryfikacyjne wysłane! Czekaj na nadanie czasów dostaw przez Admina.");
-        } else {
-          alert("💬 Zapytanie cenowe wysłane.");
-        }
-        clearCart();
-        router.push("/oferty/zamowienia");
-      } else {
-        alert("Wystąpił błąd podczas wysyłania do centrali.");
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Nie udało się wysłać zamówienia."
+        );
       }
-    } catch {
-      alert("Błąd połączenia. Spróbuj ponownie.");
+
+      toast.success(
+        action === "ORDER"
+          ? "Zamówienie wysłane. Oczekuje na potwierdzenie terminu realizacji."
+          : "Zapytanie cenowe zostało wysłane."
+      );
+      clearCart();
+      router.push("/oferty/zamowienia");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Błąd połączenia. Spróbuj ponownie."
+      );
+    } finally {
+      setSubmitting(null);
     }
-    setSubmitting(null);
   };
 
   if (!mounted) return <div className="p-12 text-center flex justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
@@ -247,17 +284,6 @@ export default function CartPage() {
 
           {/* SIDEBAR RIGHT (Import XML + Podsumowanie z 3 przyciskami ze screena nr 1 i promptu) */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 border rounded-2xl p-6 shadow-sm flex flex-col items-center text-center">
-              <h3 className="font-semibold text-lg mb-2">Importuj plik z zamówieniem</h3>
-              <p className="text-xs text-muted-foreground mb-6 flex items-start gap-2 text-left">
-                <Info className="w-4 h-4 shrink-0 mt-0.5" /> 
-                Możesz zaimportować dane swojego zamówienia z pliku XML (standard EDI) lub korzystając z naszego szablonu zamówienia.
-              </p>
-              <Button variant="outline" className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 font-semibold border-none rounded-full">
-                Wybierz plik
-              </Button>
-            </div>
-
             <div className="border rounded-2xl p-6 shadow-sm bg-gray-50 dark:bg-gray-900/50">
               <h3 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Podsumowanie</h3>
               
