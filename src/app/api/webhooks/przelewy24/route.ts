@@ -7,6 +7,7 @@ import {
 import {
   applyVerifiedPrzelewy24Payment,
   resolvePrzelewy24Config,
+  stagePrzelewy24Verification,
   validatePrzelewy24NotificationForOrder,
   verifyPrzelewy24NotificationSignature,
   verifyPrzelewy24Transaction,
@@ -88,6 +89,28 @@ export async function POST(req: Request) {
     console.error("Przelewy24 notification/order mismatch:", error)
     return NextResponse.json(
       { error: "Powiadomienie nie pasuje do zamówienia." },
+      { status: 409 }
+    )
+  }
+
+  try {
+    await mutateMockData((db) => {
+      const fresh = (db.orders as Przelewy24StoredOrder[]).find(
+        (candidate) =>
+          candidate.p24SessionId === notification.sessionId ||
+          candidate.id === notification.sessionId
+      )
+      if (!fresh) throw new Error("ORDER_NOT_FOUND")
+      if (resolveOrderPaymentProvider(fresh) !== "PRZELEWY24") {
+        throw new Error("PRZELEWY24_ORDER_MISMATCH")
+      }
+
+      stagePrzelewy24Verification(fresh, notification)
+    })
+  } catch (error) {
+    console.error("Przelewy24 verification intent persistence failed:", error)
+    return NextResponse.json(
+      { error: "Nie udało się bezpiecznie zapisać powiadomienia Przelewy24." },
       { status: 409 }
     )
   }
