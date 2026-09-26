@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcrypt"
 import crypto from "crypto"
 import { sealAdminBootstrapPassword } from "@/lib/adminBootstrap"
+import { getAccountAccessDecision } from "@/lib/accountAccess"
 import { authorizePageRoute } from "@/lib/routeAccess"
 import {
   applicationRateLimiter,
@@ -85,7 +86,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           (entry) => normalizeEmail(entry.email) === email
         )
 
-        if (!user || user.isBlocked) return null
+        if (!user || getAccountAccessDecision(user) !== "allowed") {
+          return null
+        }
 
         const accountLimit = applicationRateLimiter.check(
           "login:account",
@@ -112,8 +115,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   callbacks: {
     authorized({ auth, request }) {
-      const role = (auth?.user as { role?: string } | undefined)?.role
-      return authorizePageRoute(request.nextUrl.pathname, role)
+      const sessionUser = auth?.user as
+        | { role?: string; isApproved?: boolean }
+        | undefined
+
+      return authorizePageRoute(
+        request.nextUrl.pathname,
+        sessionUser?.role,
+        sessionUser?.isApproved === true
+      )
     },
     async jwt({ token, user }) {
       if (user) {

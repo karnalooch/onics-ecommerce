@@ -12,19 +12,21 @@ describe("proxy page authorization", () => {
   it("requires ADMIN for admin pages", () => {
     expect(authorizePageRoute("/admin", "ADMIN")).toBe(true)
     expect(authorizePageRoute("/admin/orders", "ADMIN")).toBe(true)
-    expect(authorizePageRoute("/admin", "BIZ")).toBe(false)
+    expect(authorizePageRoute("/admin", "BIZ", true)).toBe(false)
     expect(authorizePageRoute("/admin/orders", undefined)).toBe(false)
   })
 
-  it("requires BIZ for partner pages", () => {
+  it("requires an approved BIZ account for partner pages", () => {
     for (const pathname of [
       "/dashboard",
       "/oferty",
       "/oferty/zamowienia",
       "/ustawienia",
     ]) {
-      expect(authorizePageRoute(pathname, "BIZ")).toBe(true)
-      expect(authorizePageRoute(pathname, "ADMIN")).toBe(false)
+      expect(authorizePageRoute(pathname, "BIZ", true)).toBe(true)
+      expect(authorizePageRoute(pathname, "BIZ", false)).toBe(false)
+      expect(authorizePageRoute(pathname, "BIZ")).toBe(false)
+      expect(authorizePageRoute(pathname, "ADMIN", true)).toBe(false)
       expect(authorizePageRoute(pathname, undefined)).toBe(false)
     }
   })

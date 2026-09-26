@@ -1,5 +1,6 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
+import { getAccountAccessDecision } from "@/lib/accountAccess"
 import { initializeMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 
@@ -29,8 +30,8 @@ function isUserRole(value: unknown): value is UserRole {
 
 /**
  * Weryfikuje sesję względem aktualnego serwerowego źródła prawdy.
- * Rola i blokada konta są odczytywane z bieżącego rekordu użytkownika,
- * a nie wyłącznie z JWT utworzonego podczas logowania.
+ * Rola, blokada i akceptacja konta są odczytywane z bieżącego rekordu
+ * użytkownika, a nie wyłącznie z JWT utworzonego podczas logowania.
  */
 export async function authorizeAPI(requiredRoles: UserRole[] = []) {
   const session = await auth()
@@ -62,11 +63,23 @@ export async function authorizeAPI(requiredRoles: UserRole[] = []) {
     }
   }
 
-  if (storedUser.isBlocked) {
+  const accountAccess = getAccountAccessDecision(storedUser)
+
+  if (accountAccess === "blocked") {
     return {
       authorized: false as const,
       response: NextResponse.json(
         { error: "Konto jest zablokowane." },
+        { status: 403 }
+      ),
+    }
+  }
+
+  if (accountAccess === "approval-required") {
+    return {
+      authorized: false as const,
+      response: NextResponse.json(
+        { error: "Konto oczekuje na zatwierdzenie administratora." },
         { status: 403 }
       ),
     }
