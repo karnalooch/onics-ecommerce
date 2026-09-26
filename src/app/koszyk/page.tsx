@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
+import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart";
 
 type CheckoutPaymentMethod = {
   id: string;
@@ -73,7 +74,6 @@ export default function CartPage() {
     addItem,
     removeItem,
     updateQuantity,
-    replaceItems,
     getTotalPrice,
     clearCart,
   } = useCartStore();
@@ -89,9 +89,7 @@ export default function CartPage() {
   const [manualPaymentConfirmation, setManualPaymentConfirmation] = useState<ManualPaymentConfirmation | null>(null);
   const [importPreview, setImportPreview] = useState<OrderImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
-  const [refreshingCart, setRefreshingCart] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
-  const lastCartPreviewKeyRef = useRef("");
   const router = useRouter();
 
   // Zabezpieczenie przez Hydration Mismatch przy renderze Local Storage
@@ -166,86 +164,12 @@ export default function CartPage() {
   const sessionIdentity = session?.user as
     | { id?: string; email?: string | null }
     | undefined;
-  const cartPreviewKey = [
-    sessionIdentity?.id || sessionIdentity?.email || "anonymous",
-    ...items.map((item) => `${item.id}:${item.quantity}`),
-  ].join("|");
-
-  useEffect(() => {
-    if (!mounted || !isB2B || items.length === 0) return;
-    if (lastCartPreviewKeyRef.current === cartPreviewKey) return;
-
-    lastCartPreviewKeyRef.current = cartPreviewKey;
-    let cancelled = false;
-    setRefreshingCart(true);
-
-    fetch("/api/cart/preview", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-      body: JSON.stringify({
-        items: items.map((item) => ({
-          id: item.id,
-          quantity: item.quantity,
-        })),
-      }),
-    })
-      .then(async (response) => {
-        const data = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(
-            data?.error || "Nie udało się odświeżyć bieżących cen koszyka."
-          );
-        }
-        if (!Array.isArray(data?.items)) {
-          throw new Error("Serwer zwrócił nieprawidłowy podgląd koszyka.");
-        }
-
-        if (cancelled) return;
-
-        const nextItems = data.items.map((item: any) => ({
-          id: String(item.id),
-          sku: String(item.sku),
-          name: String(item.name),
-          price: Number(item.price),
-          quantity: Number(item.quantity),
-        }));
-        const changed =
-          nextItems.length !== items.length ||
-          nextItems.some((item: any, index: number) => {
-            const current = items[index];
-            return (
-              !current ||
-              current.id !== item.id ||
-              current.sku !== item.sku ||
-              current.name !== item.name ||
-              current.price !== item.price ||
-              current.quantity !== item.quantity
-            );
-          });
-
-        if (changed) {
-          replaceItems(nextItems);
-          toast.info("Koszyk zaktualizowano do bieżących cen i danych katalogu.");
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          toast.warning(
-            error instanceof Error
-              ? error.message
-              : "Nie udało się odświeżyć bieżących cen koszyka."
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setRefreshingCart(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [cartPreviewKey, isB2B, items, mounted, replaceItems]);
+  const cartIdentityKey =
+    sessionIdentity?.id || sessionIdentity?.email || "anonymous";
+  const { refreshingCart } = useAuthoritativeCart({
+    enabled: mounted && isB2B,
+    identityKey: cartIdentityKey,
+  });
 
   const availablePaymentMethods = paymentControlEnabled
     ? paymentMethods.filter((method) => method.available)
