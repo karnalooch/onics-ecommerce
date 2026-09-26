@@ -111,6 +111,8 @@ Image optimization does not allow remote image sources, does not allow local IP 
 
 Public payment webhook ingress is bounded to 256 KiB per request. The application rejects oversized declared `Content-Length` values before consuming the body and also enforces the same limit while streaming the actual body, so chunked requests or understated lengths cannot bypass the cap. Stripe signature verification still receives the exact raw body bytes decoded as UTF-8 text, while Przelewy24 JSON is parsed only after the bounded read completes.
 
+Successfully handled payment/refund webhook events are also recorded in a durable, bounded replay ledger. The ledger stores only a SHA-256 event fingerprint, provider, event kind and timestamp; it does not persist raw webhook payloads, Stripe event IDs, Przelewy24 signatures or provider secrets. Replay detection and the corresponding financial state transition happen under the same file-store lock, preventing concurrent or non-consecutive retries from applying stock/payment mutations twice. The ledger retains the newest 500 events; older events continue to rely on the terminal/idempotent order and inventory state machines.
+
 ## Authentication
 
 Required session secrets include:
