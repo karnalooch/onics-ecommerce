@@ -76,6 +76,15 @@ export function applyStripeRefundSnapshot(
     return refund.status
   }
 
+  // A refund can be created outside this application. If the order has
+  // already shipped, reconcile the financial truth without pretending the
+  // goods returned to inventory or cancelling the shipment record.
+  if (order.status === "SHIPPED") {
+    order.paymentStatus = "REFUNDED"
+    order.refundedAt = order.refundedAt ?? now
+    return "succeeded" as const
+  }
+
   applyStripeRefundInventory(products, order, now)
   order.paymentStatus = "REFUNDED"
   order.status = "CANCELLED"
