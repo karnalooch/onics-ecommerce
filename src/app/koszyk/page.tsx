@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
 import { Trash2, FileText, Send, ShoppingBag, Loader2, UploadCloud, Info, ShieldCheck, CreditCard } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner"; // Jeśli mamy sonner zainstalowane, jeśli nie to mock
 import { Button } from "@/components/ui/button";
@@ -31,9 +31,43 @@ type ManualPaymentConfirmation = {
   note?: string;
 };
 
+type OrderImportPreview = {
+  format: "CELTRONICS_ORDER_XML_V1";
+  version: 1;
+  accepted: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    price: number;
+    quantity: number;
+    sourceLines: number[];
+  }>;
+  rejected: Array<{
+    sku: string;
+    quantity: number;
+    sourceLines: number[];
+    reason: string;
+  }>;
+  summary: {
+    sourceLines: number;
+    acceptedLines: number;
+    rejectedLines: number;
+    acceptedQuantity: number;
+    rejectedQuantity: number;
+  };
+};
+
+const ORDER_IMPORT_MAX_BYTES = 256 * 1024;
+const ORDER_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
+<celtronics-order version="1">
+  <item sku="ABC-123" quantity="2"/>
+  <item sku="XYZ-9000" quantity="1"/>
+</celtronics-order>
+`;
+
 export default function CartPage() {
   const { data: session } = useSession();
-  const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
+  const { items, addItem, removeItem, updateQuantity, getTotalPrice, clearCart } = useCartStore();
   const [mounted, setMounted] = useState(false);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<CheckoutPaymentMethod[]>([]);
@@ -41,6 +75,9 @@ export default function CartPage() {
   const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
   const [manualPaymentConfirmation, setManualPaymentConfirmation] = useState<ManualPaymentConfirmation | null>(null);
+  const [importPreview, setImportPreview] = useState<OrderImportPreview | null>(null);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
 
   // Zabezpieczenie przez Hydration Mismatch przy renderze Local Storage
@@ -103,6 +140,90 @@ export default function CartPage() {
       ?.maintenanceMessage ||
     paymentMethods.find((method) => !method.enabled)?.maintenanceMessage ||
     "Brak aktywnej i poprawnie skonfigurowanej metody płatności.";
+
+  const downloadOrderImportTemplate = () => {
+    const blob = new Blob([ORDER_IMPORT_TEMPLATE], {
+      type: "application/xml;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "celtronics-order-v1.xml";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleOrderImportFile = async (file: File | null) => {
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".xml")) {
+      toast.error("Wybierz plik z rozszerzeniem .xml.");
+      return;
+    }
+
+    if (file.size > ORDER_IMPORT_MAX_BYTES) {
+      toast.error("Plik XML przekracza limit 256 KiB.");
+      return;
+    }
+
+    setImporting(true);
+    setImportPreview(null);
+
+    try {
+      const response = await fetch("/api/cart/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/xml" },
+        body: await file.text(),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || "Nie udało się sprawdzić pliku zamówienia."
+        );
+      }
+
+      setImportPreview(data as OrderImportPreview);
+
+      if (data?.accepted?.length) {
+        toast.success(
+          `Plik sprawdzony: ${data.accepted.length} pozycji gotowych do dodania.`
+        );
+      } else {
+        toast.error("Plik nie zawiera pozycji, które można dodać do koszyka.");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Nie udało się sprawdzić pliku zamówienia."
+      );
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  };
+
+  const applyOrderImportPreview = () => {
+    if (!importPreview?.accepted.length) return;
+
+    for (const item of importPreview.accepted) {
+      addItem({
+        id: item.id,
+        sku: item.sku,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+      });
+    }
+
+    toast.success(
+      `Dodano ${importPreview.accepted.length} pozycji z importu do koszyka.`
+    );
+    setImportPreview(null);
+  };
 
   const handlePaymentCheckout = async (method: CheckoutPaymentMethod) => {
     setSubmitting(method.id);
@@ -206,6 +327,126 @@ export default function CartPage() {
     setSubmitting(null);
   };
 
+  const orderImportCard = isB2B ? (
+    <div className="bg-white dark:bg-gray-900 border rounded-2xl p-6 shadow-sm">
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".xml,application/xml,text/xml"
+        className="hidden"
+        onChange={(event) =>
+          handleOrderImportFile(event.target.files?.[0] ?? null)
+        }
+      />
+
+      <div className="flex flex-col items-center text-center">
+        <UploadCloud className="w-8 h-8 text-primary mb-3" />
+        <h3 className="font-semibold text-lg mb-2">Import zamówienia XML</h3>
+        <p className="text-xs text-muted-foreground mb-5 flex items-start gap-2 text-left">
+          <Info className="w-4 h-4 shrink-0 mt-0.5" />
+          Obsługujemy bezpieczny format CELTRONICS_ORDER_XML_V1: wyłącznie SKU i ilość.
+          Ceny, rabaty i stan magazynowy są zawsze sprawdzane na serwerze.
+          Jeśli SKU jest już w koszyku, ilości zostaną zsumowane i ponownie sprawdzone przy finalnym checkoutcie.
+        </p>
+
+        <div className="grid grid-cols-1 gap-2 w-full">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => importInputRef.current?.click()}
+            disabled={importing || submitting !== null}
+            className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 font-semibold border-none rounded-full"
+          >
+            {importing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sprawdzanie pliku...
+              </>
+            ) : (
+              "Wybierz plik XML"
+            )}
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={downloadOrderImportTemplate}
+            disabled={importing}
+            className="w-full text-xs"
+          >
+            Pobierz szablon XML v1
+          </Button>
+        </div>
+      </div>
+
+      {importPreview && (
+        <div className="mt-5 border-t pt-5 space-y-4 text-left">
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="rounded-lg bg-green-50 dark:bg-green-950/20 p-3">
+              <div className="font-bold text-green-700 dark:text-green-400">
+                Zaakceptowane
+              </div>
+              <div className="text-lg font-black mt-1">
+                {importPreview.accepted.length}
+              </div>
+            </div>
+            <div className="rounded-lg bg-red-50 dark:bg-red-950/20 p-3">
+              <div className="font-bold text-red-700 dark:text-red-400">
+                Odrzucone
+              </div>
+              <div className="text-lg font-black mt-1">
+                {importPreview.rejected.length}
+              </div>
+            </div>
+          </div>
+
+          {importPreview.accepted.length > 0 && (
+            <div className="space-y-2">
+              {importPreview.accepted.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 text-xs border-b pb-2"
+                >
+                  <div>
+                    <div className="font-bold">{item.sku}</div>
+                    <div className="text-muted-foreground">{item.name}</div>
+                  </div>
+                  <div className="font-semibold whitespace-nowrap">
+                    {item.quantity} × {item.price.toFixed(2)} PLN
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {importPreview.rejected.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50/60 dark:bg-red-950/10 p-3 space-y-2">
+              <div className="text-xs font-bold text-red-700 dark:text-red-400">
+                Pozycje wymagające poprawy
+              </div>
+              {importPreview.rejected.map((item) => (
+                <div key={`${item.sku}-${item.sourceLines.join("-")}`} className="text-[11px]">
+                  <span className="font-semibold">{item.sku}</span>
+                  <span className="text-muted-foreground"> — {item.reason}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {importPreview.accepted.length > 0 && (
+            <Button
+              type="button"
+              onClick={applyOrderImportPreview}
+              className="w-full rounded-xl"
+            >
+              Dodaj zaakceptowane pozycje do koszyka
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  ) : null;
+
   if (!mounted) return <div className="p-12 text-center flex justify-center"><Loader2 className="animate-spin text-primary w-8 h-8"/></div>;
 
   return (
@@ -281,8 +522,16 @@ export default function CartPage() {
           </div>
         </div>
       ) : items.length === 0 ? (
-        <div className="bg-muted/30 border border-dashed rounded-xl p-16 text-center">
-          <p className="text-muted-foreground text-lg">Twój koszyk jest pusty.</p>
+        <div className="max-w-2xl mx-auto w-full space-y-6">
+          <div className="bg-muted/30 border border-dashed rounded-xl p-12 text-center">
+            <p className="text-muted-foreground text-lg">Twój koszyk jest pusty.</p>
+            {isB2B && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Możesz dodać produkty ręcznie albo zaimportować zamówienie XML.
+              </p>
+            )}
+          </div>
+          {orderImportCard}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -354,16 +603,7 @@ export default function CartPage() {
 
           {/* SIDEBAR RIGHT (Import XML + Podsumowanie z 3 przyciskami ze screena nr 1 i promptu) */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-900 border rounded-2xl p-6 shadow-sm flex flex-col items-center text-center">
-              <h3 className="font-semibold text-lg mb-2">Importuj plik z zamówieniem</h3>
-              <p className="text-xs text-muted-foreground mb-6 flex items-start gap-2 text-left">
-                <Info className="w-4 h-4 shrink-0 mt-0.5" /> 
-                Możesz zaimportować dane swojego zamówienia z pliku XML (standard EDI) lub korzystając z naszego szablonu zamówienia.
-              </p>
-              <Button variant="outline" className="w-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 font-semibold border-none rounded-full">
-                Wybierz plik
-              </Button>
-            </div>
+            {orderImportCard}
 
             <div className="border rounded-2xl p-6 shadow-sm bg-gray-50 dark:bg-gray-900/50">
               <h3 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Podsumowanie</h3>
