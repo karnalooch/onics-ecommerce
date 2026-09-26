@@ -29,6 +29,13 @@ export type PaymentProviderOperationsSummary = {
   actionCounts: Record<PaymentAdminAction, number>
 }
 
+const ATTENTION_ACTIONS = new Set<PaymentAdminAction>([
+  "CONFIRM_PAYMENT",
+  "CONFIRM_REFUND",
+  "RECEIVE_RETURN",
+  "CONFIRM_RETURN_REFUND",
+])
+
 function emptyActionCounts(): Record<PaymentAdminAction, number> {
   return Object.fromEntries(
     PAYMENT_ADMIN_ACTIONS.map((action) => [action, 0])
@@ -77,11 +84,8 @@ export function describePaymentProviderOperations(
     summary.totalOrders += 1
 
     const actions = listAvailablePaymentAdminActions(order)
-    if (actions.length > 0) {
-      summary.ordersRequiringAttention += 1
-      for (const action of actions) {
-        summary.actionCounts[action] += 1
-      }
+    for (const action of actions) {
+      summary.actionCounts[action] += 1
     }
 
     const paymentStatus =
@@ -97,7 +101,18 @@ export function describePaymentProviderOperations(
     if (refundStatus === "pending" || refundStatus === "requires_action") {
       summary.pendingRefunds += 1
     }
-    if (refundStatus === "failed" || refundStatus === "canceled") {
+    const failedRefund =
+      refundStatus === "failed" || refundStatus === "canceled"
+    const requiresAttention =
+      actions.some((action) => ATTENTION_ACTIONS.has(action)) ||
+      refundStatus === "requires_action" ||
+      failedRefund
+
+    if (requiresAttention) {
+      summary.ordersRequiringAttention += 1
+    }
+
+    if (failedRefund) {
       summary.failedRefunds += 1
       summary.lastErrorAt = laterTimestamp(
         summary.lastErrorAt,
