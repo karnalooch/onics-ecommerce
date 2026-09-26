@@ -17,6 +17,7 @@ import {
   type InventoryProduct,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
+import { listAvailablePaymentAdminActions } from "@/lib/paymentAdminActions"
 import { describeOrderPaymentLifecycle } from "@/lib/paymentProviders"
 
 export const dynamic = "force-dynamic"
@@ -92,6 +93,7 @@ function withPaymentLifecycle(order: StoredOrder) {
   return {
     ...order,
     paymentLifecycle: describeOrderPaymentLifecycle(order),
+    paymentAdminActions: listAvailablePaymentAdminActions(order),
   }
 }
 
