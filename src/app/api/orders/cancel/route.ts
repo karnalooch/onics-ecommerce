@@ -21,8 +21,14 @@ function paymentIntentId(session: Stripe.Checkout.Session) {
 }
 
 function refundPaymentIntentId(refund: Stripe.Refund) {
-  if (typeof refund.payment_intent === "string") return refund.payment_intent
-  return refund.payment_intent?.id ?? null
+  const value = (
+    refund as Stripe.Refund & {
+      payment_intent?: string | { id?: string } | null
+    }
+  ).payment_intent
+
+  if (typeof value === "string") return value
+  return value?.id ?? null
 }
 
 function refundStatus(value: unknown): StripeRefundStatus {
@@ -198,7 +204,12 @@ export async function POST(req: Request) {
     }
 
     if (session.status === "open") {
-      await stripe.checkout.sessions.expire(session.id)
+      try {
+        await stripe.checkout.sessions.expire(session.id)
+      } catch (expireError) {
+        const refreshed = await stripe.checkout.sessions.retrieve(session.id)
+        if (refreshed.status !== "expired") throw expireError
+      }
     } else if (session.status !== "expired") {
       return NextResponse.json(
         { error: "Sesja Stripe nie może być teraz bezpiecznie anulowana." },
