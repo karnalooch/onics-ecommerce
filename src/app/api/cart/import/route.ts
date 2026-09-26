@@ -6,6 +6,11 @@ import {
   buildOrderImportPreview,
   parseCeltronicsOrderXml,
 } from "@/lib/orderImport"
+import {
+  OrderImportBodyInvalidError,
+  OrderImportBodyTooLargeError,
+  readOrderImportBody,
+} from "@/lib/orderImportIngress"
 import type { CommerceProduct, CommerceUser } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { initializeMockData } from "@/store/serverStore"
@@ -58,22 +63,8 @@ export async function POST(req: Request) {
     )
   }
 
-  const declaredLength = Number(req.headers.get("content-length"))
-  if (
-    Number.isFinite(declaredLength) &&
-    declaredLength > ORDER_IMPORT_MAX_BYTES
-  ) {
-    return NextResponse.json(
-      {
-        error: `Plik XML przekracza limit ${ORDER_IMPORT_MAX_BYTES / 1024} KiB.`,
-        code: "XML_TOO_LARGE",
-      },
-      { status: 413 }
-    )
-  }
-
   try {
-    const parsed = parseCeltronicsOrderXml(await req.text())
+    const parsed = parseCeltronicsOrderXml(await readOrderImportBody(req))
     const snapshot = initializeMockData()
 
     const storedUser = findStoredUserBySession(
@@ -118,6 +109,26 @@ export async function POST(req: Request) {
 
     return NextResponse.json(preview)
   } catch (error) {
+    if (error instanceof OrderImportBodyTooLargeError) {
+      return NextResponse.json(
+        {
+          error: `Plik XML przekracza limit ${ORDER_IMPORT_MAX_BYTES / 1024} KiB.`,
+          code: "XML_TOO_LARGE",
+        },
+        { status: 413 }
+      )
+    }
+
+    if (error instanceof OrderImportBodyInvalidError) {
+      return NextResponse.json(
+        {
+          error: "Plik XML musi być poprawnym dokumentem UTF-8.",
+          code: "XML_INVALID_ENCODING",
+        },
+        { status: 400 }
+      )
+    }
+
     if (error instanceof OrderImportError) {
       return NextResponse.json(
         {
