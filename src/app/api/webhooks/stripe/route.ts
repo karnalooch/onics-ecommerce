@@ -15,6 +15,10 @@ import {
   type InventoryProduct,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
+import {
+  assertPaymentProviderCapability,
+  supportsPaymentProviderCapability,
+} from "@/lib/paymentProviders"
 
 type StoredOrder = StripeCancelableOrder & InventoryReservationOrder & {
   id: string
@@ -167,6 +171,13 @@ async function applyCheckoutStatus(
 }
 
 export async function POST(req: Request) {
+  if (!supportsPaymentProviderCapability("STRIPE", "webhook")) {
+    return NextResponse.json(
+      { error: "Webhook Stripe jest wyłączony przez kontrakt providera." },
+      { status: 503 }
+    )
+  }
+
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
@@ -238,6 +249,7 @@ export async function POST(req: Request) {
       case "refund.created":
       case "refund.updated":
       case "refund.failed": {
+        assertPaymentProviderCapability("STRIPE", "refund")
         await applyRefundStatus(event.id, event.data.object as Stripe.Refund)
         break
       }

@@ -12,6 +12,10 @@ import {
   type StripeReturnOrder,
 } from "@/lib/returns"
 import type { InventoryProduct } from "@/lib/inventoryReservations"
+import {
+  assertPaymentProviderCapability,
+  resolveOrderPaymentProvider,
+} from "@/lib/paymentProviders"
 import { mutateMockData } from "@/store/serverStore"
 
 const ReturnOrderSchema = z.object({
@@ -68,6 +72,10 @@ export async function POST(req: Request) {
         )
         if (!order) throw new Error("ORDER_NOT_FOUND")
 
+        const provider = resolveOrderPaymentProvider(order)
+        if (provider !== "STRIPE") throw new Error("RETURN_STRIPE_REQUIRED")
+        assertPaymentProviderCapability(provider, "rma")
+
         requestShippedReturn(order)
         return order
       })
@@ -85,6 +93,10 @@ export async function POST(req: Request) {
         (candidate) => candidate.id === parsed.data.id
       )
       if (!order) throw new Error("ORDER_NOT_FOUND")
+
+      const provider = resolveOrderPaymentProvider(order)
+      if (provider !== "STRIPE") throw new Error("RETURN_STRIPE_REQUIRED")
+      assertPaymentProviderCapability(provider, "rma")
 
       receiveShippedReturn(
         db.products as InventoryProduct[],
@@ -117,9 +129,11 @@ export async function POST(req: Request) {
       )
     }
 
-    if (!received.stripeCheckoutSessionId) {
+    const provider = resolveOrderPaymentProvider(received)
+    if (provider !== "STRIPE" || !received.stripeCheckoutSessionId) {
       throw new Error("RETURN_STRIPE_REQUIRED")
     }
+    assertPaymentProviderCapability(provider, "refund")
 
     const stripe = new Stripe(stripeSecretKey)
     let intentId = received.stripePaymentIntentId ?? null
@@ -243,6 +257,8 @@ export async function POST(req: Request) {
         "Stan magazynowy nie pozwala bezpiecznie rozliczyć zwrotu.",
       INVENTORY_REFUND_INVALID_SOURCE:
         "Źródło rezerwacji magazynowej nie pozwala rozliczyć tego zwrotu.",
+      PAYMENT_PROVIDER_CAPABILITY_UNSUPPORTED:
+        "Ten operator płatności nie obsługuje wymaganego etapu RMA.",
     }
 
     if (code in conflicts) {

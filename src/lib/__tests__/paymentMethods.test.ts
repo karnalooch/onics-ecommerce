@@ -165,6 +165,15 @@ describe("payment method management", () => {
       configured: true,
       displayOrder: 10,
       kind: "MANUAL",
+      capabilities: {
+        checkout: true,
+        webhook: false,
+        cancel: true,
+        refund: true,
+        reconcile: false,
+        rma: true,
+        manualSettlement: true,
+      },
       available: true,
     })
     expect(methods[1]).toMatchObject({
@@ -175,6 +184,15 @@ describe("payment method management", () => {
       webhookConfigured: true,
       displayOrder: 20,
       kind: "REDIRECT",
+      capabilities: {
+        checkout: true,
+        webhook: true,
+        cancel: true,
+        refund: true,
+        reconcile: true,
+        rma: true,
+        manualSettlement: false,
+      },
       available: false,
     })
 

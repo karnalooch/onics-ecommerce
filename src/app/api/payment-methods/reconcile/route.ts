@@ -20,6 +20,10 @@ import {
   classifyStripeCheckoutForReconciliation,
   shouldReconcileStripeOrder,
 } from "@/lib/stripeReconciliation"
+import {
+  resolveOrderPaymentProvider,
+  supportsPaymentProviderCapability,
+} from "@/lib/paymentProviders"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const ReconcileSchema = z.object({
@@ -111,7 +115,12 @@ export async function POST(req: Request) {
         { status: 404 }
       )
     }
-    if (!order.stripeCheckoutSessionId) {
+    const provider = resolveOrderPaymentProvider(order)
+    if (
+      provider !== "STRIPE" ||
+      !supportsPaymentProviderCapability(provider, "reconcile") ||
+      !order.stripeCheckoutSessionId
+    ) {
       return NextResponse.json(
         { error: "Zamówienie nie jest powiązane z Stripe." },
         { status: 409 }
@@ -120,7 +129,12 @@ export async function POST(req: Request) {
     selected = [order]
   } else {
     selected = allOrders
-      .filter(shouldReconcileStripeOrder)
+      .filter(
+        (order) =>
+          resolveOrderPaymentProvider(order) === "STRIPE" &&
+          supportsPaymentProviderCapability("STRIPE", "reconcile") &&
+          shouldReconcileStripeOrder(order)
+      )
       .slice(0, MAX_BULK_RECONCILIATION)
   }
 
@@ -305,7 +319,12 @@ export async function POST(req: Request) {
 
   const totalCandidates = parsed.data.orderId
     ? selected.length
-    : allOrders.filter(shouldReconcileStripeOrder).length
+    : allOrders.filter(
+        (order) =>
+          resolveOrderPaymentProvider(order) === "STRIPE" &&
+          supportsPaymentProviderCapability("STRIPE", "reconcile") &&
+          shouldReconcileStripeOrder(order)
+      ).length
 
   return NextResponse.json(
     {

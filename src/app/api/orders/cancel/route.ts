@@ -9,6 +9,10 @@ import {
   type StripeRefundStatus,
 } from "@/lib/refunds"
 import type { InventoryProduct } from "@/lib/inventoryReservations"
+import {
+  resolveOrderPaymentProvider,
+  supportsPaymentProviderCapability,
+} from "@/lib/paymentProviders"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const CancelOrderSchema = z.object({
@@ -75,7 +79,12 @@ export async function POST(req: Request) {
       { status: 404 }
     )
   }
-  if (!order.stripeCheckoutSessionId) {
+  const provider = resolveOrderPaymentProvider(order)
+  if (
+    provider !== "STRIPE" ||
+    !supportsPaymentProviderCapability(provider, "cancel") ||
+    !order.stripeCheckoutSessionId
+  ) {
     return NextResponse.json(
       { error: "To zamówienie nie jest powiązane z płatnością Stripe." },
       { status: 409 }
@@ -114,6 +123,13 @@ export async function POST(req: Request) {
       order.paymentStatus === "PAID" || session.payment_status === "paid"
 
     if (isPaid) {
+      if (!supportsPaymentProviderCapability(provider, "refund")) {
+        return NextResponse.json(
+          { error: "Ten operator płatności nie obsługuje automatycznego zwrotu." },
+          { status: 409 }
+        )
+      }
+
       const intentId =
         order.stripePaymentIntentId || paymentIntentId(session)
       if (!intentId) {
