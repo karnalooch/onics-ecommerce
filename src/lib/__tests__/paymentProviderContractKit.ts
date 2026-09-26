@@ -3,7 +3,11 @@ import {
   listAvailablePaymentAdminActions,
   type PaymentAdminActionOrder,
 } from "@/lib/paymentAdminActions"
-import { listPaymentCheckoutAdapterIds } from "@/lib/paymentProviderCheckout"
+import {
+  assertPaymentCheckoutResultContract,
+  listPaymentCheckoutAdapterIds,
+  type PaymentCheckoutResult,
+} from "@/lib/paymentProviderCheckout"
 import {
   PAYMENT_PROVIDER_CAPABILITIES,
   assertPaymentProviderCapability,
@@ -22,6 +26,7 @@ export type PaymentProviderContractHarness = {
   invalidRuntimeOptions: PaymentRuntimeOptions
   sensitiveRuntimeValues?: string[]
   legacyOrder?: PaymentProviderOrderIdentity
+  checkoutResult: PaymentCheckoutResult
   assertIdempotency: () => void
 }
 
@@ -46,6 +51,12 @@ export function definePaymentProviderContract(
 
       expect(listPaymentCheckoutAdapterIds()).toContain(harness.id)
       expect(provider.capabilities.checkout).toBe(true)
+      expect(
+        assertPaymentCheckoutResultContract(
+          harness.id,
+          harness.checkoutResult
+        )
+      ).toBe(harness.checkoutResult)
       expect(Object.keys(provider.capabilities).sort()).toEqual(
         [...PAYMENT_PROVIDER_CAPABILITIES].sort()
       )
