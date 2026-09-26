@@ -48,6 +48,7 @@ jobs:
           src/lib/jsonDb.ts
           src/lib/payments.ts
           src/lib/storageConfig.ts
+          src/lib/health.ts
           src/store/serverStore.ts
           src/lib/knowledge/files.ts
           src/lib/knowledge/KnowledgeContext.tsx
@@ -69,6 +70,8 @@ jobs:
           src/app/api/knowledge/train/route.ts
           src/app/api/knowledge/train/stream/route.ts
           src/app/api/knowledge/validate-key/route.ts
+          src/app/api/health/live/route.ts
+          src/app/api/health/ready/route.ts
           src/app/admin/price-lists/_lib/priceLogic.ts
 
       - name: Reject legacy file-store writers
@@ -130,6 +133,40 @@ jobs:
 
       - name: Production build
         run: npm run build
+
+      - name: Smoke production health endpoints
+        run: |
+          set -euo pipefail
+          mkdir -p "$CELTRONICS_UPLOAD_ROOT" .ci/runtime
+          npm start -- -p 3001 > .ci/runtime/server.log 2>&1 &
+          server_pid=$!
+
+          cleanup() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3001/api/health/live > /dev/null; then
+              break
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then
+              cat .ci/runtime/server.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if ! curl --fail --silent --show-error http://127.0.0.1:3001/api/health/live; then
+            cat .ci/runtime/server.log
+            exit 1
+          fi
+
+          if ! curl --fail --silent --show-error http://127.0.0.1:3001/api/health/ready; then
+            cat .ci/runtime/server.log
+            exit 1
+          fi
 
       - name: Dependency audit
         run: npm audit --audit-level=high
