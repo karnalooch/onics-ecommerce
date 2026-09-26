@@ -7,12 +7,16 @@ export type PaymentAuditActor = {
 }
 
 export type PaymentAuditChange = {
-  target: "GLOBAL" | "STRIPE"
+  target: "GLOBAL" | "STRIPE" | "BANK_TRANSFER"
   operation?: "SETTING_CHANGE" | "EMERGENCY_SHUTDOWN"
   previousEnabled: boolean
   nextEnabled: boolean
   previousMaintenanceMessage?: string | null
   nextMaintenanceMessage?: string | null
+  previousDisplayName?: string | null
+  nextDisplayName?: string | null
+  previousDisplayOrder?: number | null
+  nextDisplayOrder?: number | null
 }
 
 export function paymentAuditChanged(change: PaymentAuditChange) {
@@ -20,7 +24,11 @@ export function paymentAuditChanged(change: PaymentAuditChange) {
     change.operation === "EMERGENCY_SHUTDOWN" ||
     change.previousEnabled !== change.nextEnabled ||
     (change.previousMaintenanceMessage ?? null) !==
-      (change.nextMaintenanceMessage ?? null)
+      (change.nextMaintenanceMessage ?? null) ||
+    (change.previousDisplayName ?? null) !==
+      (change.nextDisplayName ?? null) ||
+    (change.previousDisplayOrder ?? null) !==
+      (change.nextDisplayOrder ?? null)
   )
 }
 
@@ -48,6 +56,10 @@ export function appendPaymentAudit(
       change.previousMaintenanceMessage ?? null,
     nextMaintenanceMessage:
       change.nextMaintenanceMessage ?? null,
+    previousDisplayName: change.previousDisplayName ?? null,
+    nextDisplayName: change.nextDisplayName ?? null,
+    previousDisplayOrder: change.previousDisplayOrder ?? null,
+    nextDisplayOrder: change.nextDisplayOrder ?? null,
   }
 
   entries.unshift(entry)
