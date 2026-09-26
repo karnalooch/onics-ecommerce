@@ -13,8 +13,13 @@ import {
 } from "@/lib/knowledge/pricingBoundary";
 import {
   hasInventoryLifecycleDependencyForProduct,
+  shouldDeferProductStockWrite,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations";
+import {
+  assertCatalogClassification,
+  hasSkuConflict,
+} from "@/lib/catalog";
 
 /**
  * Całkowite wyczyszczenie Centralnego Rejestru Towarowego
@@ -111,11 +116,42 @@ export async function saveProductAction(data: any): Promise<ActionState> {
   try {
     const result = await mutateMockData((db) => {
       const products = db.products as any[];
-      const existingIdx = products.findIndex((product) => product.id === data.id);
+      const productId = validated.data.id;
+      const existingIdx = products.findIndex(
+        (product) => product.id === productId
+      );
+
+      assertCatalogClassification(
+        db.categories as any[],
+        validated.data.categoryId,
+        validated.data.subcategoryId
+      );
+
+      if (productId && existingIdx === -1) {
+        throw new Error("PRODUCT_NOT_FOUND");
+      }
 
       if (existingIdx !== -1) {
+        if (hasSkuConflict(products, validated.data.sku, productId)) {
+          throw new Error("SKU_EXISTS");
+        }
+        if (
+          shouldDeferProductStockWrite(
+            db.orders as InventoryReservationOrder[],
+            String(productId),
+            products[existingIdx].stock,
+            validated.data.stock
+          )
+        ) {
+          throw new Error("PRODUCT_STOCK_RESERVED");
+        }
+
         products[existingIdx] = { ...products[existingIdx], ...validated.data };
         return { created: false, product: products[existingIdx] };
+      }
+
+      if (hasSkuConflict(products, validated.data.sku)) {
+        throw new Error("SKU_EXISTS");
       }
 
       const newProduct = {
@@ -132,7 +168,36 @@ export async function saveProductAction(data: any): Promise<ActionState> {
     return result.created
       ? { success: true, message: "Produkt dodany", data: result.product }
       : { success: true, message: "Produkt zaktualizowany" };
-  } catch {
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code === "PRODUCT_NOT_FOUND") {
+      return { success: false, error: "Nie znaleziono produktu" };
+    }
+    if (code === "SKU_EXISTS") {
+      return { success: false, error: "Produkt z tym SKU już istnieje" };
+    }
+    if (code === "PRODUCT_STOCK_RESERVED") {
+      return {
+        success: false,
+        error:
+          "Nie można zmienić stanu produktu podczas aktywnej rezerwacji magazynowej."
+      };
+    }
+    if (code === "CATEGORY_NOT_FOUND") {
+      return { success: false, error: "Wybrana kategoria nie istnieje" };
+    }
+    if (code === "SUBCATEGORY_WITHOUT_CATEGORY") {
+      return {
+        success: false,
+        error: "Podkategoria wymaga wybranej kategorii"
+      };
+    }
+    if (code === "SUBCATEGORY_NOT_FOUND") {
+      return {
+        success: false,
+        error: "Wybrana podkategoria nie należy do wybranej kategorii"
+      };
+    }
     return { success: false, error: "Błąd zapisu produktu" };
   }
 }
@@ -280,6 +345,12 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
           }
         }
 
+        assertCatalogClassification(
+          categories,
+          finalCategoryId,
+          finalSubcategoryId
+        );
+
         if (existing) {
           existing.price = item.price;
           existing.stock = item.stock;
@@ -314,7 +385,23 @@ export async function importProductsAction(items: any[]): Promise<ActionState> {
       message:
         `Unified Import zakończony. Zaktualizowano/Aktywowano: ${result.updatedCount}, Dodano nowych: ${result.addedCount}`
     };
-  } catch {
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    if (code === "CATEGORY_NOT_FOUND") {
+      return { success: false, error: "Import wskazuje nieistniejącą kategorię" };
+    }
+    if (code === "SUBCATEGORY_WITHOUT_CATEGORY") {
+      return {
+        success: false,
+        error: "Import zawiera podkategorię bez kategorii"
+      };
+    }
+    if (code === "SUBCATEGORY_NOT_FOUND") {
+      return {
+        success: false,
+        error: "Import wskazuje podkategorię spoza wybranej kategorii"
+      };
+    }
     return { success: false, error: "Błąd podczas masowego importu" };
   }
 }
@@ -330,6 +417,7 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
     const result = await mutateMockData((db) => {
       const store = buildKnowledgeFromDb(db);
       const products = db.products as any[];
+      const categories = db.categories as any[];
       const productIndexBySku = new Map(
         products.map((product, index) => [
           String(product.sku || "").trim().toLowerCase(),
@@ -372,6 +460,11 @@ export async function syncImportWithCatalogAction(items: any[]): Promise<ActionS
           };
 
           if (quality.isClean && !priceMismatch) {
+            assertCatalogClassification(
+              categories,
+              enrichedItem.categoryId,
+              enrichedItem.subcategoryId
+            );
             const normalizedSku = String(item.sku || "").trim().toLowerCase();
             const existingIdx = productIndexBySku.get(normalizedSku);
             const iqData = {
