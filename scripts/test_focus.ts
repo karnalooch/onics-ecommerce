@@ -5,18 +5,22 @@ import * as XLSX from 'xlsx';
 
 async function runFocusedPDFTest() {
   console.log('POCZĄTEK SKONCENTROWANEJ ANALIZY PDF (V8 Heuristic)...');
-  
+
+  const fixtureRoot = path.resolve(
+  process.env.CELTRONICS_FIXTURE_ROOT ||
+    path.join(process.cwd(), '.local', 'celtronics', 'catalog-fixtures')
+);
   const filesToTest = [
-    'fixtures/catalogs/Pulsar_Cennik_Detal_2023.pdf',
-    'fixtures/catalogs/universal_mass_test/pdfs/BCS - BCS BASIC CENNIK 2026.pdf',
-    'fixtures/catalogs/universal_mass_test/pdfs/BCS - BCS KONTROLA CENNIK 2026.pdf',
-    'fixtures/catalogs/universal_mass_test/pdfs/BCS - BCS LINE CENNIK 2026.pdf'
+    'Pulsar_Cennik_Detal_2023.pdf',
+    'universal_mass_test/pdfs/BCS - BCS BASIC CENNIK 2026.pdf',
+    'universal_mass_test/pdfs/BCS - BCS KONTROLA CENNIK 2026.pdf',
+    'universal_mass_test/pdfs/BCS - BCS LINE CENNIK 2026.pdf'
   ];
 
   let totalParsed = 0;
 
   for (const relativePath of filesToTest) {
-    const filePath = path.join(process.cwd(), relativePath);
+    const filePath = path.join(fixtureRoot, relativePath);
     if (!fs.existsSync(filePath)) {
       console.warn(`[SKIP] Nie znaleziono pliku: ${relativePath}`);
       continue;
