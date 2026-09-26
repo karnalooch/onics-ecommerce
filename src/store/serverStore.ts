@@ -259,7 +259,7 @@ function normalizePaymentAudit(value: unknown): PaymentAuditEntry[] {
     .slice(0, 100)
 }
 
-function normalizePaymentControl(value: unknown): PaymentControlSettings {
+export function normalizePaymentControl(value: unknown): PaymentControlSettings {
   const source = isRecord(value) ? value : {}
   const maintenanceMessage =
     typeof source.maintenanceMessage === "string"

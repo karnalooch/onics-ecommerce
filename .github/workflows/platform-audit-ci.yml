@@ -148,6 +148,10 @@ jobs:
         run: npm run build
 
       - name: Smoke production health endpoints
+        env:
+          NEXT_PUBLIC_APP_URL: "https://ci.example.invalid"
+          STRIPE_SECRET_KEY: "sk_test_ci_readiness_only"
+          STRIPE_WEBHOOK_SECRET: "whsec_ci_readiness_only"
         run: |
           set -euo pipefail
           mkdir -p "$CELTRONICS_UPLOAD_ROOT" .ci/runtime

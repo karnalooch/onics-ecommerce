@@ -23,8 +23,39 @@ function dbPath() {
   return path.join(tempDir, "db.json")
 }
 
-function writeDb(users: unknown[] = []) {
-  fs.writeFileSync(dbPath(), JSON.stringify({ users }))
+function writeDb(
+  users: unknown[] = [],
+  overrides: Record<string, unknown> = {}
+) {
+  fs.writeFileSync(
+    dbPath(),
+    JSON.stringify({
+      users,
+      paymentControl: {
+        enabled: false,
+        maintenanceMessage: null,
+        updatedAt: null,
+      },
+      ...overrides,
+    })
+  )
+}
+
+function enableOnlyProvider(
+  provider: "STRIPE" | "BANK_TRANSFER" | "PRZELEWY24"
+) {
+  writeDb([], {
+    paymentControl: {
+      enabled: true,
+      maintenanceMessage: null,
+      updatedAt: null,
+    },
+    paymentMethods: {
+      STRIPE: { enabled: provider === "STRIPE" },
+      BANK_TRANSFER: { enabled: provider === "BANK_TRANSFER" },
+      PRZELEWY24: { enabled: provider === "PRZELEWY24" },
+    },
+  })
 }
 
 function readyOptions() {
@@ -38,6 +69,12 @@ function readyOptions() {
     stripeSecretKey: "",
     stripeWebhookSecret: "",
     appUrl: "",
+    bankTransferRecipient: "",
+    bankTransferAccountNumber: "",
+    p24MerchantId: "",
+    p24PosId: "",
+    p24ApiKey: "",
+    p24Crc: "",
   }
 }
 
@@ -141,7 +178,21 @@ describe("production readiness", () => {
       checks: { adminBootstrap: "ok" },
     })
   })
-  it("reports payment failure for incomplete production Stripe configuration", () => {
+  it("ignores provider configuration while global payments are disabled", () => {
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        stripeSecretKey: "partially-configured",
+      })
+    ).toMatchObject({
+      ready: true,
+      checks: { payments: "ok" },
+    })
+  })
+
+  it("reports payment failure for incomplete enabled Stripe configuration", () => {
+    enableOnlyProvider("STRIPE")
+
     expect(
       evaluateReadiness({
         ...readyOptions(),
@@ -155,7 +206,9 @@ describe("production readiness", () => {
     })
   })
 
-  it("reports payment failure for a non-HTTPS production app URL", () => {
+  it("reports payment failure for a non-HTTPS enabled Stripe app URL", () => {
+    enableOnlyProvider("STRIPE")
+
     expect(
       evaluateReadiness({
         ...readyOptions(),
@@ -169,13 +222,66 @@ describe("production readiness", () => {
     })
   })
 
-  it("accepts complete production Stripe configuration", () => {
+  it("accepts complete enabled Stripe configuration", () => {
+    enableOnlyProvider("STRIPE")
+
     expect(
       evaluateReadiness({
         ...readyOptions(),
         stripeSecretKey: "sk_test",
         stripeWebhookSecret: "whsec_test",
         appUrl: "https://shop.example.com",
+      })
+    ).toMatchObject({
+      ready: true,
+      checks: { payments: "ok" },
+    })
+  })
+
+  it("fails readiness when enabled bank transfer is not configured", () => {
+    enableOnlyProvider("BANK_TRANSFER")
+
+    expect(evaluateReadiness(readyOptions())).toMatchObject({
+      ready: false,
+      checks: { payments: "error" },
+    })
+  })
+
+  it("accepts complete enabled bank transfer configuration", () => {
+    enableOnlyProvider("BANK_TRANSFER")
+
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        bankTransferRecipient: "CEL-TRONICS Sp. z o.o.",
+        bankTransferAccountNumber: "12 3456 7890 1234 5678 9012 3456",
+      })
+    ).toMatchObject({
+      ready: true,
+      checks: { payments: "ok" },
+    })
+  })
+
+  it("fails readiness when enabled Przelewy24 is not configured", () => {
+    enableOnlyProvider("PRZELEWY24")
+
+    expect(evaluateReadiness(readyOptions())).toMatchObject({
+      ready: false,
+      checks: { payments: "error" },
+    })
+  })
+
+  it("accepts complete enabled Przelewy24 local configuration without network I/O", () => {
+    enableOnlyProvider("PRZELEWY24")
+
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        appUrl: "https://shop.example.com",
+        p24MerchantId: "123456",
+        p24PosId: "123456",
+        p24ApiKey: "api-key",
+        p24Crc: "crc-secret",
       })
     ).toMatchObject({
       ready: true,
