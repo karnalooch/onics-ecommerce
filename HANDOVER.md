@@ -99,6 +99,8 @@ Serwer:
 - rozwiązuje pozycje koszyka względem bieżącego katalogu,
 - agreguje duplikaty produktów,
 - stosuje warunki konta B2B,
+- liczy cenę B2B z aktywnej `product.price` i jawnego `user.discount`; `tierName` jest etykietą klasyfikacyjną, nie drugim silnikiem ceny,
+- generator cenników używa tego samego wzoru rabatowego co commerce; presety PARTNER/VIP/BASIC są wyłącznie jawnymi skrótami procentowymi i nie dodają ukrytych rabatów producenta/kategorii,
 - waliduje ceny i stock przy właściwym checkout/order flow,
 - rezerwuje stock dla twardych zamówień/płatności zgodnie z inventory state machine,
 - zabezpiecza exactly-once release/finalize/restock.

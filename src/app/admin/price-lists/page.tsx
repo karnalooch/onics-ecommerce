@@ -86,8 +86,7 @@ export default function PricelistGenerator() {
     setTimeout(() => {
       try {
         const exportData = filteredProducts.map(p => {
-          const categoryName = categories.find((cat: any) => cat.id === p.categoryId)?.name;
-          const b2b = calculateB2BPrice(p, selectedTier, categoryName);
+          const b2b = calculateB2BPrice(p, selectedTier);
           const finalNetto = applyMarkup(b2b.price, customMarkup);
           return {
             "Kod Produktu": p.sku,
@@ -126,8 +125,7 @@ export default function PricelistGenerator() {
       </div>
       <div className="divide-y divide-slate-50">
         {products.map((p) => {
-          const categoryName = categories.find((cat: any) => cat.id === p.categoryId)?.name;
-          const b2b = calculateB2BPrice(p, selectedTier, categoryName);
+          const b2b = calculateB2BPrice(p, selectedTier);
           const priceNetto = applyMarkup(b2b.price, customMarkup);
           const priceGross = priceNetto * (1 + VAT_RATE);
           return (
@@ -190,12 +188,12 @@ export default function PricelistGenerator() {
             <div className="satel-card p-0 bg-white border-none shadow-sm overflow-hidden rounded-none">
                <div className="p-4 bg-slate-950 flex items-center gap-3 text-white italic">
                   <Percent className="w-4 h-4 text-primary" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Korekta_Matrycy</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Preset_Rabatu</span>
                </div>
                
                <div className="p-8 space-y-8">
                   <div className="space-y-2">
-                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Sektor_Klienta (Tier)</label>
+                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Preset warunków handlowych</label>
                      <div className="grid grid-cols-1 gap-1">
                         {Object.keys(PRICING_MATRIX).map(tier => (
                            <button 
@@ -203,7 +201,7 @@ export default function PricelistGenerator() {
                               onClick={() => setSelectedTier(tier)}
                               className={`h-11 px-5 flex items-center justify-between text-[11px] font-black uppercase tracking-widest border transition-all active-press italic ${selectedTier === tier ? 'bg-primary border-primary text-white shadow-lg' : 'bg-slate-50 border-slate-100 text-slate-400 hover:border-primary'}`}
                            >
-                              {tier} {selectedTier === tier && <ShieldCheck className="w-4 h-4" />}
+                              {tier} · -{PRICING_MATRIX[tier].defaultDiscount}% {selectedTier === tier && <ShieldCheck className="w-4 h-4" />}
                            </button>
                         ))}
                      </div>
