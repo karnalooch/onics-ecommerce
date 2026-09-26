@@ -25,7 +25,7 @@ function refundPaymentIntentId(refund: Stripe.Refund) {
   return refund.payment_intent?.id ?? null
 }
 
-function refundStatus(value: Stripe.Refund["status"]): StripeRefundStatus {
+function refundStatus(value: unknown): StripeRefundStatus {
   if (
     value === "pending" ||
     value === "requires_action" ||
