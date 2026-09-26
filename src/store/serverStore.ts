@@ -46,6 +46,14 @@ export type PaymentOperationEvent = {
   manualReview: number
 }
 
+export type PaymentWebhookEvent = {
+  id: string
+  createdAt: string
+  provider: PaymentProviderId
+  kind: "PAYMENT" | "REFUND"
+  eventHash: string
+}
+
 export type PaymentAuditEntry = {
   id: string
   createdAt: string
@@ -78,6 +86,7 @@ type ServerDb = {
   paymentControl: PaymentControlSettings
   paymentAudit: PaymentAuditEntry[]
   paymentOperationEvents: PaymentOperationEvent[]
+  paymentWebhookEvents: PaymentWebhookEvent[]
   [key: string]: unknown
 }
 
@@ -93,6 +102,39 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : []
+}
+
+function normalizePaymentWebhookEvents(value: unknown): PaymentWebhookEvent[] {
+  if (!Array.isArray(value)) return []
+
+  const seen = new Set<string>()
+
+  return value
+    .filter(isRecord)
+    .flatMap((entry) => {
+      if (
+        typeof entry.id !== "string" ||
+        typeof entry.createdAt !== "string" ||
+        !Number.isFinite(Date.parse(entry.createdAt)) ||
+        !isPaymentProviderId(entry.provider) ||
+        (entry.kind !== "PAYMENT" && entry.kind !== "REFUND") ||
+        typeof entry.eventHash !== "string" ||
+        !/^[0-9a-f]{64}$/i.test(entry.eventHash) ||
+        seen.has(entry.eventHash)
+      ) {
+        return []
+      }
+
+      seen.add(entry.eventHash)
+      return [{
+        id: entry.id,
+        createdAt: entry.createdAt,
+        provider: entry.provider,
+        kind: entry.kind as PaymentWebhookEvent["kind"],
+        eventHash: entry.eventHash.toLowerCase(),
+      }]
+    })
+    .slice(0, 500)
 }
 
 function normalizePaymentOperationEvents(value: unknown): PaymentOperationEvent[] {
@@ -300,6 +342,9 @@ function normalizeDb(input: unknown): ServerDb {
     paymentOperationEvents: normalizePaymentOperationEvents(
       source.paymentOperationEvents
     ),
+    paymentWebhookEvents: normalizePaymentWebhookEvents(
+      source.paymentWebhookEvents
+    ),
     knowledgeMeta: {
       sources: stringArray(knowledgeMeta.sources),
       processedSources: stringArray(knowledgeMeta.processedSources),
@@ -327,6 +372,7 @@ export function initializeMockData() {
     paymentControl: db.paymentControl,
     paymentAudit: db.paymentAudit,
     paymentOperationEvents: db.paymentOperationEvents,
+    paymentWebhookEvents: db.paymentWebhookEvents,
     knowledgeMeta: db.knowledgeMeta,
   }
 }
