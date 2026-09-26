@@ -7,6 +7,7 @@ import { TableCell, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import {
+  canDeleteRepair,
   isRepairTerminalStatus,
   REPAIR_STATUSES,
 } from "@/lib/repairLifecycle"
@@ -53,6 +54,7 @@ export function RmaTableRow({ rma }: { rma: AdminRma }) {
   }
 
   const terminal = isRepairTerminalStatus(rma.status)
+  const deletable = canDeleteRepair(rma.status)
 
   return (
     <TableRow>
@@ -87,10 +89,15 @@ export function RmaTableRow({ rma }: { rma: AdminRma }) {
           </select>
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || !deletable}
             onClick={() => void remove()}
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-600 hover:bg-red-500/10 disabled:opacity-40"
-            aria-label="Usuń zgłoszenie"
+            aria-label={deletable ? "Usuń zgłoszenie" : "Historia serwisowa jest chroniona"}
+            title={
+              deletable
+                ? "Usuń zgłoszenie"
+                : "Historia serwisowa jest chroniona po rozpoczęciu obsługi"
+            }
           >
             <Trash2 className="h-4 w-4" />
           </button>

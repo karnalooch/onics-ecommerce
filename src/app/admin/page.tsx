@@ -21,6 +21,7 @@ import {
   Globe
 } from "lucide-react";
 
+import { isRepairTerminalStatus } from "@/lib/repairLifecycle";
 import { initializeMockData } from "@/store/serverStore";
 
 export default async function AdminDashboard() {
@@ -36,7 +37,9 @@ export default async function AdminDashboard() {
   const registeredUsers = users.filter((u: any) => u.roleType === "BIZ" && u.isApproved);
   const totalProducts = products.length;
   const pendingQuotes = orders.filter((o: any) => o.status === "INQUIRY" || o.orderType === "INQUIRY");
-  const pendingRepairs = repairs.filter((r: any) => r.status !== "DONE");
+  const pendingRepairs = repairs.filter(
+    (r: any) => !isRepairTerminalStatus(r.status)
+  );
 
   return (
     <div className="flex flex-col gap-12 animate-in fade-in duration-700 pb-20">
