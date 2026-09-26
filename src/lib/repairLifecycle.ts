@@ -22,13 +22,17 @@ export function isRepairStatus(value: unknown): value is RepairStatus {
   return REPAIR_STATUSES.includes(value as RepairStatus)
 }
 
+export function isRepairTerminalStatus(value: unknown) {
+  return TERMINAL_REPAIR_STATUSES.has(String(value ?? ""))
+}
+
 export function validateRepairStatusTransition(
   currentStatus: unknown,
   nextStatus: unknown
 ): RepairStatusTransitionResult {
   if (!isRepairStatus(nextStatus)) return "invalid-status"
   if (currentStatus === nextStatus) return "ok"
-  if (TERMINAL_REPAIR_STATUSES.has(String(currentStatus ?? ""))) {
+  if (isRepairTerminalStatus(currentStatus)) {
     return "terminal-status"
   }
   return "ok"
