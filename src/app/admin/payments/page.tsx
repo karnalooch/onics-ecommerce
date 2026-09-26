@@ -85,8 +85,6 @@ const CONFIGURATION_ISSUE_LABELS: Record<string, string> = {
   PUBLIC_APP_URL_INVALID: "nieprawidłowy publiczny URL aplikacji",
   RECIPIENT_MISSING: "brak odbiorcy płatności",
   ACCOUNT_NUMBER_INVALID: "nieprawidłowy numer rachunku",
-  PROVIDER_NOT_PRODUCTION_READY:
-    "provider dostępny tylko w środowisku sandbox",
 }
 
 const PROVIDER_STATE_LABELS: Record<PaymentMethod["state"], string> = {
