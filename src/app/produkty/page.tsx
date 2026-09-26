@@ -31,8 +31,6 @@ export const revalidate = 0
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
 type CatalogProduct = ProductCatalogRecord & {
-  id?: string | number
-  price?: number | string | null
   priceHidden?: boolean
   imageUrl?: string
   specs?: string
