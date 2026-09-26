@@ -21,6 +21,7 @@ import {
   type PaymentMethodSettings,
 } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
+import { assertPaymentProviderCapability } from "@/lib/paymentProviders"
 
 export type PaymentCheckoutItem = {
   id: string
@@ -375,6 +376,7 @@ const paymentCheckoutAdapters = {
 export async function createPaymentCheckout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
+  assertPaymentProviderCapability(input.method, "checkout")
   return paymentCheckoutAdapters[input.method].createCheckout(input)
 }
 
