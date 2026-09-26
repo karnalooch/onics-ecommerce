@@ -33,7 +33,7 @@ npm run build
 npm audit --audit-level=high
 ```
 
-The platform gate also runs blocking ESLint checks over the security-, commerce-, payment- and knowledge-critical server code.
+The platform gate also runs blocking ESLint checks over the security-, commerce-, payment- and knowledge-critical server code. After the production build it starts the built application and smoke-tests both health endpoints over HTTP.
 
 ## Production storage contract
 
@@ -82,6 +82,15 @@ The Platform Audit CI runs a recovery drill that backs up the development seed, 
 ### Important limitation
 
 The file-backed store is an interim persistence layer. It is suitable only for a deployment model that provides a durable writable volume and controlled application concurrency. A future database migration should replace it before horizontal scaling or multi-instance writes.
+
+## Health and readiness
+
+The application exposes two uncached operational endpoints:
+
+- `GET /api/health/live` — process liveness only; returns HTTP 200 while the Next.js server can answer requests.
+- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required secrets and lock settings are valid, the JSON database is readable/writable and valid, and the private upload root exists and is readable/writable. Otherwise it returns HTTP 503.
+
+The readiness payload reports only coarse check states (`ok` / `error`) and does not expose filesystem paths, secrets or raw exception messages.
 
 ## Authentication
 
