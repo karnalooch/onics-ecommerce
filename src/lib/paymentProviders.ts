@@ -1,3 +1,5 @@
+import { describePrzelewy24Runtime } from "@/lib/przelewy24"
+
 export const PAYMENT_PROVIDER_IDS = ["STRIPE", "BANK_TRANSFER", "PRZELEWY24"] as const
 
 export type PaymentProviderId = (typeof PAYMENT_PROVIDER_IDS)[number]
@@ -21,8 +23,6 @@ export type PaymentProviderCapabilities = Record<
   boolean
 >
 
-import { describePrzelewy24Runtime } from "@/lib/przelewy24"
-
 export type PaymentRuntimeOptions = {
   nodeEnv?: string
   stripeSecretKey?: string | null
@@ -42,7 +42,6 @@ export const PAYMENT_PROVIDER_CONFIGURATION_ISSUES = [
   "PUBLIC_APP_URL_INVALID",
   "RECIPIENT_MISSING",
   "ACCOUNT_NUMBER_INVALID",
-  "PROVIDER_NOT_PRODUCTION_READY",
 ] as const
 
 export type PaymentProviderConfigurationIssue =
