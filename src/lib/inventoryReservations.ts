@@ -19,6 +19,7 @@ export type InventoryReservationOrder = {
   inventoryReleasedAt?: string | null
   inventoryFinalizedAt?: string | null
   inventoryReReservedAt?: string | null
+  inventoryRefundRestockedAt?: string | null
 }
 
 type IncomingPaymentStatus = "PAID" | "FAILED" | "EXPIRED"
@@ -224,6 +225,33 @@ export function applyOrderInventoryTransition(
   return "reserved" as const
 }
 
+export function applyStripeRefundInventory(
+  products: InventoryProduct[],
+  order: InventoryReservationOrder,
+  now = new Date().toISOString()
+) {
+  if (order.inventoryRefundRestockedAt) return "unchanged" as const
+
+  // Stripe orders created before inventory reservations existed must not be
+  // restocked, because their payment never decremented local stock.
+  if (!order.inventoryReservationStatus) {
+    return "legacy-unmanaged" as const
+  }
+  if (order.inventoryReservationSource === "ORDER") {
+    throw new Error("INVENTORY_REFUND_INVALID_SOURCE")
+  }
+  if (order.inventoryReservationStatus === "RELEASED") {
+    throw new Error("INVENTORY_REFUND_INVALID_STATE")
+  }
+  if (!order.items?.length) {
+    throw new Error("INVENTORY_RESERVATION_MISSING_ITEMS")
+  }
+
+  releaseInventory(products, order.items)
+  order.inventoryRefundRestockedAt = now
+  return "restocked" as const
+}
+
 export function applyStripeInventoryTransition(
   products: InventoryProduct[],
   order: InventoryReservationOrder,
@@ -232,6 +260,10 @@ export function applyStripeInventoryTransition(
   now = new Date().toISOString()
 ) {
   const reservationStatus = order.inventoryReservationStatus
+
+  // A succeeded refund is terminal for inventory. Replayed/out-of-order
+  // checkout events must never re-reserve stock after it was returned.
+  if (order.inventoryRefundRestockedAt) return "unchanged" as const
 
   // Orders created before reservation support are intentionally unmanaged.
   if (!reservationStatus) return "legacy-unmanaged" as const
