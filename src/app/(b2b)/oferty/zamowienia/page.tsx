@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Package, Clock, Truck, ShieldCheck } from "lucide-react"
+import { Loader2, Package, Clock, Truck, ShieldCheck, Landmark } from "lucide-react"
 
 export default function B2BClientOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -58,6 +58,74 @@ export default function B2BClientOrdersPage() {
               </div>
 
               <CardContent className="p-6">
+                {order.paymentProvider === "BANK_TRANSFER" &&
+                 order.bankTransferIban && (
+                  <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
+                    <div className="flex items-start gap-3">
+                      <Landmark className="w-5 h-5 text-blue-700 mt-0.5 shrink-0" />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <strong className="text-blue-950">
+                            Przelew bankowy
+                          </strong>
+                          <Badge
+                            variant={
+                              order.paymentStatus === "PAID"
+                                ? "default"
+                                : order.paymentStatus === "REFUNDED"
+                                  ? "secondary"
+                                  : "outline"
+                            }
+                          >
+                            {order.paymentStatus === "PAID"
+                              ? "ZAKSIĘGOWANY"
+                              : order.paymentStatus === "REFUNDED"
+                                ? "ZWRÓCONY"
+                                : "OCZEKUJE NA WPŁYW"}
+                          </Badge>
+                        </div>
+                        <div className="grid gap-2 mt-3 text-sm text-blue-950">
+                          <div>
+                            Odbiorca:{" "}
+                            <span className="font-semibold">
+                              {order.bankTransferRecipient}
+                            </span>
+                          </div>
+                          <div className="break-all">
+                            IBAN:{" "}
+                            <span className="font-mono font-semibold">
+                              {order.bankTransferIban}
+                            </span>
+                          </div>
+                          <div>
+                            Tytuł:{" "}
+                            <span className="font-mono font-semibold">
+                              {order.bankTransferReference}
+                            </span>
+                          </div>
+                          <div>
+                            Kwota:{" "}
+                            <span className="font-semibold">
+                              {Number(
+                                order.bankTransferAmount ??
+                                  order.totalPriceFinal
+                              ).toFixed(2)}{" "}
+                              {order.bankTransferCurrency || "PLN"}
+                            </span>
+                          </div>
+                        </div>
+                        {order.paymentStatus === "PENDING" && (
+                          <p className="text-xs text-blue-800 mt-3">
+                            Użyj dokładnie podanego tytułu przelewu. Status
+                            zmieni się po ręcznym potwierdzeniu wpływu przez
+                            administratora.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="md:col-span-2">
                     <h4 className="font-semibold mb-4 border-b pb-2">Zawartość pakietu</h4>
