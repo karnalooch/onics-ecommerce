@@ -140,4 +140,4 @@ The repository contains development seed data under `src/data/db.json`. It is no
 
 Knowledge/catalog uploads are limited and validated by the server. Production uploads must use `CELTRONICS_UPLOAD_ROOT` on durable storage.
 
-Historical catalog corpora used by parser development live under `fixtures/catalogs/`, outside the Next.js `public/` tree. They are repository fixtures, not runtime uploads. Local harvesting writes transient downloads under `.local/celtronics/harvest/`, which is ignored by Git. Platform Audit CI rejects tracked files under `public/uploads/catalogs/` so supplier files cannot silently become deployable static assets again.
+Supplier/catalog corpora used for manual parser research are intentionally **not stored in Git**. Put local copies under `.local/celtronics/catalog-fixtures/` or set `CELTRONICS_FIXTURE_ROOT` to another private directory. Manual parser scripts read from that location. Local harvesting writes transient downloads under `.local/celtronics/harvest/`, which is ignored by Git. Platform Audit CI rejects supplier catalog binaries under both `public/uploads/catalogs/` and `fixtures/catalogs/`.
