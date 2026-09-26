@@ -20,13 +20,21 @@ export default function AdminOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [returning, setReturning] = useState(false);
-  const stripeAmountsLocked = Boolean(validatingOrder?.stripeCheckoutSessionId);
+  const [bankTransferUpdating, setBankTransferUpdating] = useState(false);
+  const isBankTransfer =
+    validatingOrder?.paymentProvider === "BANK_TRANSFER";
+  const paymentAmountsLocked =
+    Boolean(validatingOrder?.stripeCheckoutSessionId) || isBankTransfer;
   const stripeRefundInProgress =
     validatingOrder?.refundStatus === "pending" ||
     validatingOrder?.refundStatus === "requires_action";
   const stripeFulfillmentLocked =
     Boolean(validatingOrder?.stripeCheckoutSessionId) &&
     (validatingOrder?.paymentStatus !== "PAID" || stripeRefundInProgress);
+  const bankTransferFulfillmentLocked =
+    isBankTransfer && validatingOrder?.paymentStatus !== "PAID";
+  const paymentFulfillmentLocked =
+    stripeFulfillmentLocked || bankTransferFulfillmentLocked;
   const orderCanAdvance =
     validatingOrder?.status === "PENDING_VERIFICATION" ||
     validatingOrder?.status === "CONFIRMED";
@@ -58,7 +66,7 @@ export default function AdminOrdersPage() {
   }
 
   const updateItemPrice = (index: number, newPrice: string) => {
-    if (stripeAmountsLocked) return;
+    if (paymentAmountsLocked) return;
 
     setEditableItems((items) =>
       items.map((item, itemIndex) =>
@@ -118,6 +126,119 @@ export default function AdminOrdersPage() {
       );
     } finally {
       setCancelling(false);
+    }
+  }
+
+  const settleBankTransfer = async (
+    action: "CONFIRM_PAYMENT" | "CONFIRM_REFUND"
+  ) => {
+    if (!validatingOrder?.id || !isBankTransfer) return;
+
+    if (action === "CONFIRM_PAYMENT") {
+      if (
+        !window.confirm(
+          `Potwierdzić wpływ przelewu dla zamówienia ${validatingOrder.id}? Operacja odblokuje przekazanie zamówienia do logistyki.`
+        )
+      ) {
+        return;
+      }
+    } else {
+      const typed = window.prompt(
+        'Potwierdź, że zwrot środków został wykonany poza systemem. Wpisz dokładnie: ZWROT'
+      );
+      if (typed !== "ZWROT") {
+        toast.error("Potwierdzenie ręcznego zwrotu anulowane.");
+        return;
+      }
+    }
+
+    setBankTransferUpdating(true);
+    try {
+      const res = await fetch("/api/orders/bank-transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: validatingOrder.id,
+          action,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          data?.error ||
+            "Nie udało się rozliczyć przelewu bankowego."
+        );
+      }
+
+      if (action === "CONFIRM_PAYMENT") {
+        toast.success("Wpływ przelewu został potwierdzony.");
+        setValidatingOrder(data?.order ?? validatingOrder);
+      } else {
+        toast.success(
+          "Ręczny zwrot środków potwierdzony. Zamówienie anulowane, rezerwacja zwolniona."
+        );
+        setValidatingOrder(null);
+      }
+      await fetchOrders();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "FAULT: Błąd rozliczenia przelewu bankowego."
+      );
+    } finally {
+      setBankTransferUpdating(false);
+    }
+  }
+
+  const cancelPendingBankTransfer = async () => {
+    if (
+      !validatingOrder?.id ||
+      !isBankTransfer ||
+      validatingOrder?.paymentStatus !== "PENDING"
+    ) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        "Anulować oczekujący przelew i zwolnić rezerwację magazynową?"
+      )
+    ) {
+      return;
+    }
+
+    setBankTransferUpdating(true);
+    try {
+      const res = await fetch("/api/orders", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: validatingOrder.id,
+          status: "CANCELLED",
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(
+          data?.error || "Nie udało się anulować oczekującego przelewu."
+        );
+      }
+
+      toast.success(
+        "Oczekujący przelew anulowany. Rezerwacja magazynowa zwolniona."
+      );
+      setValidatingOrder(null);
+      await fetchOrders();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "FAULT: Błąd anulowania przelewu."
+      );
+    } finally {
+      setBankTransferUpdating(false);
     }
   }
 
@@ -432,7 +553,7 @@ export default function AdminOrdersPage() {
                     {/* ITEM REDEFINITION GRID */}
                     <div className="space-y-4">
                        <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-[0.2em] italic border-b border-slate-100 pb-2">Korekta Stawek Indeksowych</h4>
-                       {stripeAmountsLocked && (
+                       {paymentAmountsLocked && (
                           <div className="border-l-4 border-primary bg-primary/5 px-4 py-3">
                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">
                                 Kwoty zablokowane przez sesję Stripe. Realizacja jest możliwa dopiero po potwierdzeniu płatności.
@@ -465,9 +586,9 @@ export default function AdminOrdersPage() {
                                             type="number" 
                                             value={item.price}
                                             onChange={(e) => updateItemPrice(idx, e.target.value)}
-                                            disabled={stripeAmountsLocked}
+                                            disabled={paymentAmountsLocked}
                                             className={`w-28 h-10 bg-white border border-slate-200 text-right px-4 text-sm font-black italic outline-none transition-all tabular-nums ${
-                                               stripeAmountsLocked
+                                               paymentAmountsLocked
                                                   ? "cursor-not-allowed text-slate-400 opacity-60"
                                                   : "text-primary focus:border-primary"
                                             }`}
@@ -510,7 +631,59 @@ export default function AdminOrdersPage() {
                        </p>
                     </div>
                  )}
+                 {orderCanAdvance && bankTransferFulfillmentLocked && (
+                    <div className="px-6 py-4 bg-blue-50 border-t border-blue-200">
+                       <p className="text-[10px] font-black uppercase tracking-widest text-blue-900">
+                          Oczekiwanie na zaksięgowanie przelewu
+                          {validatingOrder?.bankTransferReference
+                            ? ` · ${validatingOrder.bankTransferReference}`
+                            : ""}.
+                          Zamówienia nie można przekazać do logistyki przed potwierdzeniem wpływu.
+                       </p>
+                    </div>
+                 )}
                  <div className="p-6 bg-slate-950 flex flex-wrap items-center gap-4">
+                    {isBankTransfer &&
+                     validatingOrder?.status !== "CANCELLED" &&
+                     validatingOrder?.status !== "SHIPPED" &&
+                     validatingOrder?.status !== "RETURNED" &&
+                     validatingOrder?.paymentStatus === "PENDING" && (
+                       <>
+                         <button
+                           onClick={() => settleBankTransfer("CONFIRM_PAYMENT")}
+                           disabled={bankTransferUpdating || saving || returning}
+                           className="flex-1 min-w-[190px] h-14 border-2 border-green-400/50 text-green-300 font-black text-[10px] uppercase tracking-widest hover:border-green-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                         >
+                           {bankTransferUpdating
+                             ? "ROZLICZANIE..."
+                             : "POTWIERDŹ_WPŁYW_PRZELEWU"}
+                         </button>
+                         <button
+                           onClick={cancelPendingBankTransfer}
+                           disabled={bankTransferUpdating || saving || returning}
+                           className="flex-1 min-w-[190px] h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                         >
+                           ANULUJ_OCZEKUJĄCY_PRZELEW
+                         </button>
+                       </>
+                    )}
+
+                    {isBankTransfer &&
+                     validatingOrder?.paymentStatus === "PAID" &&
+                     validatingOrder?.status !== "CANCELLED" &&
+                     validatingOrder?.status !== "SHIPPED" &&
+                     validatingOrder?.status !== "RETURNED" && (
+                       <button
+                         onClick={() => settleBankTransfer("CONFIRM_REFUND")}
+                         disabled={bankTransferUpdating || saving || returning}
+                         className="flex-1 min-w-[220px] h-14 border-2 border-red-400/40 text-red-300 font-black text-[10px] uppercase tracking-widest hover:border-red-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all italic"
+                       >
+                         {bankTransferUpdating
+                           ? "ROZLICZANIE..."
+                           : "POTWIERDŹ_ZWROT_I_ANULUJ"}
+                       </button>
+                    )}
+
                     {validatingOrder?.stripeCheckoutSessionId &&
                      validatingOrder?.status !== "CANCELLED" &&
                      validatingOrder?.status !== "SHIPPED" &&
@@ -579,9 +752,15 @@ export default function AdminOrdersPage() {
                     {orderCanAdvance && (
                       <button 
                          onClick={advanceOrder}
-                         disabled={saving || cancelling || returning || stripeFulfillmentLocked}
+                         disabled={
+                           saving ||
+                           cancelling ||
+                           returning ||
+                           bankTransferUpdating ||
+                           paymentFulfillmentLocked
+                         }
                          className={`flex-1 min-w-[200px] h-14 font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-4 transition-all italic ${
-                            saving || stripeFulfillmentLocked
+                            saving || paymentFulfillmentLocked
                                ? "bg-slate-700 text-slate-400 cursor-not-allowed"
                                : "bg-primary text-slate-950 shadow-xl shadow-primary/20 hover:brightness-110 active-press"
                          }`}
@@ -593,7 +772,9 @@ export default function AdminOrdersPage() {
                               ? stripeRefundInProgress
                                 ? "REFUND_W_TOKU"
                                 : "OCZEKIWANIE_NA_PŁATNOŚĆ"
-                              : validatingOrder?.status === "PENDING_VERIFICATION"
+                              : bankTransferFulfillmentLocked
+                                ? "OCZEKIWANIE_NA_PRZELEW"
+                                : validatingOrder?.status === "PENDING_VERIFICATION"
                                 ? "ZATWIERDŹ_DO_LOGISTYKI"
                                 : "OZNACZ_JAKO_WYSŁANE"}
                       </button>
