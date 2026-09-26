@@ -89,15 +89,17 @@ function normalizePaymentAudit(value: unknown): PaymentAuditEntry[] {
         return []
       }
 
+      const operation: PaymentAuditEntry["operation"] =
+        entry.operation === "EMERGENCY_SHUTDOWN"
+          ? "EMERGENCY_SHUTDOWN"
+          : "SETTING_CHANGE"
+
       return [
         {
           id: entry.id,
           createdAt: entry.createdAt,
           target,
-          operation:
-            entry.operation === "EMERGENCY_SHUTDOWN"
-              ? "EMERGENCY_SHUTDOWN"
-              : "SETTING_CHANGE",
+          operation,
           actor: {
             id: typeof actor.id === "string" ? actor.id : null,
             email: typeof actor.email === "string" ? actor.email : null,
