@@ -65,16 +65,26 @@ function normalizePath(file: string) {
 }
 
 function handlerSource(source: string, method: MutationMethod) {
-  const handlerPattern = new RegExp(
-    `export\\s+async\\s+function\\s+${method}\\s*\\(`
-  )
-  const match = handlerPattern.exec(source)
-  if (!match || match.index === undefined) return null
+  const patterns = [
+    new RegExp(
+      `export\\s+async\\s+function\\s+${method}\\s*\\(`
+    ),
+    new RegExp(`export\\s+const\\s+${method}\\s*=`),
+  ]
+
+  const matches = patterns
+    .map((pattern) => pattern.exec(source))
+    .filter((match): match is RegExpExecArray => Boolean(match))
+    .sort((left, right) => left.index - right.index)
+
+  const match = matches[0]
+  if (!match) return null
 
   const rest = source.slice(match.index + match[0].length)
-  const nextHandler = /export\s+async\s+function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(/.exec(
-    rest
-  )
+  const nextHandler =
+    /export\s+(?:async\s+function\s+|const\s+)(?:GET|POST|PUT|PATCH|DELETE)\b/.exec(
+      rest
+    )
 
   return nextHandler ? rest.slice(0, nextHandler.index) : rest
 }
