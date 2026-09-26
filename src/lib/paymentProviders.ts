@@ -238,7 +238,7 @@ const paymentProviderRegistry = {
       webhook: true,
       cancel: false,
       refund: true,
-      reconcile: false,
+      reconcile: true,
       rma: true,
       manualSettlement: false,
     },
