@@ -1,4 +1,7 @@
-import type { PaymentMethodSettings } from "@/store/serverStore"
+import type {
+  PaymentControlSettings,
+  PaymentMethodSettings,
+} from "@/store/serverStore"
 
 export type PaymentMethodId = "STRIPE"
 
@@ -11,11 +14,25 @@ export type PaymentMethodAvailability = {
   updatedAt: string | null
 }
 
+export function isPaymentControlEnabled(
+  control: PaymentControlSettings
+) {
+  return control.enabled
+}
+
 export function isPaymentMethodEnabled(
   settings: PaymentMethodSettings,
   method: PaymentMethodId
 ) {
   return settings[method].enabled
+}
+
+export function resolvePaymentAvailability(
+  control: PaymentControlSettings,
+  settings: PaymentMethodSettings,
+  method: PaymentMethodId
+) {
+  return control.enabled && settings[method].enabled
 }
 
 export function stripeOperationalStatus(
@@ -77,4 +94,13 @@ export function describePaymentMethods(
       updatedAt: settings.STRIPE.updatedAt,
     },
   ]
+}
+
+
+export function describePaymentControl(control: PaymentControlSettings) {
+  return {
+    enabled: control.enabled,
+    maintenanceMessage: control.maintenanceMessage,
+    updatedAt: control.updatedAt,
+  }
 }
