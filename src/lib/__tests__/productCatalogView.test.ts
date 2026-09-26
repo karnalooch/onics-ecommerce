@@ -3,7 +3,9 @@ import path from "path"
 import { describe, expect, it } from "vitest"
 import {
   buildCatalogCategoryOptions,
+  getProductCatalogDescription,
   matchesCatalogCategory,
+  matchesProductCatalogQuery,
   projectProductCatalogClassification,
   projectProductCatalogForSession,
   type ProductCatalogCategory,
@@ -85,6 +87,46 @@ describe("product catalog classification projection", () => {
     expect(matchesCatalogCategory(projected[0], "cat_alarm")).toBe(true)
     expect(matchesCatalogCategory(projected[0], "Alarmy")).toBe(true)
     expect(matchesCatalogCategory(projected[0], "cat_cctv")).toBe(false)
+  })
+})
+
+describe("product catalog descriptive projection", () => {
+  it("uses stored specs before knowledge and SEO fallbacks", () => {
+    expect(
+      getProductCatalogDescription({
+        ...product,
+        specs: "Stored technical specs",
+        catalogSpecs: "Knowledge specs",
+        seoDescription: "SEO description",
+      })
+    ).toBe("Stored technical specs")
+  })
+
+  it("renders Knowledge Hub specs for virtual products without stored specs", () => {
+    expect(
+      getProductCatalogDescription({
+        ...product,
+        id: "virtual_SKU-1",
+        isVirtual: true,
+        catalogSpecs: "12 V DC, IP67",
+        seoDescription: "12 V DC, IP67",
+      })
+    ).toBe("12 V DC, IP67")
+  })
+
+  it("searches technical, SEO and classification metadata from the shared view", () => {
+    const projected: ProductCatalogRecord = {
+      ...product,
+      catalogSpecs: "PoE 802.3af",
+      seoDescription: "Kamera kopułkowa",
+      categoryName: "CCTV",
+      subcategoryName: "Kamery IP",
+    }
+
+    expect(matchesProductCatalogQuery(projected, "802.3af")).toBe(true)
+    expect(matchesProductCatalogQuery(projected, "kopułkowa")).toBe(true)
+    expect(matchesProductCatalogQuery(projected, "kamery ip")).toBe(true)
+    expect(matchesProductCatalogQuery(projected, "centrala alarmowa")).toBe(false)
   })
 })
 
@@ -189,6 +231,8 @@ describe("catalog projection wiring", () => {
 
     expect(publicPage).toContain("buildProductCatalogView")
     expect(publicPage).toContain("buildCatalogCategoryOptions")
+    expect(publicPage).toContain("getProductCatalogDescription")
+    expect(publicPage).toContain("matchesProductCatalogQuery")
     expect(publicPage).toContain("matchesCatalogCategory")
     expect(apiRoute).toContain("buildProductCatalogView")
     expect(apiRoute).toContain("categories as ProductCatalogCategory[]")

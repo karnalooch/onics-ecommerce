@@ -17,6 +17,7 @@ export type ProductCatalogRecord = {
   categoryName?: string | null
   subcategoryName?: string | null
   seoDescription?: string
+  specs?: string
   catalogPrice?: number | null
   catalogSpecs?: string
   isVirtual?: boolean
@@ -134,6 +135,40 @@ export function matchesCatalogCategory(
     normalize(product.categoryId) === normalizedFilter ||
     normalize(product.categoryName) === normalizedFilter
   )
+}
+
+export function getProductCatalogDescription(product: ProductCatalogRecord) {
+  for (const value of [
+    product.specs,
+    product.catalogSpecs,
+    product.seoDescription,
+  ]) {
+    const description = String(value ?? "").trim()
+    if (description) return description
+  }
+
+  return null
+}
+
+export function matchesProductCatalogQuery(
+  product: ProductCatalogRecord,
+  query: string
+) {
+  const normalizedQuery = normalize(query)
+  if (!normalizedQuery) return true
+
+  return [
+    product.name,
+    product.sku,
+    product.manufacturer,
+    product.specs,
+    product.catalogSpecs,
+    product.seoDescription,
+    product.categoryName,
+    product.subcategoryName,
+  ]
+    .map(normalize)
+    .some((value) => value.includes(normalizedQuery))
 }
 
 export async function buildUnifiedProductCatalog(
