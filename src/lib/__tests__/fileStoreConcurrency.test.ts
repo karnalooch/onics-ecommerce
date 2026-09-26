@@ -1,9 +1,9 @@
 import fs from "fs"
 import os from "os"
 import path from "path"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { getDbLockSettings, readDb, writeDb } from "@/lib/jsonDb"
-import { mutateMockData } from "@/store/serverStore"
+import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { reserveInventory } from "@/lib/inventoryReservations"
 
 const originalDbPath = process.env.CELTRONICS_DB_PATH
@@ -49,6 +49,7 @@ describe("file store concurrency", () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     if (originalDbPath === undefined) {
       delete process.env.CELTRONICS_DB_PATH
     } else {
@@ -168,6 +169,77 @@ describe("file store concurrency", () => {
     expect(db.products[0].stock).toBe(1)
     expect(db.orders).toHaveLength(1)
     expect(["ORD-A", "ORD-B"]).toContain(db.orders[0].id)
+  })
+
+  it("fails closed when a read-only snapshot sees malformed JSON", () => {
+    const dbPath = process.env.CELTRONICS_DB_PATH!
+    fs.writeFileSync(dbPath, "{ definitely-not-json", "utf-8")
+
+    expect(() => initializeMockData()).toThrow(
+      "Nie udało się bezpiecznie odczytać bazy danych."
+    )
+  })
+
+  it("rejects a syntactically valid but invalid database root", () => {
+    const dbPath = process.env.CELTRONICS_DB_PATH!
+    fs.writeFileSync(dbPath, "[]", "utf-8")
+
+    expect(() => initializeMockData()).toThrow("DATABASE_ROOT_INVALID")
+  })
+
+  it("rejects corrupted core collection shapes instead of exposing empty data", () => {
+    const dbPath = process.env.CELTRONICS_DB_PATH!
+    fs.writeFileSync(
+      dbPath,
+      JSON.stringify({
+        ...emptyDb(),
+        orders: "corrupted",
+      }),
+      "utf-8"
+    )
+
+    expect(() => initializeMockData()).toThrow(
+      "DATABASE_FIELD_INVALID:orders"
+    )
+  })
+
+  it("rejects corrupted persisted payment enablement instead of falling back to enabled", () => {
+    const dbPath = process.env.CELTRONICS_DB_PATH!
+    fs.writeFileSync(
+      dbPath,
+      JSON.stringify({
+        ...emptyDb(),
+        paymentControl: {
+          enabled: "false",
+          maintenanceMessage: null,
+          updatedAt: null,
+        },
+      }),
+      "utf-8"
+    )
+
+    expect(() => initializeMockData()).toThrow(
+      "DATABASE_FIELD_INVALID:paymentControl.enabled"
+    )
+  })
+
+  it("fsyncs temporary database contents before replacing the live file", () => {
+    const fsync = vi.spyOn(fs, "fsyncSync")
+    const rename = vi.spyOn(fs, "renameSync")
+
+    expect(
+      writeDb({
+        ...emptyDb(),
+        orders: [{ id: "ORD-DURABLE" }],
+      })
+    ).toBe(true)
+
+    expect(fsync).toHaveBeenCalled()
+    expect(rename).toHaveBeenCalledOnce()
+    expect(fsync.mock.invocationCallOrder[0]).toBeLessThan(
+      rename.mock.invocationCallOrder[0]
+    )
+    expect(readDb().orders).toEqual([{ id: "ORD-DURABLE" }])
   })
 
   it("does not overwrite the database when the current file is malformed", async () => {
