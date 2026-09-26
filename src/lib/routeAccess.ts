@@ -6,7 +6,8 @@ function matchesRoute(pathname: string, prefix: string) {
 
 export function authorizePageRoute(
   pathname: string,
-  role: string | null | undefined
+  role: string | null | undefined,
+  isApproved = false
 ) {
   if (matchesRoute(pathname, "/admin")) {
     return role === "ADMIN"
@@ -17,7 +18,7 @@ export function authorizePageRoute(
     matchesRoute(pathname, "/oferty") ||
     matchesRoute(pathname, "/ustawienia")
   ) {
-    return role === "BIZ"
+    return role === "BIZ" && isApproved
   }
 
   return true
