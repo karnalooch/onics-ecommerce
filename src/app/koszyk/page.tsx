@@ -5,7 +5,7 @@ import { useCartStore } from "@/store/cartStore";
 import { Trash2, FileText, Send, ShoppingBag, Loader2, UploadCloud, Info, ShieldCheck, CreditCard } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner"; // Jeśli mamy sonner zainstalowane, jeśli nie to mock
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 type CheckoutPaymentMethod = {
@@ -291,6 +291,7 @@ export default function CartPage() {
 
   const handleAction = async (action: "PDF" | "INQUIRY" | "ORDER") => {
     setSubmitting(action);
+
     try {
       if (action === "PDF") {
         router.push("/koszyk/oferta");
@@ -301,27 +302,36 @@ export default function CartPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user: session?.user || { email: "gosc@anon.pl" },
           items,
-          orderType: action, 
+          orderType: action,
         }),
       });
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
-        if (action === "ORDER") {
-          alert("✅ Zamówienie weryfikacyjne wysłane! Czekaj na nadanie czasów dostaw przez Admina.");
-        } else {
-          alert("💬 Zapytanie cenowe wysłane.");
-        }
-        clearCart();
-        router.push("/oferty/zamowienia");
-      } else {
-        alert("Wystąpił błąd podczas wysyłania do centrali.");
+      if (!response.ok) {
+        throw new Error(
+          typeof data?.error === "string"
+            ? data.error
+            : "Nie udało się wysłać zamówienia."
+        );
       }
-    } catch {
-      alert("Błąd połączenia. Spróbuj ponownie.");
+
+      toast.success(
+        action === "ORDER"
+          ? "Zamówienie weryfikacyjne wysłane. Administrator nada termin dostawy."
+          : "Zapytanie cenowe wysłane."
+      );
+      clearCart();
+      router.push("/oferty/zamowienia");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Błąd połączenia. Spróbuj ponownie."
+      );
+    } finally {
+      setSubmitting(null);
     }
-    setSubmitting(null);
   };
 
   const orderImportCard = isB2B ? (
