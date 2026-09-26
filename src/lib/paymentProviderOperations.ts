@@ -27,6 +27,7 @@ export type PaymentProviderOperationsSummary = {
   openReturns: number
   lastReconciledAt: string | null
   lastErrorAt: string | null
+  lastOperationAt: string | null
   lastOperationOutcome: PaymentOperationEvent["outcome"] | null
   lastOperationProcessed: number
   lastOperationFailed: number
@@ -77,6 +78,7 @@ export function describePaymentProviderOperations(
         openReturns: 0,
         lastReconciledAt: null,
         lastErrorAt: null,
+        lastOperationAt: null,
         lastOperationOutcome: null,
         lastOperationProcessed: 0,
         lastOperationFailed: 0,
@@ -141,13 +143,16 @@ export function describePaymentProviderOperations(
 
   for (const event of events) {
     const summary = summaries[event.provider]
-    const currentOperationAt = summary.lastReconciledAt
+    summary.lastReconciledAt = laterTimestamp(
+      summary.lastReconciledAt,
+      event.createdAt
+    )
 
     if (
-      !currentOperationAt ||
-      Date.parse(event.createdAt) > Date.parse(currentOperationAt)
+      !summary.lastOperationAt ||
+      Date.parse(event.createdAt) > Date.parse(summary.lastOperationAt)
     ) {
-      summary.lastReconciledAt = event.createdAt
+      summary.lastOperationAt = event.createdAt
       summary.lastOperationOutcome = event.outcome
       summary.lastOperationProcessed = event.processed
       summary.lastOperationFailed = event.failed
