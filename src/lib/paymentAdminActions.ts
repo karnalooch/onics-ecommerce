@@ -1,5 +1,6 @@
 import {
   assertPaymentProviderCapability,
+  getPaymentProviderDefinition,
   resolveOrderPaymentProvider,
   type PaymentProviderCapability,
   type PaymentProviderId,
@@ -153,7 +154,9 @@ export function listAvailablePaymentAdminActions(
     }
   }
 
-  if (provider === "BANK_TRANSFER") {
+  const providerKind = getPaymentProviderDefinition(provider).kind
+
+  if (providerKind === "MANUAL") {
     add(
       "CANCEL",
       status !== "SHIPPED" &&
