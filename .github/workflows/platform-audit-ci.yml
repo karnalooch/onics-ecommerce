@@ -171,29 +171,13 @@ jobs:
             exit 1
           fi
 
-          curl --fail --silent --show-error             -D .ci/runtime/headers.raw             -o /dev/null             http://127.0.0.1:3001/api/health/live
+          curl --fail --silent --show-error -D .ci/runtime/headers.raw -o /dev/null http://127.0.0.1:3001/api/health/live
           tr -d '\r' < .ci/runtime/headers.raw > .ci/runtime/headers.txt
 
-          grep -qi '^x-content-type-options: nosniff
-
-      - name: Dependency audit
-        run: npm audit --audit-level=high
- .ci/runtime/headers.txt
-          grep -qi '^x-frame-options: DENY
-
-      - name: Dependency audit
-        run: npm audit --audit-level=high
- .ci/runtime/headers.txt
-          grep -qi '^referrer-policy: strict-origin-when-cross-origin
-
-      - name: Dependency audit
-        run: npm audit --audit-level=high
- .ci/runtime/headers.txt
-          grep -qi '^strict-transport-security: max-age=31536000
-
-      - name: Dependency audit
-        run: npm audit --audit-level=high
- .ci/runtime/headers.txt
+          grep -qi '^x-content-type-options: nosniff' .ci/runtime/headers.txt
+          grep -qi '^x-frame-options: DENY' .ci/runtime/headers.txt
+          grep -qi '^referrer-policy: strict-origin-when-cross-origin' .ci/runtime/headers.txt
+          grep -qi '^strict-transport-security: max-age=31536000' .ci/runtime/headers.txt
 
           if grep -qi '^x-powered-by:' .ci/runtime/headers.txt; then
             echo "X-Powered-By must not be exposed."
