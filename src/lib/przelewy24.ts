@@ -46,8 +46,11 @@ export type Przelewy24StoredOrder = InventoryReservationOrder & {
   p24SessionId?: string | null
   p24OrderId?: number | null
   p24LastNotificationSign?: string | null
+  p24VerificationPending?: Przelewy24Notification | null
+  p24VerificationPendingAt?: string | null
   paidAt?: string | null
   paymentUpdatedAt?: string | null
+  paymentReconciledAt?: string | null
 }
 
 function numericCredential(value: string | null | undefined) {
@@ -372,6 +375,38 @@ export function validatePrzelewy24NotificationForOrder(
   return true
 }
 
+export function stagePrzelewy24Verification(
+  order: Przelewy24StoredOrder,
+  notification: Przelewy24Notification,
+  now = new Date().toISOString()
+) {
+  validatePrzelewy24NotificationForOrder(order, notification)
+
+  if (
+    order.paymentStatus === "PAID" &&
+    order.p24OrderId === notification.orderId
+  ) {
+    return "already-paid" as const
+  }
+
+  const pending = order.p24VerificationPending
+  if (
+    pending &&
+    (pending.sessionId !== notification.sessionId ||
+      pending.orderId !== notification.orderId ||
+      pending.amount !== notification.amount ||
+      pending.currency !== notification.currency ||
+      pending.sign !== notification.sign)
+  ) {
+    throw new Error("PRZELEWY24_PENDING_NOTIFICATION_MISMATCH")
+  }
+
+  order.p24VerificationPending = { ...notification }
+  order.p24VerificationPendingAt =
+    order.p24VerificationPendingAt ?? now
+  return pending ? ("unchanged" as const) : ("staged" as const)
+}
+
 export function applyVerifiedPrzelewy24Payment(
   products: InventoryProduct[],
   order: Przelewy24StoredOrder,
@@ -386,6 +421,8 @@ export function applyVerifiedPrzelewy24Payment(
   ) {
     order.p24LastNotificationSign =
       order.p24LastNotificationSign ?? notification.sign
+    order.p24VerificationPending = null
+    order.p24VerificationPendingAt = null
     return "unchanged" as const
   }
 
@@ -407,7 +444,10 @@ export function applyVerifiedPrzelewy24Payment(
   order.p24OrderId = notification.orderId
   order.p24LastNotificationSign = notification.sign
   order.paymentUpdatedAt = now
+  order.paymentReconciledAt = now
   order.paidAt = order.paidAt ?? now
+  order.p24VerificationPending = null
+  order.p24VerificationPendingAt = null
 
   void products
   return "paid" as const
