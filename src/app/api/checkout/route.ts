@@ -4,6 +4,7 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { resolveCartItems } from "@/lib/commerce"
 import { moneyToMinorUnits, resolveStripeCheckoutConfig } from "@/lib/payments"
+import { isPaymentMethodEnabled } from "@/lib/paymentMethods"
 import { reserveInventory } from "@/lib/inventoryReservations"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
@@ -80,6 +81,14 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI([])
   if (!authCheck.authorized) return authCheck.response
 
+  const snapshot = initializeMockData()
+  if (!isPaymentMethodEnabled(snapshot.paymentMethods, "STRIPE")) {
+    return NextResponse.json(
+      { error: "Płatność Stripe została wyłączona przez administratora." },
+      { status: 503 }
+    )
+  }
+
   let stripeConfig: ReturnType<typeof resolveStripeCheckoutConfig>
   try {
     stripeConfig = resolveStripeCheckoutConfig({
@@ -103,7 +112,6 @@ export async function POST(req: Request) {
     }
 
     const sessionUser = authCheck.user as SessionUser
-    const snapshot = initializeMockData()
     const { storedUser, resolved } = resolveCheckout(
       snapshot.users as StoredUser[],
       snapshot.products as Parameters<typeof resolveCartItems>[1],

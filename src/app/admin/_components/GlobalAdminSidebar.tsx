@@ -18,7 +18,8 @@ import {
   X,
   ChevronDown,
   MoreHorizontal,
-  Activity
+  Activity,
+  CreditCard
 } from "lucide-react";
 
 export function GlobalAdminSidebar() {
@@ -39,6 +40,7 @@ export function GlobalAdminSidebar() {
     { name: "Zamówienia", path: "/admin/orders", icon: FileSpreadsheet, priority: 6 },
     { name: "Ofertowania", path: "/admin/quotes", icon: FileText, priority: 5 },
     { name: "RMA/Serwis", path: "/admin/repairs", icon: Wrench, priority: 4 },
+    { name: "Płatności", path: "/admin/payments", icon: CreditCard, priority: 3 },
   ];
 
   const primaryItems = navItems.filter(item => item.priority >= 7);
