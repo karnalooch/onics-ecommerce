@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import fs from "fs"
 import {
+  bindKnowledgeTrainingRequestAbort,
   getKnowledge,
   parseExcel,
   parsePDFWithAI,
@@ -49,8 +50,13 @@ export async function POST(req: Request) {
       knowledgeRevision,
       actor: authCheck.user,
     }
+    const detachRequestAbort = bindKnowledgeTrainingRequestAbort(
+      knowledgeSignal,
+      req.signal
+    )
 
-    fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
+    try {
+      fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
     fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
 
     let addedCount = 0
@@ -116,6 +122,9 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     )
+    } finally {
+      detachRequestAbort()
+    }
   } catch (error) {
     if (error instanceof KnowledgeUploadBodyTooLargeError) {
       return NextResponse.json(
@@ -131,6 +140,12 @@ export async function POST(req: Request) {
     }
 
     const message = error instanceof Error ? error.message : "Błąd serwera."
+    if (req.signal.aborted || message === "PROCES_PRZERWANY") {
+      return NextResponse.json(
+        { error: "Przesyłanie lub analiza pliku zostały przerwane." },
+        { status: 499 }
+      )
+    }
     if (message === "KNOWLEDGE_ADMIN_ACCESS_REVOKED") {
       return NextResponse.json(
         {
