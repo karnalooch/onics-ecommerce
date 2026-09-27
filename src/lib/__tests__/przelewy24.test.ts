@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   applyPrzelewy24RefundNotification,
+  applyReconciledPrzelewy24Refund,
   applyReconciledPrzelewy24Payment,
   applyVerifiedPrzelewy24Payment,
   calculatePrzelewy24Sign,
@@ -367,6 +368,179 @@ describe("Przelewy24 production protocol", () => {
         config()
       )
     ).toBe(false)
+  })
+
+  it("recovers completed P24 refunds from provider details without a webhook", () => {
+    const products: InventoryProduct[] = [{ id: "p1", stock: 8 }]
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-REFUND-RECOVER",
+      status: "SHIPPED",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PAID",
+      p24SessionId: "ORD-P24-REFUND-RECOVER",
+      p24OrderId: 987654321,
+      p24RefundRequestId: "refund-request-current",
+      p24RefundsUuid: "refund-uuid-current",
+      refundStatus: "pending",
+      returnStatus: "REFUND_PENDING",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "FINALIZED",
+      items: [{ id: "p1", quantity: 2 }],
+    }
+
+    const details = {
+      orderId: 987654321,
+      sessionId: "ORD-P24-REFUND-RECOVER",
+      amount: 12345,
+      currency: "PLN",
+      refunds: [
+        {
+          requestId: "refund-request-current",
+          status: 1,
+          amount: 12345,
+        },
+      ],
+    }
+
+    expect(
+      applyReconciledPrzelewy24Refund(
+        products,
+        order,
+        details,
+        "2026-09-27T15:00:00.000Z"
+      )
+    ).toBe("completed")
+    expect(order).toMatchObject({
+      status: "RETURNED",
+      paymentStatus: "REFUNDED",
+      refundStatus: "succeeded",
+      returnStatus: "COMPLETED",
+      paymentReconciledAt: "2026-09-27T15:00:00.000Z",
+    })
+    expect(products[0].stock).toBe(10)
+
+    expect(
+      applyReconciledPrzelewy24Refund(
+        products,
+        order,
+        details,
+        "2026-09-27T15:05:00.000Z"
+      )
+    ).toBe("completed")
+    expect(products[0].stock).toBe(10)
+  })
+
+  it("keeps in-flight P24 refunds pending and makes rejected refunds retryable", () => {
+    const products: InventoryProduct[] = [{ id: "p1", stock: 8 }]
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-REFUND-STATUS",
+      status: "SHIPPED",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PAID",
+      p24SessionId: "ORD-P24-REFUND-STATUS",
+      p24OrderId: 987654321,
+      p24RefundRequestId: "refund-request-current",
+      p24RefundsUuid: "refund-uuid-current",
+      refundStatus: "pending",
+      returnStatus: "REFUND_PENDING",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "FINALIZED",
+      items: [{ id: "p1", quantity: 2 }],
+    }
+
+    const baseDetails = {
+      orderId: 987654321,
+      sessionId: "ORD-P24-REFUND-STATUS",
+      amount: 12345,
+      currency: "PLN",
+    }
+
+    expect(
+      applyReconciledPrzelewy24Refund(
+        products,
+        order,
+        {
+          ...baseDetails,
+          refunds: [
+            {
+              requestId: "refund-request-current",
+              status: 2,
+              amount: 12345,
+            },
+          ],
+        },
+        "2026-09-27T15:10:00.000Z"
+      )
+    ).toBe("pending")
+    expect(order).toMatchObject({
+      paymentStatus: "PAID",
+      refundStatus: "pending",
+      returnStatus: "REFUND_PENDING",
+    })
+
+    expect(
+      applyReconciledPrzelewy24Refund(
+        products,
+        order,
+        {
+          ...baseDetails,
+          refunds: [
+            {
+              requestId: "refund-request-current",
+              status: 4,
+              amount: 12345,
+            },
+          ],
+        },
+        "2026-09-27T15:15:00.000Z"
+      )
+    ).toBe("failed")
+    expect(order).toMatchObject({
+      paymentStatus: "PAID",
+      refundStatus: "failed",
+      returnStatus: "RECEIVED",
+    })
+    expect(products[0].stock).toBe(8)
+  })
+
+  it("treats unrelated historical P24 refunds as missing current attempt", () => {
+    const products: InventoryProduct[] = [{ id: "p1", stock: 8 }]
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-REFUND-REISSUE",
+      status: "SHIPPED",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PAID",
+      p24SessionId: "ORD-P24-REFUND-REISSUE",
+      p24OrderId: 987654321,
+      p24RefundRequestId: "refund-request-current",
+      p24RefundsUuid: "refund-uuid-current",
+      refundStatus: "pending",
+      returnStatus: "REFUND_PENDING",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "FINALIZED",
+      items: [{ id: "p1", quantity: 2 }],
+    }
+
+    expect(
+      applyReconciledPrzelewy24Refund(products, order, {
+        orderId: 987654321,
+        sessionId: "ORD-P24-REFUND-REISSUE",
+        amount: 12345,
+        currency: "PLN",
+        refunds: [
+          {
+            requestId: "refund-request-old",
+            status: 4,
+            amount: 12345,
+          },
+        ],
+      })
+    ).toBe("missing")
+    expect(order.refundStatus).toBe("pending")
+    expect(products[0].stock).toBe(8)
   })
 
   it("keeps rejected refunds retryable with a new idempotency identity", () => {
