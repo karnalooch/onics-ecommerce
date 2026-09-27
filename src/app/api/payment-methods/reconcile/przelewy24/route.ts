@@ -9,6 +9,7 @@ import {
   getPrzelewy24RefundDetails,
   getPrzelewy24TransactionBySessionId,
   requestPrzelewy24Refund,
+  recoverPrzelewy24CheckoutRegistration,
   resolvePrzelewy24Config,
   verifyPrzelewy24Transaction,
   verifyPrzelewy24TransactionIdentity,
@@ -197,6 +198,21 @@ export async function POST(req: Request) {
             manualReview = true
             reviewReason = "PRZELEWY24_REGISTRATION_UNRESOLVED"
           } else if (transaction) {
+            const registrationRecovery = await mutateMockData((db) => {
+              const order = (db.orders as Przelewy24StoredOrder[]).find(
+                (candidate) => candidate.id === snapshotOrder.id
+              )
+              if (!order) throw new Error("ORDER_NOT_FOUND")
+
+              return recoverPrzelewy24CheckoutRegistration(
+                order,
+                transaction
+              )
+            })
+            if (registrationRecovery === "ready") {
+              updated = true
+            }
+
             const recovery =
               classifyPrzelewy24TransactionReconciliation(transaction)
 
