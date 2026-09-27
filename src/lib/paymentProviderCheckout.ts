@@ -12,6 +12,10 @@ import {
   type PaymentMethodId,
 } from "@/lib/paymentMethods"
 import {
+  buildPaymentControlStateToken,
+  buildPaymentMethodStateToken,
+} from "@/lib/paymentSettingsState"
+import {
   reserveInventory,
   type InventoryProduct,
 } from "@/lib/inventoryReservations"
@@ -126,6 +130,39 @@ type PaymentCheckoutAdapter = {
   createCheckout: (
     input: PaymentCheckoutInput
   ) => Promise<PaymentCheckoutResult>
+}
+
+type PaymentCheckoutAvailabilityFence = {
+  controlStateToken: string
+  methodStateToken: string
+}
+
+function buildPaymentCheckoutAvailabilityFence(
+  control: PaymentControlSettings,
+  settings: PaymentMethodSettings,
+  method: PaymentMethodId
+): PaymentCheckoutAvailabilityFence {
+  assertPaymentStillAvailable(control, settings, method)
+  return {
+    controlStateToken: buildPaymentControlStateToken(control),
+    methodStateToken: buildPaymentMethodStateToken(settings[method]),
+  }
+}
+
+function assertPaymentCheckoutAvailabilityFence(
+  control: PaymentControlSettings,
+  settings: PaymentMethodSettings,
+  method: PaymentMethodId,
+  fence: PaymentCheckoutAvailabilityFence
+) {
+  assertPaymentStillAvailable(control, settings, method)
+
+  if (
+    buildPaymentControlStateToken(control) !== fence.controlStateToken ||
+    buildPaymentMethodStateToken(settings[method]) !== fence.methodStateToken
+  ) {
+    throw new Error("PAYMENT_CHECKOUT_AVAILABILITY_CHANGED")
+  }
 }
 
 function assertCheckoutUser(user: StoredUser | undefined) {
@@ -346,7 +383,7 @@ async function createPrzelewy24Checkout(
       }
     }
 
-    assertPaymentStillAvailable(
+    const availabilityFence = buildPaymentCheckoutAvailabilityFence(
       db.paymentControl,
       db.paymentMethods,
       "PRZELEWY24"
@@ -403,7 +440,7 @@ async function createPrzelewy24Checkout(
       inventoryReReservedAt: null,
     }
     orderStore.unshift(order)
-    return { order, created: true }
+    return { order, created: true, availabilityFence }
   })
 
   if (!claimed.created) {
@@ -428,6 +465,12 @@ async function createPrzelewy24Checkout(
         throw new Error("PAYMENT_CHECKOUT_LOCAL_ORDER_MISSING")
       }
       assertMatchingPaymentCheckout(existing, input, fingerprint)
+      assertPaymentCheckoutAvailabilityFence(
+        db.paymentControl,
+        db.paymentMethods,
+        "PRZELEWY24",
+        claimed.availabilityFence
+      )
       existing.p24CheckoutRedirectUrl = registration.redirectUrl
       existing.paymentCheckoutRegistrationStatus = "READY"
     })
