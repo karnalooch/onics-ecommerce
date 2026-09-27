@@ -1,5 +1,6 @@
 import path from "path"
 import { resolvePersistentPath } from "@/lib/storageConfig"
+import type { KnowledgeStore } from "@/lib/knowledge/types"
 
 type KnowledgeUploadRootOptions = {
   configuredPath?: string | null
@@ -47,6 +48,48 @@ export const ALLOWED_KNOWLEDGE_EXTENSIONS = new Set([
 ])
 
 export const MAX_KNOWLEDGE_UPLOAD_BYTES = 25 * 1024 * 1024
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\export const MAX_KNOWLEDGE_UPLOAD_BYTES = 25 * 1024 * 1024
+
+export function validateKnowledgeFilename")
+}
+
+export function knowledgeStoreReferencesUpload(
+  store: Pick<KnowledgeStore, "sources" | "processedSources" | "knowledge">,
+  filename: string
+) {
+  const target = filename.trim()
+  if (!target) return false
+
+  if (
+    store.sources.includes(target) ||
+    store.processedSources.includes(target)
+  ) {
+    return true
+  }
+
+  const sourceBoundary = new RegExp(
+    `(?:^|, )${escapeRegExp(target)}(?:$|, )`
+  )
+
+  return Object.values(store.knowledge).some(
+    (entry) =>
+      typeof entry.source === "string" && sourceBoundary.test(entry.source)
+  )
+}
+
+export async function canSafelyRemoveFailedKnowledgeUpload(
+  filename: string,
+  loadStore: () => Promise<KnowledgeStore>
+) {
+  try {
+    const store = await loadStore()
+    return !knowledgeStoreReferencesUpload(store, filename)
+  } catch {
+    return false
+  }
+}
 
 export function validateKnowledgeFilename(input: string) {
   const filename = path.basename(String(input || "").trim())
