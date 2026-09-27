@@ -8,6 +8,7 @@ import { toast } from "sonner"
 type AdminActionProps = {
   actionType: "approveUser" | "deleteUser" | "processQuote"
   userId?: string
+  userRevision?: number
   quoteId?: string
   currentStatus?: string
 }
@@ -15,6 +16,7 @@ type AdminActionProps = {
 export default function AdminActions({
   actionType,
   userId,
+  userRevision,
   quoteId,
   currentStatus,
 }: AdminActionProps) {
@@ -54,7 +56,11 @@ export default function AdminActions({
     }
   }
 
-  if (actionType === "approveUser" && userId) {
+  if (
+    actionType === "approveUser" &&
+    userId &&
+    userRevision !== undefined
+  ) {
     return (
       <button
         onClick={() =>
@@ -63,7 +69,11 @@ export default function AdminActions({
             {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id: userId, isApproved: true }),
+              body: JSON.stringify({
+                id: userId,
+                isApproved: true,
+                expectedRevision: userRevision,
+              }),
             },
             "Konto partnera zostało zatwierdzone."
           )
@@ -76,13 +86,17 @@ export default function AdminActions({
     )
   }
 
-  if (actionType === "deleteUser" && userId) {
+  if (
+    actionType === "deleteUser" &&
+    userId &&
+    userRevision !== undefined
+  ) {
     return (
       <button
         onClick={() => {
           if (!window.confirm("Trwale usunąć konto partnera?")) return
           void run(
-            `/api/users?id=${encodeURIComponent(userId)}`,
+            `/api/users?id=${encodeURIComponent(userId)}&expectedRevision=${encodeURIComponent(userRevision)}`,
             { method: "DELETE" },
             "Konto partnera zostało usunięte."
           )
