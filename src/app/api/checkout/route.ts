@@ -57,6 +57,8 @@ function paymentErrorResponse(
     code === "PAYMENT_METHOD_DISABLED" ||
     code === "PAYMENT_PROVIDER_NOT_CONFIGURED"
   const checkoutForbidden = code === "CHECKOUT_ROLE_NOT_ALLOWED"
+  const registrationUncertain =
+    code === "PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN"
   const idempotencyConflict = code === "PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED"
   const checkoutConflict =
     code === "CHECKOUT_STATE_CHANGED" ||
@@ -66,6 +68,8 @@ function paymentErrorResponse(
   const message =
     code === "CHECKOUT_ROLE_NOT_ALLOWED"
       ? "Checkout online jest dostępny dla aktywnych kont B2B."
+      : code === "PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN"
+        ? "Nie można bezpiecznie ponowić tej rejestracji płatności. Zamówienie zostało zachowane do weryfikacji, aby uniknąć podwójnego obciążenia."
       : code === "PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED"
         ? "Identyfikator żądania płatności został już użyty dla innego checkoutu. Odśwież koszyk i spróbuj ponownie."
       : code === "CHECKOUT_STATE_CHANGED"
@@ -88,7 +92,7 @@ function paymentErrorResponse(
     {
       status: checkoutForbidden
         ? 403
-        : paymentUnavailable
+        : paymentUnavailable || registrationUncertain
           ? 503
           : checkoutConflict
             ? 409
