@@ -245,6 +245,25 @@ export async function POST(req: Request) {
           stripeConfig.appUrl
         )
 
+        const registrationVerification = verifyCheckoutPayment(
+          {
+            id: snapshotOrder.id,
+            totalPriceFinal: Number(snapshotOrder.totalPriceFinal ?? 0),
+            stripeCheckoutSessionId: null,
+            paymentStatus: snapshotOrder.paymentStatus,
+          },
+          {
+            orderId: session.metadata?.order_id || null,
+            sessionId: session.id,
+            amountTotal: session.amount_total,
+            currency: session.currency,
+            paymentStatus: session.payment_status,
+          }
+        )
+        if (!registrationVerification.ok) {
+          throw new Error(registrationVerification.reason)
+        }
+
         await mutateMockData((db) => {
           const order = (db.orders as StoredOrder[]).find(
             (candidate) => candidate.id === snapshotOrder.id
