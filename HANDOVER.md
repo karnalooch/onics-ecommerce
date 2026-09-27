@@ -1,7 +1,7 @@
 # CEL-TRONICS Ecommerce — Handover
 
 Stan referencyjny: **26.09.2026**  
-Bazowy `main`: **`dce83714`**
+Bazowy `main`: **`83fae7a5`**
 
 > [!IMPORTANT]
 > Ten plik jest krótkim punktem wejścia do aktualnej architektury i zasad pracy.
@@ -106,7 +106,7 @@ Serwer:
 - wiąże utrwalony koszyk ze stabilnym owner key konta (preferowane `user.id`, legacy fallback do znormalizowanego e-maila); zmiana konta albo przejście do sesji anonimowej czyści poprzednią zawartość po rehydratacji store, zanim sklep, publiczny katalog `/produkty`, katalog partnera `/oferty`, pełny koszyk lub dedykowana oferta PDF odczytają albo zmodyfikują pozycje; rehydratacja i programowe `replaceItems` failują zamknięcie na malformed, zduplikowanych lub ilościowo niepoprawnych pozycjach zamiast renderować uszkodzony cache,
 - traktuje account-scoped stan przejściowy koszyka (preview importu XML, potwierdzenie płatności manualnej oraz wyniki asynchronicznych import/order/checkout) jako własność bieżącego owner key; zmiana konta czyści ten stan i unieważnia odpowiedzi rozpoczęte dla poprzedniego ownera zanim mogą zmienić UI lub koszyk,\n- traktuje `RETAIL` jako rolę browse-only dla katalogu z ceną bazową; obecny lifecycle zamówień i płatności jest dostępny wyłącznie dla `BIZ` i `ADMIN`,
 - endpointy checkoutu i discovery metod płatności egzekwują tę samą granicę ról na bieżącym rekordzie konta; klient traktuje odpowiedź discovery jako niezaufaną do czasu runtime validation: wymaga kompletnego, unikalnego zestawu znanych providerów, poprawnych typów/kindów oraz spójnego `available === enabled && configured`, a malformed `200 OK` failuje zamknięcie zamiast włączać transactional UI,
-- waliduje odpowiedź checkoutu po stronie klienta przed jakimkolwiek redirectem, pokazaniem instrukcji manualnej lub wyczyszczeniem koszyka: `paymentMethod` musi odpowiadać klikniętemu providerowi, typ akcji jego kontraktowi, redirect musi być poprawnym HTTPS URL bez osadzonych credentials, a manual fields/kwota/waluta muszą mieć poprawny runtime shape,\n- rezerwuje stock dla twardych zamówień/płatności zgodnie z inventory state machine,
+- waliduje odpowiedź checkoutu po stronie klienta przed jakimkolwiek redirectem, pokazaniem instrukcji manualnej lub wyczyszczeniem koszyka: `paymentMethod` musi odpowiadać klikniętemu providerowi, typ akcji jego kontraktowi, redirect musi być poprawnym HTTPS URL bez osadzonych credentials, a manual fields/kwota/waluta muszą mieć poprawny runtime shape,\n- zwykłe `ORDER` / `INQUIRY` mają account-scoped idempotency key utrzymywany po stronie klienta dla niepewnych retry; serwer pod write-lockiem sprawdza klucz i niemutowalny fingerprint pierwotnego requestu przed rezerwacją stocku, zwraca istniejące zamówienie przy zgodnym replayu i `409` przy ponownym użyciu klucza z innym payloadem,\n- rezerwuje stock dla twardych zamówień/płatności zgodnie z inventory state machine,
 - zabezpiecza exactly-once release/finalize/restock.
 
 Nie poprawiać ręcznie stanów zamówień ani stocku w JSON.

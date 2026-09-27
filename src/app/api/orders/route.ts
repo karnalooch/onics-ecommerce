@@ -20,6 +20,7 @@ import {
 } from "@/lib/inventoryReservations"
 import { listAvailablePaymentAdminActions } from "@/lib/paymentAdminActions"
 import { describeOrderPaymentLifecycle } from "@/lib/paymentProviders"
+import { buildOrderSubmissionItemsFingerprint } from "@/lib/orderSubmissionIdempotency"
 
 export const dynamic = "force-dynamic"
 
@@ -29,6 +30,7 @@ const OrderItemInputSchema = z.object({
 })
 
 const CreateOrderSchema = z.object({
+  requestId: z.string().uuid(),
   orderType: z.enum(["INQUIRY", "ORDER"]),
   items: z.array(OrderItemInputSchema).min(1).max(250),
 })
@@ -74,6 +76,9 @@ type StoredUser = {
 
 type StoredOrder = InventoryReservationOrder & {
   id?: string
+  clientRequestId?: string
+  clientRequestFingerprint?: string
+  orderType?: "INQUIRY" | "ORDER" | string
   status?: string
   estimatedDeliveryDays?: number | null
   items?: Array<z.infer<typeof AdminOrderItemSchema>>
@@ -94,8 +99,14 @@ function withPaymentLifecycle(
   order: StoredOrder,
   includeAdminActions = false
 ) {
+  const {
+    clientRequestFingerprint: internalRequestFingerprint,
+    ...publicOrder
+  } = order
+  void internalRequestFingerprint
+
   const described = {
-    ...order,
+    ...publicOrder,
     paymentLifecycle: describeOrderPaymentLifecycle(order),
   }
 
@@ -146,7 +157,7 @@ export async function POST(req: Request) {
     }
 
     const sessionUser = authCheck.user as SessionUser
-    const newOrder = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const storedUser = findStoredUserBySession(
         db.users as StoredUser[],
         sessionUser
@@ -156,6 +167,31 @@ export async function POST(req: Request) {
       if (storedUser.isBlocked) throw new Error("Konto jest zablokowane.")
       if (storedUser.roleType === "BIZ" && !storedUser.isApproved) {
         throw new Error("Konto B2B oczekuje na zatwierdzenie.")
+      }
+
+      const orderStore = db.orders as StoredOrder[]
+      const requestFingerprint = buildOrderSubmissionItemsFingerprint(
+        parsed.data.items
+      )
+      const existingOrder = orderStore.find(
+        (order) =>
+          order.clientRequestId === parsed.data.requestId &&
+          order.user &&
+          Boolean(findStoredUserBySession([order.user], sessionUser))
+      )
+
+      if (existingOrder) {
+        if (
+          existingOrder.orderType !== parsed.data.orderType ||
+          existingOrder.clientRequestFingerprint !== requestFingerprint
+        ) {
+          throw new Error("ORDER_IDEMPOTENCY_KEY_REUSED")
+        }
+
+        return {
+          order: existingOrder,
+          replayed: true,
+        }
       }
 
       const isHardOrder = parsed.data.orderType === "ORDER"
@@ -190,6 +226,8 @@ export async function POST(req: Request) {
 
       const order = {
         id: `ORD-${crypto.randomUUID()}`,
+        clientRequestId: parsed.data.requestId,
+        clientRequestFingerprint: requestFingerprint,
         orderType: parsed.data.orderType,
         createdAt: new Date().toISOString(),
         status: isHardOrder ? "PENDING_VERIFICATION" : "INQUIRY",
@@ -215,28 +253,41 @@ export async function POST(req: Request) {
         },
       }
 
-      db.orders.unshift(order)
-      return order
+      orderStore.unshift(order)
+      return {
+        order,
+        replayed: false,
+      }
     })
 
     return NextResponse.json(
-      withPaymentLifecycle(newOrder as StoredOrder),
-      { status: 201 }
+      withPaymentLifecycle(submission.order as StoredOrder),
+      {
+        status: submission.replayed ? 200 : 201,
+        headers: submission.replayed
+          ? { "Idempotency-Replayed": "true" }
+          : undefined,
+      }
     )
   } catch (error) {
     const message = error instanceof Error ? error.message : "Błąd serwera."
     const inventoryConflict =
       message === "INVENTORY_NOT_AVAILABLE" ||
       message === "INVENTORY_PRODUCT_NOT_FOUND"
+    const idempotencyConflict =
+      message === "ORDER_IDEMPOTENCY_KEY_REUSED"
     const publicMessage = inventoryConflict
       ? "Stan magazynowy zmienił się podczas składania zamówienia. Odśwież koszyk i spróbuj ponownie."
-      : message
+      : idempotencyConflict
+        ? "Identyfikator żądania został już użyty dla innego zamówienia. Odśwież koszyk i spróbuj ponownie."
+        : message
     const status =
       message === "Konto nie istnieje."
         ? 401
         : /zablokowane|oczekuje na zatwierdzenie/.test(message)
           ? 403
           : inventoryConflict ||
+              idempotencyConflict ||
               /Nieprawidłowa ilość|nie istnieje w aktualnym katalogu|nie ma aktywnej ceny|Brak wymaganej ilości/.test(message)
             ? 409
             : 500
