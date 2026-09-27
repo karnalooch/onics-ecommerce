@@ -13,6 +13,7 @@ import type { PaymentOperationEvent } from "@/store/serverStore"
 
 export type PaymentProviderOperationsOrder = PaymentAdminActionOrder & {
   id?: unknown
+  paymentCheckoutRegistrationStatus?: unknown
   paymentReconciledAt?: unknown
   refundUpdatedAt?: unknown
 }
@@ -106,6 +107,10 @@ export function describePaymentProviderOperations(
       typeof order.refundStatus === "string" ? order.refundStatus : null
     const returnStatus =
       typeof order.returnStatus === "string" ? order.returnStatus : null
+    const checkoutRegistrationStatus =
+      typeof order.paymentCheckoutRegistrationStatus === "string"
+        ? order.paymentCheckoutRegistrationStatus
+        : null
 
     if (paymentStatus === "PENDING") {
       summary.pendingPayments += 1
@@ -115,10 +120,14 @@ export function describePaymentProviderOperations(
     }
     const failedRefund =
       refundStatus === "failed" || refundStatus === "canceled"
+    const checkoutRegistrationNeedsAttention =
+      checkoutRegistrationStatus === "PENDING" ||
+      checkoutRegistrationStatus === "UNCERTAIN"
     const requiresAttention =
       actions.some((action) => ATTENTION_ACTIONS.has(action)) ||
       refundStatus === "requires_action" ||
-      failedRefund
+      failedRefund ||
+      checkoutRegistrationNeedsAttention
 
     if (requiresAttention) {
       summary.ordersRequiringAttention += 1

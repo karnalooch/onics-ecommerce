@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest"
 import { validateCheckoutPaymentResponse } from "@/lib/checkoutPaymentResponseContract"
 
 describe("checkout payment response contract", () => {
+  const REQUEST_ID = "11111111-1111-4111-8111-111111111111"
   it("accepts an HTTPS redirect only for the requested redirect provider", () => {
     expect(
       validateCheckoutPaymentResponse("STRIPE", {
+        clientRequestId: REQUEST_ID,
         orderId: "ORD-123",
         paymentMethod: "STRIPE",
         nextAction: {
@@ -13,6 +15,7 @@ describe("checkout payment response contract", () => {
         },
       })
     ).toEqual({
+      clientRequestId: REQUEST_ID,
       orderId: "ORD-123",
       paymentMethod: "STRIPE",
       nextAction: {
@@ -22,9 +25,35 @@ describe("checkout payment response contract", () => {
     })
   })
 
+  it("rejects a missing or malformed client request id", () => {
+    expect(() =>
+      validateCheckoutPaymentResponse("STRIPE", {
+        orderId: "ORD-123",
+        paymentMethod: "STRIPE",
+        nextAction: {
+          type: "REDIRECT",
+          url: "https://checkout.stripe.com/c/pay/test",
+        },
+      })
+    ).toThrow(/clientRequestId/)
+
+    expect(() =>
+      validateCheckoutPaymentResponse("STRIPE", {
+        clientRequestId: "not-a-uuid",
+        orderId: "ORD-123",
+        paymentMethod: "STRIPE",
+        nextAction: {
+          type: "REDIRECT",
+          url: "https://checkout.stripe.com/c/pay/test",
+        },
+      })
+    ).toThrow(/clientRequestId/)
+  })
+
   it("rejects provider identity and action-kind mismatches", () => {
     expect(() =>
       validateCheckoutPaymentResponse("STRIPE", {
+        clientRequestId: REQUEST_ID,
         orderId: "ORD-123",
         paymentMethod: "PRZELEWY24",
         nextAction: {
@@ -36,6 +65,7 @@ describe("checkout payment response contract", () => {
 
     expect(() =>
       validateCheckoutPaymentResponse("BANK_TRANSFER", {
+        clientRequestId: REQUEST_ID,
         orderId: "ORD-123",
         paymentMethod: "BANK_TRANSFER",
         nextAction: {
@@ -55,6 +85,7 @@ describe("checkout payment response contract", () => {
     ]) {
       expect(() =>
         validateCheckoutPaymentResponse("PRZELEWY24", {
+          clientRequestId: REQUEST_ID,
           orderId: "ORD-123",
           paymentMethod: "PRZELEWY24",
           nextAction: { type: "REDIRECT", url },
@@ -66,6 +97,7 @@ describe("checkout payment response contract", () => {
   it("accepts and sanitizes a complete manual instruction", () => {
     expect(
       validateCheckoutPaymentResponse("BANK_TRANSFER", {
+        clientRequestId: REQUEST_ID,
         orderId: " ORD-456 ",
         paymentMethod: "BANK_TRANSFER",
         nextAction: {
@@ -81,6 +113,7 @@ describe("checkout payment response contract", () => {
         },
       })
     ).toEqual({
+      clientRequestId: REQUEST_ID,
       orderId: "ORD-456",
       paymentMethod: "BANK_TRANSFER",
       nextAction: {
@@ -100,6 +133,7 @@ describe("checkout payment response contract", () => {
   it("rejects malformed manual fields and inconsistent money metadata", () => {
     expect(() =>
       validateCheckoutPaymentResponse("BANK_TRANSFER", {
+        clientRequestId: REQUEST_ID,
         orderId: "ORD-456",
         paymentMethod: "BANK_TRANSFER",
         nextAction: {
@@ -112,6 +146,7 @@ describe("checkout payment response contract", () => {
 
     expect(() =>
       validateCheckoutPaymentResponse("BANK_TRANSFER", {
+        clientRequestId: REQUEST_ID,
         orderId: "ORD-456",
         paymentMethod: "BANK_TRANSFER",
         nextAction: {
@@ -126,6 +161,7 @@ describe("checkout payment response contract", () => {
 
     expect(() =>
       validateCheckoutPaymentResponse("BANK_TRANSFER", {
+        clientRequestId: REQUEST_ID,
         orderId: "ORD-456",
         paymentMethod: "BANK_TRANSFER",
         nextAction: {

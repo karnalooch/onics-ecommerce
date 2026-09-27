@@ -19,6 +19,7 @@ import {
 import { initializeMockData } from "@/store/serverStore"
 
 const CartSchema = z.object({
+  requestId: z.string().uuid(),
   paymentMethod: z.enum(PAYMENT_PROVIDER_IDS).default("STRIPE"),
   items: z
     .array(
@@ -56,11 +57,21 @@ function paymentErrorResponse(
     code === "PAYMENT_METHOD_DISABLED" ||
     code === "PAYMENT_PROVIDER_NOT_CONFIGURED"
   const checkoutForbidden = code === "CHECKOUT_ROLE_NOT_ALLOWED"
-  const checkoutConflict = code === "CHECKOUT_STATE_CHANGED" || inventoryConflict
+  const registrationUncertain =
+    code === "PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN"
+  const idempotencyConflict = code === "PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED"
+  const checkoutConflict =
+    code === "CHECKOUT_STATE_CHANGED" ||
+    inventoryConflict ||
+    idempotencyConflict
 
   const message =
     code === "CHECKOUT_ROLE_NOT_ALLOWED"
       ? "Checkout online jest dostępny dla aktywnych kont B2B."
+      : code === "PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN"
+        ? "Nie można bezpiecznie ponowić tej rejestracji płatności. Zamówienie zostało zachowane do weryfikacji, aby uniknąć podwójnego obciążenia."
+      : code === "PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED"
+        ? "Identyfikator żądania płatności został już użyty dla innego checkoutu. Odśwież koszyk i spróbuj ponownie."
       : code === "CHECKOUT_STATE_CHANGED"
         ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
         : code === "PAYMENTS_DISABLED"
@@ -81,7 +92,7 @@ function paymentErrorResponse(
     {
       status: checkoutForbidden
         ? 403
-        : paymentUnavailable
+        : paymentUnavailable || registrationUncertain
           ? 503
           : checkoutConflict
             ? 409
@@ -131,6 +142,7 @@ export async function POST(req: Request) {
 
   try {
     const result = await createPaymentCheckout({
+      requestId: parsed.data.requestId,
       method,
       requestUrl: req.url,
       sessionUser: authCheck.user as PaymentCheckoutSessionUser,
@@ -138,7 +150,10 @@ export async function POST(req: Request) {
       snapshot,
     })
 
-    return NextResponse.json(result)
+    return NextResponse.json({
+      ...result,
+      clientRequestId: parsed.data.requestId,
+    })
   } catch (error) {
     return paymentErrorResponse(
       error,

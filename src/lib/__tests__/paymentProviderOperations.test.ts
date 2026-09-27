@@ -41,6 +41,13 @@ describe("payment provider operations summary", () => {
         returnStatus: "REQUESTED",
       },
       {
+        id: "p24-registration-uncertain",
+        paymentProvider: "PRZELEWY24",
+        status: "PENDING_VERIFICATION",
+        paymentStatus: "PENDING",
+        paymentCheckoutRegistrationStatus: "UNCERTAIN",
+      },
+      {
         id: "unknown",
         paymentProvider: "UNKNOWN",
         status: "PENDING_VERIFICATION",
@@ -75,6 +82,13 @@ describe("payment provider operations summary", () => {
     expect(operations.BANK_TRANSFER.actionCounts.CANCEL).toBe(1)
     expect(operations.BANK_TRANSFER.actionCounts.CONFIRM_PAYMENT).toBe(1)
     expect(operations.BANK_TRANSFER.actionCounts.RECEIVE_RETURN).toBe(1)
+    expect(operations.PRZELEWY24).toMatchObject({
+      provider: "PRZELEWY24",
+      totalOrders: 1,
+      ordersRequiringAttention: 1,
+      pendingPayments: 1,
+    })
+
   })
 
   it("uses bounded operation events for the latest reconcile outcome", () => {

@@ -16,6 +16,7 @@ import { ORDER_IMPORT_MAX_BYTES, parseCeltronicsOrderXml, type OrderImportPrevie
 import { validateOrderImportPreview } from "@/lib/orderImportPreviewContract";
 import { validateCheckoutPaymentDiscovery, type CheckoutPaymentMethod } from "@/lib/checkoutPaymentDiscoveryContract";
 import { validateCheckoutPaymentResponse } from "@/lib/checkoutPaymentResponseContract";
+import { clearPaymentCheckoutRequestId, getOrCreatePaymentCheckoutRequestId } from "@/lib/paymentCheckoutIdempotency";
 import { clearOrderSubmissionRequestId, getOrCreateOrderSubmissionRequestId } from "@/lib/orderSubmissionIdempotency";
 
 
@@ -365,17 +366,35 @@ export default function CartPage() {
       return;
     }
 
+    const submittedItems = items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+    }));
+    let checkoutStorage: Storage | null = null;
+    try {
+      checkoutStorage = window.sessionStorage;
+    } catch {
+      // A single request is still safe server-side; only browser retry continuity degrades.
+    }
+    const requestId = getOrCreatePaymentCheckoutRequestId(
+      {
+        ownerKey: ownerScope.ownerKey,
+        paymentMethod: method.id,
+        items: submittedItems,
+      },
+      checkoutStorage,
+      () => crypto.randomUUID()
+    );
+
     setSubmitting(method.id);
     try {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          requestId,
           paymentMethod: method.id,
-          items: items.map((item) => ({
-            id: item.id,
-            quantity: item.quantity,
-          })),
+          items: submittedItems,
         }),
       });
 
@@ -390,6 +409,12 @@ export default function CartPage() {
       }
 
       const checkout = validateCheckoutPaymentResponse(method.id, data);
+      if (checkout.clientRequestId !== requestId) {
+        throw new Error(
+          "Serwer zwrócił potwierdzenie innego żądania płatności."
+        );
+      }
+      clearPaymentCheckoutRequestId(requestId, checkoutStorage);
 
       if (checkout.nextAction.type === "REDIRECT") {
         window.location.assign(checkout.nextAction.url);
