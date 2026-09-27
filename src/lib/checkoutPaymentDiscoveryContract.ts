@@ -25,7 +25,7 @@ export type CheckoutPaymentDiscovery = {
   methods: CheckoutPaymentMethod[]
 }
 
-const EXPECTED_KIND: Record<
+export const CHECKOUT_PAYMENT_METHOD_KIND: Record<
   CheckoutPaymentMethodId,
   CheckoutPaymentMethod["kind"]
 > = {
@@ -84,7 +84,7 @@ function parseMethod(value: unknown): CheckoutPaymentMethod {
   if (kind !== "REDIRECT" && kind !== "MANUAL") {
     throw new Error("Serwer zwrócił nieprawidłowy typ metody płatności.")
   }
-  if (kind !== EXPECTED_KIND[id]) {
+  if (kind !== CHECKOUT_PAYMENT_METHOD_KIND[id]) {
     throw new Error("Serwer zwrócił niespójny typ metody płatności.")
   }
   if (available !== (enabled && configured)) {
