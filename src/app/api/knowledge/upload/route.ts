@@ -42,6 +42,8 @@ export async function POST(req: Request) {
 
     const { filename, extension, absolutePath } = validateKnowledgeFilename(file.name)
     const buffer = Buffer.from(await file.arrayBuffer())
+    const knowledgeRevision = (await getKnowledge()).revision ?? 0
+    const knowledgeSignal = { aborted: false, knowledgeRevision }
 
     fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
     fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
@@ -54,16 +56,26 @@ export async function POST(req: Request) {
         const result = await parseExcel(buffer, filename, undefined, {
           apiKey: transientApiKey,
           modelId: "gemini-1.5-flash",
+          signal: knowledgeSignal,
         })
         addedCount = result.count
         learned = addedCount > 0
       } else if (extension === ".pdf" && transientApiKey) {
-        const result = await parsePDFWithAI(buffer, filename, transientApiKey)
+        const result = await parsePDFWithAI(
+          buffer,
+          filename,
+          transientApiKey,
+          "gemini-1.5-flash",
+          [],
+          undefined,
+          knowledgeSignal
+        )
         addedCount = result.count
         learned = addedCount > 0
       }
 
       const store = await getKnowledge()
+      store.revision = knowledgeRevision
       if (!store.sources.includes(filename)) store.sources.push(filename)
       if (learned && !store.processedSources.includes(filename)) {
         store.processedSources.push(filename)
@@ -102,6 +114,15 @@ export async function POST(req: Request) {
     }
 
     const message = error instanceof Error ? error.message : "Błąd serwera."
+    if (message === "KNOWLEDGE_STORE_RESET_DURING_TRAINING") {
+      return NextResponse.json(
+        {
+          error:
+            "Baza wiedzy została wyczyszczona podczas przetwarzania. Uruchom import ponownie.",
+        },
+        { status: 409 }
+      )
+    }
     const status = /EEXIST/.test(message)
       ? 409
       : /nazwa pliku|format/.test(message)
