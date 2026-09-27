@@ -26,6 +26,34 @@ export const AdminQuoteUpdateSchema = z.discriminatedUnion("status", [
   RejectedQuoteUpdateSchema,
 ])
 
+export type AdminQuoteUpdate = z.infer<typeof AdminQuoteUpdateSchema>
+
+type StoredQuoteAdminState = {
+  status?: string | null
+  deliveryTimeDays?: number | null
+  additionalDiscount?: number | null
+}
+
+export function isQuoteAdminUpdateReplay(
+  current: StoredQuoteAdminState,
+  requested: AdminQuoteUpdate
+) {
+  if (current.status !== requested.status) return false
+
+  if (requested.status === "QUOTED") {
+    return (
+      Number(current.deliveryTimeDays) === requested.deliveryTimeDays &&
+      Number(current.additionalDiscount ?? 0) ===
+        requested.additionalDiscount
+    )
+  }
+
+  return (
+    (current.deliveryTimeDays ?? null) === null &&
+    Number(current.additionalDiscount ?? 0) === 0
+  )
+}
+
 export function isQuoteAdminActionable(currentStatus: unknown) {
   return currentStatus === "PENDING" || currentStatus === "INQUIRY"
 }
