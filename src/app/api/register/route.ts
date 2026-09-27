@@ -94,6 +94,7 @@ export async function POST(req: Request) {
       createdAt: new Date().toISOString(),
       discount: 0,
       tierName: "BASIC",
+      revision: 0,
     }
 
     await mutateMockData((db) => {
