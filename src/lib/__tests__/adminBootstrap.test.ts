@@ -79,6 +79,7 @@ describe("admin bootstrap sealing", () => {
 
     expect(await bcrypt.compare("bootstrap-secret", sealedHash)).toBe(true)
     expect(persisted.users[0].passwordHash).toBe(sealedHash)
+    expect(persisted.users[0].revision).toBe(1)
   })
 
   it("does not overwrite a password hash sealed by another request", async () => {
@@ -90,6 +91,7 @@ describe("admin bootstrap sealing", () => {
         roleType: "ADMIN",
         isBlocked: false,
         passwordHash: existingHash,
+        revision: 4,
       },
     ])
 
@@ -101,5 +103,7 @@ describe("admin bootstrap sealing", () => {
 
     expect(resolvedHash).toBe(existingHash)
     expect(await bcrypt.compare("bootstrap-secret", resolvedHash)).toBe(false)
+    const persisted = JSON.parse(fs.readFileSync(dbPath, "utf-8"))
+    expect(persisted.users[0].revision).toBe(4)
   })
 })
