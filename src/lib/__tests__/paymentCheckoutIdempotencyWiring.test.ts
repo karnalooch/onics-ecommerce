@@ -66,8 +66,14 @@ describe("payment checkout idempotency wiring", () => {
 
     expect(flow).toContain('paymentCheckoutRegistrationStatus: "PENDING"')
     expect(flow).toContain("stripeCheckoutSessionId: null")
+    expect(flow).toContain("isStripeCheckoutCreationRetrySafe(claimed)")
+    expect(flow).toContain("PAYMENT_CHECKOUT_RETRY_WINDOW_EXPIRED")
     expect(flow).toContain("createStripeCheckoutSessionForOrder(")
     expect(flow.indexOf("reserveInventory("))
+      .toBeLessThan(
+        flow.indexOf("isStripeCheckoutCreationRetrySafe(claimed)")
+      )
+    expect(flow.indexOf("isStripeCheckoutCreationRetrySafe(claimed)"))
       .toBeLessThan(
         flow.indexOf("createStripeCheckoutSessionForOrder(")
       )
