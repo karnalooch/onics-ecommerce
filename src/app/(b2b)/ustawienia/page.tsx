@@ -22,6 +22,7 @@ type Profile = {
   discount: number
   tierName: string
   isApproved: boolean
+  revision: number
 }
 
 export default function SettingsPage() {
@@ -54,10 +55,24 @@ export default function SettingsPage() {
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, address }),
+        body: JSON.stringify({
+          phone,
+          address,
+          expectedRevision: profile?.revision ?? 0,
+        }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || "Nie udało się zapisać danych.")
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              phone: data.phone ?? phone,
+              address: data.address ?? address,
+              revision: Number(data.revision ?? current.revision),
+            }
+          : current
+      )
       setMessage("Dane kontaktowe zostały zapisane.")
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Błąd zapisu.")

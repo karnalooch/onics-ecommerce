@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt"
 import { mutateMockData } from "@/store/serverStore"
+import { nextUserRevision } from "@/lib/userResponse"
 
 type BootstrapUser = {
   id?: string
@@ -8,6 +9,7 @@ type BootstrapUser = {
   isBlocked?: boolean
   passwordHash?: string
   updatedAt?: string
+  revision?: number | null
 }
 
 type SealBootstrapOptions = {
@@ -58,6 +60,7 @@ export async function sealAdminBootstrapPassword(
 
     user.passwordHash = candidateHash
     user.updatedAt = new Date().toISOString()
+    user.revision = nextUserRevision(user.revision)
     return candidateHash
   })
 }

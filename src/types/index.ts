@@ -16,6 +16,7 @@ export interface User {
   createdAt: string;
   discount: number;
   tierName: string;
+  revision?: number;
 }
 
 export interface Product {

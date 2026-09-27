@@ -58,18 +58,22 @@ export default function AdminClientsPage() {
     loadUsers();
   }, [loadUsers]);
 
-  const toggleBlock = async (id: string, currentlyBlocked: boolean) => {
+  const toggleBlock = async (user: User) => {
     try {
       const res = await fetch("/api/users", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, isBlocked: !currentlyBlocked })
+        body: JSON.stringify({
+          id: user.id,
+          isBlocked: !user.isBlocked,
+          expectedRevision: Number(user.revision ?? 0),
+        })
       });
       if (!res.ok) {
         toast.error(
           await readApiError(
             res,
-            currentlyBlocked
+            user.isBlocked
               ? "Nie udało się odblokować konta."
               : "Nie udało się zablokować konta."
           )
@@ -77,17 +81,20 @@ export default function AdminClientsPage() {
         return
       }
 
-      toast.success(currentlyBlocked ? "Konto odblokowane" : "Konto zablokowane");
+      toast.success(user.isBlocked ? "Konto odblokowane" : "Konto zablokowane");
       loadUsers();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Błąd połączenia.");
     }
   };
 
-  const deleteUser = async (id: string) => {
+  const deleteUser = async (user: User) => {
     if (!confirm("⚠️ Czy na pewno chcesz trwale usunąć konto klienta?")) return;
     try {
-      const res = await fetch(`/api/users?id=${id}`, { method: "DELETE" });
+      const res = await fetch(
+        `/api/users?id=${encodeURIComponent(user.id)}&expectedRevision=${encodeURIComponent(Number(user.revision ?? 0))}`,
+        { method: "DELETE" }
+      );
       if (!res.ok) {
         toast.error(
           await readApiError(res, "Nie udało się usunąć konta.")
@@ -119,7 +126,8 @@ export default function AdminClientsPage() {
         body: JSON.stringify({ 
           id: selectedUser.id, 
           discount: Number(tempDiscount), 
-          tierName: tempTier 
+          tierName: tempTier,
+          expectedRevision: Number(selectedUser.revision ?? 0),
         })
       });
       if (!res.ok) {
@@ -315,13 +323,13 @@ export default function AdminClientsPage() {
                                          <Percent className="w-4 h-4" />
                                       </button>
                                       <button 
-                                         onClick={() => toggleBlock(user.id, user.isBlocked)}
+                                         onClick={() => toggleBlock(user)}
                                          className={`w-11 h-11 flex items-center justify-center bg-white dark:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl transition-all active:scale-90 shadow-sm ${user.isBlocked ? 'text-green-500' : 'text-muted-foreground hover:text-red-500 hover:border-red-500/30'}`}
                                       >
                                          <Ban className="w-4 h-4" />
                                       </button>
                                       <button 
-                                         onClick={() => deleteUser(user.id)}
+                                         onClick={() => deleteUser(user)}
                                          className="w-11 h-11 flex items-center justify-center bg-white dark:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-muted-foreground hover:text-red-600 hover:border-red-600/30 transition-all active:scale-90 shadow-sm"
                                       >
                                          <Trash2 className="w-4 h-4" />
