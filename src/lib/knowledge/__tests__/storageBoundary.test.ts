@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  bindKnowledgeTrainingRequestAbort,
   buildKnowledgeEntriesForPersistence,
   buildKnowledgeFromDb,
   buildMergedKnowledgePersistence,
@@ -344,6 +345,44 @@ describe("knowledge storage boundary", () => {
         knowledgeRevision: 4,
       })
     ).not.toThrow()
+  })
+
+
+  it("propagates HTTP request aborts into the knowledge training fence", () => {
+    const controller = new AbortController()
+    const trainingSignal = { aborted: false, knowledgeRevision: 5 }
+    const detach = bindKnowledgeTrainingRequestAbort(
+      trainingSignal,
+      controller.signal
+    )
+
+    controller.abort()
+
+    expect(trainingSignal.aborted).toBe(true)
+    detach()
+  })
+
+  it("honors an already-aborted request and detaches cleanly", () => {
+    const alreadyAborted = new AbortController()
+    alreadyAborted.abort()
+    const abortedTraining = { aborted: false }
+
+    bindKnowledgeTrainingRequestAbort(
+      abortedTraining,
+      alreadyAborted.signal
+    )()
+    expect(abortedTraining.aborted).toBe(true)
+
+    const controller = new AbortController()
+    const detachedTraining = { aborted: false }
+    const detach = bindKnowledgeTrainingRequestAbort(
+      detachedTraining,
+      controller.signal
+    )
+    detach()
+    controller.abort()
+
+    expect(detachedTraining.aborted).toBe(false)
   })
 
   it("propagates training generation fences instead of treating them as recoverable PDF chunk errors", () => {

@@ -211,6 +211,23 @@ export function buildMergedKnowledgePersistence(
   };
 }
 
+export function bindKnowledgeTrainingRequestAbort(
+  signal: NonNullable<ParserOptions["signal"]>,
+  requestSignal: AbortSignal
+) {
+  const abort = () => {
+    signal.aborted = true
+  }
+
+  if (requestSignal.aborted) {
+    abort()
+  } else {
+    requestSignal.addEventListener("abort", abort, { once: true })
+  }
+
+  return () => requestSignal.removeEventListener("abort", abort)
+}
+
 export function throwIfKnowledgeTrainingAborted(
   signal?: ParserOptions["signal"]
 ) {
