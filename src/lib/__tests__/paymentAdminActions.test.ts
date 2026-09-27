@@ -139,12 +139,22 @@ describe("payment admin action dispatcher", () => {
     ).toEqual(["CONFIRM_RETURN_REFUND"])
   })
 
-  it("keeps automated refund/RMA retry states available without exposing manual actions", () => {
+  it("keeps automated refund/RMA retry states available without exposing unsafe actions", () => {
     expect(
       listAvailablePaymentAdminActions({
         paymentProvider: "STRIPE",
         status: "PENDING_VERIFICATION",
         paymentStatus: "PENDING",
+        stripeCheckoutSessionId: null,
+      })
+    ).toEqual([])
+
+    expect(
+      listAvailablePaymentAdminActions({
+        paymentProvider: "STRIPE",
+        status: "PENDING_VERIFICATION",
+        paymentStatus: "PENDING",
+        stripeCheckoutSessionId: "cs_test_ready",
       })
     ).toEqual(["CANCEL"])
 
@@ -155,6 +165,7 @@ describe("payment admin action dispatcher", () => {
         paymentStatus: "PAID",
         returnStatus: "REFUND_PENDING",
         refundStatus: "pending",
+        stripeCheckoutSessionId: "cs_test_paid",
       })
     ).toEqual(["RECEIVE_RETURN"])
   })
