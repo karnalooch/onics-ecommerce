@@ -67,6 +67,19 @@ describe("Stripe payment reconciliation", () => {
     ).toBe(true)
   })
 
+  it("selects a staged refund intent even before Stripe refund id is persisted", () => {
+    expect(
+      shouldReconcileStripeOrder(
+        order({
+          paymentStatus: "PAID",
+          stripePaymentIntentId: "pi_1",
+          refundRequestedAt: "2026-09-27T14:00:00.000Z",
+          stripeRefundId: null,
+        })
+      )
+    ).toBe(true)
+  })
+
   it("skips locally terminal payment states without pending refunds", () => {
     expect(
       shouldReconcileStripeOrder(order({ paymentStatus: "PAID" }))
