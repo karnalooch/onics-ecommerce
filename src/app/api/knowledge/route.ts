@@ -44,6 +44,7 @@ export async function DELETE() {
     await mutateMockData((db) => {
       db.knowledgeEntries = {};
       db.knowledgeMeta = {
+        revision: db.knowledgeMeta.revision + 1,
         sources: [],
         processedSources: [],
         lastUpdated: new Date().toISOString(),

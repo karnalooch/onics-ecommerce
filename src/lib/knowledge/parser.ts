@@ -22,6 +22,7 @@ type KnowledgeDbSnapshot = {
   products: any[];
   knowledgeEntries?: Record<string, unknown>;
   knowledgeMeta?: {
+    revision?: unknown;
     sources?: unknown;
     processedSources?: unknown;
     lastUpdated?: unknown;
@@ -68,6 +69,12 @@ export function buildKnowledgeFromDb(db: KnowledgeDbSnapshot): KnowledgeStore {
   const meta = db.knowledgeMeta || {};
 
   return {
+    revision:
+      typeof meta.revision === "number" &&
+      Number.isSafeInteger(meta.revision) &&
+      meta.revision >= 0
+        ? meta.revision
+        : 0,
     lastUpdated:
       typeof meta.lastUpdated === "string"
         ? meta.lastUpdated
@@ -121,6 +128,12 @@ export function buildMergedKnowledgePersistence(
   data: KnowledgeStore
 ) {
   const freshStore = buildKnowledgeFromDb(db);
+  if (
+    typeof data.revision === "number" &&
+    data.revision !== freshStore.revision
+  ) {
+    throw new Error("KNOWLEDGE_STORE_RESET_DURING_TRAINING");
+  }
   const incomingEntries = buildKnowledgeEntriesForPersistence(data);
 
   for (const [sku, entry] of Object.entries(incomingEntries)) {
@@ -144,6 +157,7 @@ export function buildMergedKnowledgePersistence(
   return {
     knowledgeEntries: buildKnowledgeEntriesForPersistence(freshStore),
     knowledgeMeta: {
+      revision: freshStore.revision ?? 0,
       sources: freshStore.sources,
       processedSources: freshStore.processedSources,
       lastUpdated: freshStore.lastUpdated,
@@ -364,6 +378,9 @@ export async function parseExcel(
     const { apiKey, modelId = 'gemini-1.5-flash' } = options || {};
     const workbook = XLSX.read(buffer, { type: 'buffer' });
     const currentStore = await getKnowledge();
+    if (options?.signal?.knowledgeRevision !== undefined) {
+      currentStore.revision = options.signal.knowledgeRevision;
+    }
     const sessionKnowledge: Record<string, KnowledgeEntry> = {};
     const sessionSet = new Set<string>();
     let totalAddedCount = 0;
@@ -713,7 +730,8 @@ export async function parseExcel(
 export async function parsePDFHeuristic(
   buffer: Buffer,
   filename: string,
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  signal?: { aborted: boolean; knowledgeRevision?: number }
 ): Promise<{ count: number, stats: any, sessionKnowledge: Record<string, KnowledgeEntry> }> {
   try {
     const pdf = require('pdf-parse/lib/pdf-parse.js');
@@ -725,6 +743,9 @@ export async function parsePDFHeuristic(
     const lines = fullText.split('\n');
 
     const currentStore = await getKnowledge();
+    if (signal?.knowledgeRevision !== undefined) {
+      currentStore.revision = signal.knowledgeRevision;
+    }
     const currentDate = new Date().toISOString().split('T')[0];
     const sessionSet = new Set<string>();
     const extractedItems = [];
@@ -950,16 +971,19 @@ export async function parsePDFWithAI(
   modelId: string = 'gemini-1.5-flash', 
   availableModels: string[] = [], 
   onProgress?: ProgressCallback,
-  signal?: { aborted: boolean }
+  signal?: { aborted: boolean; knowledgeRevision?: number }
 ): Promise<{ count: number, stats: any, sessionKnowledge: Record<string, KnowledgeEntry> }> {
   // --- FALLBACK TO HEURISTIC IF NO KEY ---
   if (!apiKey || apiKey === 'dummy' || apiKey.trim() === "") {
-    return parsePDFHeuristic(buffer, filename, onProgress);
+    return parsePDFHeuristic(buffer, filename, onProgress, signal);
   }
 
   try {
     const toolkit = new ToolkitParser({ apiKey, modelId, availableModels });
     const currentStore = await getKnowledge();
+    if (signal?.knowledgeRevision !== undefined) {
+      currentStore.revision = signal.knowledgeRevision;
+    }
     let totalAddedCount = 0;
     const currentDate = new Date().toISOString().split('T')[0];
 

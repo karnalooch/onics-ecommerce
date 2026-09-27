@@ -11,6 +11,7 @@ import {
 type JsonRecord = Record<string, unknown>
 
 type KnowledgeMeta = {
+  revision: number
   sources: string[]
   processedSources: string[]
   lastUpdated: string | null
@@ -478,6 +479,12 @@ function normalizeDb(input: unknown): ServerDb {
       source.paymentWebhookEvents
     ),
     knowledgeMeta: {
+      revision:
+        typeof knowledgeMeta.revision === "number" &&
+        Number.isSafeInteger(knowledgeMeta.revision) &&
+        knowledgeMeta.revision >= 0
+          ? knowledgeMeta.revision
+          : 0,
       sources: stringArray(knowledgeMeta.sources, "knowledgeMeta.sources"),
       processedSources: stringArray(
         knowledgeMeta.processedSources,

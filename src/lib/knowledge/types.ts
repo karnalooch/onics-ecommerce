@@ -16,6 +16,7 @@ export const KnowledgeEntrySchema = z.object({
 export type KnowledgeEntry = z.infer<typeof KnowledgeEntrySchema>;
 
 export interface KnowledgeStore {
+  revision?: number;
   lastUpdated: string | null;
   sources: string[];
   processedSources: string[];
@@ -47,5 +48,5 @@ export interface ParserOptions {
   apiKey: string;
   modelId?: string;
   availableModels?: string[];
-  signal?: { aborted: boolean };
+  signal?: { aborted: boolean; knowledgeRevision?: number };
 }

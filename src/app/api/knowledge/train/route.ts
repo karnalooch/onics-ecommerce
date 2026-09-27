@@ -2,7 +2,11 @@ import fs from "fs"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
-import { parseExcel, parsePDFWithAI } from "@/lib/knowledge/parser"
+import {
+  getKnowledge,
+  parseExcel,
+  parsePDFWithAI,
+} from "@/lib/knowledge/parser"
 import { validateKnowledgeFilename } from "@/lib/knowledge/files"
 
 export const runtime = "nodejs"
@@ -32,16 +36,22 @@ export async function POST(req: Request) {
     }
 
     const buffer = fs.readFileSync(fileInfo.absolutePath)
+    const knowledgeRevision = (await getKnowledge()).revision ?? 0
+    const knowledgeSignal = { aborted: false, knowledgeRevision }
     const result = [".xlsx", ".xls", ".xlsm"].includes(fileInfo.extension)
       ? await parseExcel(buffer, fileInfo.filename, undefined, {
           apiKey: parsed.data.apiKey,
           modelId: parsed.data.modelId,
+          signal: knowledgeSignal,
         })
       : await parsePDFWithAI(
           buffer,
           fileInfo.filename,
           parsed.data.apiKey || undefined,
-          parsed.data.modelId
+          parsed.data.modelId,
+          [],
+          undefined,
+          knowledgeSignal
         )
 
     return NextResponse.json({
@@ -52,6 +62,18 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     console.error("Knowledge training error:", error)
+    if (
+      error instanceof Error &&
+      error.message === "KNOWLEDGE_STORE_RESET_DURING_TRAINING"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Baza wiedzy została wyczyszczona podczas analizy. Uruchom analizę ponownie.",
+        },
+        { status: 409 }
+      )
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Błąd analizy." },
       { status: 500 }
