@@ -333,6 +333,10 @@ export async function POST(req: Request) {
             : "UNCHANGED",
       })
     } catch (error) {
+      const errorCode = error instanceof Error ? error.message : ""
+      const requiresManualReview =
+        errorCode === "PRZELEWY24_RETURNED_PAYMENT_REQUIRES_REVIEW"
+
       console.error(
         `Przelewy24 reconciliation failed for order ${snapshotOrder.id}:`,
         error
@@ -341,11 +345,9 @@ export async function POST(req: Request) {
         orderId: snapshotOrder.id,
         paymentAction,
         refundAction,
-        outcome: "FAILED",
+        outcome: requiresManualReview ? "MANUAL_REVIEW" : "FAILED",
         error:
-          error instanceof Error
-            ? error.message
-            : "Nieznany błąd synchronizacji.",
+          errorCode || "Nieznany błąd synchronizacji.",
       })
     }
   }
