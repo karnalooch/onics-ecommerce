@@ -1018,28 +1018,23 @@ export function validatePrzelewy24RefundNotificationForOrder(
   return true
 }
 
-export function applyPrzelewy24RefundNotification(
+function applyPrzelewy24RefundOutcome(
   products: InventoryProduct[],
   order: Przelewy24StoredOrder,
-  notification: Przelewy24RefundNotification,
-  now = new Date().toISOString()
+  outcome: "completed" | "failed",
+  now: string
 ) {
-  validatePrzelewy24RefundNotificationForOrder(order, notification)
-
   if (
     order.paymentStatus === "REFUNDED" &&
     order.status === "RETURNED" &&
     order.returnStatus === "COMPLETED"
   ) {
-    order.p24LastRefundNotificationSign =
-      order.p24LastRefundNotificationSign ?? notification.sign
     return "completed" as const
   }
 
-  order.p24LastRefundNotificationSign = notification.sign
   order.refundUpdatedAt = now
 
-  if (notification.status === 1) {
+  if (outcome === "failed") {
     order.refundStatus = "failed"
     order.returnStatus = "RECEIVED"
     order.returnUpdatedAt = now
@@ -1081,4 +1076,106 @@ export function applyPrzelewy24RefundNotification(
   order.returnCompletedAt = order.returnCompletedAt ?? now
 
   return "completed" as const
+}
+
+export function applyReconciledPrzelewy24Refund(
+  products: InventoryProduct[],
+  order: Przelewy24StoredOrder,
+  details: Przelewy24RefundDetails,
+  now = new Date().toISOString()
+) {
+  assertPrzelewy24ReturnOrder(order)
+
+  if (
+    order.paymentStatus === "REFUNDED" &&
+    order.status === "RETURNED" &&
+    order.returnStatus === "COMPLETED"
+  ) {
+    order.paymentReconciledAt = now
+    return "completed" as const
+  }
+
+  if (
+    !order.p24OrderId ||
+    !order.p24SessionId ||
+    !order.p24RefundRequestId
+  ) {
+    throw new Error("PRZELEWY24_REFUND_IDENTITY_MISSING")
+  }
+  if (
+    details.orderId !== order.p24OrderId ||
+    details.sessionId !== order.p24SessionId ||
+    details.currency !== "PLN"
+  ) {
+    throw new Error("PRZELEWY24_REFUND_DETAILS_MISMATCH")
+  }
+
+  const expectedAmount = moneyToMinorUnits(
+    Number(order.totalPriceFinal ?? 0)
+  )
+  const matching = details.refunds.filter(
+    (refund) =>
+      refund.requestId === order.p24RefundRequestId &&
+      refund.amount === expectedAmount
+  )
+
+  if (matching.length > 1) {
+    throw new Error("PRZELEWY24_REFUND_DETAILS_AMBIGUOUS")
+  }
+  if (matching.length === 0) {
+    return "missing" as const
+  }
+
+  const refund = matching[0]
+  order.paymentReconciledAt = now
+
+  // Refund details use provider status codes:
+  // 1 completed, 2 in progress, 3 awaiting approval, 4 rejected.
+  if (refund.status === 1) {
+    return applyPrzelewy24RefundOutcome(
+      products,
+      order,
+      "completed",
+      now
+    )
+  }
+  if (refund.status === 4) {
+    return applyPrzelewy24RefundOutcome(products, order, "failed", now)
+  }
+  if (refund.status === 2 || refund.status === 3) {
+    order.refundStatus = "pending"
+    order.returnStatus = "REFUND_PENDING"
+    order.refundUpdatedAt = now
+    order.returnUpdatedAt = now
+    return "pending" as const
+  }
+
+  throw new Error("PRZELEWY24_REFUND_STATUS_UNKNOWN")
+}
+
+export function applyPrzelewy24RefundNotification(
+  products: InventoryProduct[],
+  order: Przelewy24StoredOrder,
+  notification: Przelewy24RefundNotification,
+  now = new Date().toISOString()
+) {
+  validatePrzelewy24RefundNotificationForOrder(order, notification)
+
+  if (
+    order.paymentStatus === "REFUNDED" &&
+    order.status === "RETURNED" &&
+    order.returnStatus === "COMPLETED"
+  ) {
+    order.p24LastRefundNotificationSign =
+      order.p24LastRefundNotificationSign ?? notification.sign
+    return "completed" as const
+  }
+
+  order.p24LastRefundNotificationSign = notification.sign
+  return applyPrzelewy24RefundOutcome(
+    products,
+    order,
+    notification.status === 0 ? "completed" : "failed",
+    now
+  )
 }
