@@ -191,7 +191,7 @@ type StoredPaymentCheckoutOrder = {
   paymentProvider?: string | null
   paymentCheckoutRegistrationStatus?: string | null
   totalPriceFinal?: number
-  items?: Array<Record<string, unknown>>
+  items?: unknown[]
   user?: StoredUser
   stripeCheckoutSessionId?: string | null
   p24SessionId?: string | null
