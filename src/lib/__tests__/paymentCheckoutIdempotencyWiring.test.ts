@@ -30,6 +30,7 @@ describe("payment checkout idempotency wiring", () => {
     expect(route).toContain("clientRequestId: parsed.data.requestId")
     expect(route).toContain("PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED")
     expect(route).toContain("PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN")
+    expect(route).toContain("PAYMENT_CHECKOUT_AVAILABILITY_CHANGED")
   })
 
   it("checks local replay before a second bank-transfer stock reservation", () => {
@@ -81,11 +82,39 @@ describe("payment checkout idempotency wiring", () => {
     expect(flow).toContain('paymentCheckoutRegistrationStatus: "PENDING"')
     expect(flow).toContain("stripeCheckoutSessionId: null")
     expect(flow).toContain("createOrRecoverStripeCheckoutSession(")
+    expect(flow).toContain("buildPaymentCheckoutAvailabilityFence(")
+    expect(flow).toContain("assertPaymentCheckoutAvailabilityFence(")
+    expect(flow).toContain("settleStripeCheckoutAvailabilityRace(")
+    expect(flow).not.toContain(
+      "input.snapshot.paymentControl,\n    input.snapshot.paymentMethods"
+    )
     expect(helper).toContain("stripe.checkout.sessions.create(")
     expect(helper).toContain("idempotencyKey:")
     expect(helper).toContain("onics-checkout:")
     expect(flow.indexOf("reserveInventory("))
       .toBeLessThan(flow.indexOf("createOrRecoverStripeCheckoutSession("))
+    expect(flow.indexOf("createOrRecoverStripeCheckoutSession("))
+      .toBeLessThan(flow.indexOf("assertPaymentCheckoutAvailabilityFence("))
+    expect(flow.indexOf("assertPaymentCheckoutAvailabilityFence("))
+      .toBeLessThan(flow.indexOf("existing.stripeCheckoutSessionId = session.id"))
+    expect(flow.indexOf("existing.stripeCheckoutSessionId = session.id"))
+      .toBeLessThan(flow.lastIndexOf("if (!session.url)"))
+  })
+
+  it("expires a fresh Stripe session before releasing stock after an availability race", () => {
+    const source = read("src/lib/paymentProviderCheckout.ts")
+    const start = source.indexOf(
+      "async function settleStripeCheckoutAvailabilityRace"
+    )
+    const end = source.indexOf("async function createStripeCheckout", start)
+    const flow = source.slice(start, end)
+
+    expect(flow).toContain("stripe.checkout.sessions.expire(")
+    expect(flow).toContain("stripe.checkout.sessions.retrieve(")
+    expect(flow).toContain("existing.stripeCheckoutSessionId = providerSession.id")
+    expect(flow).toContain("applyExpiredCheckoutCancellation(")
+    expect(flow.indexOf('providerSession.status === "expired"'))
+      .toBeLessThan(flow.indexOf("applyExpiredCheckoutCancellation("))
   })
 
   it("reconciles a sessionless Stripe registration through the same replay helper", () => {
