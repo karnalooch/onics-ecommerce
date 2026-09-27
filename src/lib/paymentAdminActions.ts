@@ -171,13 +171,18 @@ export function isPaymentAdminActionReplay(
         returnStatus === "REFUND_PENDING" ||
         returnStatus === "COMPLETED"
       )
-    case "RECEIVE_RETURN":
-      return (
-        status === "RETURNED" ||
-        returnStatus === "RECEIVED" ||
-        returnStatus === "REFUND_PENDING" ||
-        returnStatus === "COMPLETED"
-      )
+    case "RECEIVE_RETURN": {
+      const provider = resolveOrderPaymentProvider(order)
+      if (provider === "BANK_TRANSFER") {
+        return (
+          status === "RETURNED" ||
+          returnStatus === "RECEIVED" ||
+          returnStatus === "REFUND_PENDING" ||
+          returnStatus === "COMPLETED"
+        )
+      }
+      return status === "RETURNED" || returnStatus === "COMPLETED"
+    }
     case "CONFIRM_RETURN_REFUND":
       return (
         status === "RETURNED" &&
@@ -185,6 +190,40 @@ export function isPaymentAdminActionReplay(
         returnStatus === "COMPLETED"
       )
   }
+}
+
+export function isPaymentAdminActionResume(
+  order: PaymentAdminActionOrder,
+  action: PaymentAdminAction
+) {
+  const provider = resolveOrderPaymentProvider(order)
+  const status = typeof order.status === "string" ? order.status : null
+  const paymentStatus =
+    typeof order.paymentStatus === "string" ? order.paymentStatus : null
+  const returnStatus =
+    typeof order.returnStatus === "string" ? order.returnStatus : null
+
+  if (
+    action === "CANCEL" &&
+    provider === "STRIPE" &&
+    status !== "CANCELLED" &&
+    paymentStatus === "PAID" &&
+    typeof (order as PaymentAdminActionOrder & { refundRequestedAt?: unknown })
+      .refundRequestedAt === "string"
+  ) {
+    return true
+  }
+
+  if (
+    action === "RECEIVE_RETURN" &&
+    (provider === "STRIPE" || provider === "PRZELEWY24") &&
+    status !== "RETURNED" &&
+    (returnStatus === "RECEIVED" || returnStatus === "REFUND_PENDING")
+  ) {
+    return true
+  }
+
+  return false
 }
 
 export function classifyPaymentAdminActionPrecondition(
@@ -197,6 +236,9 @@ export function classifyPaymentAdminActionPrecondition(
   }
   if (isPaymentAdminActionReplay(order, action)) {
     return "replay" as const
+  }
+  if (isPaymentAdminActionResume(order, action)) {
+    return "resume" as const
   }
   return "conflict" as const
 }
