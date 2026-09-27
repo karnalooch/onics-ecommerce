@@ -21,6 +21,38 @@ describe("admin order state fencing wiring", () => {
     )
   })
 
+  it("exposes checkout registration state only on the admin order view", () => {
+    const route = read("src/app/api/orders/route.ts")
+    const helperStart = route.indexOf("function withPaymentLifecycle(")
+    const helperEnd = route.indexOf("export async function GET()", helperStart)
+    const helper = route.slice(helperStart, helperEnd)
+
+    expect(helper).toContain("checkoutRegistrationStatus,")
+    expect(helper).toContain("return includeAdminActions")
+    expect(helper).toContain("internalCheckoutRegistrationStatus === \"UNCERTAIN\"")
+    expect(route).toContain(
+      "orderStore.map((order) => withPaymentLifecycle(order, true))"
+    )
+    expect(route).toContain(
+      "ownOrders.map((order) => withPaymentLifecycle(order))"
+    )
+  })
+
+  it("highlights uncertain checkout registration in the admin queue and modal", () => {
+    const page = read("src/app/admin/orders/page.tsx")
+
+    expect(page).toContain(
+      'o.checkoutRegistrationStatus === "UNCERTAIN"'
+    )
+    expect(page).toContain("PAYMENT_REGISTRATION_UNCERTAIN")
+    expect(page).toContain(
+      'validatingOrder.checkoutRegistrationStatus === "UNCERTAIN"'
+    )
+    expect(page).toContain(
+      "Rejestracja płatności wymaga ręcznej weryfikacji"
+    )
+  })
+
   it("requires the observed token before an admin PUT", () => {
     const route = read("src/app/api/orders/route.ts")
 
