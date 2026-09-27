@@ -22,6 +22,10 @@ import { initializeMockData } from "@/store/serverStore"
 const PaymentAdminActionSchema = z.object({
   id: z.string().min(1),
   action: z.enum(PAYMENT_ADMIN_ACTIONS),
+  expectedStateToken: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
 })
 
 type IdentifiablePaymentOrder = PaymentProviderOrderIdentity & {
@@ -92,6 +96,16 @@ export async function POST(req: Request) {
     )
   }
 
+  if (parsed.data.expectedStateToken === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Operacja płatnicza wymaga expectedStateToken z ostatniego odczytu zamówienia.",
+      },
+      { status: 428 }
+    )
+  }
+
   const snapshot = initializeMockData()
   const order = (snapshot.orders as IdentifiablePaymentOrder[]).find(
     (candidate) => candidate.id === parsed.data.id
@@ -100,6 +114,19 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: "Nie znaleziono zamówienia." },
       { status: 404 }
+    )
+  }
+
+  if (
+    parsed.data.expectedStateToken !== buildAdminOrderStateToken(order)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Stan zamówienia zmienił się od ostatniego odczytu. Odśwież dane i ponów operację płatniczą.",
+        code: "PAYMENT_ADMIN_STATE_CONFLICT",
+      },
+      { status: 409 }
     )
   }
 

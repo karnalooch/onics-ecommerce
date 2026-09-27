@@ -7,6 +7,32 @@ function read(relativePath: string) {
 }
 
 describe("payment admin action order fencing wiring", () => {
+  it("rejects payment actions from a stale admin order snapshot", () => {
+    const route = read("src/app/api/orders/payment-action/route.ts")
+
+    expect(route).toContain("parsed.data.expectedStateToken === undefined")
+    expect(route).toContain(
+      "parsed.data.expectedStateToken !== buildAdminOrderStateToken(order)"
+    )
+    expect(route).toContain("PAYMENT_ADMIN_STATE_CONFLICT")
+    expect(route.indexOf("parsed.data.expectedStateToken !=="))
+      .toBeLessThan(route.indexOf("resolveOrderPaymentProvider(order)"))
+  })
+
+  it("sends the displayed order token with every payment action", () => {
+    const page = read("src/app/admin/orders/page.tsx")
+    const calls = page
+      .split('fetch("/api/orders/payment-action"')
+      .slice(1)
+
+    expect(calls).toHaveLength(4)
+    for (const call of calls) {
+      expect(call.slice(0, 400)).toContain(
+        "expectedStateToken: validatingOrder.adminStateToken"
+      )
+    }
+  })
+
   it("forwards the observed order state token into ORDER_CANCEL", () => {
     const route = read("src/app/api/orders/payment-action/route.ts")
     const start = route.indexOf('case "ORDER_CANCEL"')
