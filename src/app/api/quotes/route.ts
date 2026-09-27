@@ -9,6 +9,7 @@ import { buildQuoteSubmissionFingerprint } from "@/lib/quoteSubmissionIdempotenc
 import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
+  isQuoteAdminUpdateReplay,
   requirePositiveQuoteTotal,
   requireQuoteBasePrice,
 } from "@/lib/quoteAdmin"
@@ -238,7 +239,7 @@ export async function PUT(req: Request) {
       )
     }
 
-    const updated = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const orders = db.orders as StoredQuote[]
       const products = db.products as StoredProduct[]
       const users = db.users as StoredUser[]
@@ -249,6 +250,9 @@ export async function PUT(req: Request) {
       if (quoteIndex === -1) throw new Error("QUOTE_NOT_FOUND")
 
       const quote = orders[quoteIndex]
+      if (isQuoteAdminUpdateReplay(quote, parsed.data)) {
+        return { quote, replayed: true }
+      }
       assertQuoteAdminTransition(quote.status)
       let totalPriceFinal = Number(quote.totalPriceFinal || 0)
 
@@ -311,17 +315,24 @@ export async function PUT(req: Request) {
       }
 
       orders[quoteIndex] = nextQuote
-      return nextQuote
+      return { quote: nextQuote, replayed: false }
     })
 
     const {
       clientQuoteRequestId: internalQuoteRequestId,
       clientQuoteRequestFingerprint: internalQuoteRequestFingerprint,
       ...publicQuote
-    } = updated
+    } = submission.quote
     void internalQuoteRequestId
     void internalQuoteRequestFingerprint
-    return NextResponse.json(publicQuote)
+    return NextResponse.json(
+      publicQuote,
+      {
+        headers: submission.replayed
+          ? { "Idempotency-Replayed": "true" }
+          : undefined,
+      }
+    )
   } catch (error) {
     if (error instanceof Error && error.message === "QUOTE_NOT_FOUND") {
       return NextResponse.json(
