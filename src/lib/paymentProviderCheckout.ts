@@ -1,4 +1,5 @@
 import Stripe from "stripe"
+import { createHash } from "node:crypto"
 import { resolveCartItems } from "@/lib/commerce"
 import {
   moneyToMinorUnits,
@@ -11,7 +12,6 @@ import {
   type PaymentMethodId,
 } from "@/lib/paymentMethods"
 import {
-  applyOrderInventoryTransition,
   reserveInventory,
   type InventoryProduct,
 } from "@/lib/inventoryReservations"
@@ -31,6 +31,7 @@ import {
   registerPrzelewy24Transaction,
   resolvePrzelewy24Config,
 } from "@/lib/przelewy24"
+import { buildPaymentCheckoutFingerprint } from "@/lib/paymentCheckoutIdempotency"
 
 export type PaymentCheckoutItem = {
   id: string
@@ -55,6 +56,7 @@ type StoredUser = {
 }
 
 type PaymentCheckoutInput = {
+  requestId: string
   method: PaymentMethodId
   requestUrl: string
   sessionUser: PaymentCheckoutSessionUser
@@ -182,24 +184,128 @@ function assertPaymentStillAvailable(
   }
 }
 
-async function cancelFailedPrzelewy24Registration(orderId: string) {
-  await mutateMockData((db) => {
-    const order = (db.orders as Array<Record<string, unknown>>).find(
-      (candidate) =>
-        candidate.id === orderId &&
-        candidate.paymentProvider === "PRZELEWY24"
-    )
-    if (!order || order.status === "CANCELLED") return
+type StoredPaymentCheckoutOrder = {
+  id?: string
+  clientCheckoutRequestId?: string
+  clientCheckoutFingerprint?: string
+  paymentProvider?: string | null
+  paymentCheckoutRegistrationStatus?: string | null
+  totalPriceFinal?: number
+  items?: Array<Record<string, unknown>>
+  user?: StoredUser
+  stripeCheckoutSessionId?: string | null
+  p24SessionId?: string | null
+  p24CheckoutRedirectUrl?: string | null
+  bankTransferRecipient?: string | null
+  bankTransferIban?: string | null
+  bankTransferAmount?: number | null
+  [key: string]: unknown
+}
 
-    applyOrderInventoryTransition(
-      db.products as InventoryProduct[],
-      order as Parameters<typeof applyOrderInventoryTransition>[1],
-      order.items as Parameters<typeof applyOrderInventoryTransition>[2],
-      "CANCELLED"
-    )
-    order.status = "CANCELLED"
-    order.paymentStatus = "EXPIRED"
+function checkoutFingerprint(input: PaymentCheckoutInput) {
+  return buildPaymentCheckoutFingerprint({
+    paymentMethod: input.method,
+    items: input.items,
   })
+}
+
+function findExistingPaymentCheckout(
+  orders: StoredPaymentCheckoutOrder[],
+  input: PaymentCheckoutInput
+) {
+  return orders.find(
+    (order) =>
+      order.clientCheckoutRequestId === input.requestId &&
+      order.user &&
+      Boolean(findStoredUserBySession([order.user], input.sessionUser))
+  )
+}
+
+function assertMatchingPaymentCheckout(
+  order: StoredPaymentCheckoutOrder,
+  input: PaymentCheckoutInput,
+  fingerprint: string
+) {
+  if (
+    order.paymentProvider !== input.method ||
+    order.clientCheckoutFingerprint !== fingerprint
+  ) {
+    throw new Error("PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED")
+  }
+  return order
+}
+
+function deterministicCheckoutOrderId(
+  input: PaymentCheckoutInput,
+  user: StoredUser
+) {
+  const owner = String(
+    user.id ?? user.email ?? input.sessionUser.id ?? input.sessionUser.email ?? ""
+  ).trim().toLowerCase()
+  if (!owner) {
+    throw new Error("Konto nie ma stabilnej tożsamości checkoutu.")
+  }
+
+  const digest = createHash("sha256")
+    .update(`${owner}\n${input.method}\n${input.requestId}`, "utf8")
+    .digest("hex")
+  return `ORD-${digest.slice(0, 32)}`
+}
+
+function bankTransferResult(
+  order: StoredPaymentCheckoutOrder
+): PaymentCheckoutResult {
+  const orderId = String(order.id ?? "").trim()
+  const recipient = String(order.bankTransferRecipient ?? "").trim()
+  const iban = String(order.bankTransferIban ?? "").trim()
+  const amount = Number(order.bankTransferAmount ?? order.totalPriceFinal)
+
+  if (
+    !orderId ||
+    !recipient ||
+    !iban ||
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ) {
+    throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
+  }
+
+  return {
+    orderId,
+    paymentMethod: "BANK_TRANSFER",
+    nextAction: {
+      type: "MANUAL",
+      title: "Dane do przelewu",
+      fields: [
+        { label: "Odbiorca", value: recipient },
+        { label: "IBAN", value: iban, monospace: true },
+        { label: "Tytuł przelewu", value: orderId, monospace: true },
+      ],
+      amount,
+      currency: "PLN",
+      note:
+        "Zachowaj dokładny tytuł przelewu — identyfikuje on płatność z zamówieniem.",
+    },
+  }
+}
+
+function przelewy24Result(
+  order: StoredPaymentCheckoutOrder
+): PaymentCheckoutResult {
+  const orderId = String(order.id ?? "").trim()
+  const redirectUrl = String(order.p24CheckoutRedirectUrl ?? "").trim()
+  if (!orderId || !redirectUrl) {
+    throw new Error("PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN")
+  }
+
+  return {
+    orderId,
+    paymentMethod: "PRZELEWY24",
+    nextAction: {
+      type: "REDIRECT",
+      url: redirectUrl,
+    },
+  }
 }
 
 async function createPrzelewy24Checkout(
