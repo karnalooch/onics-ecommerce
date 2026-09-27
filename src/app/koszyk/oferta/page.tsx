@@ -9,26 +9,11 @@ import { COMPANY_PUBLIC } from "@/lib/company"
 import { useCartStore } from "@/store/cartStore"
 import { buildCartOwnerKey } from "@/lib/cartIdentity"
 import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding"
-
-type OfferPreview = {
-  reference: string
-  issuedAt: string
-  currency: "PLN"
-  customer: {
-    companyName: string | null
-    nip: string | null
-    email: string | null
-  }
-  items: Array<{
-    id: string
-    sku: string
-    name: string
-    quantity: number
-    unitPriceNet: number
-    lineTotalNet: number
-  }>
-  totalNet: number
-}
+import {
+  validateCartOfferPreview,
+  type CartOfferPreviewRequestItem,
+} from "@/lib/cartOfferPreviewContract"
+import type { CartOfferPreview } from "@/lib/cartOffer"
 
 export default function CartOfferPage() {
   const router = useRouter()
@@ -43,7 +28,7 @@ export default function CartOfferPage() {
     resolved: sessionStatus !== "loading",
   })
   const [mounted, setMounted] = useState(false)
-  const [preview, setPreview] = useState<OfferPreview | null>(null)
+  const [preview, setPreview] = useState<CartOfferPreview | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,23 +49,24 @@ export default function CartOfferPage() {
     setLoading(true)
     setError(null)
 
+    const requestedItems: CartOfferPreviewRequestItem[] = items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+    }))
+
     fetch("/api/cart/offer-preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({
-        items: items.map((item) => ({
-          id: item.id,
-          quantity: item.quantity,
-        })),
-      }),
+      body: JSON.stringify({ items: requestedItems }),
     })
       .then(async (response) => {
         const data = await response.json().catch(() => null)
         if (!response.ok) {
           throw new Error(data?.error || "Nie udało się przygotować oferty.")
         }
-        if (!cancelled) setPreview(data as OfferPreview)
+        const validatedPreview = validateCartOfferPreview(requestedItems, data)
+        if (!cancelled) setPreview(validatedPreview)
       })
       .catch((requestError) => {
         if (!cancelled) {
