@@ -470,6 +470,16 @@ async function createPrzelewy24Checkout(
 async function createBankTransferCheckout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
+  const fingerprint = checkoutFingerprint(input)
+  const snapshotReplay = findExistingPaymentCheckout(
+    input.snapshot.orders as StoredPaymentCheckoutOrder[],
+    input
+  )
+  if (snapshotReplay) {
+    assertMatchingPaymentCheckout(snapshotReplay, input, fingerprint)
+    return bankTransferResult(snapshotReplay)
+  }
+
   let bankConfig: ReturnType<typeof resolveBankTransferConfig>
   try {
     bankConfig = resolveBankTransferConfig()
@@ -484,9 +494,15 @@ async function createBankTransferCheckout(
     input.sessionUser,
     input.items
   )
-  const orderId = `ORD-${crypto.randomUUID()}`
+  const orderId = deterministicCheckoutOrderId(input, storedUser)
 
-  await mutateMockData((db) => {
+  const claimed = await mutateMockData((db) => {
+    const orderStore = db.orders as StoredPaymentCheckoutOrder[]
+    const existing = findExistingPaymentCheckout(orderStore, input)
+    if (existing) {
+      return assertMatchingPaymentCheckout(existing, input, fingerprint)
+    }
+
     assertPaymentStillAvailable(
       db.paymentControl,
       db.paymentMethods,
@@ -499,7 +515,6 @@ async function createBankTransferCheckout(
       input.sessionUser,
       input.items
     )
-
     if (JSON.stringify(fresh.resolved) !== JSON.stringify(resolved)) {
       throw new Error("CHECKOUT_STATE_CHANGED")
     }
@@ -509,9 +524,11 @@ async function createBankTransferCheckout(
       fresh.resolved.items
     )
     const now = new Date().toISOString()
-
-    db.orders.unshift({
+    const order: StoredPaymentCheckoutOrder = {
       id: orderId,
+      clientCheckoutRequestId: input.requestId,
+      clientCheckoutFingerprint: fingerprint,
+      paymentCheckoutRegistrationStatus: "READY",
       orderType: "ORDER",
       createdAt: now,
       status: "PENDING_VERIFICATION",
@@ -539,37 +556,12 @@ async function createBankTransferCheckout(
       inventoryReleasedAt: null,
       inventoryFinalizedAt: null,
       inventoryReReservedAt: null,
-    })
+    }
+    orderStore.unshift(order)
+    return order
   })
 
-  return {
-    orderId,
-    paymentMethod: "BANK_TRANSFER",
-    nextAction: {
-      type: "MANUAL",
-      title: "Dane do przelewu",
-      fields: [
-        {
-          label: "Odbiorca",
-          value: bankConfig.recipient,
-        },
-        {
-          label: "IBAN",
-          value: bankConfig.iban,
-          monospace: true,
-        },
-        {
-          label: "Tytuł przelewu",
-          value: orderId,
-          monospace: true,
-        },
-      ],
-      amount: resolved.total,
-      currency: "PLN",
-      note:
-        "Zachowaj dokładny tytuł przelewu — identyfikuje on płatność z zamówieniem.",
-    },
-  }
+  return bankTransferResult(claimed)
 }
 
 async function createStripeCheckout(
