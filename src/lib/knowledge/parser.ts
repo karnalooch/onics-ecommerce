@@ -211,8 +211,20 @@ export function buildMergedKnowledgePersistence(
   };
 }
 
-export async function saveKnowledge(data: KnowledgeStore) {
+export function throwIfKnowledgeTrainingAborted(
+  signal?: ParserOptions["signal"]
+) {
+  if (signal?.aborted) {
+    throw new Error("PROCES_PRZERWANY")
+  }
+}
+
+export async function saveKnowledge(
+  data: KnowledgeStore,
+  signal?: ParserOptions["signal"]
+) {
   await mutateMockData((db) => {
+    throwIfKnowledgeTrainingAborted(signal)
     const merged = buildMergedKnowledgePersistence(db, data);
     db.knowledgeEntries = merged.knowledgeEntries;
     db.knowledgeMeta = merged.knowledgeMeta;
@@ -679,7 +691,7 @@ export async function parseExcel(
       let emptyRowsInRow = 0;
 
       for (let i = headerFoundRow + 1; i < rawRows.length; i++) {
-        if (options?.signal?.aborted) throw new Error('PROCES_PRZERWANY');
+        throwIfKnowledgeTrainingAborted(options?.signal);
 
         const row = rawRows[i];
         if (!row || !row.length) {
@@ -760,7 +772,7 @@ export async function parseExcel(
 
     if (totalAddedCount > 0) {
       if (!currentStore.processedSources.includes(filename)) currentStore.processedSources.push(filename);
-      await saveKnowledge(currentStore);
+      await saveKnowledge(currentStore, options?.signal);
     }
     
     onProgress?.({ 
@@ -796,6 +808,7 @@ export async function parsePDFHeuristic(
     
     // Zwiększamy limit stron dla heurystyki, bo liczymy na dane tekstowe
     const data = await pdfParse(buffer, { max: 1000 });
+    throwIfKnowledgeTrainingAborted(signal);
     const fullText = data.text || "";
     const lines = fullText.split('\n');
 
@@ -1001,7 +1014,7 @@ export async function parsePDFHeuristic(
     let sessionKnowledge: Record<string, KnowledgeEntry> = {};
     if (totalAddedCount > 0) {
         if (!currentStore.processedSources.includes(filename)) currentStore.processedSources.push(filename);
-        await saveKnowledge(currentStore);
+        await saveKnowledge(currentStore, signal);
 
         sessionSet.forEach(key => {
           if (currentStore.knowledge[key]) {
@@ -1051,6 +1064,7 @@ export async function parsePDFWithAI(
     
     // Limit to 100 pages for AI to avoid massive costs/timeouts
     const data = await pdfParse(buffer, { max: 100 });
+    throwIfKnowledgeTrainingAborted(signal);
     const fullText = data.text || "";
 
     if (fullText.length < 500) {
@@ -1067,7 +1081,7 @@ export async function parsePDFWithAI(
     }
 
     for (let i = 0; i < chunks.length; i++) {
-        if (signal?.aborted) throw new Error('PROCES_PRZERWANY');
+        throwIfKnowledgeTrainingAborted(signal);
 
         const chunk = chunks[i];
         
@@ -1092,12 +1106,13 @@ export async function parsePDFWithAI(
                 chunk,
                 "text/plain"
             );
+            throwIfKnowledgeTrainingAborted(signal);
 
             if (aiResults && Array.isArray(aiResults) && aiResults.length > 0) {
                 const added = processExtractions(aiResults, currentStore, filename, currentDate, undefined, totalAddedCount);
                 totalAddedCount += added;
                 
-                if (added > 0) await saveKnowledge(currentStore);
+                if (added > 0) await saveKnowledge(currentStore, signal);
             }
         } catch (localErr) {
             rethrowFatalKnowledgeTrainingError(localErr);
@@ -1107,7 +1122,7 @@ export async function parsePDFWithAI(
 
     if (totalAddedCount > 0 && !currentStore.processedSources.includes(filename)) {
         currentStore.processedSources.push(filename);
-        await saveKnowledge(currentStore);
+        await saveKnowledge(currentStore, signal);
     }
 
     onProgress?.({ 

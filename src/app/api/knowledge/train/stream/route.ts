@@ -109,7 +109,7 @@ export async function POST(req: Request) {
           store.processedSources.push(fileInfo.filename)
         }
         store.lastUpdated = new Date().toISOString()
-        await saveKnowledge(store)
+        await saveKnowledge(store, abortSignal)
 
         send({
           type: "done",

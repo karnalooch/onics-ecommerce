@@ -5,6 +5,7 @@ import {
   buildMergedKnowledgePersistence,
   deleteKnowledgeEntryFromDb,
   rethrowFatalKnowledgeTrainingError,
+  throwIfKnowledgeTrainingAborted,
 } from "@/lib/knowledge/parser"
 
 describe("knowledge storage boundary", () => {
@@ -328,6 +329,21 @@ describe("knowledge storage boundary", () => {
         }
       )
     ).toThrow("KNOWLEDGE_STORE_RESET_DURING_TRAINING")
+  })
+
+  it("rejects persistence work after a knowledge training cancellation", () => {
+    expect(() =>
+      throwIfKnowledgeTrainingAborted({
+        aborted: true,
+        knowledgeRevision: 4,
+      })
+    ).toThrow("PROCES_PRZERWANY")
+    expect(() =>
+      throwIfKnowledgeTrainingAborted({
+        aborted: false,
+        knowledgeRevision: 4,
+      })
+    ).not.toThrow()
   })
 
   it("propagates training generation fences instead of treating them as recoverable PDF chunk errors", () => {
