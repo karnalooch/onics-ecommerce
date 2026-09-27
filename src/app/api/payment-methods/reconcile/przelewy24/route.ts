@@ -14,6 +14,7 @@ import {
   type Przelewy24StoredOrder,
 } from "@/lib/przelewy24"
 import {
+  classifyPrzelewy24TransactionReconciliation,
   classifyPrzelewy24VerificationRecovery,
   shouldReconcilePrzelewy24Order,
 } from "@/lib/przelewy24Reconciliation"
@@ -174,22 +175,44 @@ export async function POST(req: Request) {
           )
 
           if (transaction) {
-            await verifyPrzelewy24TransactionIdentity(config, transaction)
+            const recovery =
+              classifyPrzelewy24TransactionReconciliation(transaction)
 
-            await mutateMockData((db) => {
-              const order = (db.orders as Przelewy24StoredOrder[]).find(
-                (candidate) => candidate.id === snapshotOrder.id
-              )
-              if (!order) throw new Error("ORDER_NOT_FOUND")
+            if (recovery === "provider-returned") {
+              manualReview = true
+            } else if (recovery === "provider-paid") {
+              await mutateMockData((db) => {
+                const order = (db.orders as Przelewy24StoredOrder[]).find(
+                  (candidate) => candidate.id === snapshotOrder.id
+                )
+                if (!order) throw new Error("ORDER_NOT_FOUND")
 
-              applyReconciledPrzelewy24Payment(
-                db.products as InventoryProduct[],
-                order,
-                transaction
-              )
-            })
-            paymentAction = "PAID"
-            updated = true
+                applyReconciledPrzelewy24Payment(
+                  db.products as InventoryProduct[],
+                  order,
+                  transaction
+                )
+              })
+              paymentAction = "PAID"
+              updated = true
+            } else if (recovery === "verify-required") {
+              await verifyPrzelewy24TransactionIdentity(config, transaction)
+
+              await mutateMockData((db) => {
+                const order = (db.orders as Przelewy24StoredOrder[]).find(
+                  (candidate) => candidate.id === snapshotOrder.id
+                )
+                if (!order) throw new Error("ORDER_NOT_FOUND")
+
+                applyReconciledPrzelewy24Payment(
+                  db.products as InventoryProduct[],
+                  order,
+                  transaction
+                )
+              })
+              paymentAction = "PAID"
+              updated = true
+            }
           }
         }
       }
