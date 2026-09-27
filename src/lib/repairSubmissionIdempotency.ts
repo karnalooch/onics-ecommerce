@@ -19,7 +19,7 @@ export function buildRepairSubmissionFingerprint(
   const serial = normalizedText(input.serial)
   const description = normalizedText(input.description)
 
-  if (!item || !serial || description.length < 5) {
+  if (!item || !serial) {
     throw new Error("REPAIR_IDEMPOTENCY_PAYLOAD_INVALID")
   }
 
