@@ -10,6 +10,7 @@ export type CheckoutManualField = {
 }
 
 export type ValidatedCheckoutResponse = {
+  clientRequestId: string
   orderId: string
   paymentMethod: CheckoutPaymentMethodId
   nextAction:
@@ -125,6 +126,14 @@ export function validateCheckoutPaymentResponse(
   response: unknown
 ): ValidatedCheckoutResponse {
   const root = requireRecord(response, "odpowiedzi")
+  const clientRequestId = requireText(root.clientRequestId, "clientRequestId")
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      clientRequestId
+    )
+  ) {
+    throw new Error("Provider płatności zwrócił nieprawidłowy clientRequestId.")
+  }
   const orderId = requireText(root.orderId, "orderId")
 
   if (root.paymentMethod !== requestedMethod) {
@@ -139,6 +148,7 @@ export function validateCheckoutPaymentResponse(
 
   if (nextAction.type === "REDIRECT") {
     return {
+      clientRequestId,
       orderId,
       paymentMethod: requestedMethod,
       nextAction: {
@@ -155,6 +165,7 @@ export function validateCheckoutPaymentResponse(
   }
 
   return {
+    clientRequestId,
     orderId,
     paymentMethod: requestedMethod,
     nextAction: {
