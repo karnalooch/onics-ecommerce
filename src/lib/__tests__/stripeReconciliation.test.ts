@@ -5,9 +5,13 @@ import {
 } from "@/lib/stripeReconciliation"
 import type { StripeCancelableOrder } from "@/lib/refunds"
 
+type StripeReconciliationTestOrder = StripeCancelableOrder & {
+  paymentCheckoutRegistrationStatus?: string | null
+}
+
 function order(
-  overrides: Partial<StripeCancelableOrder> = {}
-): StripeCancelableOrder {
+  overrides: Partial<StripeReconciliationTestOrder> = {}
+): StripeReconciliationTestOrder {
   return {
     id: "ORD-1",
     status: "PENDING_VERIFICATION",
@@ -92,10 +96,50 @@ describe("Stripe payment reconciliation", () => {
     ).toBe(false)
   })
 
-  it("requires a Stripe checkout session", () => {
+  it("selects staged Stripe registrations even before the session id is persisted", () => {
     expect(
       shouldReconcileStripeOrder(
-        order({ stripeCheckoutSessionId: null })
+        order({
+          stripeCheckoutSessionId: null,
+          paymentCheckoutRegistrationStatus: "PENDING",
+        })
+      )
+    ).toBe(true)
+    expect(
+      shouldReconcileStripeOrder(
+        order({
+          stripeCheckoutSessionId: null,
+          paymentCheckoutRegistrationStatus: "UNCERTAIN",
+        })
+      )
+    ).toBe(true)
+  })
+
+  it("does not recover sessionless Stripe orders outside the staged reservation state", () => {
+    expect(
+      shouldReconcileStripeOrder(
+        order({
+          stripeCheckoutSessionId: null,
+          paymentCheckoutRegistrationStatus: "READY",
+        })
+      )
+    ).toBe(false)
+    expect(
+      shouldReconcileStripeOrder(
+        order({
+          stripeCheckoutSessionId: null,
+          paymentCheckoutRegistrationStatus: "PENDING",
+          inventoryReservationStatus: "RELEASED",
+        })
+      )
+    ).toBe(false)
+    expect(
+      shouldReconcileStripeOrder(
+        order({
+          stripeCheckoutSessionId: null,
+          paymentCheckoutRegistrationStatus: "PENDING",
+          paymentStatus: "PAID",
+        })
       )
     ).toBe(false)
   })

@@ -184,7 +184,7 @@ function assertPaymentStillAvailable(
   }
 }
 
-type StoredPaymentCheckoutOrder = {
+export type StoredPaymentCheckoutOrder = {
   id?: string
   clientCheckoutRequestId?: string
   clientCheckoutFingerprint?: string
@@ -564,6 +564,67 @@ async function createBankTransferCheckout(
   return bankTransferResult(claimed)
 }
 
+export async function createOrRecoverStripeCheckoutSession(
+  stripe: Stripe,
+  order: StoredPaymentCheckoutOrder,
+  appUrl: string
+) {
+  const orderId = String(order.id ?? "").trim()
+  const checkoutItems = order.items as
+    | Array<{
+        id: string
+        sku: string
+        name: string
+        quantity: number
+        price: number
+      }>
+    | undefined
+  const checkoutUser = order.user
+
+  if (!orderId || !checkoutItems?.length || !checkoutUser) {
+    throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
+  }
+
+  const session = await stripe.checkout.sessions.create(
+    {
+      line_items: checkoutItems.map((item) => ({
+        price_data: {
+          currency: "pln",
+          unit_amount: moneyToMinorUnits(item.price),
+          product_data: {
+            name: item.name,
+            metadata: {
+              sku: item.sku,
+              product_id: item.id,
+            },
+          },
+        },
+        quantity: item.quantity,
+      })),
+      mode: "payment",
+      success_url: `${appUrl}/oferty/zamowienia?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/koszyk?payment=cancelled`,
+      client_reference_id: String(checkoutUser.id ?? ""),
+      customer_email: checkoutUser.email,
+      metadata: {
+        order_id: orderId,
+        pl_nip: checkoutUser.nip || "",
+        client_role: checkoutUser.roleType || "BIZ",
+      },
+      payment_intent_data: {
+        metadata: {
+          order_id: orderId,
+        },
+      },
+    },
+    {
+      idempotencyKey: `onics-checkout:${orderId}`,
+    }
+  )
+
+  return session
+}
+
 async function createStripeCheckout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
@@ -694,57 +755,11 @@ async function createStripeCheckout(
     "STRIPE"
   )
 
-  const checkoutItems = claimed.items as
-    | Array<{
-        id: string
-        sku: string
-        name: string
-        quantity: number
-        price: number
-      }>
-    | undefined
-  const checkoutUser = claimed.user
-  if (!checkoutItems?.length || !checkoutUser) {
-    throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
-  }
-
-  const session = await stripe.checkout.sessions.create(
-    {
-      line_items: checkoutItems.map((item) => ({
-        price_data: {
-          currency: "pln",
-          unit_amount: moneyToMinorUnits(item.price),
-          product_data: {
-            name: item.name,
-            metadata: {
-              sku: item.sku,
-              product_id: item.id,
-            },
-          },
-        },
-        quantity: item.quantity,
-      })),
-      mode: "payment",
-      success_url: `${appUrl}/oferty/zamowienia?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/koszyk?payment=cancelled`,
-      client_reference_id: String(checkoutUser.id ?? ""),
-      customer_email: checkoutUser.email,
-      metadata: {
-        order_id: orderId,
-        pl_nip: checkoutUser.nip || "",
-        client_role: checkoutUser.roleType || "BIZ",
-      },
-      payment_intent_data: {
-        metadata: {
-          order_id: orderId,
-        },
-      },
-    },
-    {
-      idempotencyKey: `onics-checkout:${orderId}`,
-    }
+  const session = await createOrRecoverStripeCheckoutSession(
+    stripe,
+    claimed,
+    appUrl
   )
-
   if (!session.url) {
     throw new Error("Stripe nie zwrócił adresu płatności.")
   }

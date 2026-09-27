@@ -4,6 +4,7 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
   nextPaymentStatus,
+  resolveStripeCheckoutConfig,
   verifyCheckoutPayment,
   verifyStripeRefund,
 } from "@/lib/payments"
@@ -22,6 +23,14 @@ import {
   shouldReconcileStripeOrder,
 } from "@/lib/stripeReconciliation"
 import {
+  createOrRecoverStripeCheckoutSession,
+  type StoredPaymentCheckoutOrder,
+} from "@/lib/paymentProviderCheckout"
+import {
+  isPaymentControlEnabled,
+  isPaymentMethodEnabled,
+} from "@/lib/paymentMethods"
+import {
   resolveOrderPaymentProvider,
   supportsPaymentProviderCapability,
 } from "@/lib/paymentProviders"
@@ -33,13 +42,14 @@ const ReconcileSchema = z.object({
 
 const MAX_BULK_RECONCILIATION = 50
 
-type StoredOrder = StripeCancelableOrder & {
-  totalPriceFinal?: number | null
-  stripePaymentIntentId?: string | null
-  paidAt?: string | null
-  paymentUpdatedAt?: string | null
-  paymentReconciledAt?: string | null
-}
+type StoredOrder = StripeCancelableOrder &
+  StoredPaymentCheckoutOrder & {
+    totalPriceFinal?: number | null
+    stripePaymentIntentId?: string | null
+    paidAt?: string | null
+    paymentUpdatedAt?: string | null
+    paymentReconciledAt?: string | null
+  }
 
 type ReconcileResult = {
   orderId: string
@@ -153,8 +163,10 @@ export async function POST(req: Request) {
     )
   }
 
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-  if (!stripeSecretKey) {
+  let stripeConfig: ReturnType<typeof resolveStripeCheckoutConfig>
+  try {
+    stripeConfig = resolveStripeCheckoutConfig({ requestUrl: req.url })
+  } catch {
     return NextResponse.json(
       { error: "Stripe nie jest skonfigurowany." },
       { status: 503 }
@@ -178,8 +190,7 @@ export async function POST(req: Request) {
     const provider = resolveOrderPaymentProvider(order)
     if (
       provider !== "STRIPE" ||
-      !supportsPaymentProviderCapability(provider, "reconcile") ||
-      !order.stripeCheckoutSessionId
+      !supportsPaymentProviderCapability(provider, "reconcile")
     ) {
       return NextResponse.json(
         { error: "Zamówienie nie jest powiązane z Stripe." },
@@ -198,21 +209,95 @@ export async function POST(req: Request) {
       .slice(0, MAX_BULK_RECONCILIATION)
   }
 
-  const stripe = new Stripe(stripeSecretKey)
+  const stripe = new Stripe(stripeConfig.stripeSecretKey)
   const results: ReconcileResult[] = []
 
   for (const snapshotOrder of selected) {
-    const sessionId = snapshotOrder.stripeCheckoutSessionId
-    if (!sessionId) continue
-
     try {
-      const session = await stripe.checkout.sessions.retrieve(sessionId)
+      let session: Stripe.Checkout.Session
+      let registrationRecovered = false
+
+      if (!snapshotOrder.stripeCheckoutSessionId) {
+        const freshSettings = initializeMockData()
+        if (!isPaymentControlEnabled(freshSettings.paymentControl)) {
+          throw new Error("PAYMENTS_DISABLED")
+        }
+        if (
+          !isPaymentMethodEnabled(
+            freshSettings.paymentMethods,
+            "STRIPE"
+          )
+        ) {
+          throw new Error("PAYMENT_METHOD_DISABLED")
+        }
+        if (
+          snapshotOrder.paymentStatus !== "PENDING" ||
+          snapshotOrder.inventoryReservationStatus !== "RESERVED" ||
+          (snapshotOrder.paymentCheckoutRegistrationStatus !== "PENDING" &&
+            snapshotOrder.paymentCheckoutRegistrationStatus !== "UNCERTAIN")
+        ) {
+          throw new Error("STRIPE_CHECKOUT_REGISTRATION_NOT_RECOVERABLE")
+        }
+
+        session = await createOrRecoverStripeCheckoutSession(
+          stripe,
+          snapshotOrder,
+          stripeConfig.appUrl
+        )
+
+        const registrationVerification = verifyCheckoutPayment(
+          {
+            id: snapshotOrder.id,
+            totalPriceFinal: Number(snapshotOrder.totalPriceFinal ?? 0),
+            stripeCheckoutSessionId: null,
+            paymentStatus: snapshotOrder.paymentStatus,
+          },
+          {
+            orderId: session.metadata?.order_id || null,
+            sessionId: session.id,
+            amountTotal: session.amount_total,
+            currency: session.currency,
+            paymentStatus: session.payment_status,
+          }
+        )
+        if (!registrationVerification.ok) {
+          throw new Error(registrationVerification.reason)
+        }
+
+        await mutateMockData((db) => {
+          const order = (db.orders as StoredOrder[]).find(
+            (candidate) => candidate.id === snapshotOrder.id
+          )
+          if (!order) throw new Error("ORDER_NOT_FOUND")
+          if (
+            order.stripeCheckoutSessionId &&
+            order.stripeCheckoutSessionId !== session.id
+          ) {
+            throw new Error("PAYMENT_CHECKOUT_PROVIDER_REPLAY_MISMATCH")
+          }
+          if (
+            order.paymentStatus !== "PENDING" ||
+            order.inventoryReservationStatus !== "RESERVED"
+          ) {
+            throw new Error("STRIPE_CHECKOUT_REGISTRATION_STATE_CHANGED")
+          }
+
+          order.stripeCheckoutSessionId = session.id
+          order.paymentCheckoutRegistrationStatus = "READY"
+        })
+        registrationRecovered = true
+      } else {
+        session = await stripe.checkout.sessions.retrieve(
+          snapshotOrder.stripeCheckoutSessionId
+        )
+      }
+
       const checkoutState =
         classifyStripeCheckoutForReconciliation(session)
 
       let checkoutAction: ReconcileResult["checkoutAction"] = "NONE"
       let refundStatus: StripeRefundStatus | null = null
-      let updated = false
+      let updated = registrationRecovered
       let manualReview = checkoutState === "FINALIZING"
 
       if (checkoutState === "PAID") {
