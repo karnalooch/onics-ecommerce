@@ -622,10 +622,6 @@ export async function createOrRecoverStripeCheckoutSession(
     }
   )
 
-  if (!session.url) {
-    throw new Error("Stripe nie zwrócił adresu płatności.")
-  }
-
   return session
 }
 
@@ -764,6 +760,9 @@ async function createStripeCheckout(
     claimed,
     appUrl
   )
+  if (!session.url) {
+    throw new Error("Stripe nie zwrócił adresu płatności.")
+  }
 
   await mutateMockData((db) => {
     const existing = findExistingPaymentCheckout(
