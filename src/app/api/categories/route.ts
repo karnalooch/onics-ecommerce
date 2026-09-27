@@ -7,6 +7,7 @@ import {
   hasCatalogCategoryNameConflict,
   hasCategoryProductReference,
   indexCatalogCategoriesByName,
+  isCatalogCategoryCreateReplay,
   normalizeCatalogCategoryName,
   type CatalogCategoryReference,
 } from "@/lib/catalog"
@@ -74,6 +75,23 @@ export async function POST(req: Request) {
         normalizeCatalogCategoryName(parsed.data.name)
       )
       if (existing) {
+        const requestedSubcategories = (parsed.data.subcategories || []).map(
+          (subcategory) => ({
+            name:
+              typeof subcategory === "string"
+                ? subcategory
+                : subcategory.name,
+          })
+        )
+        if (
+          !isCatalogCategoryCreateReplay(existing, {
+            name: parsed.data.name,
+            iconName: parsed.data.iconName || "Folder",
+            subcategories: requestedSubcategories,
+          })
+        ) {
+          throw new Error("CATEGORY_NAME_EXISTS")
+        }
         return { category: existing, replayed: true }
       }
 
@@ -95,6 +113,15 @@ export async function POST(req: Request) {
         : undefined,
     })
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_NAME_EXISTS"
+    ) {
+      return NextResponse.json(
+        { error: "Kategoria o tej nazwie już istnieje z inną konfiguracją." },
+        { status: 409 }
+      )
+    }
     if (
       error instanceof Error &&
       error.message === "CATALOG_DUPLICATE_CATEGORY_NAME"
