@@ -61,6 +61,22 @@ describe("Przelewy24 transaction status reconciliation wiring", () => {
     expect(flow).toContain('paymentAction = "RETURNED"')
   })
 
+  it("surfaces provider-returned fulfillment conflicts as manual review", () => {
+    const route = read(
+      "src/app/api/payment-methods/reconcile/przelewy24/route.ts"
+    )
+    const catchStart = route.indexOf("} catch (error) {")
+    const summaryStart = route.indexOf("const summary = results.reduce(", catchStart)
+    const flow = route.slice(catchStart, summaryStart)
+
+    expect(flow).toContain(
+      'errorCode === "PRZELEWY24_RETURNED_PAYMENT_REQUIRES_REVIEW"'
+    )
+    expect(flow).toContain(
+      'outcome: requiresManualReview ? "MANUAL_REVIEW" : "FAILED"'
+    )
+  })
+
   it("does not turn the unpaid branch into a local payment write", () => {
     const route = read(
       "src/app/api/payment-methods/reconcile/przelewy24/route.ts"
