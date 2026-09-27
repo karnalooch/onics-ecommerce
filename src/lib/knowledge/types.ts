@@ -48,5 +48,5 @@ export interface ParserOptions {
   apiKey: string;
   modelId?: string;
   availableModels?: string[];
-  signal?: { aborted: boolean };
+  signal?: { aborted: boolean; knowledgeRevision?: number };
 }
