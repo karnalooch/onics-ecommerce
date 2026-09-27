@@ -475,22 +475,19 @@ export async function getPrzelewy24TransactionBySessionId(
 
   if (response.status === 404) return null
 
-  const payload = (() => {
-    return response
-      .text()
-      .then((raw) => {
-        try {
-          return parsePrzelewy24Json(raw) as {
-            data?: Record<string, unknown>
-            responseCode?: unknown
-          }
-        } catch {
-          return null
+  const payload = await response
+    .text()
+    .then((raw) => {
+      try {
+        return parsePrzelewy24Json(raw) as {
+          data?: Record<string, unknown>
+          responseCode?: unknown
         }
-      })
-  })()
-  const parsedPayload = await payload
-  const data = parsedPayload?.data
+      } catch {
+        return null
+      }
+    })
+  const data = payload?.data
 
   if (
     !response.ok ||
