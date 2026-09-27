@@ -1,6 +1,7 @@
 import type { StripeCancelableOrder } from "@/lib/refunds"
-
-export const STRIPE_STAGED_RECOVERY_MAX_AGE_MS = 23 * 60 * 60 * 1000
+import {
+  isStripeCheckoutCreationRetrySafe,
+} from "@/lib/stripeCheckoutCreation"
 
 export type StripeReconciliationOrder = StripeCancelableOrder & {
   paymentProvider?: string | null
@@ -44,11 +45,7 @@ export function isStripeStagedRecoveryWithinIdempotencyWindow(
 ) {
   if (!isStagedStripeCheckout(order)) return false
 
-  const createdAt = Date.parse(String(order.createdAt ?? ""))
-  if (!Number.isFinite(createdAt)) return false
-
-  const ageMs = nowMs - createdAt
-  return ageMs >= 0 && ageMs < STRIPE_STAGED_RECOVERY_MAX_AGE_MS
+  return isStripeCheckoutCreationRetrySafe(order, nowMs)
 }
 
 export function shouldReconcileStripeOrder(
