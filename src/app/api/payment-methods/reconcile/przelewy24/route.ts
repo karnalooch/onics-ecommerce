@@ -13,7 +13,10 @@ import {
   verifyPrzelewy24TransactionIdentity,
   type Przelewy24StoredOrder,
 } from "@/lib/przelewy24"
-import { shouldReconcilePrzelewy24Order } from "@/lib/przelewy24Reconciliation"
+import {
+  classifyPrzelewy24VerificationRecovery,
+  shouldReconcilePrzelewy24Order,
+} from "@/lib/przelewy24Reconciliation"
 import {
   resolveOrderPaymentProvider,
   supportsPaymentProviderCapability,
@@ -118,20 +121,50 @@ export async function POST(req: Request) {
       if (paymentUnresolved || snapshotOrder.p24VerificationPending) {
         if (snapshotOrder.p24VerificationPending) {
           const staged = snapshotOrder.p24VerificationPending
-          await verifyPrzelewy24Transaction(config, staged)
+          const transaction = await getPrzelewy24TransactionBySessionId(
+            config,
+            staged.sessionId
+          )
+          const recovery = transaction
+            ? classifyPrzelewy24VerificationRecovery(
+                transaction,
+                staged
+              )
+            : ("verify-required" as const)
 
-          await mutateMockData((db) => {
-            const order = (db.orders as Przelewy24StoredOrder[]).find(
-              (candidate) => candidate.id === snapshotOrder.id
-            )
-            if (!order) throw new Error("ORDER_NOT_FOUND")
+          if (recovery === "provider-returned") {
+            throw new Error("PRZELEWY24_TRANSACTION_ALREADY_RETURNED")
+          }
 
-            applyVerifiedPrzelewy24Payment(
-              db.products as InventoryProduct[],
-              order,
-              staged
-            )
-          })
+          if (recovery === "provider-paid" && transaction) {
+            await mutateMockData((db) => {
+              const order = (db.orders as Przelewy24StoredOrder[]).find(
+                (candidate) => candidate.id === snapshotOrder.id
+              )
+              if (!order) throw new Error("ORDER_NOT_FOUND")
+
+              applyReconciledPrzelewy24Payment(
+                db.products as InventoryProduct[],
+                order,
+                transaction
+              )
+            })
+          } else {
+            await verifyPrzelewy24Transaction(config, staged)
+
+            await mutateMockData((db) => {
+              const order = (db.orders as Przelewy24StoredOrder[]).find(
+                (candidate) => candidate.id === snapshotOrder.id
+              )
+              if (!order) throw new Error("ORDER_NOT_FOUND")
+
+              applyVerifiedPrzelewy24Payment(
+                db.products as InventoryProduct[],
+                order,
+                staged
+              )
+            })
+          }
           paymentAction = "PAID"
           updated = true
         } else if (snapshotOrder.p24SessionId) {
