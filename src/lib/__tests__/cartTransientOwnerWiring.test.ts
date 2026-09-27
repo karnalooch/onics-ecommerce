@@ -23,6 +23,8 @@ describe("cart owner-scoped transient state wiring", () => {
       "utf8"
     )
 
+    expect(page).toContain("useLayoutEffect(() => {")
+    expect(page).toContain("activeCartOwnerRef.current = cartOwnerKey")
     expect(page).toContain("const captureCartOwnerScope = () => ({")
     expect(page).toContain("const isCartOwnerScopeCurrent = (scope:")
     expect(page).toContain("if (!isCartOwnerScopeCurrent(ownerScope)) return;")
