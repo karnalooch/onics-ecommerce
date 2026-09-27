@@ -44,7 +44,11 @@ export async function POST(req: Request) {
     const { filename, extension, absolutePath } = validateKnowledgeFilename(file.name)
     const buffer = Buffer.from(await file.arrayBuffer())
     const knowledgeRevision = (await getKnowledge()).revision ?? 0
-    const knowledgeSignal = { aborted: false, knowledgeRevision }
+    const knowledgeSignal = {
+      aborted: false,
+      knowledgeRevision,
+      actor: authCheck.user,
+    }
 
     fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
     fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
@@ -82,7 +86,7 @@ export async function POST(req: Request) {
         store.processedSources.push(filename)
       }
       store.lastUpdated = new Date().toISOString()
-      await saveKnowledge(store)
+      await saveKnowledge(store, knowledgeSignal)
     } catch (processingError) {
       const canRemoveUpload = await canSafelyRemoveFailedKnowledgeUpload(
         filename,
@@ -127,6 +131,15 @@ export async function POST(req: Request) {
     }
 
     const message = error instanceof Error ? error.message : "Błąd serwera."
+    if (message === "KNOWLEDGE_ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        {
+          error:
+            "Uprawnienia administratora zmieniły się podczas przetwarzania. Zapis został anulowany.",
+        },
+        { status: 403 }
+      )
+    }
     if (message === "KNOWLEDGE_STORE_RESET_DURING_TRAINING") {
       return NextResponse.json(
         {
