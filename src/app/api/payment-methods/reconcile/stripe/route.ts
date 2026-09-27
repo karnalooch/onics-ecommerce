@@ -82,9 +82,8 @@ function getRefundStatus(value: unknown): StripeRefundStatus {
 
 function isStripeRmaRefundIntent(order: StoredOrder) {
   return (
-    order.status === "SHIPPED" &&
-    (order.returnStatus === "RECEIVED" ||
-      order.returnStatus === "REFUND_PENDING")
+    order.returnStatus === "RECEIVED" ||
+    order.returnStatus === "REFUND_PENDING"
   )
 }
 
