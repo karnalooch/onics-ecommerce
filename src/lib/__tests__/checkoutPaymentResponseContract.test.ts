@@ -25,6 +25,31 @@ describe("checkout payment response contract", () => {
     })
   })
 
+  it("rejects a missing or malformed client request id", () => {
+    expect(() =>
+      validateCheckoutPaymentResponse("STRIPE", {
+        orderId: "ORD-123",
+        paymentMethod: "STRIPE",
+        nextAction: {
+          type: "REDIRECT",
+          url: "https://checkout.stripe.com/c/pay/test",
+        },
+      })
+    ).toThrow(/clientRequestId/)
+
+    expect(() =>
+      validateCheckoutPaymentResponse("STRIPE", {
+        clientRequestId: "not-a-uuid",
+        orderId: "ORD-123",
+        paymentMethod: "STRIPE",
+        nextAction: {
+          type: "REDIRECT",
+          url: "https://checkout.stripe.com/c/pay/test",
+        },
+      })
+    ).toThrow(/clientRequestId/)
+  })
+
   it("rejects provider identity and action-kind mismatches", () => {
     expect(() =>
       validateCheckoutPaymentResponse("STRIPE", {
