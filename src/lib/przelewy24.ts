@@ -93,6 +93,7 @@ export type Przelewy24StoredOrder = InventoryReservationOrder & {
   paymentUpdatedAt?: string | null
   paymentReconciledAt?: string | null
   refundedAt?: string | null
+  cancelledAt?: string | null
   refundStatus?: string | null
   refundRequestedAt?: string | null
   refundUpdatedAt?: string | null
@@ -602,11 +603,9 @@ export function validatePrzelewy24NotificationForOrder(
   return true
 }
 
-export function applyReconciledPrzelewy24Payment(
-  products: InventoryProduct[],
+function validatePrzelewy24TransactionForOrder(
   order: Przelewy24StoredOrder,
-  transaction: Przelewy24TransactionDetails,
-  now = new Date().toISOString()
+  transaction: Przelewy24TransactionDetails
 ) {
   if (
     order.paymentProvider !== "PRZELEWY24" ||
@@ -628,6 +627,15 @@ export function applyReconciledPrzelewy24Payment(
   ) {
     throw new Error("PRZELEWY24_ORDER_ID_MISMATCH")
   }
+}
+
+export function applyReconciledPrzelewy24Payment(
+  products: InventoryProduct[],
+  order: Przelewy24StoredOrder,
+  transaction: Przelewy24TransactionDetails,
+  now = new Date().toISOString()
+) {
+  validatePrzelewy24TransactionForOrder(order, transaction)
 
   if (
     (order.paymentStatus === "PAID" ||
@@ -662,6 +670,63 @@ export function applyReconciledPrzelewy24Payment(
 
   void products
   return "paid" as const
+}
+
+export function applyReturnedPrzelewy24Payment(
+  products: InventoryProduct[],
+  order: Przelewy24StoredOrder,
+  transaction: Przelewy24TransactionDetails,
+  now = new Date().toISOString()
+) {
+  validatePrzelewy24TransactionForOrder(order, transaction)
+
+  if (transaction.status !== 3) {
+    throw new Error("PRZELEWY24_TRANSACTION_NOT_RETURNED")
+  }
+
+  if (
+    order.paymentStatus === "REFUNDED" &&
+    order.status === "CANCELLED" &&
+    order.p24OrderId === transaction.orderId
+  ) {
+    order.paymentReconciledAt = now
+    return "unchanged" as const
+  }
+
+  if (
+    order.status === "SHIPPED" ||
+    order.inventoryReservationStatus === "FINALIZED"
+  ) {
+    throw new Error("PRZELEWY24_RETURNED_PAYMENT_REQUIRES_REVIEW")
+  }
+  if (
+    order.inventoryReservationStatus !== "RESERVED" &&
+    order.inventoryReservationStatus !== "RELEASED"
+  ) {
+    throw new Error("PRZELEWY24_INVENTORY_NOT_RESERVED")
+  }
+  if (!order.items?.length) {
+    throw new Error("INVENTORY_RESERVATION_MISSING_ITEMS")
+  }
+
+  if (order.inventoryReservationStatus === "RESERVED") {
+    releaseInventory(products, order.items)
+    order.inventoryReservationStatus = "RELEASED"
+    order.inventoryReleasedAt = order.inventoryReleasedAt ?? now
+  }
+
+  order.paymentStatus = "REFUNDED"
+  order.refundStatus = "succeeded"
+  order.p24OrderId = transaction.orderId
+  order.paymentUpdatedAt = now
+  order.paymentReconciledAt = now
+  order.refundedAt = order.refundedAt ?? now
+  order.status = "CANCELLED"
+  order.cancelledAt = order.cancelledAt ?? now
+  order.p24VerificationPending = null
+  order.p24VerificationPendingAt = null
+
+  return "returned" as const
 }
 
 export function stagePrzelewy24Verification(
