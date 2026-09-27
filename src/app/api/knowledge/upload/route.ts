@@ -57,71 +57,71 @@ export async function POST(req: Request) {
 
     try {
       fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
-    fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
-
-    let addedCount = 0
-    let learned = false
-
-    try {
-      if ([".xlsx", ".xls", ".xlsm"].includes(extension)) {
-        const result = await parseExcel(buffer, filename, undefined, {
-          apiKey: transientApiKey,
-          modelId: "gemini-1.5-flash",
-          signal: knowledgeSignal,
-        })
-        addedCount = result.count
-        learned = addedCount > 0
-      } else if (extension === ".pdf" && transientApiKey) {
-        const result = await parsePDFWithAI(
-          buffer,
+      fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
+  
+      let addedCount = 0
+      let learned = false
+  
+      try {
+        if ([".xlsx", ".xls", ".xlsm"].includes(extension)) {
+          const result = await parseExcel(buffer, filename, undefined, {
+            apiKey: transientApiKey,
+            modelId: "gemini-1.5-flash",
+            signal: knowledgeSignal,
+          })
+          addedCount = result.count
+          learned = addedCount > 0
+        } else if (extension === ".pdf" && transientApiKey) {
+          const result = await parsePDFWithAI(
+            buffer,
+            filename,
+            transientApiKey,
+            "gemini-1.5-flash",
+            [],
+            undefined,
+            knowledgeSignal
+          )
+          addedCount = result.count
+          learned = addedCount > 0
+        }
+  
+        const store = await getKnowledge()
+        store.revision = knowledgeRevision
+        if (!store.sources.includes(filename)) store.sources.push(filename)
+        if (learned && !store.processedSources.includes(filename)) {
+          store.processedSources.push(filename)
+        }
+        store.lastUpdated = new Date().toISOString()
+        await saveKnowledge(store, knowledgeSignal)
+      } catch (processingError) {
+        const canRemoveUpload = await canSafelyRemoveFailedKnowledgeUpload(
           filename,
-          transientApiKey,
-          "gemini-1.5-flash",
-          [],
-          undefined,
-          knowledgeSignal
+          getKnowledge
         )
-        addedCount = result.count
-        learned = addedCount > 0
+  
+        if (canRemoveUpload) {
+          fs.rmSync(absolutePath, { force: true })
+        } else {
+          console.warn(
+            `Knowledge upload retained after processing failure because persisted state may reference ${filename}.`
+          )
+        }
+  
+        throw processingError
       }
-
-      const store = await getKnowledge()
-      store.revision = knowledgeRevision
-      if (!store.sources.includes(filename)) store.sources.push(filename)
-      if (learned && !store.processedSources.includes(filename)) {
-        store.processedSources.push(filename)
-      }
-      store.lastUpdated = new Date().toISOString()
-      await saveKnowledge(store, knowledgeSignal)
-    } catch (processingError) {
-      const canRemoveUpload = await canSafelyRemoveFailedKnowledgeUpload(
-        filename,
-        getKnowledge
+  
+      return NextResponse.json(
+        {
+          success: true,
+          count: addedCount,
+          learned,
+          filename,
+          message: learned
+            ? `Plik ${filename} został zapisany i przetworzony.`
+            : `Plik ${filename} został bezpiecznie zapisany do późniejszej analizy.`,
+        },
+        { status: 201 }
       )
-
-      if (canRemoveUpload) {
-        fs.rmSync(absolutePath, { force: true })
-      } else {
-        console.warn(
-          `Knowledge upload retained after processing failure because persisted state may reference ${filename}.`
-        )
-      }
-
-      throw processingError
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        count: addedCount,
-        learned,
-        filename,
-        message: learned
-          ? `Plik ${filename} został zapisany i przetworzony.`
-          : `Plik ${filename} został bezpiecznie zapisany do późniejszej analizy.`,
-      },
-      { status: 201 }
-    )
     } finally {
       detachRequestAbort()
     }
