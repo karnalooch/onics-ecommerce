@@ -10,6 +10,7 @@ import {
   hasSkuConflict,
   indexCatalogCategoriesByName,
   indexCatalogProductsBySku,
+  isCatalogCategoryCreateReplay,
   validateCatalogClassification,
 } from "@/lib/catalog"
 
@@ -164,6 +165,39 @@ describe("catalog category identity", () => {
     ).toBe(true)
     expect(
       hasCatalogCategoryNameConflict(categories, "alarmy", "c1")
+    ).toBe(false)
+  })
+
+  it("accepts only semantically identical category creation as replay", () => {
+    const existing = {
+      id: "c1",
+      name: "ALARMY",
+      iconName: "Folder",
+      subcategories: [{ id: "s1", name: "Centrale" }],
+    }
+
+    expect(
+      isCatalogCategoryCreateReplay(existing, {
+        name: " alarmy ",
+        iconName: "Folder",
+        subcategories: [{ name: " centrale " }],
+      })
+    ).toBe(true)
+
+    expect(
+      isCatalogCategoryCreateReplay(existing, {
+        name: "ALARMY",
+        iconName: "Layers",
+        subcategories: [{ name: "Centrale" }],
+      })
+    ).toBe(false)
+
+    expect(
+      isCatalogCategoryCreateReplay(existing, {
+        name: "ALARMY",
+        iconName: "Folder",
+        subcategories: [{ name: "Centrale" }, { name: "Sygnalizatory" }],
+      })
     ).toBe(false)
   })
 
