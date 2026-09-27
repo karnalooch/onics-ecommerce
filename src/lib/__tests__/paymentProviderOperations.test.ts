@@ -9,6 +9,7 @@ describe("payment provider operations summary", () => {
         paymentProvider: "STRIPE",
         status: "PENDING_VERIFICATION",
         paymentStatus: "PENDING",
+        paymentCheckoutRegistrationStatus: "PENDING",
         paymentReconciledAt: "2026-09-26T08:00:00.000Z",
       },
       {
@@ -16,6 +17,7 @@ describe("payment provider operations summary", () => {
         paymentProvider: "STRIPE",
         status: "CONFIRMED",
         paymentStatus: "PAID",
+        stripeCheckoutSessionId: "cs_failed_refund",
         refundStatus: "failed",
         refundUpdatedAt: "2026-09-26T09:30:00.000Z",
         paymentReconciledAt: "2026-09-26T09:00:00.000Z",
@@ -25,6 +27,7 @@ describe("payment provider operations summary", () => {
         paymentProvider: "STRIPE",
         status: "CONFIRMED",
         paymentStatus: "PAID",
+        stripeCheckoutSessionId: "cs_refund_pending",
         refundStatus: "pending",
       },
       {
@@ -58,7 +61,7 @@ describe("payment provider operations summary", () => {
     expect(operations.STRIPE).toMatchObject({
       provider: "STRIPE",
       totalOrders: 3,
-      ordersRequiringAttention: 1,
+      ordersRequiringAttention: 2,
       pendingPayments: 1,
       pendingRefunds: 1,
       failedRefunds: 1,
@@ -66,7 +69,7 @@ describe("payment provider operations summary", () => {
       lastReconciledAt: "2026-09-26T09:00:00.000Z",
       lastErrorAt: "2026-09-26T09:30:00.000Z",
     })
-    expect(operations.STRIPE.actionCounts.CANCEL).toBe(2)
+    expect(operations.STRIPE.actionCounts.CANCEL).toBe(1)
 
     expect(operations.BANK_TRANSFER).toMatchObject({
       provider: "BANK_TRANSFER",
