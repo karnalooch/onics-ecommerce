@@ -8,7 +8,7 @@ import { mutateMockData } from "@/store/serverStore";
 import { buildRepairSubmissionFingerprint } from "@/lib/repairSubmissionIdempotency";
 import {
   canDeleteRepair,
-  validateRepairStatusTransition,
+  validateRepairStatusWrite,
   type RepairStatus,
 } from "@/lib/repairLifecycle";
 
@@ -163,33 +163,56 @@ export async function deleteRepairAction(id: string): Promise<ActionState> {
   }
 }
 
-export async function updateStatusAction(id: string, status: string): Promise<ActionState> {
+export async function updateStatusAction(
+  id: string,
+  status: string,
+  expectedStatus: string
+): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
 
   if (!id.trim()) {
     return { success: false, error: "Brak identyfikatora zgłoszenia." };
   }
+  if (!expectedStatus.trim()) {
+    return { success: false, error: "Brak oczekiwanego statusu zgłoszenia." };
+  }
 
   try {
-    await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const repairs = db.repairs as RepairRecord[]
       const repair = repairs.find((entry) => entry.id === id)
       if (!repair) throw new Error("REPAIR_NOT_FOUND")
 
-      const transition = validateRepairStatusTransition(repair.status, status)
-      if (transition === "invalid-status") {
+      const write = validateRepairStatusWrite(
+        repair.status,
+        expectedStatus,
+        status
+      )
+      if (write === "invalid-status") {
         throw new Error("REPAIR_INVALID_STATUS")
       }
-      if (transition === "terminal-status") {
+      if (write === "terminal-status") {
         throw new Error("REPAIR_TERMINAL_STATUS")
+      }
+      if (write === "conflict") {
+        throw new Error("REPAIR_STATUS_CONFLICT")
+      }
+      if (write === "replay") {
+        return { replayed: true }
       }
 
       repair.status = status as RepairStatus
+      return { replayed: false }
     })
 
     revalidatePath("/admin/repairs");
-    return { success: true, message: `Status zmieniony na ${status}` };
+    return {
+      success: true,
+      message: submission.replayed
+        ? `Status już był ustawiony na ${status}.`
+        : `Status zmieniony na ${status}`,
+    };
   } catch (error) {
     if (error instanceof Error && error.message === "REPAIR_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono zgłoszenia." };
@@ -201,6 +224,13 @@ export async function updateStatusAction(id: string, status: string): Promise<Ac
       return {
         success: false,
         error: "Zakończonego zgłoszenia nie można ponownie otworzyć."
+      };
+    }
+    if (error instanceof Error && error.message === "REPAIR_STATUS_CONFLICT") {
+      return {
+        success: false,
+        error:
+          "Status zgłoszenia zmienił się od ostatniego odczytu. Odśwież dane i ponów zmianę."
       };
     }
     return { success: false, error: "Błąd serwera." };

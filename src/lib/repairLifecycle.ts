@@ -41,3 +41,31 @@ export function validateRepairStatusTransition(
   }
   return "ok"
 }
+
+export type RepairStatusWriteResult =
+  | "apply"
+  | "replay"
+  | "conflict"
+  | "invalid-status"
+  | "terminal-status"
+
+export function validateRepairStatusWrite(
+  currentStatus: unknown,
+  expectedStatus: unknown,
+  nextStatus: unknown
+): RepairStatusWriteResult {
+  if (!isRepairStatus(nextStatus)) return "invalid-status"
+
+  const current = String(currentStatus ?? "")
+  const expected = String(expectedStatus ?? "")
+
+  if (current !== expected) {
+    return current === nextStatus ? "replay" : "conflict"
+  }
+
+  const transition = validateRepairStatusTransition(currentStatus, nextStatus)
+  if (transition === "invalid-status") return "invalid-status"
+  if (transition === "terminal-status") return "terminal-status"
+
+  return current === nextStatus ? "replay" : "apply"
+}
