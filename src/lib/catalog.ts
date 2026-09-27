@@ -75,6 +75,51 @@ export function hasCatalogCategoryNameConflict(
   )
 }
 
+export type CatalogCategoryCreateRecord = CatalogCategoryNameRecord & {
+  iconName?: string | null
+  subcategories?: Array<{ name?: string | null }>
+}
+
+function normalizeCategoryIcon(value: unknown) {
+  return String(value ?? "Folder").trim() || "Folder"
+}
+
+function normalizedSubcategoryNames(
+  values: Array<{ name?: string | null }> | undefined
+) {
+  return (values || []).map((subcategory) =>
+    String(subcategory.name ?? "").trim().toLowerCase()
+  )
+}
+
+export function isCatalogCategoryCreateReplay(
+  existing: CatalogCategoryCreateRecord,
+  requested: CatalogCategoryCreateRecord
+) {
+  if (
+    normalizeCatalogCategoryName(existing.name) !==
+      normalizeCatalogCategoryName(requested.name) ||
+    normalizeCategoryIcon(existing.iconName) !==
+      normalizeCategoryIcon(requested.iconName)
+  ) {
+    return false
+  }
+
+  const currentSubcategories = normalizedSubcategoryNames(
+    existing.subcategories
+  )
+  const requestedSubcategories = normalizedSubcategoryNames(
+    requested.subcategories
+  )
+
+  return (
+    currentSubcategories.length === requestedSubcategories.length &&
+    currentSubcategories.every(
+      (name, index) => name === requestedSubcategories[index]
+    )
+  )
+}
+
 export function indexCatalogCategoriesByName<
   T extends CatalogCategoryNameRecord,
 >(categories: T[]) {
