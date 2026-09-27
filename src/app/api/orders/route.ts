@@ -20,7 +20,7 @@ import {
 } from "@/lib/inventoryReservations"
 import { listAvailablePaymentAdminActions } from "@/lib/paymentAdminActions"
 import { describeOrderPaymentLifecycle } from "@/lib/paymentProviders"
-import { sameOrderSubmissionItems } from "@/lib/orderSubmissionIdempotency"
+import { buildOrderSubmissionItemsFingerprint } from "@/lib/orderSubmissionIdempotency"
 
 export const dynamic = "force-dynamic"
 
@@ -77,6 +77,7 @@ type StoredUser = {
 type StoredOrder = InventoryReservationOrder & {
   id?: string
   clientRequestId?: string
+  clientRequestFingerprint?: string
   orderType?: "INQUIRY" | "ORDER" | string
   status?: string
   estimatedDeliveryDays?: number | null
@@ -163,6 +164,9 @@ export async function POST(req: Request) {
       }
 
       const orderStore = db.orders as StoredOrder[]
+      const requestFingerprint = buildOrderSubmissionItemsFingerprint(
+        parsed.data.items
+      )
       const existingOrder = orderStore.find(
         (order) =>
           order.clientRequestId === parsed.data.requestId &&
@@ -173,10 +177,7 @@ export async function POST(req: Request) {
       if (existingOrder) {
         if (
           existingOrder.orderType !== parsed.data.orderType ||
-          !sameOrderSubmissionItems(
-            parsed.data.items,
-            existingOrder.items ?? []
-          )
+          existingOrder.clientRequestFingerprint !== requestFingerprint
         ) {
           throw new Error("ORDER_IDEMPOTENCY_KEY_REUSED")
         }
@@ -220,6 +221,7 @@ export async function POST(req: Request) {
       const order = {
         id: `ORD-${crypto.randomUUID()}`,
         clientRequestId: parsed.data.requestId,
+        clientRequestFingerprint: requestFingerprint,
         orderType: parsed.data.orderType,
         createdAt: new Date().toISOString(),
         status: isHardOrder ? "PENDING_VERIFICATION" : "INQUIRY",
