@@ -888,7 +888,7 @@ async function createStripeCheckout(
       claimed.stripeCheckoutSessionId
     )
     if (!existingSession.url) {
-      throw new Error("Stripe nie zwrócił adresu płatności.")
+      throw new Error("PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN")
     }
 
     return {
@@ -925,9 +925,6 @@ async function createStripeCheckout(
     claimed,
     appUrl
   )
-  if (!session.url) {
-    throw new Error("Stripe nie zwrócił adresu płatności.")
-  }
 
   try {
     await mutateMockData((db) => {
@@ -973,6 +970,10 @@ async function createStripeCheckout(
       throw new Error("PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN")
     }
     throw new Error("PAYMENT_CHECKOUT_AVAILABILITY_CHANGED")
+  }
+
+  if (!session.url) {
+    throw new Error("PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN")
   }
 
   return {
