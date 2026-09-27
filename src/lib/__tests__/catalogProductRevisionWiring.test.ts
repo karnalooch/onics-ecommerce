@@ -9,11 +9,15 @@ function read(relativePath: string) {
 describe("catalog product revision fencing", () => {
   it("publishes normalized revisions and requires a PUT precondition", () => {
     const route = read("src/app/api/products/route.ts")
+    const input = read("src/lib/catalogProductInput.ts")
 
     expect(route).toContain(
       "revision: catalogProductRevision(product.revision)"
     )
-    expect(route).toContain("expectedRevision:")
+    expect(input).toContain("expectedRevision:")
+    expect(route).toContain(
+      "parsed.data.expectedRevision === undefined"
+    )
     expect(route).toContain("{ status: 428 }")
   })
 
