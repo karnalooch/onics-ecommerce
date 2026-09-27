@@ -65,6 +65,8 @@ Aktualny wspierany model produkcyjny:
 - prywatny katalog uploadów poza `public/`,
 - backup/verify/restore przez dostarczone skrypty.
 
+Destrukcyjne mutacje wyekstrahowanej bazy wiedzy (pełny reset i usunięcie pojedynczego snippet-u) zwiększają generation `revision`. Długie treningi rozpoczęte na starszej rewizji failują zamknięcie zamiast odtworzyć usunięte dane. Wiedza pochodząca wyłącznie z live katalogu produktów nie jest usuwana przez endpoint snippetów.
+
 Nie uruchamiać wielu writerów przeciwko temu samemu JSON DB. Horizontal scaling wymaga migracji do prawdziwej transakcyjnej bazy danych.
 
 Nie traktować `src/data/db.json` jako docelowej produkcyjnej lokalizacji persistence.
