@@ -191,6 +191,72 @@ describe("knowledge storage boundary", () => {
     })
   })
 
+  it("rejects stale training output after the knowledge store was reset", () => {
+    expect(() =>
+      buildMergedKnowledgePersistence(
+        {
+          products: [],
+          knowledgeEntries: {},
+          knowledgeMeta: {
+            revision: 2,
+            sources: [],
+            processedSources: [],
+            lastUpdated: "2026-09-27T03:00:00.000Z",
+          },
+        },
+        {
+          revision: 1,
+          lastUpdated: "2026-09-27T02:00:00.000Z",
+          sources: ["stale.xlsx"],
+          processedSources: ["stale.xlsx"],
+          knowledge: {
+            "STALE-1": {
+              specs: "Must not be resurrected",
+              price: 10,
+              currency: "PLN",
+              source: "stale.xlsx",
+            },
+          },
+        }
+      )
+    ).toThrow("KNOWLEDGE_STORE_RESET_DURING_TRAINING")
+  })
+
+  it("keeps the active generation on a valid merged persistence write", () => {
+    const merged = buildMergedKnowledgePersistence(
+      {
+        products: [],
+        knowledgeEntries: {},
+        knowledgeMeta: {
+          revision: 3,
+          sources: [],
+          processedSources: [],
+          lastUpdated: "2026-09-27T03:00:00.000Z",
+        },
+      },
+      {
+        revision: 3,
+        lastUpdated: "2026-09-27T03:01:00.000Z",
+        sources: ["current.xlsx"],
+        processedSources: ["current.xlsx"],
+        knowledge: {
+          "CURRENT-1": {
+            specs: "Current generation",
+            price: 20,
+            currency: "PLN",
+            source: "current.xlsx",
+          },
+        },
+      }
+    )
+
+    expect(merged.knowledgeMeta.revision).toBe(3)
+    expect(merged.knowledgeEntries["CURRENT-1"]).toMatchObject({
+      source: "current.xlsx",
+      price: 20,
+    })
+  })
+
   it("ignores malformed persisted knowledge entries", () => {
     const store = buildKnowledgeFromDb({
       products: [],
