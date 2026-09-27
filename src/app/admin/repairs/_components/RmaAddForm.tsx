@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useRef, useState } from "react"
 import { Loader2, Save, X } from "lucide-react"
 import { addRepairAction } from "../_actions"
 import type { AdminRma } from "../RepairsDashboardClient"
@@ -12,6 +12,7 @@ export function RmaAddForm({
   onClose: () => void
   onAdd: (rma: AdminRma) => void
 }) {
+  const submissionRef = useRef<{ signature: string; requestId: string } | null>(null)
   const [client, setClient] = useState("")
   const [item, setItem] = useState("")
   const [serial, setSerial] = useState("")
@@ -24,7 +25,21 @@ export function RmaAddForm({
     setSaving(true)
     setError("")
 
+    const submissionSignature = JSON.stringify({
+      client: client.trim(),
+      item: item.trim(),
+      serial: serial.trim() || "N/A",
+      description: description.trim(),
+    })
+    if (submissionRef.current?.signature !== submissionSignature) {
+      submissionRef.current = {
+        signature: submissionSignature,
+        requestId: crypto.randomUUID(),
+      }
+    }
+
     const formData = new FormData()
+    formData.set("requestId", submissionRef.current.requestId)
     formData.set("client", client)
     formData.set("item", item)
     formData.set("serial", serial)
