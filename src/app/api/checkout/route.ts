@@ -60,10 +60,13 @@ function paymentErrorResponse(
   const registrationUncertain =
     code === "PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN"
   const idempotencyConflict = code === "PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED"
+  const staleStripeRetry =
+    code === "PAYMENT_CHECKOUT_RETRY_WINDOW_EXPIRED"
   const checkoutConflict =
     code === "CHECKOUT_STATE_CHANGED" ||
     inventoryConflict ||
-    idempotencyConflict
+    idempotencyConflict ||
+    staleStripeRetry
 
   const message =
     code === "CHECKOUT_ROLE_NOT_ALLOWED"
@@ -72,6 +75,8 @@ function paymentErrorResponse(
         ? "Nie można bezpiecznie ponowić tej rejestracji płatności. Zamówienie zostało zachowane do weryfikacji, aby uniknąć podwójnego obciążenia."
       : code === "PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED"
         ? "Identyfikator żądania płatności został już użyty dla innego checkoutu. Odśwież koszyk i spróbuj ponownie."
+      : code === "PAYMENT_CHECKOUT_RETRY_WINDOW_EXPIRED"
+        ? "Nie można automatycznie wznowić starego checkoutu Stripe. Zamówienie wymaga weryfikacji operatora, aby nie utworzyć drugiej sesji płatności."
       : code === "CHECKOUT_STATE_CHANGED"
         ? "Koszyk zmienił się podczas tworzenia płatności. Odśwież ceny i spróbuj ponownie."
         : code === "PAYMENTS_DISABLED"
