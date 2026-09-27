@@ -21,6 +21,10 @@ import {
 import { listAvailablePaymentAdminActions } from "@/lib/paymentAdminActions"
 import { describeOrderPaymentLifecycle } from "@/lib/paymentProviders"
 import { buildOrderSubmissionItemsFingerprint } from "@/lib/orderSubmissionIdempotency"
+import {
+  buildAdminOrderStateToken,
+  isAdminOrderUpdateReplay,
+} from "@/lib/orderAdminState"
 
 export const dynamic = "force-dynamic"
 
@@ -45,6 +49,10 @@ const AdminOrderItemSchema = z.object({
 
 const UpdateOrderSchema = z.object({
   id: z.string().min(1),
+  expectedStateToken: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
   status: z.enum([
     "PENDING_VERIFICATION",
     "INQUIRY",
@@ -125,6 +133,7 @@ function withPaymentLifecycle(
   return includeAdminActions
     ? {
         ...described,
+        adminStateToken: buildAdminOrderStateToken(order),
         paymentAdminActions: listAvailablePaymentAdminActions(order),
       }
     : described
@@ -321,13 +330,37 @@ export async function PUT(req: Request) {
       )
     }
 
-    const updatedOrder = await mutateMockData((db) => {
+    if (parsed.data.expectedStateToken === undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Aktualizacja zamówienia wymaga expectedStateToken z ostatniego odczytu.",
+        },
+        { status: 428 }
+      )
+    }
+
+    const submission = await mutateMockData((db) => {
       const orderStore = db.orders as StoredOrder[]
       const index = orderStore.findIndex((order) => order.id === parsed.data.id)
 
       if (index === -1) throw new Error("ORDER_NOT_FOUND")
 
       const currentOrder = orderStore[index]
+      const { expectedStateToken, ...requestedUpdate } = parsed.data
+      const currentStateToken = buildAdminOrderStateToken(currentOrder)
+
+      if (expectedStateToken !== currentStateToken) {
+        if (isAdminOrderUpdateReplay(currentOrder, requestedUpdate)) {
+          return { order: currentOrder, replayed: true }
+        }
+        throw new Error("ORDER_STATE_CONFLICT")
+      }
+
+      if (isAdminOrderUpdateReplay(currentOrder, requestedUpdate)) {
+        return { order: currentOrder, replayed: true }
+      }
+
       const statusTransition = validateStripeOrderStatusTransition(
         currentOrder.stripeCheckoutSessionId,
         currentOrder.paymentStatus,
@@ -407,13 +440,31 @@ export async function PUT(req: Request) {
       }
 
       orderStore[index] = nextOrder
-      return nextOrder
+      return { order: nextOrder, replayed: false }
     })
 
-    return NextResponse.json(withPaymentLifecycle(updatedOrder, true))
+    return NextResponse.json(
+      withPaymentLifecycle(submission.order, true),
+      {
+        headers: submission.replayed
+          ? { "Idempotency-Replayed": "true" }
+          : undefined,
+      }
+    )
   } catch (error) {
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 })
+    }
+
+    if (error instanceof Error && error.message === "ORDER_STATE_CONFLICT") {
+      return NextResponse.json(
+        {
+          error:
+            "Zamówienie zmieniło się od ostatniego odczytu. Odśwież dane i ponów zmianę.",
+          code: "ORDER_STATE_CONFLICT",
+        },
+        { status: 409 }
+      )
     }
 
     if (
