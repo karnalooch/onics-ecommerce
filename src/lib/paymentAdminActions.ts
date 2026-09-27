@@ -23,6 +23,7 @@ export type PaymentAdminActionOrder = PaymentProviderOrderIdentity & {
   status?: unknown
   paymentStatus?: unknown
   refundStatus?: unknown
+  refundRequestedAt?: unknown
   returnStatus?: unknown
 }
 
@@ -208,8 +209,7 @@ export function isPaymentAdminActionResume(
     provider === "STRIPE" &&
     status !== "CANCELLED" &&
     paymentStatus === "PAID" &&
-    typeof (order as PaymentAdminActionOrder & { refundRequestedAt?: unknown })
-      .refundRequestedAt === "string"
+    typeof order.refundRequestedAt === "string"
   ) {
     return true
   }
