@@ -91,6 +91,7 @@ export type Przelewy24StoredOrder = InventoryReservationOrder & {
   paymentProvider?: unknown
   totalPriceFinal?: number | null
   paymentStatus?: string | null
+  paymentCheckoutRegistrationStatus?: string | null
   p24SessionId?: string | null
   p24OrderId?: Przelewy24OrderId | null
   p24LastNotificationSign?: string | null
