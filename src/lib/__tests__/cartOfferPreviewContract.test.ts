@@ -73,9 +73,9 @@ describe("cart offer preview response contract", () => {
         ...response,
         items: [
           response.items[0],
-          { ...response.items[1], id: "p1", quantity: 2, lineTotalNet: 24.68 },
+          { ...response.items[1], id: "p1", quantity: 2, lineTotalNet: 10 },
         ],
-        totalNet: 49.36,
+        totalNet: 34.68,
       })
     ).toThrow(/zduplikowany/)
 
