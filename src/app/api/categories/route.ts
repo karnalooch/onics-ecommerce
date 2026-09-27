@@ -294,6 +294,13 @@ export async function PUT(req: Request) {
         throw new Error("CATEGORY_NAME_EXISTS")
       }
 
+      if (isCategoryUpdateReplay(current, parsed.data, nextSubcategories)) {
+        return {
+          category: { ...current, revision: currentRevision },
+          replayed: true,
+        }
+      }
+
       if (parsed.data.subcategories) {
         const removedReferencedSubcategoryIds =
           findRemovedReferencedSubcategoryIds(
@@ -402,17 +409,48 @@ export async function DELETE(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const id = new URL(req.url).searchParams.get("id")
+  const url = new URL(req.url)
+  const id = url.searchParams.get("id")
+  const rawExpectedRevision = url.searchParams.get("expectedRevision")
   if (!id) {
     return NextResponse.json({ error: "Brak ID kategorii." }, { status: 400 })
   }
+  if (rawExpectedRevision === null) {
+    return NextResponse.json(
+      {
+        error:
+          "Usunięcie kategorii wymaga expectedRevision z ostatniego odczytu.",
+      },
+      { status: 428 }
+    )
+  }
+
+  const parsedRevision = z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .safeParse(rawExpectedRevision)
+  if (!parsedRevision.success) {
+    return NextResponse.json(
+      { error: "Nieprawidłowy expectedRevision." },
+      { status: 400 }
+    )
+  }
 
   try {
-    await mutateMockData((db) => {
+    const result = await mutateMockData((db) => {
       const categoryStore = db.categories as Category[]
       const index = categoryStore.findIndex((category) => category.id === id)
 
-      if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
+      if (index === -1) return { replayed: true }
+
+      const category = categoryStore[index]
+      if (
+        catalogCategoryRevision(category.revision) !== parsedRevision.data
+      ) {
+        throw new Error("CATEGORY_REVISION_CONFLICT")
+      }
+
       if (
         hasCategoryProductReference(
           db.products as CatalogCategoryReference[],
@@ -422,14 +460,29 @@ export async function DELETE(req: Request) {
         throw new Error("CATEGORY_IN_USE")
       }
       categoryStore.splice(index, 1)
+      return { replayed: false }
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json(
+      { success: true },
+      {
+        headers: result.replayed
+          ? { "Idempotency-Replayed": "true" }
+          : undefined,
+      }
+    )
   } catch (error) {
-    if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_REVISION_CONFLICT"
+    ) {
       return NextResponse.json(
-        { error: "Nie znaleziono kategorii." },
-        { status: 404 }
+        {
+          error:
+            "Kategoria zmieniła się od ostatniego odczytu. Odśwież dane przed usunięciem.",
+          code: "CATEGORY_REVISION_CONFLICT",
+        },
+        { status: 409 }
       )
     }
     if (error instanceof Error && error.message === "CATEGORY_IN_USE") {
