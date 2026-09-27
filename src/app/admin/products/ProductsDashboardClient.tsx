@@ -190,12 +190,15 @@ export function ProductsDashboardClient({
     );
   };
 
-  const handleDeleteProduct = async (id: string) => {
+  const handleDeleteProduct = async (
+    id: string,
+    expectedRevision: number
+  ) => {
     if (!window.confirm("Usunąć ten produkt z katalogu?")) return;
 
     try {
       const response = await fetch(
-        `/api/products?id=${encodeURIComponent(id)}`,
+        `/api/products?id=${encodeURIComponent(id)}&expectedRevision=${encodeURIComponent(expectedRevision)}`,
         { method: "DELETE" }
       );
       if (!response.ok) {
