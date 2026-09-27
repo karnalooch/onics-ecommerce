@@ -24,6 +24,7 @@ import {
   isCatalogProductStateEqual,
   isCatalogProductUpdateReplay,
   indexCatalogCategoriesByName,
+  indexCatalogManufacturersByName,
   indexCatalogProductsBySku,
   indexCatalogSubcategoriesByName,
   nextCatalogCategoryRevision,
@@ -149,6 +150,7 @@ export async function POST(req: Request) {
         const categoryStore = db.categories as CategoryRecord[]
         const manufacturerStore =
           db.manufacturers as CatalogManufacturerRecord[]
+        indexCatalogManufacturersByName(manufacturerStore)
         const productBySku = indexCatalogProductsBySku(productStore)
         const categoryByName = indexCatalogCategoriesByName(categoryStore)
         const categoryById = new Map(
@@ -299,6 +301,18 @@ export async function POST(req: Request) {
           {
             error:
               "Katalog zawiera zduplikowane nazwy podkategorii. Usuń konflikt przed importem WF-Mag.",
+          },
+          { status: 409 }
+        )
+      }
+      if (
+        error instanceof Error &&
+        error.message === "CATALOG_DUPLICATE_MANUFACTURER_NAME"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Rejestr producentów zawiera zduplikowane nazwy. Usuń konflikt przed importem WF-Mag.",
           },
           { status: 409 }
         )
