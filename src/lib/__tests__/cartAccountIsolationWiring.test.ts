@@ -52,6 +52,14 @@ describe("persisted cart account isolation wiring", () => {
       path.join(process.cwd(), "src/components/ui/AddToCartButton.tsx"),
       "utf8"
     )
+    const b2bOfferPage = fs.readFileSync(
+      path.join(process.cwd(), "src/app/(b2b)/oferty/page.tsx"),
+      "utf8"
+    )
+    const b2bOfferGrid = fs.readFileSync(
+      path.join(process.cwd(), "src/components/ui/B2BDashboardGrid.tsx"),
+      "utf8"
+    )
 
     expect(shop).toContain("useCartOwnerBinding")
     expect(shop).toContain("if (!cartOwnerReady)")
@@ -67,5 +75,10 @@ describe("persisted cart account isolation wiring", () => {
     expect(addButton).toContain("useCartOwnerBinding")
     expect(addButton).toContain("if (!cartOwnerReady || !ownerKey) return")
     expect(addButton).toContain("disabled={!cartOwnerReady || !ownerKey}")
+    expect(b2bOfferPage).toContain("buildCartOwnerKey(sessionUser)")
+    expect(b2bOfferPage).toContain("ownerKey={cartOwnerKey}")
+    expect(b2bOfferGrid).toContain("useCartOwnerBinding")
+    expect(b2bOfferGrid).toContain("if (!cartOwnerReady) return")
+    expect(b2bOfferGrid).toContain("!available || !cartOwnerReady")
   })
 })
