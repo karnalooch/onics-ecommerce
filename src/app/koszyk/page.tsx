@@ -463,13 +463,21 @@ export default function CartPage() {
         id: item.id,
         quantity: item.quantity,
       }));
+      let submissionStorage: Storage | null = null;
+      try {
+        submissionStorage = window.sessionStorage;
+      } catch {
+        // Idempotency still works server-side for this request even when
+        // browser session storage is unavailable.
+      }
+
       const requestId = getOrCreateOrderSubmissionRequestId(
         {
           ownerKey: ownerScope.ownerKey,
           orderType: action,
           items: submittedItems,
         },
-        window.sessionStorage,
+        submissionStorage,
         () => crypto.randomUUID()
       );
 
@@ -505,7 +513,7 @@ export default function CartPage() {
         );
       }
 
-      clearOrderSubmissionRequestId(requestId, window.sessionStorage);
+      clearOrderSubmissionRequestId(requestId, submissionStorage);
       toast.success(
         action === "ORDER"
           ? "Zamówienie weryfikacyjne wysłane. Administrator nada termin dostawy."
