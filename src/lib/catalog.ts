@@ -299,20 +299,19 @@ export function hasManufacturerProductReference(
 export function ensureManufacturerRecord(
   manufacturers: CatalogManufacturerRecord[],
   name: unknown,
-  id: string
+  id: string,
+  manufacturerByName = indexCatalogManufacturersByName(manufacturers)
 ) {
   const displayName = String(name ?? "").trim()
   if (!displayName) return null
 
   const normalizedName = normalizeCatalogManufacturerName(displayName)
-  const existing = manufacturers.find(
-    (manufacturer) =>
-      normalizeCatalogManufacturerName(manufacturer.name) === normalizedName
-  )
+  const existing = manufacturerByName.get(normalizedName)
   if (existing) return existing
 
   const created = { id, name: displayName }
   manufacturers.push(created)
+  manufacturerByName.set(normalizedName, created)
   return created
 }
 
