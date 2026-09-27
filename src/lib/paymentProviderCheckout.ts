@@ -951,13 +951,21 @@ async function createStripeCheckout(
   } catch (error) {
     if (!isCheckoutAvailabilityFenceError(error)) throw error
 
-    await settleStripeCheckoutAvailabilityRace(
-      stripe,
-      input,
-      fingerprint,
-      orderId,
-      session
-    )
+    try {
+      await settleStripeCheckoutAvailabilityRace(
+        stripe,
+        input,
+        fingerprint,
+        orderId,
+        session
+      )
+    } catch (settleError) {
+      console.error(
+        "Nie udało się domknąć Stripe po zmianie dostępności checkoutu:",
+        settleError
+      )
+      throw new Error("PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN")
+    }
     throw new Error("PAYMENT_CHECKOUT_AVAILABILITY_CHANGED")
   }
 
