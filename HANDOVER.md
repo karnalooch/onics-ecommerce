@@ -1,7 +1,7 @@
 # CEL-TRONICS Ecommerce — Handover
 
 Stan referencyjny: **26.09.2026**  
-Bazowy `main`: **`25dfc8c5`**
+Bazowy `main`: **`c65b164c`**
 
 > [!IMPORTANT]
 > Ten plik jest krótkim punktem wejścia do aktualnej architektury i zasad pracy.
@@ -126,7 +126,7 @@ Właściwości:
 - UTF-8 fail-closed,
 - brak DTD/ENTITY/CDATA/comments/namespaces/rozszerzeń,
 - ceny/nazwy/rabaty/stock zawsze pochodzą z serwera,
-- preview pokazuje accepted/rejected przed zmianą koszyka,
+- preview pokazuje accepted/rejected przed zmianą koszyka,\n- klient parsuje wybrany XML tym samym ścisłym kontraktem i akceptuje odpowiedź preview tylko wtedy, gdy dokładnie pokrywa wszystkie zagregowane SKU, ilości i linie źródłowe z requestu, nie ma duplikatów/nadmiarowych pozycji, ma poprawne ceny i spójne liczniki summary; niespójna odpowiedź failuje zamknięcie przed renderem i przed zmianą koszyka,
 - klient nie scala importu z istniejącą pozycją, jeśli łączna ilość przekroczyłaby wspólny limit 10000 szt.; pominięcie jest jawnie raportowane,
 - finalny checkout ponownie waliduje połączony koszyk.
 
