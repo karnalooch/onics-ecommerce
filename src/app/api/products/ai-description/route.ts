@@ -107,7 +107,10 @@ export async function POST(req: Request) {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { temperature: 0, maxOutputTokens: 300 },
         }),
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.any([
+          req.signal,
+          AbortSignal.timeout(15000),
+        ]),
       })
 
       if (response.ok) {
@@ -134,6 +137,10 @@ export async function POST(req: Request) {
     }
 
     await mutateMockData((db) => {
+      if (req.signal.aborted) {
+        throw new Error("REQUEST_ABORTED")
+      }
+
       const currentActor = findStoredUserBySession(
         db.users as StoredActor[],
         authCheck.user
@@ -172,6 +179,12 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
+    if (req.signal.aborted || code === "REQUEST_ABORTED") {
+      return NextResponse.json(
+        { error: "Żądanie generowania opisu zostało przerwane." },
+        { status: 499 }
+      )
+    }
     if (code === "ADMIN_ACCESS_REVOKED") {
       return NextResponse.json(
         {
