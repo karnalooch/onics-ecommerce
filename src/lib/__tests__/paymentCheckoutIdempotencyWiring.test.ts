@@ -30,6 +30,7 @@ describe("payment checkout idempotency wiring", () => {
     expect(route).toContain("clientRequestId: parsed.data.requestId")
     expect(route).toContain("PAYMENT_CHECKOUT_IDEMPOTENCY_KEY_REUSED")
     expect(route).toContain("PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN")
+    expect(route).toContain("PAYMENT_CHECKOUT_RETRY_WINDOW_EXPIRED")
   })
 
   it("checks local replay before a second bank-transfer stock reservation", () => {
