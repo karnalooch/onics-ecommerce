@@ -18,12 +18,16 @@ import {
 import {
   assertCatalogClassification,
   buildWfMagCatalogProduct,
+  catalogProductRevision,
   ensureManufacturerRecord,
   hasSkuConflict,
+  isCatalogProductStateEqual,
+  isCatalogProductUpdateReplay,
   indexCatalogCategoriesByName,
   indexCatalogProductsBySku,
   indexCatalogSubcategoriesByName,
   nextCatalogCategoryRevision,
+  nextCatalogProductRevision,
   normalizeCatalogSubcategoryName,
   type CatalogManufacturerRecord,
 } from "@/lib/catalog"
@@ -105,7 +109,10 @@ export async function GET() {
 
   return NextResponse.json(
     await buildProductCatalogView(
-      products as ProductCatalogRecord[],
+      (products as ProductCatalogRecord[]).map((product) => ({
+        ...product,
+        revision: catalogProductRevision(product.revision),
+      })),
       users as ProductCatalogUser[],
       categories as ProductCatalogCategory[],
       sessionUser
@@ -222,6 +229,7 @@ export async function POST(req: Request) {
           )
 
           if (existing) {
+            const beforeUpdate = { ...existing }
             if (item.price !== undefined) existing.price = item.price
             if (item.stock !== undefined) {
               if (
@@ -241,6 +249,11 @@ export async function POST(req: Request) {
             if (categoryId) {
               existing.categoryId = categoryId
               existing.subcategoryId = subcategoryId
+            }
+            if (!isCatalogProductStateEqual(beforeUpdate, existing)) {
+              existing.revision = nextCatalogProductRevision(
+                beforeUpdate.revision
+              )
             }
             updatedCount += 1
           } else {
@@ -334,6 +347,7 @@ export async function POST(req: Request) {
       const product: ProductRecord = {
         ...parsed.data,
         id: `p_${crypto.randomUUID()}`,
+        revision: 0,
       } as ProductRecord
       productStore.push(product)
       return product
@@ -372,46 +386,97 @@ export async function PUT(req: Request) {
     )
   }
 
+  if (parsed.data.expectedRevision === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Aktualizacja produktu wymaga expectedRevision z ostatniego odczytu.",
+      },
+      { status: 428 }
+    )
+  }
+
   try {
-    const updated = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const productStore = db.products as ProductRecord[]
       const index = productStore.findIndex(
         (product) => product.id === parsed.data.id
       )
 
       if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
-      if (hasSkuConflict(productStore, parsed.data.sku, parsed.data.id)) {
+
+      const current = productStore[index]
+      const currentRevision = catalogProductRevision(current.revision)
+      const { expectedRevision, ...updateData } = parsed.data
+
+      if (expectedRevision !== currentRevision) {
+        if (isCatalogProductUpdateReplay(current, updateData)) {
+          return {
+            product: { ...current, revision: currentRevision },
+            replayed: true,
+          }
+        }
+        throw new Error("PRODUCT_REVISION_CONFLICT")
+      }
+
+      if (isCatalogProductUpdateReplay(current, updateData)) {
+        return {
+          product: { ...current, revision: currentRevision },
+          replayed: true,
+        }
+      }
+
+      if (hasSkuConflict(productStore, updateData.sku, updateData.id)) {
         throw new Error("SKU_EXISTS")
       }
       assertCatalogClassification(
         db.categories as CategoryRecord[],
-        parsed.data.categoryId,
-        parsed.data.subcategoryId
+        updateData.categoryId,
+        updateData.subcategoryId
       )
       if (
         shouldDeferProductStockWrite(
           db.orders as InventoryReservationOrder[],
-          parsed.data.id,
-          productStore[index].stock,
-          parsed.data.stock
+          updateData.id,
+          current.stock,
+          updateData.stock
         )
       ) {
         throw new Error("PRODUCT_STOCK_RESERVED")
       }
 
-      productStore[index] = {
-        ...productStore[index],
-        ...parsed.data,
+      const nextProduct: ProductRecord = {
+        ...current,
+        ...updateData,
+        revision: nextCatalogProductRevision(currentRevision),
       }
-      return productStore[index]
+      productStore[index] = nextProduct
+      return { product: nextProduct, replayed: false }
     })
 
-    return NextResponse.json(updated)
+    return NextResponse.json(submission.product, {
+      headers: submission.replayed
+        ? { "Idempotency-Replayed": "true" }
+        : undefined,
+    })
   } catch (error) {
     if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono produktu." },
         { status: 404 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "PRODUCT_REVISION_CONFLICT"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Produkt zmienił się od ostatniego odczytu. Odśwież dane i ponów zmianę.",
+          code: "PRODUCT_REVISION_CONFLICT",
+        },
+        { status: 409 }
       )
     }
     if (error instanceof Error && error.message === "SKU_EXISTS") {
@@ -447,9 +512,32 @@ export async function DELETE(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const id = new URL(req.url).searchParams.get("id")
+  const url = new URL(req.url)
+  const id = url.searchParams.get("id")
+  const rawExpectedRevision = url.searchParams.get("expectedRevision")
   if (!id) {
     return NextResponse.json({ error: "Brak ID produktu." }, { status: 400 })
+  }
+  if (rawExpectedRevision === null) {
+    return NextResponse.json(
+      {
+        error:
+          "Usunięcie produktu wymaga expectedRevision z ostatniego odczytu.",
+      },
+      { status: 428 }
+    )
+  }
+
+  const parsedRevision = z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .safeParse(rawExpectedRevision)
+  if (!parsedRevision.success) {
+    return NextResponse.json(
+      { error: "Nieprawidłowa wersja produktu." },
+      { status: 400 }
+    )
   }
 
   try {
@@ -457,6 +545,13 @@ export async function DELETE(req: Request) {
       const productStore = db.products as ProductRecord[]
       const index = productStore.findIndex((product) => product.id === id)
       if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
+
+      const product = productStore[index]
+      if (
+        catalogProductRevision(product.revision) !== parsedRevision.data
+      ) {
+        throw new Error("PRODUCT_REVISION_CONFLICT")
+      }
       if (
         hasInventoryLifecycleDependencyForProduct(
           db.orders as InventoryReservationOrder[],
@@ -474,6 +569,19 @@ export async function DELETE(req: Request) {
       return NextResponse.json(
         { error: "Nie znaleziono produktu." },
         { status: 404 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "PRODUCT_REVISION_CONFLICT"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Produkt zmienił się od ostatniego odczytu. Odśwież dane przed usunięciem.",
+          code: "PRODUCT_REVISION_CONFLICT",
+        },
+        { status: 409 }
       )
     }
     if (
