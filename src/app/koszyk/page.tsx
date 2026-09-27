@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
 import { Trash2, FileText, Send, ShoppingBag, Loader2, UploadCloud, Info, ShieldCheck, CreditCard } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,9 @@ export default function CartPage() {
   const [importPreview, setImportPreview] = useState<OrderImportPreview | null>(null);
   const [importing, setImporting] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const activeCartOwnerRef = useRef<string | null>(null);
+  const ownerGenerationRef = useRef(0);
+  const transientOwnerRef = useRef<string | null | undefined>(undefined);
   const router = useRouter();
 
   // Zabezpieczenie przez Hydration Mismatch przy renderze Local Storage
@@ -149,10 +152,45 @@ export default function CartPage() {
     | { id?: string; email?: string | null }
     | undefined;
   const cartOwnerKey = buildCartOwnerKey(sessionIdentity);
+
+  useLayoutEffect(() => {
+    activeCartOwnerRef.current = cartOwnerKey;
+  }, [cartOwnerKey]);
+
+  const captureCartOwnerScope = () => ({
+    ownerKey: activeCartOwnerRef.current,
+    generation: ownerGenerationRef.current,
+  });
+  const isCartOwnerScopeCurrent = (scope: {
+    ownerKey: string | null;
+    generation: number;
+  }) =>
+    scope.ownerKey === activeCartOwnerRef.current &&
+    scope.generation === ownerGenerationRef.current;
+
   const { cartOwnerReady } = useCartOwnerBinding({
     identityKey: cartOwnerKey,
     resolved: sessionStatus !== "loading",
   });
+
+  useEffect(() => {
+    if (sessionStatus === "loading") return;
+
+    const previousOwner = transientOwnerRef.current;
+    if (previousOwner === undefined) {
+      transientOwnerRef.current = cartOwnerKey;
+      return;
+    }
+    if (previousOwner === cartOwnerKey) return;
+
+    transientOwnerRef.current = cartOwnerKey;
+    ownerGenerationRef.current += 1;
+    setImportPreview(null);
+    setManualPaymentConfirmation(null);
+    setImporting(false);
+    setSubmitting(null);
+    if (importInputRef.current) importInputRef.current.value = "";
+  }, [cartOwnerKey, sessionStatus]);
   const {
     refreshingCart,
     availableStockById,
@@ -211,6 +249,12 @@ export default function CartPage() {
       return;
     }
 
+    const ownerScope = captureCartOwnerScope();
+    if (!ownerScope.ownerKey) {
+      toast.error("Nie udało się potwierdzić właściciela koszyka.");
+      return;
+    }
+
     setImporting(true);
     setImportPreview(null);
 
@@ -231,6 +275,7 @@ export default function CartPage() {
       }
 
       const validatedPreview = validateOrderImportPreview(parsedImport, data);
+      if (!isCartOwnerScopeCurrent(ownerScope)) return;
       setImportPreview(validatedPreview);
 
       if (validatedPreview.accepted.length) {
@@ -241,14 +286,18 @@ export default function CartPage() {
         toast.error("Plik nie zawiera pozycji, które można dodać do koszyka.");
       }
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Nie udało się sprawdzić pliku zamówienia."
-      );
+      if (isCartOwnerScopeCurrent(ownerScope)) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Nie udało się sprawdzić pliku zamówienia."
+        );
+      }
     } finally {
-      setImporting(false);
-      if (importInputRef.current) importInputRef.current.value = "";
+      if (isCartOwnerScopeCurrent(ownerScope)) {
+        setImporting(false);
+        if (importInputRef.current) importInputRef.current.value = "";
+      }
     }
   };
 
@@ -289,6 +338,12 @@ export default function CartPage() {
   };
 
   const handlePaymentCheckout = async (method: CheckoutPaymentMethod) => {
+    const ownerScope = captureCartOwnerScope();
+    if (!ownerScope.ownerKey) {
+      toast.error("Nie udało się potwierdzić właściciela koszyka.");
+      return;
+    }
+
     if (refreshingCart) {
       toast.info("Odświeżam bieżące ceny koszyka. Spróbuj ponownie za chwilę.");
       return;
@@ -330,6 +385,8 @@ export default function CartPage() {
       });
 
       const data = await response.json().catch(() => null);
+      if (!isCartOwnerScopeCurrent(ownerScope)) return;
+
       if (!response.ok) {
         if (response.status === 409) refreshCart();
         throw new Error(
@@ -370,16 +427,23 @@ export default function CartPage() {
       toast.success("Zamówienie utworzone. Instrukcja płatności jest gotowa.");
       setSubmitting(null);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Nie udało się uruchomić płatności."
-      );
-      setSubmitting(null);
+      if (isCartOwnerScopeCurrent(ownerScope)) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Nie udało się uruchomić płatności."
+        );
+        setSubmitting(null);
+      }
     }
   };
 
   const handleAction = async (action: "PDF" | "INQUIRY" | "ORDER") => {
+    const ownerScope = captureCartOwnerScope();
+    if (!ownerScope.ownerKey) {
+      toast.error("Nie udało się potwierdzić właściciela koszyka.");
+      return;
+    }
     if (refreshingCart) {
       toast.info("Odświeżam bieżące ceny koszyka. Spróbuj ponownie za chwilę.");
       return;
@@ -423,6 +487,7 @@ export default function CartPage() {
         }),
       });
       const data = await response.json().catch(() => ({}));
+      if (!isCartOwnerScopeCurrent(ownerScope)) return;
 
       if (!response.ok) {
         if (response.status === 409) refreshCart();
@@ -441,13 +506,17 @@ export default function CartPage() {
       clearCart();
       router.push("/oferty/zamowienia");
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Błąd połączenia. Spróbuj ponownie."
-      );
+      if (isCartOwnerScopeCurrent(ownerScope)) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Błąd połączenia. Spróbuj ponownie."
+        );
+      }
     } finally {
-      setSubmitting(null);
+      if (isCartOwnerScopeCurrent(ownerScope)) {
+        setSubmitting(null);
+      }
     }
   };
 
