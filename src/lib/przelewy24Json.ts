@@ -1,5 +1,6 @@
 const P24_SIGNED_BIGINT_MAX = BigInt("9223372036854775807")
 const BIGINT_ZERO = BigInt(0)
+const JS_MAX_SAFE_INTEGER = BigInt(Number.MAX_SAFE_INTEGER)
 
 export type Przelewy24OrderId = string | number
 
@@ -118,8 +119,19 @@ function quoteIntegerField(
       continue
     }
 
+    const rawInteger = raw.slice(valueStart, valueEnd)
+    const normalized = normalizePrzelewy24OrderId(rawInteger)
+    const requiresExactString =
+      normalized !== null &&
+      BigInt(normalized) > JS_MAX_SAFE_INTEGER
+
+    if (!requiresExactString) {
+      index = valueEnd
+      continue
+    }
+
     output += raw.slice(cursor, valueStart)
-    output += JSON.stringify(raw.slice(valueStart, valueEnd))
+    output += JSON.stringify(rawInteger)
     cursor = valueEnd
     index = valueEnd
   }
