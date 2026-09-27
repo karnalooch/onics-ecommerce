@@ -10,6 +10,7 @@ import { authorizeAPI } from "@/lib/authUtils"
 import {
   KNOWLEDGE_UPLOAD_ROOT,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
+  canSafelyRemoveFailedKnowledgeUpload,
   validateKnowledgeFilename,
 } from "@/lib/knowledge/files"
 import {
@@ -83,7 +84,19 @@ export async function POST(req: Request) {
       store.lastUpdated = new Date().toISOString()
       await saveKnowledge(store)
     } catch (processingError) {
-      fs.rmSync(absolutePath, { force: true })
+      const canRemoveUpload = await canSafelyRemoveFailedKnowledgeUpload(
+        filename,
+        getKnowledge
+      )
+
+      if (canRemoveUpload) {
+        fs.rmSync(absolutePath, { force: true })
+      } else {
+        console.warn(
+          `Knowledge upload retained after processing failure because persisted state may reference ${filename}.`
+        )
+      }
+
       throw processingError
     }
 
