@@ -16,10 +16,21 @@ export function classifyStripeCheckoutForReconciliation(session: {
   return "OPEN"
 }
 
+type StripeReconciliationOrder = StripeCancelableOrder & {
+  paymentCheckoutRegistrationStatus?: string | null
+}
+
 export function shouldReconcileStripeOrder(
-  order: StripeCancelableOrder
+  order: StripeReconciliationOrder
 ) {
-  if (!order.stripeCheckoutSessionId) return false
+  if (!order.stripeCheckoutSessionId) {
+    return (
+      order.paymentStatus === "PENDING" &&
+      order.inventoryReservationStatus === "RESERVED" &&
+      (order.paymentCheckoutRegistrationStatus === "PENDING" ||
+        order.paymentCheckoutRegistrationStatus === "UNCERTAIN")
+    )
+  }
 
   if (
     order.stripeRefundId &&
