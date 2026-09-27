@@ -100,6 +100,7 @@ export default function AdminOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: validatingOrder.id,
+          expectedStateToken: validatingOrder.adminStateToken,
           action: "CANCEL",
         }),
       });
@@ -166,6 +167,7 @@ export default function AdminOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: validatingOrder.id,
+          expectedStateToken: validatingOrder.adminStateToken,
           action,
         }),
       });
@@ -242,6 +244,7 @@ export default function AdminOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: validatingOrder.id,
+          expectedStateToken: validatingOrder.adminStateToken,
           action,
         }),
       });
@@ -347,6 +350,7 @@ export default function AdminOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: validatingOrder.id,
+          expectedStateToken: validatingOrder.adminStateToken,
           action,
         }),
       });
