@@ -1,5 +1,12 @@
 import type { StripeCancelableOrder } from "@/lib/refunds"
 
+export const STRIPE_STAGED_RECOVERY_MAX_AGE_MS = 23 * 60 * 60 * 1000
+
+export type StripeReconciliationOrder = StripeCancelableOrder & {
+  createdAt?: string | null
+  paymentCheckoutRegistrationStatus?: string | null
+}
+
 export type StripeCheckoutReconciliationState =
   | "PAID"
   | "EXPIRED"
@@ -16,10 +23,38 @@ export function classifyStripeCheckoutForReconciliation(session: {
   return "OPEN"
 }
 
-export function shouldReconcileStripeOrder(
-  order: StripeCancelableOrder
+export function isStagedStripeCheckout(
+  order: StripeReconciliationOrder
 ) {
-  if (!order.stripeCheckoutSessionId) return false
+  return (
+    !order.stripeCheckoutSessionId &&
+    order.paymentProvider === "STRIPE" &&
+    order.paymentCheckoutRegistrationStatus === "PENDING" &&
+    order.paymentStatus === "PENDING" &&
+    order.inventoryReservationSource === "STRIPE" &&
+    order.inventoryReservationStatus === "RESERVED"
+  )
+}
+
+export function isStripeStagedRecoveryWithinIdempotencyWindow(
+  order: StripeReconciliationOrder,
+  nowMs = Date.now()
+) {
+  if (!isStagedStripeCheckout(order)) return false
+
+  const createdAt = Date.parse(String(order.createdAt ?? ""))
+  if (!Number.isFinite(createdAt)) return false
+
+  const ageMs = nowMs - createdAt
+  return ageMs >= 0 && ageMs < STRIPE_STAGED_RECOVERY_MAX_AGE_MS
+}
+
+export function shouldReconcileStripeOrder(
+  order: StripeReconciliationOrder
+) {
+  if (!order.stripeCheckoutSessionId) {
+    return isStagedStripeCheckout(order)
+  }
 
   if (
     order.stripeRefundId &&
