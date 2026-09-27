@@ -447,6 +447,11 @@ async function createPrzelewy24Checkout(
     return przelewy24Result(claimed.order)
   }
 
+  const availabilityFence = claimed.availabilityFence
+  if (!availabilityFence) {
+    throw new Error("PAYMENT_CHECKOUT_AVAILABILITY_FENCE_MISSING")
+  }
+
   let registration: Awaited<ReturnType<typeof registerPrzelewy24Transaction>>
   try {
     registration = await registerPrzelewy24Transaction(p24, {
@@ -469,7 +474,7 @@ async function createPrzelewy24Checkout(
         db.paymentControl,
         db.paymentMethods,
         "PRZELEWY24",
-        claimed.availabilityFence
+        availabilityFence
       )
       existing.p24CheckoutRedirectUrl = registration.redirectUrl
       existing.paymentCheckoutRegistrationStatus = "READY"
