@@ -22,7 +22,9 @@ import {
   hasSkuConflict,
   indexCatalogCategoriesByName,
   indexCatalogProductsBySku,
+  indexCatalogSubcategoriesByName,
   nextCatalogCategoryRevision,
+  normalizeCatalogSubcategoryName,
   type CatalogManufacturerRecord,
 } from "@/lib/catalog"
 import {
@@ -187,10 +189,13 @@ export async function POST(req: Request) {
           if (item.isNewSubcategory && item.xlsSubcategoryName && categoryId) {
             const category = categoryById.get(String(categoryId))
             if (category) {
-              let subcategory = category.subcategories.find(
-                (candidate) =>
-                  normalize(candidate.name) ===
-                  normalize(item.xlsSubcategoryName)
+              const subcategoryByName = indexCatalogSubcategoriesByName(
+                category.subcategories
+              )
+              const normalizedSubcategoryName =
+                normalizeCatalogSubcategoryName(item.xlsSubcategoryName)
+              let subcategory = subcategoryByName.get(
+                normalizedSubcategoryName
               )
               if (!subcategory) {
                 subcategory = {
@@ -198,6 +203,10 @@ export async function POST(req: Request) {
                   name: item.xlsSubcategoryName,
                 }
                 category.subcategories.push(subcategory)
+                subcategoryByName.set(
+                  normalizedSubcategoryName,
+                  subcategory
+                )
                 category.revision = nextCatalogCategoryRevision(
                   category.revision
                 )
@@ -265,6 +274,18 @@ export async function POST(req: Request) {
           {
             error:
               "Katalog zawiera zduplikowane nazwy kategorii. Usuń konflikt przed importem WF-Mag.",
+          },
+          { status: 409 }
+        )
+      }
+      if (
+        error instanceof Error &&
+        error.message === "CATALOG_DUPLICATE_SUBCATEGORY_NAME"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Katalog zawiera zduplikowane nazwy podkategorii. Usuń konflikt przed importem WF-Mag.",
           },
           { status: 409 }
         )
