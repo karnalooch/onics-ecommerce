@@ -38,6 +38,7 @@ type ReconcileResult = {
   paymentAction: "PAID" | "RETURNED" | "NONE"
   refundAction: "REISSUED" | "FOUND" | "NONE"
   outcome: "UPDATED" | "UNCHANGED" | "MANUAL_REVIEW" | "FAILED"
+  reviewReason?: string
   error?: string
 }
 
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
     let refundAction: ReconcileResult["refundAction"] = "NONE"
     let updated = false
     let manualReview = false
+    let reviewReason: string | undefined
 
     try {
       const paymentUnresolved =
@@ -188,7 +190,13 @@ export async function POST(req: Request) {
             snapshotOrder.p24SessionId
           )
 
-          if (transaction) {
+          if (
+            !transaction &&
+            snapshotOrder.paymentCheckoutRegistrationStatus === "UNCERTAIN"
+          ) {
+            manualReview = true
+            reviewReason = "PRZELEWY24_REGISTRATION_UNRESOLVED"
+          } else if (transaction) {
             const recovery =
               classifyPrzelewy24TransactionReconciliation(transaction)
 
@@ -331,6 +339,7 @@ export async function POST(req: Request) {
           : updated
             ? "UPDATED"
             : "UNCHANGED",
+        ...(reviewReason ? { reviewReason } : {}),
       })
     } catch (error) {
       const errorCode = error instanceof Error ? error.message : ""
