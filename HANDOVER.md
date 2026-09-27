@@ -1,7 +1,7 @@
 # CEL-TRONICS Ecommerce — Handover
 
 Stan referencyjny: **26.09.2026**  
-Bazowy `main`: **`430abb68`**
+Bazowy `main`: **`b024f1d0`**
 
 > [!IMPORTANT]
 > Ten plik jest krótkim punktem wejścia do aktualnej architektury i zasad pracy.
@@ -105,7 +105,7 @@ Serwer:
 - traktuje dane zapisane w lokalnym koszyku wyłącznie jako cache prezentacyjny; mini-koszyk i pełny koszyk odświeżają bieżące ceny/nazwy oraz informacyjny stock przez chroniony `POST /api/cart/preview`; preview nie rezerwuje magazynu, klient uznaje odpowiedź za wiarygodną tylko gdy zawiera dokładnie ten sam unikalny zestaw product id+quantity co request (bez braków, nadmiarowych ID i duplikatów), a UI blokuje hard ORDER/payment przy oczywistym konflikcie ilości oraz dopóki bieżący zestaw id+quantity nie ma świeżo udanego authoritative preview; błąd preview pozostawia dostępne inquiry/ofertę PDF, ale wymaga retry przed realnym zamówieniem lub płatnością; po transakcyjnym HTTP 409 wymusza świeży preview, a finalne order/payment flow nadal przelicza i waliduje wszystko ponownie,
 - wiąże utrwalony koszyk ze stabilnym owner key konta (preferowane `user.id`, legacy fallback do znormalizowanego e-maila); zmiana konta albo przejście do sesji anonimowej czyści poprzednią zawartość po rehydratacji store, zanim sklep, publiczny katalog `/produkty`, katalog partnera `/oferty`, pełny koszyk lub dedykowana oferta PDF odczytają albo zmodyfikują pozycje; rehydratacja i programowe `replaceItems` failują zamknięcie na malformed, zduplikowanych lub ilościowo niepoprawnych pozycjach zamiast renderować uszkodzony cache,
 - traktuje account-scoped stan przejściowy koszyka (preview importu XML, potwierdzenie płatności manualnej oraz wyniki asynchronicznych import/order/checkout) jako własność bieżącego owner key; zmiana konta czyści ten stan i unieważnia odpowiedzi rozpoczęte dla poprzedniego ownera zanim mogą zmienić UI lub koszyk,\n- traktuje `RETAIL` jako rolę browse-only dla katalogu z ceną bazową; obecny lifecycle zamówień i płatności jest dostępny wyłącznie dla `BIZ` i `ADMIN`,
-- endpointy checkoutu i discovery metod płatności egzekwują tę samą granicę ról na bieżącym rekordzie konta,
+- endpointy checkoutu i discovery metod płatności egzekwują tę samą granicę ról na bieżącym rekordzie konta; klient traktuje odpowiedź discovery jako niezaufaną do czasu runtime validation: wymaga kompletnego, unikalnego zestawu znanych providerów, poprawnych typów/kindów oraz spójnego `available === enabled && configured`, a malformed `200 OK` failuje zamknięcie zamiast włączać transactional UI,
 - rezerwuje stock dla twardych zamówień/płatności zgodnie z inventory state machine,
 - zabezpiecza exactly-once release/finalize/restock.
 
