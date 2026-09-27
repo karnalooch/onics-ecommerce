@@ -150,7 +150,8 @@ export async function POST(req: Request) {
         const categoryStore = db.categories as CategoryRecord[]
         const manufacturerStore =
           db.manufacturers as CatalogManufacturerRecord[]
-        indexCatalogManufacturersByName(manufacturerStore)
+        const manufacturerByName =
+          indexCatalogManufacturersByName(manufacturerStore)
         const productBySku = indexCatalogProductsBySku(productStore)
         const categoryByName = indexCatalogCategoriesByName(categoryStore)
         const categoryById = new Map(
@@ -173,7 +174,8 @@ export async function POST(req: Request) {
             ensureManufacturerRecord(
               manufacturerStore,
               item.manufacturer,
-              `m_auto_${crypto.randomUUID()}`
+              `m_auto_${crypto.randomUUID()}`,
+              manufacturerByName
             )
           }
 
