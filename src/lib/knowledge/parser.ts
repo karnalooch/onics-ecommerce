@@ -107,6 +107,52 @@ export async function getKnowledge(): Promise<KnowledgeStore> {
   return buildKnowledgeFromDb(initializeMockData());
 }
 
+export function deleteKnowledgeEntryFromDb(
+  db: KnowledgeDbSnapshot,
+  model: string,
+  now = new Date().toISOString()
+) {
+  const normalizedModel = model.trim().toUpperCase()
+  if (!normalizedModel) return false
+
+  const knowledgeEntries = db.knowledgeEntries || {}
+  const persistedKey = Object.keys(knowledgeEntries).find(
+    (key) => key.trim().toUpperCase() === normalizedModel
+  )
+  if (!persistedKey) return false
+
+  const nextEntries = { ...knowledgeEntries }
+  delete nextEntries[persistedKey]
+  db.knowledgeEntries = nextEntries
+
+  const meta = db.knowledgeMeta || {}
+  const currentRevision =
+    typeof meta.revision === "number" &&
+    Number.isSafeInteger(meta.revision) &&
+    meta.revision >= 0
+      ? meta.revision
+      : 0
+
+  db.knowledgeMeta = {
+    revision: currentRevision + 1,
+    sources: Array.isArray(meta.sources)
+      ? meta.sources.filter((entry): entry is string => typeof entry === "string")
+      : [],
+    processedSources: Array.isArray(meta.processedSources)
+      ? meta.processedSources.filter(
+          (entry): entry is string => typeof entry === "string"
+        )
+      : [],
+    lastUpdated: now,
+  }
+
+  return true
+}
+
+export async function deleteKnowledgeEntry(model: string) {
+  return mutateMockData((db) => deleteKnowledgeEntryFromDb(db, model))
+}
+
 function latestKnowledgeTimestamp(
   current: unknown,
   incoming: string | null
