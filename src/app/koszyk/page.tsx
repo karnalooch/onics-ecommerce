@@ -15,6 +15,7 @@ import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";
 import { ORDER_IMPORT_MAX_BYTES, parseCeltronicsOrderXml, type OrderImportPreview } from "@/lib/orderImport";
 import { validateOrderImportPreview } from "@/lib/orderImportPreviewContract";
 import { validateCheckoutPaymentDiscovery, type CheckoutPaymentMethod } from "@/lib/checkoutPaymentDiscoveryContract";
+import { validateCheckoutPaymentResponse } from "@/lib/checkoutPaymentResponseContract";
 
 
 type ManualPaymentConfirmation = {
@@ -387,34 +388,20 @@ export default function CartPage() {
         );
       }
 
-      if (data?.nextAction?.type === "REDIRECT") {
-        if (!data.nextAction.url) {
-          throw new Error("Bramka płatności nie zwróciła adresu przekierowania.");
-        }
-        window.location.assign(data.nextAction.url);
+      const checkout = validateCheckoutPaymentResponse(method.id, data);
+
+      if (checkout.nextAction.type === "REDIRECT") {
+        window.location.assign(checkout.nextAction.url);
         return;
       }
 
-      if (
-        data?.nextAction?.type !== "MANUAL" ||
-        !data?.orderId ||
-        !data.nextAction.title ||
-        !Array.isArray(data.nextAction.fields) ||
-        data.nextAction.fields.length === 0
-      ) {
-        throw new Error("Provider płatności zwrócił nieprawidłową instrukcję.");
-      }
-
       setManualPaymentConfirmation({
-        orderId: data.orderId,
-        title: data.nextAction.title,
-        fields: data.nextAction.fields,
-        amount:
-          typeof data.nextAction.amount === "number"
-            ? data.nextAction.amount
-            : undefined,
-        currency: data.nextAction.currency,
-        note: data.nextAction.note,
+        orderId: checkout.orderId,
+        title: checkout.nextAction.title,
+        fields: checkout.nextAction.fields,
+        amount: checkout.nextAction.amount,
+        currency: checkout.nextAction.currency,
+        note: checkout.nextAction.note,
       });
       clearCart();
       toast.success("Zamówienie utworzone. Instrukcja płatności jest gotowa.");
