@@ -97,6 +97,8 @@ describe("payment checkout idempotency wiring", () => {
       .toBeLessThan(flow.indexOf("assertPaymentCheckoutAvailabilityFence("))
     expect(flow.indexOf("assertPaymentCheckoutAvailabilityFence("))
       .toBeLessThan(flow.indexOf("existing.stripeCheckoutSessionId = session.id"))
+    expect(flow.indexOf("existing.stripeCheckoutSessionId = session.id"))
+      .toBeLessThan(flow.lastIndexOf("if (!session.url)"))
   })
 
   it("expires a fresh Stripe session before releasing stock after an availability race", () => {
