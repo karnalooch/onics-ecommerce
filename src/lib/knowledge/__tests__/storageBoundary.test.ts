@@ -4,6 +4,7 @@ import {
   buildKnowledgeFromDb,
   buildMergedKnowledgePersistence,
   deleteKnowledgeEntryFromDb,
+  rethrowFatalKnowledgeTrainingError,
 } from "@/lib/knowledge/parser"
 
 describe("knowledge storage boundary", () => {
@@ -327,6 +328,20 @@ describe("knowledge storage boundary", () => {
         }
       )
     ).toThrow("KNOWLEDGE_STORE_RESET_DURING_TRAINING")
+  })
+
+  it("propagates training generation fences instead of treating them as recoverable PDF chunk errors", () => {
+    expect(() =>
+      rethrowFatalKnowledgeTrainingError(
+        new Error("KNOWLEDGE_STORE_RESET_DURING_TRAINING")
+      )
+    ).toThrow("KNOWLEDGE_STORE_RESET_DURING_TRAINING")
+    expect(() =>
+      rethrowFatalKnowledgeTrainingError(new Error("PROCES_PRZERWANY"))
+    ).toThrow("PROCES_PRZERWANY")
+    expect(() =>
+      rethrowFatalKnowledgeTrainingError(new Error("TRANSIENT_AI_CHUNK_FAILURE"))
+    ).not.toThrow()
   })
 
   it("keeps the active generation on a valid merged persistence write", () => {
