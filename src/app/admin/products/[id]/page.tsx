@@ -7,7 +7,10 @@ import { z } from "zod";
 import { initializeMockData, mutateMockData } from "@/store/serverStore";
 import {
   assertCatalogClassification,
+  catalogProductRevision,
   hasSkuConflict,
+  isCatalogProductUpdateReplay,
+  nextCatalogProductRevision,
 } from "@/lib/catalog";
 import {
   shouldDeferProductStockWrite,
@@ -23,6 +26,7 @@ const ProductFormSchema = z.object({
   categoryId: z.string().trim().max(160).nullable().optional(),
   subcategoryId: z.string().trim().max(160).nullable().optional(),
   description: z.string().max(10_000).optional().default(""),
+  expectedRevision: z.coerce.number().int().nonnegative().optional(),
 });
 
 export default async function EditProductPage({ params }: { params: any }) {
@@ -65,6 +69,7 @@ export default async function EditProductPage({ params }: { params: any }) {
       categoryId: String(formData.get("categoryId") || "").trim() || null,
       subcategoryId: String(formData.get("subcategoryId") || "").trim() || null,
       description: formData.get("description"),
+      expectedRevision: formData.get("expectedRevision") || undefined,
     });
 
     if (!parsed.success) {
@@ -76,7 +81,7 @@ export default async function EditProductPage({ params }: { params: any }) {
     await mutateMockData((db) => {
       const productStore = db.products as any[];
       const categoryStore = db.categories as any[];
-      const input = parsed.data;
+      const { expectedRevision, ...input } = parsed.data;
 
       assertCatalogClassification(
         categoryStore,
@@ -93,15 +98,35 @@ export default async function EditProductPage({ params }: { params: any }) {
           id: `p_${crypto.randomUUID()}`,
           ...input,
           seoDescription: input.description,
+          revision: 0,
           createdAt: new Date().toISOString(),
         });
         return;
+      }
+
+      if (expectedRevision === undefined) {
+        throw new Error("PRODUCT_REVISION_REQUIRED");
       }
 
       const index = productStore.findIndex(
         (candidate) => String(candidate.id) === id
       );
       if (index === -1) throw new Error("PRODUCT_NOT_FOUND");
+
+      const current = productStore[index];
+      const currentRevision = catalogProductRevision(current.revision);
+      const updateData = {
+        ...input,
+        seoDescription: input.description || current.seoDescription || "",
+      };
+
+      if (expectedRevision !== currentRevision) {
+        if (isCatalogProductUpdateReplay(current, updateData)) return;
+        throw new Error("PRODUCT_REVISION_CONFLICT");
+      }
+
+      if (isCatalogProductUpdateReplay(current, updateData)) return;
+
       if (hasSkuConflict(productStore, input.sku, id)) {
         throw new Error("SKU_EXISTS");
       }
@@ -109,7 +134,7 @@ export default async function EditProductPage({ params }: { params: any }) {
         shouldDeferProductStockWrite(
           db.orders as InventoryReservationOrder[],
           id,
-          productStore[index].stock,
+          current.stock,
           input.stock
         )
       ) {
@@ -117,10 +142,10 @@ export default async function EditProductPage({ params }: { params: any }) {
       }
 
       productStore[index] = {
-        ...productStore[index],
+        ...current,
         ...input,
-        seoDescription:
-          input.description || productStore[index].seoDescription || "",
+        seoDescription: updateData.seoDescription,
+        revision: nextCatalogProductRevision(currentRevision),
         updatedAt: new Date().toISOString(),
       };
     });
@@ -158,6 +183,13 @@ export default async function EditProductPage({ params }: { params: any }) {
 
         <div className="admin-section" style={{ background: "#fff", padding: "2rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
           <form action={saveProduct} style={{ maxWidth: "800px", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            {product ? (
+              <input
+                type="hidden"
+                name="expectedRevision"
+                value={catalogProductRevision(product.revision)}
+              />
+            ) : null}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
               <div>
                 <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Nazwa Produktu</label>
