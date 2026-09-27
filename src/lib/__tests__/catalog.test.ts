@@ -13,6 +13,7 @@ import {
   hasManufacturerProductReference,
   hasSkuConflict,
   indexCatalogCategoriesByName,
+  indexCatalogManufacturersByName,
   indexCatalogProductsBySku,
   indexCatalogSubcategoriesByName,
   isCatalogCategoryCreateReplay,
@@ -138,6 +139,38 @@ describe("catalog manufacturer registry", () => {
       ensureManufacturerRecord(manufacturers, "   ", "m1")
     ).toBeNull()
     expect(manufacturers).toEqual([])
+  })
+
+
+  it("fails closed when persisted manufacturers duplicate a normalized name", () => {
+    expect(() =>
+      indexCatalogManufacturersByName([
+        { id: "m1", name: "Hikvision" },
+        { id: "m2", name: "  HIKVISION  " },
+      ])
+    ).toThrow("CATALOG_DUPLICATE_MANUFACTURER_NAME")
+  })
+
+  it("keeps a shared manufacturer identity index in sync during import-style creation", () => {
+    const manufacturers = [{ id: "m1", name: "SATEL" }]
+    const manufacturerByName = indexCatalogManufacturersByName(manufacturers)
+
+    const created = ensureManufacturerRecord(
+      manufacturers,
+      "Hikvision",
+      "m2",
+      manufacturerByName
+    )
+    const replayed = ensureManufacturerRecord(
+      manufacturers,
+      " hikvision ",
+      "m3",
+      manufacturerByName
+    )
+
+    expect(replayed).toBe(created)
+    expect(manufacturerByName.get("hikvision")).toBe(created)
+    expect(manufacturers).toHaveLength(2)
   })
 })
 
