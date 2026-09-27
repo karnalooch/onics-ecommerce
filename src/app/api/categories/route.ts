@@ -3,12 +3,16 @@ import { z } from "zod"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
+  catalogCategoryRevision,
   findRemovedReferencedSubcategoryIds,
   hasCatalogCategoryNameConflict,
   hasCategoryProductReference,
   indexCatalogCategoriesByName,
+  indexCatalogSubcategoriesByName,
   isCatalogCategoryCreateReplay,
+  nextCatalogCategoryRevision,
   normalizeCatalogCategoryName,
+  normalizeCatalogSubcategoryName,
   type CatalogCategoryReference,
 } from "@/lib/catalog"
 
@@ -19,6 +23,7 @@ type Category = {
   id: string
   name: string
   iconName?: string
+  revision?: number
   subcategories: Subcategory[]
 }
 
@@ -37,22 +42,87 @@ const CategoryInput = z.object({
   subcategories: z.array(SubcategoryInput).max(500).optional(),
 })
 
+const CategoryUpdateInput = CategoryInput.extend({
+  id: z.string().trim().min(1),
+  expectedRevision: z.coerce.number().int().nonnegative().optional(),
+})
+
 function normalizeSubcategories(
-  values: z.infer<typeof SubcategoryInput>[] = []
+  values: z.infer<typeof SubcategoryInput>[] = [],
+  current: Subcategory[] = []
 ): Subcategory[] {
-  return values.map((value) =>
-    typeof value === "string"
-      ? { id: `s_${crypto.randomUUID()}`, name: value }
-      : {
-          id: value.id || `s_${crypto.randomUUID()}`,
-          name: value.name,
-        }
+  const currentByName = indexCatalogSubcategoriesByName(current)
+  const normalized = values.map((value) => {
+    const name = typeof value === "string" ? value : value.name
+    const requestedId = typeof value === "string" ? undefined : value.id
+    const existing = currentByName.get(
+      normalizeCatalogSubcategoryName(name)
+    )
+
+    return {
+      id: requestedId || existing?.id || `s_${crypto.randomUUID()}`,
+      name,
+    }
+  })
+
+  indexCatalogSubcategoriesByName(normalized)
+
+  const ids = new Set<string>()
+  for (const subcategory of normalized) {
+    if (ids.has(subcategory.id)) {
+      throw new Error("CATALOG_DUPLICATE_SUBCATEGORY_ID")
+    }
+    ids.add(subcategory.id)
+  }
+
+  return normalized
+}
+
+function sameSubcategoryState(
+  current: Subcategory[],
+  requested: Subcategory[]
+) {
+  return (
+    current.length === requested.length &&
+    current.every(
+      (subcategory, index) =>
+        subcategory.id === requested[index]?.id &&
+        normalizeCatalogSubcategoryName(subcategory.name) ===
+          normalizeCatalogSubcategoryName(requested[index]?.name)
+    )
   )
+}
+
+function isCategoryUpdateReplay(
+  current: Category,
+  data: z.infer<typeof CategoryUpdateInput>,
+  nextSubcategories: Subcategory[]
+) {
+  if (
+    normalizeCatalogCategoryName(current.name) !==
+    normalizeCatalogCategoryName(data.name)
+  ) {
+    return false
+  }
+
+  const currentIcon = String(current.iconName || "Folder").trim() || "Folder"
+  const requestedIcon =
+    String(data.iconName || current.iconName || "Folder").trim() || "Folder"
+  if (currentIcon !== requestedIcon) return false
+
+  return data.subcategories
+    ? sameSubcategoryState(current.subcategories || [], nextSubcategories)
+    : true
 }
 
 export async function GET() {
   const { categories } = initializeMockData()
-  return NextResponse.json(categories)
+  return NextResponse.json(
+    (categories as Category[]).map((category) => ({
+      ...category,
+      revision: catalogCategoryRevision(category.revision),
+    }))
+  )
 }
 
 export async function POST(req: Request) {
@@ -99,6 +169,7 @@ export async function POST(req: Request) {
         id: `c_${crypto.randomUUID()}`,
         name: parsed.data.name.toUpperCase(),
         iconName: parsed.data.iconName || "Folder",
+        revision: 0,
         subcategories: normalizeSubcategories(parsed.data.subcategories),
       }
 
@@ -145,14 +216,22 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CategoryInput.extend({
-    id: z.string().trim().min(1),
-  }).safeParse(await req.json())
+  const parsed = CategoryUpdateInput.safeParse(await req.json())
 
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Nieprawidłowa kategoria." },
       { status: 400 }
+    )
+  }
+
+  if (parsed.data.expectedRevision === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Aktualizacja kategorii wymaga expectedRevision z ostatniego odczytu.",
+      },
+      { status: 428 }
     )
   }
 
