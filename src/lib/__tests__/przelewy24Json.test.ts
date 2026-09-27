@@ -24,6 +24,14 @@ describe("Przelewy24 int64 JSON boundary", () => {
     expect(parsed.data.statement).toBe('literal "orderId":123')
   })
 
+  it("keeps ordinary safe orderIds as numbers for backward compatibility", () => {
+    const parsed = parsePrzelewy24Json(
+      '{"data":{"orderId":987654321,"sessionId":"s1"}}'
+    ) as { data: { orderId: unknown } }
+
+    expect(parsed.data.orderId).toBe(987654321)
+  })
+
   it("normalizes legacy safe numbers and validates the signed int64 range", () => {
     expect(normalizePrzelewy24OrderId(987654321)).toBe("987654321")
     expect(normalizePrzelewy24OrderId(maxInt64)).toBe(maxInt64)
