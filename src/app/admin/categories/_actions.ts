@@ -22,7 +22,7 @@ const CategoryUpdateSchema = z.object({
   id: z.string().min(1),
   name: z.string().trim().min(1).max(120).optional(),
   iconName: z.string().trim().max(80).optional(),
-});
+}).strict();
 
 const AddSubcategorySchema = z.object({
   categoryId: z.string().min(1),
@@ -181,16 +181,6 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
         success: false,
         error:
           "Katalog zawiera zduplikowane nazwy kategorii. Usuń konflikt przed kolejną zmianą."
-      };
-    }
-    if (
-      error instanceof Error &&
-      error.message === "CATEGORY_SUBCATEGORY_IN_USE"
-    ) {
-      return {
-        success: false,
-        error:
-          "Nie można usunąć podkategorii przypisanej do produktu. Najpierw przenieś produkty."
       };
     }
     return { success: false, error: "Błąd podczas aktualizacji" };
