@@ -98,10 +98,15 @@ function writeRecords(
   storage: IdempotencyStorage,
   records: IdempotencyRecord[]
 ) {
-  storage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(records.slice(0, MAX_PENDING_RECORDS))
-  )
+  try {
+    storage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(records.slice(0, MAX_PENDING_RECORDS))
+    )
+  } catch {
+    // Storage may be unavailable in hardened/private browser contexts.
+    // The current request still receives a unique server idempotency key.
+  }
 }
 
 export function getOrCreateOrderSubmissionRequestId(
