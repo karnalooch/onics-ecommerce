@@ -3,6 +3,7 @@ import {
   buildKnowledgeEntriesForPersistence,
   buildKnowledgeFromDb,
   buildMergedKnowledgePersistence,
+  deleteKnowledgeEntryFromDb,
 } from "@/lib/knowledge/parser"
 
 describe("knowledge storage boundary", () => {
@@ -189,6 +190,112 @@ describe("knowledge storage boundary", () => {
       price: 99,
       source: "fresh.pdf, stale.xlsx",
     })
+  })
+
+  it("deletes only persisted extracted knowledge and advances the generation fence", () => {
+    const db = {
+      products: [
+        {
+          sku: "SKU-1",
+          name: "Live product",
+          specs: "Live specs",
+          price: 50,
+        },
+      ],
+      knowledgeEntries: {
+        "SKU-1": {
+          specs: "Supplier specs",
+          price: 60,
+          currency: "PLN",
+          source: "supplier.xlsx",
+        },
+        "KEEP-1": {
+          specs: "Keep me",
+          price: 20,
+          currency: "PLN",
+          source: "other.xlsx",
+        },
+      },
+      knowledgeMeta: {
+        revision: 4,
+        sources: ["supplier.xlsx", "other.xlsx"],
+        processedSources: ["supplier.xlsx", "other.xlsx"],
+        lastUpdated: "2026-09-27T02:00:00.000Z",
+      },
+    }
+
+    expect(
+      deleteKnowledgeEntryFromDb(
+        db,
+        "sku-1",
+        "2026-09-27T04:00:00.000Z"
+      )
+    ).toBe(true)
+    expect(db.knowledgeEntries).toEqual({
+      "KEEP-1": expect.objectContaining({ source: "other.xlsx" }),
+    })
+    expect(db.knowledgeMeta).toMatchObject({
+      revision: 5,
+      lastUpdated: "2026-09-27T04:00:00.000Z",
+    })
+
+    const rebuilt = buildKnowledgeFromDb(db)
+    expect(rebuilt.knowledge["SKU-1"]).toMatchObject({
+      model: "Live product",
+      specs: "Live specs",
+      price: 50,
+    })
+  })
+
+  it("does not pretend to delete knowledge derived only from the live product catalog", () => {
+    const db = {
+      products: [
+        {
+          sku: "LIVE-1",
+          name: "Live only",
+          specs: "Live specs",
+          price: 10,
+        },
+      ],
+      knowledgeEntries: {},
+      knowledgeMeta: {
+        revision: 2,
+        sources: [],
+        processedSources: [],
+        lastUpdated: "2026-09-27T03:00:00.000Z",
+      },
+    }
+
+    expect(deleteKnowledgeEntryFromDb(db, "LIVE-1")).toBe(false)
+    expect(db.knowledgeMeta.revision).toBe(2)
+  })
+
+  it("prevents stale training from resurrecting a deleted knowledge snippet", () => {
+    const db = {
+      products: [],
+      knowledgeEntries: {
+        "DELETE-1": {
+          specs: "Delete me",
+          price: 10,
+          currency: "PLN",
+          source: "old.xlsx",
+        },
+      },
+      knowledgeMeta: {
+        revision: 7,
+        sources: ["old.xlsx"],
+        processedSources: ["old.xlsx"],
+        lastUpdated: "2026-09-27T03:00:00.000Z",
+      },
+    }
+
+    const staleTraining = buildKnowledgeFromDb(db)
+    expect(deleteKnowledgeEntryFromDb(db, "DELETE-1")).toBe(true)
+
+    expect(() =>
+      buildMergedKnowledgePersistence(db, staleTraining)
+    ).toThrow("KNOWLEDGE_STORE_RESET_DURING_TRAINING")
+    expect(db.knowledgeEntries).toEqual({})
   })
 
   it("rejects stale training output after the knowledge store was reset", () => {
