@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { toSafeUserResponse } from "@/lib/userResponse"
+import {
+  nextUserRevision,
+  toSafeUserResponse,
+  userRevision,
+} from "@/lib/userResponse"
 
 describe("safe user response", () => {
   it("removes password hashes without mutating the stored record", () => {
@@ -21,5 +25,19 @@ describe("safe user response", () => {
     })
     expect("passwordHash" in responseUser).toBe(false)
     expect(storedUser.passwordHash).toBe("$2b$12$sensitive")
+  })
+})
+
+
+describe("user revisions", () => {
+  it("normalizes legacy revisions and increments monotonically", () => {
+    expect(userRevision(undefined)).toBe(0)
+    expect(userRevision(null)).toBe(0)
+    expect(userRevision(-1)).toBe(0)
+    expect(userRevision(1.5)).toBe(0)
+    expect(userRevision(4)).toBe(4)
+
+    expect(nextUserRevision(undefined)).toBe(1)
+    expect(nextUserRevision(7)).toBe(8)
   })
 })
