@@ -35,22 +35,23 @@ type StoredQuoteAdminState = {
 }
 
 export function isQuoteAdminUpdateReplay(
-  current: StoredQuoteAdminState,
+  current: unknown,
   requested: AdminQuoteUpdate
 ) {
-  if (current.status !== requested.status) return false
+  const state = (current ?? {}) as StoredQuoteAdminState
+  if (state.status !== requested.status) return false
 
   if (requested.status === "QUOTED") {
     return (
-      Number(current.deliveryTimeDays) === requested.deliveryTimeDays &&
-      Number(current.additionalDiscount ?? 0) ===
+      Number(state.deliveryTimeDays) === requested.deliveryTimeDays &&
+      Number(state.additionalDiscount ?? 0) ===
         requested.additionalDiscount
     )
   }
 
   return (
-    (current.deliveryTimeDays ?? null) === null &&
-    Number(current.additionalDiscount ?? 0) === 0
+    (state.deliveryTimeDays ?? null) === null &&
+    Number(state.additionalDiscount ?? 0) === 0
   )
 }
 
