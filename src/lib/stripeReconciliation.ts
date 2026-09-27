@@ -28,6 +28,14 @@ export function shouldReconcileStripeOrder(
     return true
   }
 
+  if (
+    order.refundRequestedAt &&
+    !order.stripeRefundId &&
+    order.paymentStatus === "PAID"
+  ) {
+    return true
+  }
+
   return (
     order.paymentStatus !== "PAID" &&
     order.paymentStatus !== "REFUNDED" &&
