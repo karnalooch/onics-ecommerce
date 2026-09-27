@@ -20,6 +20,7 @@ import {
   buildWfMagCatalogProduct,
   ensureManufacturerRecord,
   hasSkuConflict,
+  indexCatalogCategoriesByName,
   indexCatalogProductsBySku,
   type CatalogManufacturerRecord,
 } from "@/lib/catalog"
@@ -138,9 +139,7 @@ export async function POST(req: Request) {
         const manufacturerStore =
           db.manufacturers as CatalogManufacturerRecord[]
         const productBySku = indexCatalogProductsBySku(productStore)
-        const categoryByName = new Map(
-          categoryStore.map((category) => [normalize(category.name), category] as const)
-        )
+        const categoryByName = indexCatalogCategoriesByName(categoryStore)
         const categoryById = new Map(
           categoryStore.map((category) => [String(category.id), category] as const)
         )
@@ -252,6 +251,18 @@ export async function POST(req: Request) {
       const classificationResponse =
         catalogClassificationErrorResponse(error)
       if (classificationResponse) return classificationResponse
+      if (
+        error instanceof Error &&
+        error.message === "CATALOG_DUPLICATE_CATEGORY_NAME"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Katalog zawiera zduplikowane nazwy kategorii. Usuń konflikt przed importem WF-Mag.",
+          },
+          { status: 409 }
+        )
+      }
       if (
         error instanceof Error &&
         error.message === "CATALOG_DUPLICATE_SKU"
