@@ -16,10 +16,25 @@ export type PersistedStripeCheckoutUser = {
   roleType?: string | null
 }
 
+export const STRIPE_CHECKOUT_IDEMPOTENCY_GUARD_MS =
+  23 * 60 * 60 * 1000
+
 export type PersistedStripeCheckoutOrder = {
   id?: string
+  createdAt?: string | null
   items?: unknown[]
   user?: PersistedStripeCheckoutUser
+}
+
+export function isStripeCheckoutCreationRetrySafe(
+  order: PersistedStripeCheckoutOrder,
+  nowMs = Date.now()
+) {
+  const createdAt = Date.parse(String(order.createdAt ?? ""))
+  if (!Number.isFinite(createdAt)) return false
+
+  const ageMs = nowMs - createdAt
+  return ageMs >= 0 && ageMs < STRIPE_CHECKOUT_IDEMPOTENCY_GUARD_MS
 }
 
 export function stripeCheckoutIdempotencyKey(orderId: string) {
