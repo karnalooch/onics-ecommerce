@@ -20,3 +20,14 @@ export function getAccountAccessDecision(
 
   return "allowed"
 }
+
+
+export function hasAccountRoleAccess(
+  user: AccountAccessRecord,
+  requiredRoles: readonly string[]
+) {
+  return (
+    getAccountAccessDecision(user) === "allowed" &&
+    requiredRoles.includes(String(user.roleType ?? ""))
+  )
+}

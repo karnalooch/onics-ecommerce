@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher"
@@ -14,6 +16,14 @@ export const dynamic = "force-dynamic"
 const RequestSchema = z.object({
   productId: z.string().min(1),
 })
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
 
 type ProductRecord = {
   id?: string
@@ -124,6 +134,17 @@ export async function POST(req: Request) {
     }
 
     await mutateMockData((db) => {
+      const currentActor = findStoredUserBySession(
+        db.users as StoredActor[],
+        authCheck.user
+      )
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("ADMIN_ACCESS_REVOKED")
+      }
+
       const productStore = db.products as ProductRecord[]
       const currentProduct = productStore.find(
         (entry) => String(entry.id) === parsed.data.productId
@@ -151,6 +172,15 @@ export async function POST(req: Request) {
     })
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
+    if (code === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        {
+          error:
+            "Uprawnienia administratora zmieniły się podczas generowania opisu. Zapis został anulowany.",
+        },
+        { status: 403 }
+      )
+    }
     if (code === "PRODUCT_NOT_FOUND") {
       return NextResponse.json({ error: "Produkt nie istnieje." }, { status: 404 })
     }
