@@ -13,6 +13,7 @@ import {
   indexCatalogCategoriesByName,
   indexCatalogSubcategoriesByName,
   isCatalogCategoryCreateReplay,
+  nextCatalogCategoryRevision,
   normalizeCatalogCategoryName,
   normalizeCatalogSubcategoryName,
   type CatalogCategoryReference,
@@ -44,6 +45,7 @@ type CategoryRecord = {
   id: string
   name: string
   iconName?: string
+  revision?: number
   subcategories?: Array<{ id: string; name: string }>
   [key: string]: unknown
 }
@@ -87,6 +89,7 @@ export async function addCategoryAction(name: string): Promise<ActionState> {
         id: `c_${crypto.randomUUID()}`,
         name: name.trim().toUpperCase(),
         iconName: "Folder",
+        revision: 0,
         subcategories: []
       }
       categories.push(category)
@@ -149,12 +152,14 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
         throw new Error("CATEGORY_NAME_EXISTS")
       }
 
+      const current = categories[idx]
       categories[idx] = {
-        ...categories[idx],
+        ...current,
         ...validated.data,
         name: validated.data.name
           ? validated.data.name.toUpperCase()
-          : categories[idx].name
+          : current.name,
+        revision: nextCatalogCategoryRevision(current.revision),
       }
     })
 
@@ -222,6 +227,7 @@ export async function addSubcategoryAction(
       }
       subcategories.push(subcategory)
       category.subcategories = subcategories
+      category.revision = nextCatalogCategoryRevision(category.revision)
       return { subcategory, replayed: false }
     })
 
@@ -292,6 +298,7 @@ export async function renameSubcategoryAction(
       }
 
       subcategory.name = validated.data.name
+      category.revision = nextCatalogCategoryRevision(category.revision)
       return subcategory
     })
 
@@ -369,6 +376,7 @@ export async function deleteSubcategoryAction(
 
       subcategories.splice(index, 1)
       category.subcategories = subcategories
+      category.revision = nextCatalogCategoryRevision(category.revision)
       return { replayed: false }
     })
 
