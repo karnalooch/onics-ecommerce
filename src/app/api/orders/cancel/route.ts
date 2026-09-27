@@ -13,10 +13,12 @@ import {
   resolveOrderPaymentProvider,
   supportsPaymentProviderCapability,
 } from "@/lib/paymentProviders"
+import { classifyPaymentAdminActionPrecondition } from "@/lib/paymentAdminActions"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const CancelOrderSchema = z.object({
   id: z.string().min(1),
+  expectedStateToken: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 })
 
 function paymentIntentId(session: Stripe.Checkout.Session) {
@@ -60,11 +62,15 @@ export async function POST(req: Request) {
     )
   }
 
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-  if (!stripeSecretKey) {
+  const expectedStateToken = parsed.data.expectedStateToken
+
+  if (expectedStateToken === undefined) {
     return NextResponse.json(
-      { error: "Płatności Stripe nie są skonfigurowane." },
-      { status: 503 }
+      {
+        error:
+          "Operacja płatnicza wymaga expectedStateToken z ostatniego odczytu zamówienia.",
+      },
+      { status: 428 }
     )
   }
 
@@ -79,6 +85,35 @@ export async function POST(req: Request) {
       { status: 404 }
     )
   }
+
+  const precondition = classifyPaymentAdminActionPrecondition(
+    order,
+    "CANCEL",
+    expectedStateToken
+  )
+  if (precondition === "replay") {
+    return NextResponse.json(
+      {
+        success: true,
+        replayed: true,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        refundStatus: order.refundStatus ?? null,
+      },
+      { headers: { "Idempotency-Replayed": "true" } }
+    )
+  }
+  if (precondition === "conflict") {
+    return NextResponse.json(
+      {
+        error:
+          "Stan zamówienia zmienił się od ostatniego odczytu. Odśwież dane i ponów anulowanie.",
+        code: "PAYMENT_ADMIN_STATE_CONFLICT",
+      },
+      { status: 409 }
+    )
+  }
+
   const provider = resolveOrderPaymentProvider(order)
   if (
     provider !== "STRIPE" ||
@@ -111,6 +146,14 @@ export async function POST(req: Request) {
       paymentStatus: order.paymentStatus,
       refundStatus: order.refundStatus ?? null,
     })
+  }
+
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+  if (!stripeSecretKey) {
+    return NextResponse.json(
+      { error: "Płatności Stripe nie są skonfigurowane." },
+      { status: 503 }
+    )
   }
 
   const stripe = new Stripe(stripeSecretKey)
@@ -167,6 +210,17 @@ export async function POST(req: Request) {
           fresh.stripeCheckoutSessionId !== order.stripeCheckoutSessionId
         ) {
           throw new Error("STRIPE_ORDER_CHANGED")
+        }
+        const freshPrecondition = classifyPaymentAdminActionPrecondition(
+          fresh,
+          "CANCEL",
+          expectedStateToken
+        )
+        if (freshPrecondition === "conflict") {
+          throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+        }
+        if (freshPrecondition === "replay") {
+          return fresh
         }
 
         applyStripeRefundSnapshot(
@@ -241,6 +295,17 @@ export async function POST(req: Request) {
       if (fresh.stripeCheckoutSessionId !== session.id) {
         throw new Error("STRIPE_ORDER_CHANGED")
       }
+      const freshPrecondition = classifyPaymentAdminActionPrecondition(
+        fresh,
+        "CANCEL",
+        expectedStateToken
+      )
+      if (freshPrecondition === "conflict") {
+        throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+      }
+      if (freshPrecondition === "replay") {
+        return fresh
+      }
 
       applyExpiredCheckoutCancellation(
         db.products as InventoryProduct[],
@@ -265,6 +330,7 @@ export async function POST(req: Request) {
       )
     }
     if (
+      code === "PAYMENT_ADMIN_STATE_CONFLICT" ||
       code === "STRIPE_ORDER_CHANGED" ||
       code === "STRIPE_CANCEL_PAYMENT_ALREADY_FINAL" ||
       code === "STRIPE_REFUND_ID_MISMATCH" ||

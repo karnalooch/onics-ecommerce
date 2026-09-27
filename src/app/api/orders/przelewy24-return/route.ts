@@ -6,7 +6,10 @@ import {
   describeOrderPaymentLifecycle,
   resolveOrderPaymentProvider,
 } from "@/lib/paymentProviders"
-import { listAvailablePaymentAdminActions } from "@/lib/paymentAdminActions"
+import {
+  classifyPaymentAdminActionPrecondition,
+  listAvailablePaymentAdminActions,
+} from "@/lib/paymentAdminActions"
 import {
   moneyToMinorUnits,
 } from "@/lib/payments"
@@ -23,6 +26,7 @@ import { initializeMockData, mutateMockData } from "@/store/serverStore"
 const ActionSchema = z.object({
   id: z.string().min(1),
   action: z.enum(["REQUEST", "RECEIVE"]),
+  expectedStateToken: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 })
 
 export async function POST(req: Request) {
@@ -37,6 +41,18 @@ export async function POST(req: Request) {
     )
   }
 
+  const expectedStateToken = parsed.data.expectedStateToken
+
+  if (expectedStateToken === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Operacja płatnicza wymaga expectedStateToken z ostatniego odczytu zamówienia.",
+      },
+      { status: 428 }
+    )
+  }
+
   if (parsed.data.action === "REQUEST") {
     try {
       const result = await mutateMockData((db) => {
@@ -45,6 +61,18 @@ export async function POST(req: Request) {
         )
         if (!order) throw new Error("ORDER_NOT_FOUND")
 
+        const precondition = classifyPaymentAdminActionPrecondition(
+          order,
+          "REQUEST_RETURN",
+          expectedStateToken
+        )
+        if (precondition === "replay") {
+          return { order, outcome: "unchanged" as const, replayed: true }
+        }
+        if (precondition === "conflict") {
+          throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+        }
+
         const provider = resolveOrderPaymentProvider(order)
         if (provider !== "PRZELEWY24") {
           throw new Error("PRZELEWY24_REQUIRED")
@@ -52,21 +80,61 @@ export async function POST(req: Request) {
         assertPaymentProviderCapability(provider, "rma")
 
         const outcome = requestPrzelewy24Return(order)
-        return { order, outcome }
+        return { order, outcome, replayed: false }
       })
 
-      return NextResponse.json({
-        success: true,
-        outcome: result.outcome,
-        order: {
-          ...result.order,
-          paymentLifecycle: describeOrderPaymentLifecycle(result.order),
-          paymentAdminActions: listAvailablePaymentAdminActions(result.order),
+      return NextResponse.json(
+        {
+          success: true,
+          replayed: result.replayed,
+          outcome: result.outcome,
+          order: {
+            ...result.order,
+            paymentLifecycle: describeOrderPaymentLifecycle(result.order),
+            paymentAdminActions: listAvailablePaymentAdminActions(result.order),
+          },
         },
-      })
+        result.replayed
+          ? { headers: { "Idempotency-Replayed": "true" } }
+          : undefined
+      )
     } catch (error) {
       return paymentError(error)
     }
+  }
+
+  const preflight = initializeMockData()
+  const preflightOrder = (preflight.orders as Przelewy24StoredOrder[]).find(
+    (candidate) => candidate.id === parsed.data.id
+  )
+  if (!preflightOrder) {
+    return NextResponse.json(
+      { error: "Nie znaleziono zamówienia." },
+      { status: 404 }
+    )
+  }
+
+  const preflightState = classifyPaymentAdminActionPrecondition(
+    preflightOrder,
+    "RECEIVE_RETURN",
+    expectedStateToken
+  )
+  if (preflightState === "replay") {
+    return NextResponse.json(
+      {
+        success: true,
+        replayed: true,
+        order: {
+          ...preflightOrder,
+          paymentLifecycle: describeOrderPaymentLifecycle(preflightOrder),
+          paymentAdminActions: listAvailablePaymentAdminActions(preflightOrder),
+        },
+      },
+      { headers: { "Idempotency-Replayed": "true" } }
+    )
+  }
+  if (preflightState === "conflict") {
+    return paymentError(new Error("PAYMENT_ADMIN_STATE_CONFLICT"))
   }
 
   let config: ReturnType<typeof resolvePrzelewy24Config>
@@ -86,6 +154,18 @@ export async function POST(req: Request) {
       )
       if (!order) throw new Error("ORDER_NOT_FOUND")
 
+      const precondition = classifyPaymentAdminActionPrecondition(
+        order,
+        "RECEIVE_RETURN",
+        expectedStateToken
+      )
+      if (precondition === "replay") {
+        return { replayed: true as const, order }
+      }
+      if (precondition === "conflict") {
+        throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+      }
+
       const provider = resolveOrderPaymentProvider(order)
       if (provider !== "PRZELEWY24") {
         throw new Error("PRZELEWY24_REQUIRED")
@@ -101,6 +181,7 @@ export async function POST(req: Request) {
       }
 
       return {
+        replayed: false as const,
         orderId: order.p24OrderId,
         sessionId: order.p24SessionId,
         amount: moneyToMinorUnits(Number(order.totalPriceFinal ?? 0)),
@@ -109,8 +190,27 @@ export async function POST(req: Request) {
       }
     })
 
+    if (intent.replayed) {
+      return NextResponse.json(
+        {
+          success: true,
+          replayed: true,
+          order: {
+            ...intent.order,
+            paymentLifecycle: describeOrderPaymentLifecycle(intent.order),
+            paymentAdminActions: listAvailablePaymentAdminActions(intent.order),
+          },
+        },
+        { headers: { "Idempotency-Replayed": "true" } }
+      )
+    }
+
     await requestPrzelewy24Refund(config, {
-      ...intent,
+      orderId: intent.orderId,
+      sessionId: intent.sessionId,
+      amount: intent.amount,
+      requestId: intent.requestId,
+      refundsUuid: intent.refundsUuid,
       description: "Zwrot zamowienia ONICS",
     })
 
@@ -149,6 +249,8 @@ function paymentError(error: unknown, external = false) {
   }
 
   const conflicts: Record<string, string> = {
+    PAYMENT_ADMIN_STATE_CONFLICT:
+      "Stan zamówienia zmienił się od ostatniego odczytu. Odśwież dane i ponów operację RMA.",
     PRZELEWY24_REQUIRED:
       "To zamówienie nie korzysta z Przelewy24.",
     PRZELEWY24_RETURN_INVALID_ORDER_STATUS:

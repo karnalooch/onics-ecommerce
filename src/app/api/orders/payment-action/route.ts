@@ -181,7 +181,10 @@ export async function POST(req: Request) {
     switch (target.handler) {
       case "STRIPE_CANCEL":
         response = await postStripeCancel(
-          forwardedRequest(req, "POST", { id: parsed.data.id })
+          forwardedRequest(req, "POST", {
+            id: parsed.data.id,
+            expectedStateToken: parsed.data.expectedStateToken,
+          })
         )
         break
       case "STRIPE_RETURN":
@@ -189,6 +192,7 @@ export async function POST(req: Request) {
           forwardedRequest(req, "POST", {
             id: parsed.data.id,
             action: target.action,
+            expectedStateToken: parsed.data.expectedStateToken,
           })
         )
         break
@@ -197,6 +201,7 @@ export async function POST(req: Request) {
           forwardedRequest(req, "POST", {
             id: parsed.data.id,
             action: target.action,
+            expectedStateToken: parsed.data.expectedStateToken,
           })
         )
         break
@@ -205,6 +210,7 @@ export async function POST(req: Request) {
           forwardedRequest(req, "POST", {
             id: parsed.data.id,
             action: target.action,
+            expectedStateToken: parsed.data.expectedStateToken,
           })
         )
         break

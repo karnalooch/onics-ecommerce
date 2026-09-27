@@ -16,11 +16,13 @@ import {
   assertPaymentProviderCapability,
   resolveOrderPaymentProvider,
 } from "@/lib/paymentProviders"
+import { classifyPaymentAdminActionPrecondition } from "@/lib/paymentAdminActions"
 import { mutateMockData } from "@/store/serverStore"
 
 const ReturnOrderSchema = z.object({
   id: z.string().min(1),
   action: z.enum(["REQUEST", "RECEIVE"]),
+  expectedStateToken: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 })
 
 function paymentIntentId(session: Stripe.Checkout.Session) {
@@ -64,6 +66,18 @@ export async function POST(req: Request) {
     )
   }
 
+  const expectedStateToken = parsed.data.expectedStateToken
+
+  if (expectedStateToken === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Operacja płatnicza wymaga expectedStateToken z ostatniego odczytu zamówienia.",
+      },
+      { status: 428 }
+    )
+  }
+
   try {
     if (parsed.data.action === "REQUEST") {
       const updated = await mutateMockData((db) => {
@@ -72,20 +86,38 @@ export async function POST(req: Request) {
         )
         if (!order) throw new Error("ORDER_NOT_FOUND")
 
+        const precondition = classifyPaymentAdminActionPrecondition(
+          order,
+          "REQUEST_RETURN",
+          expectedStateToken
+        )
+        if (precondition === "replay") {
+          return { order, replayed: true }
+        }
+        if (precondition === "conflict") {
+          throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+        }
+
         const provider = resolveOrderPaymentProvider(order)
         if (provider !== "STRIPE") throw new Error("RETURN_STRIPE_REQUIRED")
         assertPaymentProviderCapability(provider, "rma")
 
         requestShippedReturn(order)
-        return order
+        return { order, replayed: false }
       })
 
-      return NextResponse.json({
-        success: true,
-        status: updated.status,
-        paymentStatus: updated.paymentStatus,
-        returnStatus: updated.returnStatus,
-      })
+      return NextResponse.json(
+        {
+          success: true,
+          replayed: updated.replayed,
+          status: updated.order.status,
+          paymentStatus: updated.order.paymentStatus,
+          returnStatus: updated.order.returnStatus,
+        },
+        updated.replayed
+          ? { headers: { "Idempotency-Replayed": "true" } }
+          : undefined
+      )
     }
 
     const received = await mutateMockData((db) => {
@@ -93,6 +125,18 @@ export async function POST(req: Request) {
         (candidate) => candidate.id === parsed.data.id
       )
       if (!order) throw new Error("ORDER_NOT_FOUND")
+
+      const precondition = classifyPaymentAdminActionPrecondition(
+        order,
+        "RECEIVE_RETURN",
+        expectedStateToken
+      )
+      if (precondition === "replay") {
+        return { order, replayed: true }
+      }
+      if (precondition === "conflict") {
+        throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+      }
 
       const provider = resolveOrderPaymentProvider(order)
       if (provider !== "STRIPE") throw new Error("RETURN_STRIPE_REQUIRED")
@@ -102,18 +146,31 @@ export async function POST(req: Request) {
         db.products as InventoryProduct[],
         order
       )
-      return order
+      return { order, replayed: false }
     })
 
+    if (received.replayed) {
+      return NextResponse.json(
+        {
+          success: true,
+          replayed: true,
+          status: received.order.status,
+          paymentStatus: received.order.paymentStatus,
+          returnStatus: received.order.returnStatus,
+        },
+        { headers: { "Idempotency-Replayed": "true" } }
+      )
+    }
+
     if (
-      received.status === "RETURNED" &&
-      received.returnStatus === "COMPLETED"
+      received.order.status === "RETURNED" &&
+      received.order.returnStatus === "COMPLETED"
     ) {
       return NextResponse.json({
         success: true,
-        status: received.status,
-        paymentStatus: received.paymentStatus,
-        returnStatus: received.returnStatus,
+        status: received.order.status,
+        paymentStatus: received.order.paymentStatus,
+        returnStatus: received.order.returnStatus,
       })
     }
 
@@ -123,24 +180,24 @@ export async function POST(req: Request) {
         {
           error:
             "Towar oznaczono jako odebrany, ale Stripe nie jest skonfigurowany. Po konfiguracji ponów finalizację RMA.",
-          returnStatus: received.returnStatus,
+          returnStatus: received.order.returnStatus,
         },
         { status: 503 }
       )
     }
 
-    const provider = resolveOrderPaymentProvider(received)
-    if (provider !== "STRIPE" || !received.stripeCheckoutSessionId) {
+    const provider = resolveOrderPaymentProvider(received.order)
+    if (provider !== "STRIPE" || !received.order.stripeCheckoutSessionId) {
       throw new Error("RETURN_STRIPE_REQUIRED")
     }
     assertPaymentProviderCapability(provider, "refund")
 
     const stripe = new Stripe(stripeSecretKey)
-    let intentId = received.stripePaymentIntentId ?? null
+    let intentId = received.order.stripePaymentIntentId ?? null
 
     if (!intentId) {
       const session = await stripe.checkout.sessions.retrieve(
-        received.stripeCheckoutSessionId
+        received.order.stripeCheckoutSessionId
       )
       intentId = paymentIntentId(session)
     }
@@ -151,24 +208,24 @@ export async function POST(req: Request) {
     const resolvedIntentId = intentId
 
     const previousRefundFailed =
-      received.refundStatus === "failed" ||
-      received.refundStatus === "canceled"
+      received.order.refundStatus === "failed" ||
+      received.order.refundStatus === "canceled"
 
     const refund =
-      received.stripeRefundId && !previousRefundFailed
-        ? await stripe.refunds.retrieve(received.stripeRefundId)
+      received.order.stripeRefundId && !previousRefundFailed
+        ? await stripe.refunds.retrieve(received.order.stripeRefundId)
         : await stripe.refunds.create(
             {
               payment_intent: resolvedIntentId,
               reason: "requested_by_customer",
               metadata: {
-                order_id: String(received.id),
+                order_id: String(received.order.id),
                 flow: "rma",
               },
             },
             {
-              idempotencyKey: `onics-order-return-refund:${received.id}:${
-                received.stripeRefundId || "initial"
+              idempotencyKey: `onics-order-return-refund:${received.order.id}:${
+                received.order.stripeRefundId || "initial"
               }`,
             }
           )
@@ -239,6 +296,8 @@ export async function POST(req: Request) {
     }
 
     const conflicts: Record<string, string> = {
+      PAYMENT_ADMIN_STATE_CONFLICT:
+        "Stan zamówienia zmienił się od ostatniego odczytu. Odśwież dane i ponów operację RMA.",
       RETURN_INVALID_ORDER_STATUS:
         "RMA można otworzyć tylko dla wysłanego zamówienia.",
       RETURN_STRIPE_REQUIRED:

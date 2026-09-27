@@ -19,7 +19,10 @@ import {
   resolveOrderPaymentProvider,
   type PaymentProviderCapability,
 } from "@/lib/paymentProviders"
-import { listAvailablePaymentAdminActions } from "@/lib/paymentAdminActions"
+import {
+  classifyPaymentAdminActionPrecondition,
+  listAvailablePaymentAdminActions,
+} from "@/lib/paymentAdminActions"
 import { mutateMockData } from "@/store/serverStore"
 
 const BankTransferActionSchema = z.object({
@@ -31,6 +34,7 @@ const BankTransferActionSchema = z.object({
     "RECEIVE_RETURN",
     "CONFIRM_RETURN_REFUND",
   ]),
+  expectedStateToken: z.string().regex(/^[a-f0-9]{64}$/).optional(),
 })
 
 type BankTransferAction = z.infer<typeof BankTransferActionSchema>["action"]
@@ -63,12 +67,36 @@ export async function POST(req: Request) {
     )
   }
 
+  const expectedStateToken = parsed.data.expectedStateToken
+
+  if (expectedStateToken === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Operacja płatnicza wymaga expectedStateToken z ostatniego odczytu zamówienia.",
+      },
+      { status: 428 }
+    )
+  }
+
   try {
     const result = await mutateMockData((db) => {
       const order = (db.orders as BankTransferOrder[]).find(
         (candidate) => candidate.id === parsed.data.id
       )
       if (!order) throw new Error("ORDER_NOT_FOUND")
+
+      const precondition = classifyPaymentAdminActionPrecondition(
+        order,
+        parsed.data.action,
+        expectedStateToken
+      )
+      if (precondition === "replay") {
+        return { order, outcome: "unchanged" as const, replayed: true }
+      }
+      if (precondition === "conflict") {
+        throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+      }
 
       const provider = resolveOrderPaymentProvider(order)
       if (provider !== "BANK_TRANSFER") {
@@ -118,18 +146,24 @@ export async function POST(req: Request) {
           break
       }
 
-      return { order, outcome }
+      return { order, outcome, replayed: false }
     })
 
-    return NextResponse.json({
-      success: true,
-      outcome: result.outcome,
-      order: {
-        ...result.order,
-        paymentLifecycle: describeOrderPaymentLifecycle(result.order),
-        paymentAdminActions: listAvailablePaymentAdminActions(result.order),
+    return NextResponse.json(
+      {
+        success: true,
+        replayed: result.replayed,
+        outcome: result.outcome,
+        order: {
+          ...result.order,
+          paymentLifecycle: describeOrderPaymentLifecycle(result.order),
+          paymentAdminActions: listAvailablePaymentAdminActions(result.order),
+        },
       },
-    })
+      result.replayed
+        ? { headers: { "Idempotency-Replayed": "true" } }
+        : undefined
+    )
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
 
@@ -141,6 +175,8 @@ export async function POST(req: Request) {
     }
 
     const conflicts: Record<string, string> = {
+      PAYMENT_ADMIN_STATE_CONFLICT:
+        "Stan zamówienia zmienił się od ostatniego odczytu. Odśwież dane i ponów operację płatniczą.",
       BANK_TRANSFER_REQUIRED:
         "To zamówienie nie korzysta z przelewu bankowego.",
       BANK_TRANSFER_ALREADY_REFUNDED:

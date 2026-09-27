@@ -35,6 +35,64 @@ describe("payment admin action order fencing wiring", () => {
     }
   })
 
+  it("forwards the observed state token into every terminal payment handler", () => {
+    const route = read("src/app/api/orders/payment-action/route.ts")
+    const terminalCases = [
+      "STRIPE_CANCEL",
+      "STRIPE_RETURN",
+      "PRZELEWY24_RETURN",
+      "BANK_TRANSFER",
+    ]
+
+    for (const terminalCase of terminalCases) {
+      const start = route.indexOf(`case "${terminalCase}"`)
+      const end = route.indexOf("break", start)
+      const flow = route.slice(start, end)
+
+      expect(start).toBeGreaterThan(-1)
+      expect(flow).toContain(
+        "expectedStateToken: parsed.data.expectedStateToken"
+      )
+    }
+  })
+
+  it("fails closed at every directly routable terminal payment boundary", () => {
+    const terminalRoutes = [
+      "src/app/api/orders/cancel/route.ts",
+      "src/app/api/orders/return/route.ts",
+      "src/app/api/orders/przelewy24-return/route.ts",
+      "src/app/api/orders/bank-transfer/route.ts",
+    ]
+
+    for (const path of terminalRoutes) {
+      const route = read(path)
+      expect(route).toContain("expectedStateToken:")
+      expect(route).toContain(
+        "const expectedStateToken = parsed.data.expectedStateToken"
+      )
+      expect(route).toContain("expectedStateToken === undefined")
+      expect(route).toContain("classifyPaymentAdminActionPrecondition")
+      expect(route).toContain("PAYMENT_ADMIN_STATE_CONFLICT")
+    }
+  })
+
+  it("checks the manual bank-transfer fence inside the atomic mutation", () => {
+    const route = read("src/app/api/orders/bank-transfer/route.ts")
+    const mutationStart = route.indexOf("mutateMockData((db) =>")
+    const classifier = route.indexOf(
+      "classifyPaymentAdminActionPrecondition(",
+      mutationStart
+    )
+    const firstAction = route.indexOf(
+      "confirmBankTransferPayment(",
+      mutationStart
+    )
+
+    expect(mutationStart).toBeGreaterThan(-1)
+    expect(classifier).toBeGreaterThan(mutationStart)
+    expect(classifier).toBeLessThan(firstAction)
+  })
+
   it("forwards the observed order state token into ORDER_CANCEL", () => {
     const route = read("src/app/api/orders/payment-action/route.ts")
     const start = route.indexOf('case "ORDER_CANCEL"')
