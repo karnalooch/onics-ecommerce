@@ -168,6 +168,10 @@ export function listAvailablePaymentAdminActions(
   }
 
   const providerKind = getPaymentProviderDefinition(provider).kind
+  const stripeCheckoutReady =
+    provider !== "STRIPE" ||
+    (typeof order.stripeCheckoutSessionId === "string" &&
+      Boolean(order.stripeCheckoutSessionId.trim()))
 
   if (providerKind === "MANUAL") {
     add(
@@ -209,7 +213,8 @@ export function listAvailablePaymentAdminActions(
   add(
     "CANCEL",
     status !== "SHIPPED" &&
-      !refundInProgress
+      !refundInProgress &&
+      stripeCheckoutReady
   )
   add(
     "REQUEST_RETURN",

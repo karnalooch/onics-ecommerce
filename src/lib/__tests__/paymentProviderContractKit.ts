@@ -38,6 +38,9 @@ function orderFor(
     paymentProvider: provider,
     status: "PENDING_VERIFICATION",
     paymentStatus: "PENDING",
+    ...(provider === "STRIPE"
+      ? { stripeCheckoutSessionId: "cs_contract_ready" }
+      : {}),
     ...overrides,
   }
 }
