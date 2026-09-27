@@ -13,4 +13,5 @@ export const CatalogProductInputSchema = z.object({
 
 export const CatalogProductUpdateSchema = CatalogProductInputSchema.extend({
   id: z.string().min(1),
+  expectedRevision: z.coerce.number().int().nonnegative().optional(),
 })
