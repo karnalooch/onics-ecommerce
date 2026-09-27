@@ -25,6 +25,18 @@ export function shouldReconcilePrzelewy24Order(
 }
 
 
+export function classifyPrzelewy24TransactionReconciliation(
+  transaction: Przelewy24TransactionDetails
+) {
+  if (transaction.status === 0) return "unpaid" as const
+  if (transaction.status === 1) return "verify-required" as const
+  if (transaction.status === 2) return "provider-paid" as const
+  if (transaction.status === 3) return "provider-returned" as const
+
+  throw new Error("PRZELEWY24_TRANSACTION_STATUS_UNKNOWN")
+}
+
+
 export function classifyPrzelewy24VerificationRecovery(
   transaction: Przelewy24TransactionDetails,
   staged: Przelewy24Notification

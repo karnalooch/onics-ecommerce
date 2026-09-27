@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  classifyPrzelewy24TransactionReconciliation,
   classifyPrzelewy24VerificationRecovery,
   shouldReconcilePrzelewy24Order,
 } from "@/lib/przelewy24Reconciliation"
@@ -86,6 +87,54 @@ describe("Przelewy24 verification crash recovery", () => {
         staged
       )
     ).toThrow("PRZELEWY24_STAGED_TRANSACTION_MISMATCH")
+  })
+})
+
+describe("Przelewy24 transaction reconciliation states", () => {
+  const transaction = {
+    orderId: 456,
+    sessionId: "ORD-P24-RECONCILE",
+    amount: 10000,
+    currency: "PLN",
+  }
+
+  it("does not verify an unpaid transaction", () => {
+    expect(
+      classifyPrzelewy24TransactionReconciliation({
+        ...transaction,
+        status: 0,
+      })
+    ).toBe("unpaid")
+  })
+
+  it("verifies only an advance payment and accepts provider-paid truth", () => {
+    expect(
+      classifyPrzelewy24TransactionReconciliation({
+        ...transaction,
+        status: 1,
+      })
+    ).toBe("verify-required")
+    expect(
+      classifyPrzelewy24TransactionReconciliation({
+        ...transaction,
+        status: 2,
+      })
+    ).toBe("provider-paid")
+  })
+
+  it("routes returned transactions to manual review and rejects unknown states", () => {
+    expect(
+      classifyPrzelewy24TransactionReconciliation({
+        ...transaction,
+        status: 3,
+      })
+    ).toBe("provider-returned")
+    expect(() =>
+      classifyPrzelewy24TransactionReconciliation({
+        ...transaction,
+        status: 99,
+      })
+    ).toThrow("PRZELEWY24_TRANSACTION_STATUS_UNKNOWN")
   })
 })
 
