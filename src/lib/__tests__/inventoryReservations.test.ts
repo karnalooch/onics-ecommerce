@@ -33,7 +33,7 @@ describe("inventory reservations", () => {
     ).toThrow("INVENTORY_NOT_AVAILABLE")
 
     expect(products).toEqual([
-      { id: "p1", sku: "A", stock: 2 },
+      { id: "p1", sku: "A", stock: 2, revision: 1 },
       { id: "p2", sku: "B", stock: 2 },
     ])
   })
@@ -56,6 +56,7 @@ describe("inventory reservations", () => {
       )
     ).toBe("released")
     expect(products[0].stock).toBe(5)
+    expect(products[0].revision).toBe(1)
     expect(order.inventoryReservationStatus).toBe("RELEASED")
 
     expect(
@@ -68,6 +69,7 @@ describe("inventory reservations", () => {
       )
     ).toBe("unchanged")
     expect(products[0].stock).toBe(5)
+    expect(products[0].revision).toBe(1)
   })
 
   it("finalizes paid inventory without decrementing twice", () => {
@@ -285,8 +287,8 @@ describe("inventory reservations", () => {
     )
 
     expect(products).toEqual([
-      { id: "p1", stock: 1 },
-      { id: "p2", stock: 5 },
+      { id: "p1", stock: 1, revision: 1 },
+      { id: "p2", stock: 5, revision: 1 },
     ])
   })
 
