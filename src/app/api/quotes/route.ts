@@ -5,6 +5,7 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { mutateMockData } from "@/store/serverStore"
 import { calculateCustomerUnitPrice, roundMoney } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
+import { buildQuoteSubmissionFingerprint } from "@/lib/quoteSubmissionIdempotency"
 import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
@@ -13,7 +14,8 @@ import {
 } from "@/lib/quoteAdmin"
 
 const QuoteSchema = z.object({
-  productId: z.string().min(1),
+  requestId: z.string().uuid(),
+  productId: z.string().trim().min(1),
   expectedQuantity: z.coerce.number().int().min(1).max(100000),
   message: z.string().trim().max(3000).optional().default(""),
 })
@@ -45,9 +47,18 @@ type StoredProduct = {
 
 type StoredQuote = {
   id?: string
-  user?: { id?: string; email?: string }
+  clientQuoteRequestId?: string
+  clientQuoteRequestFingerprint?: string
+  user?: {
+    id?: string
+    email?: string
+    companyName?: string
+    nip?: string | null
+  }
   productId?: string
+  productName?: string
   quantity?: number
+  message?: string
   totalPriceFinal?: number
   [key: string]: unknown
 }
@@ -80,6 +91,25 @@ export async function POST(req: Request) {
         throw new Error("BIZ_NOT_APPROVED")
       }
 
+      const requestFingerprint = buildQuoteSubmissionFingerprint({
+        productId: parsed.data.productId,
+        expectedQuantity: parsed.data.expectedQuantity,
+        message: parsed.data.message,
+      })
+      const existing = orders.find(
+        (quote) =>
+          quote.clientQuoteRequestId === parsed.data.requestId &&
+          quote.user &&
+          Boolean(findStoredUserBySession([quote.user], sessionUser))
+      )
+
+      if (existing) {
+        if (existing.clientQuoteRequestFingerprint !== requestFingerprint) {
+          throw new Error("QUOTE_IDEMPOTENCY_KEY_REUSED")
+        }
+        return { quote: existing, storedUser, replayed: true }
+      }
+
       const product = products.find(
         (entry) => String(entry.id) === parsed.data.productId
       )
@@ -87,6 +117,8 @@ export async function POST(req: Request) {
 
       const quote = {
         id: `QUOTE-${crypto.randomUUID()}`,
+        clientQuoteRequestId: parsed.data.requestId,
+        clientQuoteRequestFingerprint: requestFingerprint,
         orderType: "INQUIRY",
         status: "INQUIRY",
         createdAt: new Date().toISOString(),
@@ -105,7 +137,7 @@ export async function POST(req: Request) {
       }
 
       orders.unshift(quote)
-      return { quote, storedUser }
+      return { quote, storedUser, replayed: false }
     })
 
     const smtpHost = process.env.SMTP_HOST
@@ -113,7 +145,7 @@ export async function POST(req: Request) {
     const smtpPass = process.env.SMTP_PASS
     const adminEmail = process.env.ADMIN_EMAIL
 
-    if (smtpHost && smtpUser && smtpPass && adminEmail) {
+    if (!result.replayed && smtpHost && smtpUser && smtpPass && adminEmail) {
       try {
         const transporter = nodemailer.createTransport({
           host: smtpHost,
@@ -151,9 +183,15 @@ export async function POST(req: Request) {
       {
         success: true,
         id: result.quote.id,
+        clientRequestId: parsed.data.requestId,
         message: "Zapytanie zostało zapisane.",
       },
-      { status: 201 }
+      {
+        status: result.replayed ? 200 : 201,
+        headers: result.replayed
+          ? { "Idempotency-Replayed": "true" }
+          : undefined,
+      }
     )
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
@@ -168,6 +206,15 @@ export async function POST(req: Request) {
     }
     if (code === "PRODUCT_NOT_FOUND") {
       return NextResponse.json({ error: "Produkt nie istnieje." }, { status: 404 })
+    }
+    if (code === "QUOTE_IDEMPOTENCY_KEY_REUSED") {
+      return NextResponse.json(
+        {
+          error:
+            "Identyfikator zapytania został już użyty dla innej treści. Zamknij formularz i spróbuj ponownie.",
+        },
+        { status: 409 }
+      )
     }
 
     console.error("Błąd zapytania ofertowego:", error)
@@ -267,7 +314,14 @@ export async function PUT(req: Request) {
       return nextQuote
     })
 
-    return NextResponse.json(updated)
+    const {
+      clientQuoteRequestId: internalQuoteRequestId,
+      clientQuoteRequestFingerprint: internalQuoteRequestFingerprint,
+      ...publicQuote
+    } = updated
+    void internalQuoteRequestId
+    void internalQuoteRequestFingerprint
+    return NextResponse.json(publicQuote)
   } catch (error) {
     if (error instanceof Error && error.message === "QUOTE_NOT_FOUND") {
       return NextResponse.json(
