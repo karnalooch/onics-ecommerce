@@ -15,8 +15,13 @@ import {
 import type { InventoryProduct } from "@/lib/inventoryReservations"
 import {
   PaymentWebhookBodyTooLargeError,
-  readPaymentWebhookJson,
+  readPaymentWebhookBody,
 } from "@/lib/paymentWebhookIngress"
+import {
+  normalizePrzelewy24OrderId,
+  parsePrzelewy24Json,
+  przelewy24OrderIdsEqual,
+} from "@/lib/przelewy24Json"
 import {
   hasProcessedPaymentWebhookEvent,
   recordProcessedPaymentWebhookEvent,
@@ -24,7 +29,12 @@ import {
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const RefundNotificationSchema = z.object({
-  orderId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  orderId: z
+    .union([
+      z.string().regex(/^\d+$/),
+      z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    ])
+    .refine((value) => normalizePrzelewy24OrderId(value) !== null),
   sessionId: z.string().min(1).max(100),
   merchantId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   requestId: z.string().min(1).max(45),
@@ -48,7 +58,7 @@ export async function POST(req: Request) {
 
   let payload: unknown
   try {
-    payload = await readPaymentWebhookJson(req)
+    payload = parsePrzelewy24Json(await readPaymentWebhookBody(req))
   } catch (error) {
     if (error instanceof PaymentWebhookBodyTooLargeError) {
       return NextResponse.json(
@@ -97,7 +107,10 @@ export async function POST(req: Request) {
   const snapshot = initializeMockData()
   const order = (snapshot.orders as Przelewy24StoredOrder[]).find(
     (candidate) =>
-      candidate.p24OrderId === notification.orderId ||
+      przelewy24OrderIdsEqual(
+        candidate.p24OrderId,
+        notification.orderId
+      ) ||
       candidate.p24SessionId === notification.sessionId
   )
 

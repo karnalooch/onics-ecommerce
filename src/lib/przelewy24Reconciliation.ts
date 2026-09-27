@@ -1,3 +1,4 @@
+import { przelewy24OrderIdsEqual } from "@/lib/przelewy24Json"
 import type {
   Przelewy24Notification,
   Przelewy24StoredOrder,
@@ -43,7 +44,10 @@ export function classifyPrzelewy24VerificationRecovery(
 ) {
   if (
     transaction.sessionId !== staged.sessionId ||
-    transaction.orderId !== staged.orderId ||
+    !przelewy24OrderIdsEqual(
+      transaction.orderId,
+      staged.orderId
+    ) ||
     transaction.amount !== staged.amount ||
     transaction.currency !== staged.currency
   ) {

@@ -1,6 +1,13 @@
 import { createHash, timingSafeEqual } from "node:crypto"
 import { moneyToMinorUnits } from "@/lib/payments"
 import {
+  normalizePrzelewy24OrderId,
+  parsePrzelewy24Json,
+  przelewy24OrderIdsEqual,
+  serializePrzelewy24Json,
+  type Przelewy24OrderId,
+} from "@/lib/przelewy24Json"
+import {
   releaseInventory,
   type InventoryProduct,
   type InventoryReservationOrder,
@@ -33,14 +40,14 @@ export type Przelewy24Notification = {
   amount: number
   originAmount: number
   currency: string
-  orderId: number
+  orderId: Przelewy24OrderId
   methodId: number
   statement: string
   sign: string
 }
 
 export type Przelewy24TransactionDetails = {
-  orderId: number
+  orderId: Przelewy24OrderId
   sessionId: string
   status: number
   amount: number
@@ -50,7 +57,7 @@ export type Przelewy24TransactionDetails = {
 }
 
 export type Przelewy24RefundDetails = {
-  orderId: number
+  orderId: Przelewy24OrderId
   sessionId: string
   amount: number
   currency: string
@@ -66,7 +73,7 @@ export type Przelewy24RefundDetails = {
 }
 
 export type Przelewy24RefundNotification = {
-  orderId: number
+  orderId: Przelewy24OrderId
   sessionId: string
   merchantId: number
   requestId: string
@@ -85,7 +92,7 @@ export type Przelewy24StoredOrder = InventoryReservationOrder & {
   totalPriceFinal?: number | null
   paymentStatus?: string | null
   p24SessionId?: string | null
-  p24OrderId?: number | null
+  p24OrderId?: Przelewy24OrderId | null
   p24LastNotificationSign?: string | null
   p24VerificationPending?: Przelewy24Notification | null
   p24VerificationPendingAt?: string | null
@@ -237,7 +244,7 @@ export function describePrzelewy24Runtime(
 
 export function calculatePrzelewy24Sign(payload: Record<string, unknown>) {
   return createHash("sha384")
-    .update(JSON.stringify(payload), "utf8")
+    .update(serializePrzelewy24Json(payload), "utf8")
     .digest("hex")
 }
 
@@ -387,7 +394,7 @@ export async function verifyPrzelewy24TransactionIdentity(
   config: Przelewy24Config,
   transaction: {
     sessionId: string
-    orderId: number
+    orderId: Przelewy24OrderId
     amount: number
     currency: string
   }
@@ -408,7 +415,7 @@ export async function verifyPrzelewy24TransactionIdentity(
         "Content-Type": "application/json",
         Authorization: basicAuth(config),
       },
-      body: JSON.stringify({
+      body: serializePrzelewy24Json({
         merchantId: config.merchantId,
         posId: config.posId,
         sessionId: transaction.sessionId,
@@ -468,15 +475,24 @@ export async function getPrzelewy24TransactionBySessionId(
 
   if (response.status === 404) return null
 
-  const payload = (await response.json().catch(() => null)) as
-    | { data?: Record<string, unknown>; responseCode?: unknown }
-    | null
+  const payload = await response
+    .text()
+    .then((raw) => {
+      try {
+        return parsePrzelewy24Json(raw) as {
+          data?: Record<string, unknown>
+          responseCode?: unknown
+        }
+      } catch {
+        return null
+      }
+    })
   const data = payload?.data
 
   if (
     !response.ok ||
     !data ||
-    !Number.isSafeInteger(data.orderId) ||
+    !normalizePrzelewy24OrderId(data.orderId) ||
     typeof data.sessionId !== "string" ||
     !Number.isSafeInteger(data.status) ||
     !Number.isSafeInteger(data.amount) ||
@@ -486,7 +502,7 @@ export async function getPrzelewy24TransactionBySessionId(
   }
 
   return {
-    orderId: Number(data.orderId),
+    orderId: normalizePrzelewy24OrderId(data.orderId)!,
     sessionId: data.sessionId,
     status: Number(data.status),
     amount: Number(data.amount),
@@ -502,10 +518,15 @@ export async function getPrzelewy24TransactionBySessionId(
 
 export async function getPrzelewy24RefundDetails(
   config: Przelewy24Config,
-  orderId: number
+  orderId: Przelewy24OrderId
 ): Promise<Przelewy24RefundDetails | null> {
+  const normalizedOrderId = normalizePrzelewy24OrderId(orderId)
+  if (!normalizedOrderId) {
+    throw new Error("PRZELEWY24_ORDER_ID_INVALID")
+  }
+
   const response = await fetch(
-    `${config.apiBaseUrl}/api/v1/refund/by/orderId/${orderId}`,
+    `${config.apiBaseUrl}/api/v1/refund/by/orderId/${normalizedOrderId}`,
     {
       headers: {
         Authorization: basicAuth(config),
@@ -516,9 +537,18 @@ export async function getPrzelewy24RefundDetails(
 
   if (response.status === 404) return null
 
-  const payload = (await response.json().catch(() => null)) as
-    | { data?: Record<string, unknown>; responseCode?: unknown }
-    | null
+  const payload = await response
+    .text()
+    .then((raw) => {
+      try {
+        return parsePrzelewy24Json(raw) as {
+          data?: Record<string, unknown>
+          responseCode?: unknown
+        }
+      } catch {
+        return null
+      }
+    })
   const data = payload?.data
   const refunds =
     data && Array.isArray(data.refunds) ? data.refunds : null
@@ -526,7 +556,7 @@ export async function getPrzelewy24RefundDetails(
   if (
     !response.ok ||
     !data ||
-    !Number.isSafeInteger(data.orderId) ||
+    !normalizePrzelewy24OrderId(data.orderId) ||
     typeof data.sessionId !== "string" ||
     !Number.isSafeInteger(data.amount) ||
     typeof data.currency !== "string" ||
@@ -563,7 +593,7 @@ export async function getPrzelewy24RefundDetails(
   })
 
   return {
-    orderId: Number(data.orderId),
+    orderId: normalizePrzelewy24OrderId(data.orderId)!,
     sessionId: data.sessionId,
     amount: Number(data.amount),
     currency: data.currency,
@@ -595,7 +625,7 @@ export function validatePrzelewy24NotificationForOrder(
   if (
     order.p24OrderId !== undefined &&
     order.p24OrderId !== null &&
-    order.p24OrderId !== notification.orderId
+    !przelewy24OrderIdsEqual(order.p24OrderId, notification.orderId)
   ) {
     throw new Error("PRZELEWY24_ORDER_ID_MISMATCH")
   }
@@ -623,7 +653,7 @@ function validatePrzelewy24TransactionForOrder(
   if (
     order.p24OrderId !== undefined &&
     order.p24OrderId !== null &&
-    order.p24OrderId !== transaction.orderId
+    !przelewy24OrderIdsEqual(order.p24OrderId, transaction.orderId)
   ) {
     throw new Error("PRZELEWY24_ORDER_ID_MISMATCH")
   }
@@ -640,7 +670,7 @@ export function applyReconciledPrzelewy24Payment(
   if (
     (order.paymentStatus === "PAID" ||
       order.paymentStatus === "REFUNDED") &&
-    order.p24OrderId === transaction.orderId
+    przelewy24OrderIdsEqual(order.p24OrderId, transaction.orderId)
   ) {
     order.paymentReconciledAt = now
     order.p24VerificationPending = null
@@ -687,7 +717,7 @@ export function applyReturnedPrzelewy24Payment(
   if (
     order.paymentStatus === "REFUNDED" &&
     order.status === "CANCELLED" &&
-    order.p24OrderId === transaction.orderId
+    przelewy24OrderIdsEqual(order.p24OrderId, transaction.orderId)
   ) {
     order.paymentReconciledAt = now
     return "unchanged" as const
@@ -987,7 +1017,7 @@ export function stagePrzelewy24Refund(
 export async function requestPrzelewy24Refund(
   config: Przelewy24Config,
   input: {
-    orderId: number
+    orderId: Przelewy24OrderId
     sessionId: string
     amount: number
     requestId: string
@@ -1003,7 +1033,7 @@ export async function requestPrzelewy24Refund(
         "Content-Type": "application/json",
         Authorization: basicAuth(config),
       },
-      body: JSON.stringify({
+      body: serializePrzelewy24Json({
         requestId: input.requestId,
         refunds: [
           {
@@ -1022,7 +1052,15 @@ export async function requestPrzelewy24Refund(
     }
   )
 
-  const payload = await response.json().catch(() => null)
+  const payload = await response
+    .text()
+    .then((raw) => {
+      try {
+        return parsePrzelewy24Json(raw)
+      } catch {
+        return null
+      }
+    })
   const serialized = JSON.stringify(payload ?? {})
 
   if (
@@ -1046,7 +1084,7 @@ export async function requestPrzelewy24Refund(
 
   const matching = data.find(
     (entry) =>
-      Number(entry.orderId) === input.orderId &&
+      przelewy24OrderIdsEqual(entry.orderId, input.orderId) &&
       String(entry.sessionId ?? "") === input.sessionId
   )
 
@@ -1064,7 +1102,7 @@ export function validatePrzelewy24RefundNotificationForOrder(
   assertPrzelewy24ReturnOrder(order)
 
   if (
-    order.p24OrderId !== notification.orderId ||
+    !przelewy24OrderIdsEqual(order.p24OrderId, notification.orderId) ||
     order.p24SessionId !== notification.sessionId ||
     order.p24RefundRequestId !== notification.requestId ||
     order.p24RefundsUuid !== notification.refundsUuid
@@ -1168,7 +1206,7 @@ export function applyReconciledPrzelewy24Refund(
     throw new Error("PRZELEWY24_REFUND_IDENTITY_MISSING")
   }
   if (
-    details.orderId !== order.p24OrderId ||
+    !przelewy24OrderIdsEqual(details.orderId, order.p24OrderId) ||
     details.sessionId !== order.p24SessionId ||
     details.currency !== "PLN"
   ) {
