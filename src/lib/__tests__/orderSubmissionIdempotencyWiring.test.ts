@@ -11,8 +11,10 @@ describe("order submission idempotency wiring", () => {
 
     expect(route).toContain("requestId: z.string().uuid()")
     expect(route).toContain("order.clientRequestId === parsed.data.requestId")
-    expect(route).toContain("sameOrderSubmissionItems(")
+    expect(route).toContain("buildOrderSubmissionItemsFingerprint(")
+    expect(route).toContain("existingOrder.clientRequestFingerprint !== requestFingerprint")
     expect(route).toContain("clientRequestId: parsed.data.requestId")
+    expect(route).toContain("clientRequestFingerprint: requestFingerprint")
     expect(route.indexOf("order.clientRequestId === parsed.data.requestId"))
       .toBeLessThan(route.indexOf("reserveInventory("))
   })
