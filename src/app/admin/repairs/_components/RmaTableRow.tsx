@@ -21,7 +21,7 @@ export function RmaTableRow({ rma }: { rma: AdminRma }) {
   const changeStatus = async (status: string) => {
     setBusy(true)
     try {
-      const result = await updateStatusAction(rma.id, status)
+      const result = await updateStatusAction(rma.id, status, rma.status)
       if (result.success) {
         toast.success(result.message)
         router.refresh()
