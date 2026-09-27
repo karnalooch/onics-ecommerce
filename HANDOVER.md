@@ -1,7 +1,7 @@
 # CEL-TRONICS Ecommerce — Handover
 
 Stan referencyjny: **26.09.2026**  
-Bazowy `main`: **`48e214e7`**
+Bazowy `main`: **`25dfc8c5`**
 
 > [!IMPORTANT]
 > Ten plik jest krótkim punktem wejścia do aktualnej architektury i zasad pracy.
@@ -140,8 +140,9 @@ Flow:
 
 1. klient przechodzi do dedykowanego widoku oferty,
 2. `POST /api/cart/offer-preview` ponownie rozwiązuje produkty i ceny na serwerze,
-3. powstaje czysty dokument B2B,
-4. użytkownik wybiera **Drukuj / Zapisz jako PDF**.
+3. klient akceptuje odpowiedź tylko wtedy, gdy zawiera dokładnie ten sam unikalny zestaw product id+quantity co request (bez braków, nadmiarowych ID i duplikatów), wszystkie pola dokumentu mają poprawny typ, wartości pozycji są zgodne z `unitPriceNet × quantity`, a `totalNet` jest dokładną sumą zwalidowanych pozycji; niespójna odpowiedź failuje zamknięcie i nie może zostać wydrukowana,
+4. powstaje czysty dokument B2B,
+5. użytkownik wybiera **Drukuj / Zapisz jako PDF**.
 
 Oferta nie rezerwuje magazynu. Dostępność i finalne warunki są ponownie sprawdzane przy składaniu właściwego zamówienia.
 
