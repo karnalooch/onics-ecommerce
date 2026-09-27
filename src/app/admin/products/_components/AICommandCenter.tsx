@@ -123,7 +123,16 @@ export function AICommandCenter({
                   </div>
                   <div className="flex gap-2">
                      <div className="h-7 px-4 bg-primary text-white text-[10px] font-bold flex items-center rounded-md shadow-md">{sources.length} ŹRÓDEŁ</div>
-                     <button onClick={onClearAll} className="w-8 h-8 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center active-press">
+                     <button
+                        onClick={onClearAll}
+                        disabled={isTraining || isUploading}
+                        title={
+                          isTraining || isUploading
+                            ? "Poczekaj na zakończenie aktywnej operacji."
+                            : "Wyczyść bazę wiedzy"
+                        }
+                        className="w-8 h-8 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center active-press disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-red-500/10 disabled:hover:text-red-500"
+                     >
                         <Trash2 className="w-4 h-4" />
                      </button>
                   </div>
