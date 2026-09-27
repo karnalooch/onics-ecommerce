@@ -4,6 +4,7 @@ import { authorizeAPI } from "@/lib/authUtils"
 import {
   applyReconciledPrzelewy24Payment,
   applyReconciledPrzelewy24Refund,
+  applyReturnedPrzelewy24Payment,
   applyVerifiedPrzelewy24Payment,
   getPrzelewy24RefundDetails,
   getPrzelewy24TransactionBySessionId,
@@ -34,7 +35,7 @@ const MAX_BULK_RECONCILIATION = 50
 
 type ReconcileResult = {
   orderId: string
-  paymentAction: "PAID" | "NONE"
+  paymentAction: "PAID" | "RETURNED" | "NONE"
   refundAction: "REISSUED" | "FOUND" | "NONE"
   outcome: "UPDATED" | "UNCHANGED" | "MANUAL_REVIEW" | "FAILED"
   error?: string
@@ -133,11 +134,22 @@ export async function POST(req: Request) {
               )
             : ("verify-required" as const)
 
-          if (recovery === "provider-returned") {
-            throw new Error("PRZELEWY24_TRANSACTION_ALREADY_RETURNED")
-          }
+          if (recovery === "provider-returned" && transaction) {
+            await mutateMockData((db) => {
+              const order = (db.orders as Przelewy24StoredOrder[]).find(
+                (candidate) => candidate.id === snapshotOrder.id
+              )
+              if (!order) throw new Error("ORDER_NOT_FOUND")
 
-          if (recovery === "provider-paid" && transaction) {
+              applyReturnedPrzelewy24Payment(
+                db.products as InventoryProduct[],
+                order,
+                transaction
+              )
+            })
+            paymentAction = "RETURNED"
+            updated = true
+          } else if (recovery === "provider-paid" && transaction) {
             await mutateMockData((db) => {
               const order = (db.orders as Przelewy24StoredOrder[]).find(
                 (candidate) => candidate.id === snapshotOrder.id
@@ -150,6 +162,8 @@ export async function POST(req: Request) {
                 transaction
               )
             })
+            paymentAction = "PAID"
+            updated = true
           } else {
             await verifyPrzelewy24Transaction(config, staged)
 
@@ -165,9 +179,9 @@ export async function POST(req: Request) {
                 staged
               )
             })
+            paymentAction = "PAID"
+            updated = true
           }
-          paymentAction = "PAID"
-          updated = true
         } else if (snapshotOrder.p24SessionId) {
           const transaction = await getPrzelewy24TransactionBySessionId(
             config,
@@ -179,7 +193,20 @@ export async function POST(req: Request) {
               classifyPrzelewy24TransactionReconciliation(transaction)
 
             if (recovery === "provider-returned") {
-              manualReview = true
+              await mutateMockData((db) => {
+                const order = (db.orders as Przelewy24StoredOrder[]).find(
+                  (candidate) => candidate.id === snapshotOrder.id
+                )
+                if (!order) throw new Error("ORDER_NOT_FOUND")
+
+                applyReturnedPrzelewy24Payment(
+                  db.products as InventoryProduct[],
+                  order,
+                  transaction
+                )
+              })
+              paymentAction = "RETURNED"
+              updated = true
             } else if (recovery === "provider-paid") {
               await mutateMockData((db) => {
                 const order = (db.orders as Przelewy24StoredOrder[]).find(
