@@ -7,15 +7,17 @@ function read(relativePath: string) {
 }
 
 describe("payment admin action order fencing wiring", () => {
-  it("rejects payment actions from a stale admin order snapshot", () => {
+  it("replays completed stale actions but rejects unrelated stale state", () => {
     const route = read("src/app/api/orders/payment-action/route.ts")
 
     expect(route).toContain("parsed.data.expectedStateToken === undefined")
-    expect(route).toContain(
-      "parsed.data.expectedStateToken !== buildAdminOrderStateToken(order)"
-    )
+    expect(route).toContain("classifyPaymentAdminActionPrecondition")
+    expect(route).toContain('if (precondition === "replay")')
+    expect(route).toContain("replayPaymentAdminAction(order)")
+    expect(route).toContain('"Idempotency-Replayed": "true"')
+    expect(route).toContain('if (precondition === "conflict")')
     expect(route).toContain("PAYMENT_ADMIN_STATE_CONFLICT")
-    expect(route.indexOf("parsed.data.expectedStateToken !=="))
+    expect(route.indexOf("classifyPaymentAdminActionPrecondition("))
       .toBeLessThan(route.indexOf("resolveOrderPaymentProvider(order)"))
   })
 
@@ -47,18 +49,25 @@ describe("payment admin action order fencing wiring", () => {
       .toBeLessThan(flow.indexOf('status: "CANCELLED"'))
   })
 
-  it("returns a fresh admin state token after every successful payment action", () => {
+  it("returns a fresh decorated admin order after success and replay", () => {
     const route = read("src/app/api/orders/payment-action/route.ts")
-    const start = route.indexOf("async function withFreshPaymentOrder")
-    const end = route.indexOf("export async function POST", start)
-    const flow = route.slice(start, end)
+    const describeStart = route.indexOf("function describeAdminPaymentOrder")
+    const replayStart = route.indexOf("function replayPaymentAdminAction")
+    const freshStart = route.indexOf("async function withFreshPaymentOrder")
+    const postStart = route.indexOf("export async function POST")
 
-    expect(flow).toContain(
+    const describeFlow = route.slice(describeStart, replayStart)
+    const replayFlow = route.slice(replayStart, freshStart)
+    const freshFlow = route.slice(freshStart, postStart)
+
+    expect(describeFlow).toContain(
       "adminStateToken: buildAdminOrderStateToken(order)"
     )
-    expect(flow).toContain(
+    expect(describeFlow).toContain(
       "paymentAdminActions: listAvailablePaymentAdminActions(order)"
     )
+    expect(replayFlow).toContain("order: describeAdminPaymentOrder(order)")
+    expect(freshFlow).toContain("order: describeAdminPaymentOrder(order)")
   })
 
   it("uses the same canonical order fence primitive as admin PUT", () => {

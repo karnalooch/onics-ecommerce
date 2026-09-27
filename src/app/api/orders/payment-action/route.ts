@@ -9,6 +9,7 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { buildAdminOrderStateToken } from "@/lib/orderAdminState"
 import {
   PAYMENT_ADMIN_ACTIONS,
+  classifyPaymentAdminActionPrecondition,
   listAvailablePaymentAdminActions,
   resolvePaymentAdminActionTarget,
 } from "@/lib/paymentAdminActions"
@@ -44,6 +45,28 @@ function forwardedRequest(
   })
 }
 
+function describeAdminPaymentOrder(order: IdentifiablePaymentOrder) {
+  return {
+    ...order,
+    adminStateToken: buildAdminOrderStateToken(order),
+    paymentLifecycle: describeOrderPaymentLifecycle(order),
+    paymentAdminActions: listAvailablePaymentAdminActions(order),
+  }
+}
+
+function replayPaymentAdminAction(order: IdentifiablePaymentOrder) {
+  return NextResponse.json(
+    {
+      success: true,
+      replayed: true,
+      order: describeAdminPaymentOrder(order),
+    },
+    {
+      headers: { "Idempotency-Replayed": "true" },
+    }
+  )
+}
+
 async function withFreshPaymentOrder(
   response: Response,
   orderId: string
@@ -73,12 +96,7 @@ async function withFreshPaymentOrder(
   return NextResponse.json(
     {
       ...body,
-      order: {
-        ...order,
-        adminStateToken: buildAdminOrderStateToken(order),
-        paymentLifecycle: describeOrderPaymentLifecycle(order),
-        paymentAdminActions: listAvailablePaymentAdminActions(order),
-      },
+      order: describeAdminPaymentOrder(order),
     },
     { status: response.status }
   )
@@ -117,9 +135,15 @@ export async function POST(req: Request) {
     )
   }
 
-  if (
-    parsed.data.expectedStateToken !== buildAdminOrderStateToken(order)
-  ) {
+  const precondition = classifyPaymentAdminActionPrecondition(
+    order,
+    parsed.data.action,
+    parsed.data.expectedStateToken
+  )
+  if (precondition === "replay") {
+    return replayPaymentAdminAction(order)
+  }
+  if (precondition === "conflict") {
     return NextResponse.json(
       {
         error:

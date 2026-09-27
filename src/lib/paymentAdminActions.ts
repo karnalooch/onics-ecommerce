@@ -1,3 +1,4 @@
+import { buildAdminOrderStateToken } from "@/lib/orderAdminState"
 import {
   assertPaymentProviderCapability,
   getPaymentProviderDefinition,
@@ -135,6 +136,69 @@ function supportsPaymentAdminAction(
     }
     throw error
   }
+}
+
+export function isPaymentAdminActionReplay(
+  order: PaymentAdminActionOrder,
+  action: PaymentAdminAction
+) {
+  const status = typeof order.status === "string" ? order.status : null
+  const paymentStatus =
+    typeof order.paymentStatus === "string" ? order.paymentStatus : null
+  const returnStatus =
+    typeof order.returnStatus === "string" ? order.returnStatus : null
+
+  switch (action) {
+    case "CANCEL": {
+      const provider = resolveOrderPaymentProvider(order)
+      if (provider === "STRIPE") {
+        return (
+          status === "CANCELLED" &&
+          (paymentStatus === "EXPIRED" || paymentStatus === "REFUNDED")
+        )
+      }
+      return provider === "BANK_TRANSFER" && status === "CANCELLED"
+    }
+    case "CONFIRM_PAYMENT":
+      return paymentStatus === "PAID"
+    case "CONFIRM_REFUND":
+      return status === "CANCELLED" && paymentStatus === "REFUNDED"
+    case "REQUEST_RETURN":
+      return (
+        status === "RETURNED" ||
+        returnStatus === "REQUESTED" ||
+        returnStatus === "RECEIVED" ||
+        returnStatus === "REFUND_PENDING" ||
+        returnStatus === "COMPLETED"
+      )
+    case "RECEIVE_RETURN":
+      return (
+        status === "RETURNED" ||
+        returnStatus === "RECEIVED" ||
+        returnStatus === "REFUND_PENDING" ||
+        returnStatus === "COMPLETED"
+      )
+    case "CONFIRM_RETURN_REFUND":
+      return (
+        status === "RETURNED" &&
+        paymentStatus === "REFUNDED" &&
+        returnStatus === "COMPLETED"
+      )
+  }
+}
+
+export function classifyPaymentAdminActionPrecondition(
+  order: PaymentAdminActionOrder,
+  action: PaymentAdminAction,
+  expectedStateToken: string
+) {
+  if (expectedStateToken === buildAdminOrderStateToken(order)) {
+    return "match" as const
+  }
+  if (isPaymentAdminActionReplay(order, action)) {
+    return "replay" as const
+  }
+  return "conflict" as const
 }
 
 export function listAvailablePaymentAdminActions(
