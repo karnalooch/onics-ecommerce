@@ -100,14 +100,62 @@ export async function getKnowledge(): Promise<KnowledgeStore> {
   return buildKnowledgeFromDb(initializeMockData());
 }
 
+function latestKnowledgeTimestamp(
+  current: unknown,
+  incoming: string | null
+) {
+  const currentValue = typeof current === "string" ? current : null;
+  if (!currentValue) return incoming || new Date().toISOString();
+  if (!incoming) return currentValue;
+
+  const currentTimestamp = Date.parse(currentValue);
+  const incomingTimestamp = Date.parse(incoming);
+  if (!Number.isFinite(currentTimestamp)) return incoming;
+  if (!Number.isFinite(incomingTimestamp)) return currentValue;
+
+  return incomingTimestamp >= currentTimestamp ? incoming : currentValue;
+}
+
+export function buildMergedKnowledgePersistence(
+  db: KnowledgeDbSnapshot,
+  data: KnowledgeStore
+) {
+  const freshStore = buildKnowledgeFromDb(db);
+  const incomingEntries = buildKnowledgeEntriesForPersistence(data);
+
+  for (const [sku, entry] of Object.entries(incomingEntries)) {
+    mergeKnowledgeEntry(freshStore, sku, entry);
+  }
+
+  freshStore.sources = Array.from(
+    new Set([...(freshStore.sources || []), ...(data.sources || [])])
+  );
+  freshStore.processedSources = Array.from(
+    new Set([
+      ...(freshStore.processedSources || []),
+      ...(data.processedSources || []),
+    ])
+  );
+  freshStore.lastUpdated = latestKnowledgeTimestamp(
+    db.knowledgeMeta?.lastUpdated,
+    data.lastUpdated
+  );
+
+  return {
+    knowledgeEntries: buildKnowledgeEntriesForPersistence(freshStore),
+    knowledgeMeta: {
+      sources: freshStore.sources,
+      processedSources: freshStore.processedSources,
+      lastUpdated: freshStore.lastUpdated,
+    },
+  };
+}
+
 export async function saveKnowledge(data: KnowledgeStore) {
   await mutateMockData((db) => {
-    db.knowledgeEntries = buildKnowledgeEntriesForPersistence(data);
-    db.knowledgeMeta = {
-      sources: Array.from(new Set(data.sources || [])),
-      processedSources: Array.from(new Set(data.processedSources || [])),
-      lastUpdated: data.lastUpdated || new Date().toISOString()
-    };
+    const merged = buildMergedKnowledgePersistence(db, data);
+    db.knowledgeEntries = merged.knowledgeEntries;
+    db.knowledgeMeta = merged.knowledgeMeta;
   });
 }
 

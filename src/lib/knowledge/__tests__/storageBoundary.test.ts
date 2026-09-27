@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildKnowledgeEntriesForPersistence,
   buildKnowledgeFromDb,
+  buildMergedKnowledgePersistence,
 } from "@/lib/knowledge/parser"
 
 describe("knowledge storage boundary", () => {
@@ -91,6 +92,102 @@ describe("knowledge storage boundary", () => {
         price: 20,
         source: "supplier.xlsx",
       }),
+    })
+  })
+
+  it("merges stale parser output into the fresh persistence snapshot", () => {
+    const merged = buildMergedKnowledgePersistence(
+      {
+        products: [],
+        knowledgeEntries: {
+          "CONCURRENT-1": {
+            specs: "Saved by another training job",
+            price: 40,
+            currency: "PLN",
+            source: "concurrent.xlsx",
+          },
+        },
+        knowledgeMeta: {
+          sources: ["concurrent.xlsx"],
+          processedSources: ["concurrent.xlsx"],
+          lastUpdated: "2026-09-27T02:00:00.000Z",
+        },
+      },
+      {
+        lastUpdated: "2026-09-27T01:00:00.000Z",
+        sources: ["incoming.xlsx"],
+        processedSources: ["incoming.xlsx"],
+        knowledge: {
+          "INCOMING-1": {
+            specs: "Parsed by the stale training snapshot",
+            price: 20,
+            currency: "PLN",
+            source: "incoming.xlsx",
+          },
+        },
+      }
+    )
+
+    expect(merged.knowledgeEntries).toMatchObject({
+      "CONCURRENT-1": {
+        price: 40,
+        source: "concurrent.xlsx",
+      },
+      "INCOMING-1": {
+        price: 20,
+        source: "incoming.xlsx",
+      },
+    })
+    expect(merged.knowledgeMeta.sources).toEqual([
+      "concurrent.xlsx",
+      "incoming.xlsx",
+    ])
+    expect(merged.knowledgeMeta.processedSources).toEqual([
+      "concurrent.xlsx",
+      "incoming.xlsx",
+    ])
+    expect(merged.knowledgeMeta.lastUpdated).toBe(
+      "2026-09-27T02:00:00.000Z"
+    )
+  })
+
+  it("preserves fresher same-SKU knowledge while unioning source provenance", () => {
+    const merged = buildMergedKnowledgePersistence(
+      {
+        products: [],
+        knowledgeEntries: {
+          "SKU-1": {
+            specs: "A much longer specification written by the concurrent job",
+            price: 99,
+            currency: "PLN",
+            source: "fresh.pdf",
+          },
+        },
+        knowledgeMeta: {
+          sources: ["fresh.pdf"],
+          processedSources: ["fresh.pdf"],
+          lastUpdated: "2026-09-27T02:00:00.000Z",
+        },
+      },
+      {
+        lastUpdated: "2026-09-27T01:00:00.000Z",
+        sources: ["stale.xlsx"],
+        processedSources: ["stale.xlsx"],
+        knowledge: {
+          "SKU-1": {
+            specs: "Short spec",
+            price: 10,
+            currency: "PLN",
+            source: "stale.xlsx",
+          },
+        },
+      }
+    )
+
+    expect(merged.knowledgeEntries["SKU-1"]).toMatchObject({
+      specs: "A much longer specification written by the concurrent job",
+      price: 99,
+      source: "fresh.pdf, stale.xlsx",
     })
   })
 
