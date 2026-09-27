@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useId, useRef, useState } from "react"
 import { Loader2, Send, X } from "lucide-react"
 
 interface QuoteModalProps {
@@ -19,6 +19,7 @@ export function QuoteRequestModal({
   onClose,
 }: QuoteModalProps) {
   const requestId = useId()
+  const submissionRef = useRef<{ signature: string; requestId: string } | null>(null)
   const [quantity, setQuantity] = useState(10)
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
@@ -31,10 +32,24 @@ export function QuoteRequestModal({
     setError("")
 
     try {
+      const submissionSignature = JSON.stringify({
+        productId,
+        expectedQuantity: quantity,
+        message: message.trim(),
+      })
+      if (submissionRef.current?.signature !== submissionSignature) {
+        submissionRef.current = {
+          signature: submissionSignature,
+          requestId: crypto.randomUUID(),
+        }
+      }
+      const currentRequestId = submissionRef.current.requestId
+
       const response = await fetch("/api/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          requestId: currentRequestId,
           productId,
           expectedQuantity: quantity,
           message,
@@ -45,6 +60,15 @@ export function QuoteRequestModal({
 
       if (!response.ok) {
         setError(payload.error || "Nie udało się wysłać zapytania.")
+        return
+      }
+
+      if (
+        payload?.clientRequestId !== currentRequestId ||
+        typeof payload?.id !== "string" ||
+        !payload.id.trim()
+      ) {
+        setError("Serwer zwrócił nieprawidłowe potwierdzenie zapytania.")
         return
       }
 
