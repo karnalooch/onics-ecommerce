@@ -162,7 +162,13 @@ export async function POST(req: Request) {
         ) {
           throw new Error("CATEGORY_NAME_EXISTS")
         }
-        return { category: existing, replayed: true }
+        return {
+          category: {
+            ...existing,
+            revision: catalogCategoryRevision(existing.revision),
+          },
+          replayed: true,
+        }
       }
 
       const category: Category = {
@@ -205,6 +211,19 @@ export async function POST(req: Request) {
         { status: 409 }
       )
     }
+    if (
+      error instanceof Error &&
+      (error.message === "CATALOG_DUPLICATE_SUBCATEGORY_NAME" ||
+        error.message === "CATALOG_DUPLICATE_SUBCATEGORY_ID")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Lista podkategorii zawiera niejednoznaczne nazwy lub identyfikatory.",
+        },
+        { status: 409 }
+      )
+    }
     return NextResponse.json(
       { error: "Nie udało się zapisać kategorii." },
       { status: 500 }
@@ -236,13 +255,34 @@ export async function PUT(req: Request) {
   }
 
   try {
-    const updated = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const categoryStore = db.categories as Category[]
       const index = categoryStore.findIndex(
         (category) => category.id === parsed.data.id
       )
 
       if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
+
+      const current = categoryStore[index]
+      const currentRevision = catalogCategoryRevision(current.revision)
+      const currentSubcategories = current.subcategories || []
+      const nextSubcategories = parsed.data.subcategories
+        ? normalizeSubcategories(
+            parsed.data.subcategories,
+            currentSubcategories
+          )
+        : currentSubcategories
+
+      if (parsed.data.expectedRevision !== currentRevision) {
+        if (isCategoryUpdateReplay(current, parsed.data, nextSubcategories)) {
+          return {
+            category: { ...current, revision: currentRevision },
+            replayed: true,
+          }
+        }
+        throw new Error("CATEGORY_REVISION_CONFLICT")
+      }
+
       indexCatalogCategoriesByName(categoryStore)
       if (
         hasCatalogCategoryNameConflict(
@@ -253,11 +293,6 @@ export async function PUT(req: Request) {
       ) {
         throw new Error("CATEGORY_NAME_EXISTS")
       }
-
-      const current = categoryStore[index]
-      const nextSubcategories = parsed.data.subcategories
-        ? normalizeSubcategories(parsed.data.subcategories)
-        : current.subcategories
 
       if (parsed.data.subcategories) {
         const removedReferencedSubcategoryIds =
@@ -276,19 +311,50 @@ export async function PUT(req: Request) {
         ...current,
         name: parsed.data.name.toUpperCase(),
         iconName: parsed.data.iconName || current.iconName || "Folder",
+        revision: nextCatalogCategoryRevision(currentRevision),
         subcategories: nextSubcategories,
       }
 
       categoryStore[index] = nextCategory
-      return nextCategory
+      return { category: nextCategory, replayed: false }
     })
 
-    return NextResponse.json(updated)
+    return NextResponse.json(submission.category, {
+      headers: submission.replayed
+        ? { "Idempotency-Replayed": "true" }
+        : undefined,
+    })
   } catch (error) {
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono kategorii." },
         { status: 404 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_REVISION_CONFLICT"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Kategoria zmieniła się od ostatniego odczytu. Odśwież dane i ponów zmianę.",
+          code: "CATEGORY_REVISION_CONFLICT",
+        },
+        { status: 409 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      (error.message === "CATALOG_DUPLICATE_SUBCATEGORY_NAME" ||
+        error.message === "CATALOG_DUPLICATE_SUBCATEGORY_ID")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Lista podkategorii zawiera niejednoznaczne nazwy lub identyfikatory.",
+        },
+        { status: 409 }
       )
     }
     if (
