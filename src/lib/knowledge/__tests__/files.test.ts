@@ -1,6 +1,10 @@
 import path from "path"
 import { describe, expect, it } from "vitest"
-import { resolveKnowledgeUploadRoot } from "@/lib/knowledge/files"
+import {
+  canSafelyRemoveFailedKnowledgeUpload,
+  knowledgeStoreReferencesUpload,
+  resolveKnowledgeUploadRoot,
+} from "@/lib/knowledge/files"
 
 describe("knowledge upload storage", () => {
   it("keeps the development fallback outside public assets", () => {
@@ -42,5 +46,57 @@ describe("knowledge upload storage", () => {
         cwd,
       })
     ).toBe(configuredPath)
+  })
+
+  it("retains failed uploads that are already referenced by knowledge persistence", () => {
+    const store = {
+      sources: [],
+      processedSources: [],
+      lastUpdated: "2026-09-27T21:30:00.000Z",
+      knowledge: {
+        "SKU-1": {
+          specs: "Persisted before the upload failed",
+          price: 10,
+          currency: "PLN",
+          source: "older.pdf, catalog.pdf",
+        },
+      },
+    }
+
+    expect(knowledgeStoreReferencesUpload(store, "catalog.pdf")).toBe(true)
+    expect(knowledgeStoreReferencesUpload(store, "missing.pdf")).toBe(false)
+  })
+
+  it("treats source metadata as a persisted upload reference", () => {
+    const store = {
+      sources: ["catalog.xlsx"],
+      processedSources: [],
+      lastUpdated: "2026-09-27T21:30:00.000Z",
+      knowledge: {},
+    }
+
+    expect(knowledgeStoreReferencesUpload(store, "catalog.xlsx")).toBe(true)
+  })
+
+  it("removes only definitely unreferenced failed uploads", async () => {
+    const unreferencedStore = {
+      sources: [],
+      processedSources: [],
+      lastUpdated: "2026-09-27T21:30:00.000Z",
+      knowledge: {},
+    }
+
+    await expect(
+      canSafelyRemoveFailedKnowledgeUpload(
+        "catalog.pdf",
+        async () => unreferencedStore
+      )
+    ).resolves.toBe(true)
+
+    await expect(
+      canSafelyRemoveFailedKnowledgeUpload("catalog.pdf", async () => {
+        throw new Error("STORE_UNAVAILABLE")
+      })
+    ).resolves.toBe(false)
   })
 })
