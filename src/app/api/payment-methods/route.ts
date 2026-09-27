@@ -16,12 +16,29 @@ import {
 import { describePaymentProviderOperations } from "@/lib/paymentProviderOperations"
 import { runPaymentProviderActivationPreflight } from "@/lib/paymentProviderActivation"
 import {
+  buildPaymentControlStateToken,
+  buildPaymentMethodStateToken,
+  isGlobalPaymentSettingsReplay,
+  isMethodPaymentSettingsReplay,
+} from "@/lib/paymentSettingsState"
+import {
   initializeMockData,
   mutateMockData,
   type PaymentAuditEntry,
   type PaymentControlSettings,
   type PaymentMethodSettings,
 } from "@/store/serverStore"
+
+function describeAdminPaymentControl(
+  snapshot: ReturnType<typeof initializeMockData>
+) {
+  return {
+    ...describePaymentControl(snapshot.paymentControl),
+    settingsStateToken: buildPaymentControlStateToken(
+      snapshot.paymentControl
+    ),
+  }
+}
 
 function describeAdminPaymentMethods(
   snapshot: ReturnType<typeof initializeMockData>
@@ -32,8 +49,40 @@ function describeAdminPaymentMethods(
   )
   return describePaymentMethods(snapshot.paymentMethods).map((method) => ({
     ...method,
+    settingsStateToken: buildPaymentMethodStateToken(
+      snapshot.paymentMethods[method.id]
+    ),
     operations: operations[method.id],
   }))
+}
+
+function adminPaymentSnapshotResponse(
+  snapshot: ReturnType<typeof initializeMockData>,
+  replayed = false
+) {
+  return NextResponse.json(
+    {
+      control: describeAdminPaymentControl(snapshot),
+      methods: describeAdminPaymentMethods(snapshot),
+      audit: snapshot.paymentAudit.slice(0, 20),
+    },
+    {
+      headers: replayed
+        ? { "Idempotency-Replayed": "true" }
+        : undefined,
+    }
+  )
+}
+
+function paymentSettingsConflict() {
+  return NextResponse.json(
+    {
+      error:
+        "Ustawienia płatności zmieniły się od ostatniego odczytu. Odśwież dane i ponów zmianę.",
+      code: "PAYMENT_SETTINGS_STATE_CONFLICT",
+    },
+    { status: 409 }
+  )
 }
 
 async function validatePaymentProviderActivation(
@@ -81,6 +130,7 @@ async function validatePaymentProviderActivation(
 const UpdatePaymentSettingsSchema = z.union([
   z.object({
     scope: z.literal("GLOBAL"),
+    expectedStateToken: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     enabled: z.boolean(),
     maintenanceMessage: z.string().trim().max(160).nullable().optional(),
   }),
@@ -88,6 +138,7 @@ const UpdatePaymentSettingsSchema = z.union([
     .object({
       scope: z.literal("METHOD").optional(),
       id: z.enum(PAYMENT_PROVIDER_IDS),
+      expectedStateToken: z.string().regex(/^[a-f0-9]{64}$/).optional(),
       enabled: z.boolean().optional(),
       displayName: z.string().trim().min(1).max(80).optional(),
       displayOrder: z.coerce.number().int().min(0).max(999).optional(),
@@ -118,7 +169,10 @@ export async function GET() {
         })
 
   return NextResponse.json({
-    control: describePaymentControl(snapshot.paymentControl),
+    control:
+      authCheck.currentRole === "ADMIN"
+        ? describeAdminPaymentControl(snapshot)
+        : describePaymentControl(snapshot.paymentControl),
     methods: visibleMethods,
     ...(authCheck.currentRole === "ADMIN"
       ? { audit: snapshot.paymentAudit.slice(0, 20) }
@@ -142,9 +196,33 @@ export async function PUT(req: Request) {
     )
   }
 
+  if (parsed.data.expectedStateToken === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Aktualizacja ustawień płatności wymaga expectedStateToken z ostatniego odczytu.",
+      },
+      { status: 428 }
+    )
+  }
+
   if (parsed.data.scope === "GLOBAL") {
     const globalUpdate = parsed.data
     const activationSnapshot = initializeMockData()
+    const observedControlToken = globalUpdate.expectedStateToken
+    const initialControl = activationSnapshot.paymentControl
+    const initialControlToken =
+      buildPaymentControlStateToken(initialControl)
+
+    if (observedControlToken !== initialControlToken) {
+      return isGlobalPaymentSettingsReplay(initialControl, globalUpdate)
+        ? adminPaymentSnapshotResponse(activationSnapshot, true)
+        : paymentSettingsConflict()
+    }
+
+    if (isGlobalPaymentSettingsReplay(initialControl, globalUpdate)) {
+      return adminPaymentSnapshotResponse(activationSnapshot, true)
+    }
 
     if (
       globalUpdate.enabled &&
@@ -161,6 +239,25 @@ export async function PUT(req: Request) {
     const result = await mutateMockData((db) => {
       const paymentControl = db.paymentControl as PaymentControlSettings
       const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
+      const freshToken = buildPaymentControlStateToken(paymentControl)
+
+      if (observedControlToken !== freshToken) {
+        return {
+          conflict: !isGlobalPaymentSettingsReplay(
+            paymentControl,
+            globalUpdate
+          ),
+          replayed: isGlobalPaymentSettingsReplay(
+            paymentControl,
+            globalUpdate
+          ),
+        }
+      }
+
+      if (isGlobalPaymentSettingsReplay(paymentControl, globalUpdate)) {
+        return { conflict: false, replayed: true }
+      }
+
       const nextMaintenanceMessage =
         globalUpdate.maintenanceMessage?.trim() || null
       const previousEnabled = paymentControl.enabled
@@ -186,33 +283,61 @@ export async function PUT(req: Request) {
         paymentControl.updatedAt = auditEntry.createdAt
       }
 
-      return { paymentControl, auditEntry }
+      return { conflict: false, replayed: false }
     })
 
-    const snapshot = initializeMockData()
-    return NextResponse.json({
-      control: describePaymentControl(result.paymentControl),
-      methods: describeAdminPaymentMethods(snapshot),
-      audit: snapshot.paymentAudit.slice(0, 20),
-    })
+    if (result.conflict) return paymentSettingsConflict()
+
+    return adminPaymentSnapshotResponse(
+      initializeMockData(),
+      result.replayed
+    )
   }
 
   const methodUpdate = parsed.data
   const method = methodUpdate.id as PaymentMethodId
 
   const activationSnapshot = initializeMockData()
+  const observedMethodToken = methodUpdate.expectedStateToken
+  const initialMethod = activationSnapshot.paymentMethods[method]
+  const initialMethodToken = buildPaymentMethodStateToken(initialMethod)
+
+  if (observedMethodToken !== initialMethodToken) {
+    return isMethodPaymentSettingsReplay(initialMethod, methodUpdate)
+      ? adminPaymentSnapshotResponse(activationSnapshot, true)
+      : paymentSettingsConflict()
+  }
+
+  if (isMethodPaymentSettingsReplay(initialMethod, methodUpdate)) {
+    return adminPaymentSnapshotResponse(activationSnapshot, true)
+  }
+
   if (
     methodUpdate.enabled === true &&
-    activationSnapshot.paymentMethods[method]?.enabled !== true
+    initialMethod?.enabled !== true
   ) {
     const activationError = await validatePaymentProviderActivation(method)
     if (activationError) return activationError
   }
 
-  await mutateMockData((db) => {
+  const result = await mutateMockData((db) => {
     const paymentMethods = db.paymentMethods as PaymentMethodSettings
     const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
     const previous = paymentMethods[method]
+    const freshToken = buildPaymentMethodStateToken(previous)
+
+    if (observedMethodToken !== freshToken) {
+      const replayed = isMethodPaymentSettingsReplay(
+        previous,
+        methodUpdate
+      )
+      return { conflict: !replayed, replayed }
+    }
+
+    if (isMethodPaymentSettingsReplay(previous, methodUpdate)) {
+      return { conflict: false, replayed: true }
+    }
+
     const next = {
       ...previous,
       enabled: methodUpdate.enabled ?? previous.enabled,
@@ -247,13 +372,14 @@ export async function PUT(req: Request) {
       updatedAt: auditEntry?.createdAt ?? previous.updatedAt,
     }
 
-    return { paymentMethods, auditEntry }
+    return { conflict: false, replayed: false }
   })
 
-  const snapshot = initializeMockData()
-  return NextResponse.json({
-    control: describePaymentControl(snapshot.paymentControl),
-    methods: describeAdminPaymentMethods(snapshot),
-    audit: snapshot.paymentAudit.slice(0, 20),
-  })
+  if (result.conflict) return paymentSettingsConflict()
+
+  return adminPaymentSnapshotResponse(
+    initializeMockData(),
+    result.replayed
+  )
+
 }
