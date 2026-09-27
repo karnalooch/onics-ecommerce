@@ -57,18 +57,23 @@ describe("payment checkout idempotency wiring", () => {
       .toBeLessThan(flow.indexOf("registerPrzelewy24Transaction("))
   })
 
-  it("stages Stripe locally and uses provider-native idempotency for session creation", () => {
+  it("stages Stripe locally before calling the canonical idempotent session creator", () => {
     const source = read("src/lib/paymentProviderCheckout.ts")
     const start = source.indexOf("async function createStripeCheckout")
     const end = source.indexOf("const paymentCheckoutAdapters", start)
     const flow = source.slice(start, end)
+    const creation = read("src/lib/stripeCheckoutCreation.ts")
 
     expect(flow).toContain('paymentCheckoutRegistrationStatus: "PENDING"')
     expect(flow).toContain("stripeCheckoutSessionId: null")
-    expect(flow).toContain("idempotencyKey:")
-    expect(flow).toContain("onics-checkout:")
+    expect(flow).toContain("createStripeCheckoutSessionForOrder(")
     expect(flow.indexOf("reserveInventory("))
-      .toBeLessThan(flow.indexOf("stripe.checkout.sessions.create("))
+      .toBeLessThan(
+        flow.indexOf("createStripeCheckoutSessionForOrder(")
+      )
+    expect(creation).toContain("idempotencyKey:")
+    expect(creation).toContain("stripeCheckoutIdempotencyKey(orderId)")
+    expect(creation).toContain("onics-checkout:")
   })
 
   it("keeps replay fingerprints and provider redirect recovery metadata internal", () => {
