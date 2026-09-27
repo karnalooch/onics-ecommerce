@@ -47,6 +47,7 @@ export type CatalogProductRevisionRecord = CatalogSkuRecord & {
   categoryId?: string | null
   subcategoryId?: string | null
   seoDescription?: string | null
+  description?: string | null
   revision?: number | null
 }
 
@@ -89,7 +90,9 @@ export function isCatalogProductStateEqual(
     normalizeCatalogProductText(left.subcategoryId) ===
       normalizeCatalogProductText(right.subcategoryId) &&
     normalizeCatalogProductText(left.seoDescription) ===
-      normalizeCatalogProductText(right.seoDescription)
+      normalizeCatalogProductText(right.seoDescription) &&
+    normalizeCatalogProductText(left.description) ===
+      normalizeCatalogProductText(right.description)
   )
 }
 
