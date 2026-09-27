@@ -22,6 +22,7 @@ import {
   hasSkuConflict,
   indexCatalogCategoriesByName,
   indexCatalogProductsBySku,
+  nextCatalogCategoryRevision,
   type CatalogManufacturerRecord,
 } from "@/lib/catalog"
 import {
@@ -39,6 +40,7 @@ type CategoryRecord = {
   id: string
   name: string
   iconName?: string
+  revision?: number
   subcategories: Subcategory[]
 }
 
@@ -172,6 +174,7 @@ export async function POST(req: Request) {
                 id: `c_auto_${crypto.randomUUID()}`,
                 name: item.xlsCategoryName.toUpperCase(),
                 iconName: "Layers",
+                revision: 0,
                 subcategories: [],
               }
               categoryStore.push(category)
@@ -195,6 +198,9 @@ export async function POST(req: Request) {
                   name: item.xlsSubcategoryName,
                 }
                 category.subcategories.push(subcategory)
+                category.revision = nextCatalogCategoryRevision(
+                  category.revision
+                )
               }
               subcategoryId = subcategory.id
             }
