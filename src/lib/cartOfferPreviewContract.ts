@@ -133,12 +133,7 @@ export function validateCartOfferPreview(
     throw new Error("Serwer zwrócił niepełny zestaw pozycji oferty.")
   }
 
-  const itemsById = new Map<
-    string,
-    Omit<CartOfferPreview["items"][number], never> & {
-      lineTotalNetCents: number
-    }
-  >()
+  const itemsById = new Map<string, ReturnType<typeof parseOfferItem>>()
   let calculatedTotalCents = 0
 
   for (const value of responseItems) {
@@ -164,8 +159,14 @@ export function validateCartOfferPreview(
     if (!item) {
       throw new Error("Serwer nie zwrócił wszystkich pozycji oferty.")
     }
-    const { lineTotalNetCents: _lineTotalNetCents, ...validatedItem } = item
-    return validatedItem
+    return {
+      id: item.id,
+      sku: item.sku,
+      name: item.name,
+      quantity: item.quantity,
+      unitPriceNet: item.unitPriceNet,
+      lineTotalNet: item.lineTotalNet,
+    }
   })
 
   return {
