@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cartStore";
 import { Trash2, FileText, Send, ShoppingBag, Loader2, UploadCloud, Info, ShieldCheck, CreditCard } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -152,7 +152,10 @@ export default function CartPage() {
     | { id?: string; email?: string | null }
     | undefined;
   const cartOwnerKey = buildCartOwnerKey(sessionIdentity);
-  activeCartOwnerRef.current = cartOwnerKey;
+
+  useLayoutEffect(() => {
+    activeCartOwnerRef.current = cartOwnerKey;
+  }, [cartOwnerKey]);
 
   const captureCartOwnerScope = () => ({
     ownerKey: activeCartOwnerRef.current,
