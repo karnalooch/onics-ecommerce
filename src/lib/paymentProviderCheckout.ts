@@ -20,6 +20,10 @@ import {
   type InventoryProduct,
 } from "@/lib/inventoryReservations"
 import {
+  applyExpiredCheckoutCancellation,
+  type StripeCancelableOrder,
+} from "@/lib/refunds"
+import {
   initializeMockData,
   mutateMockData,
   type PaymentControlSettings,
@@ -673,6 +677,90 @@ export async function createOrRecoverStripeCheckoutSession(
   return session
 }
 
+function isCheckoutAvailabilityFenceError(error: unknown) {
+  const code = error instanceof Error ? error.message : ""
+  return (
+    code === "PAYMENTS_DISABLED" ||
+    code === "PAYMENT_METHOD_DISABLED" ||
+    code === "PAYMENT_CHECKOUT_AVAILABILITY_CHANGED"
+  )
+}
+
+async function settleStripeCheckoutAvailabilityRace(
+  stripe: Stripe,
+  input: PaymentCheckoutInput,
+  fingerprint: string,
+  orderId: string,
+  session: Stripe.Checkout.Session
+) {
+  let providerSession = session
+
+  if (
+    providerSession.status === "open" &&
+    providerSession.payment_status !== "paid"
+  ) {
+    try {
+      providerSession = await stripe.checkout.sessions.expire(
+        providerSession.id
+      )
+    } catch (expireError) {
+      const refreshed = await stripe.checkout.sessions.retrieve(
+        providerSession.id
+      )
+      providerSession = refreshed
+      if (refreshed.status !== "expired") {
+        console.error(
+          "Stripe checkout availability-race expiry did not settle:",
+          expireError
+        )
+      }
+    }
+  }
+
+  await mutateMockData((db) => {
+    const existing = findExistingPaymentCheckout(
+      db.orders as StoredPaymentCheckoutOrder[],
+      input
+    )
+    if (!existing || existing.id !== orderId) {
+      throw new Error("PAYMENT_CHECKOUT_LOCAL_ORDER_MISSING")
+    }
+    assertMatchingPaymentCheckout(existing, input, fingerprint)
+    if (
+      existing.stripeCheckoutSessionId &&
+      existing.stripeCheckoutSessionId !== providerSession.id
+    ) {
+      throw new Error("PAYMENT_CHECKOUT_PROVIDER_REPLAY_MISMATCH")
+    }
+
+    existing.stripeCheckoutSessionId = providerSession.id
+    existing.paymentCheckoutRegistrationStatus = "READY"
+
+    if (
+      providerSession.status === "expired" &&
+      providerSession.payment_status !== "paid"
+    ) {
+      const stripeOrder = existing as StoredPaymentCheckoutOrder &
+        StripeCancelableOrder
+
+      if (
+        stripeOrder.paymentStatus !== "PAID" &&
+        stripeOrder.paymentStatus !== "REFUNDED" &&
+        stripeOrder.status !== "SHIPPED" &&
+        stripeOrder.status !== "RETURNED" &&
+        stripeOrder.inventoryReservationStatus !== "FINALIZED"
+      ) {
+        applyExpiredCheckoutCancellation(
+          db.products as InventoryProduct[],
+          stripeOrder
+        )
+      }
+    }
+  })
+
+  return providerSession
+}
+
 async function createStripeCheckout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
@@ -696,6 +784,7 @@ async function createStripeCheckout(
   )
 
   let claimed: StoredPaymentCheckoutOrder
+  let availabilityFence: PaymentCheckoutAvailabilityFence | null = null
   if (snapshotReplay) {
     claimed = assertMatchingPaymentCheckout(
       snapshotReplay,
@@ -711,18 +800,22 @@ async function createStripeCheckout(
     )
     const orderId = deterministicCheckoutOrderId(input, storedUser)
 
-    claimed = await mutateMockData((db) => {
+    const claim = await mutateMockData((db) => {
       const orderStore = db.orders as StoredPaymentCheckoutOrder[]
       const existing = findExistingPaymentCheckout(orderStore, input)
       if (existing) {
-        return assertMatchingPaymentCheckout(existing, input, fingerprint)
+        return {
+          order: assertMatchingPaymentCheckout(existing, input, fingerprint),
+          availabilityFence: null,
+        }
       }
 
-      assertPaymentStillAvailable(
-        db.paymentControl,
-        db.paymentMethods,
-        "STRIPE"
-      )
+      const freshAvailabilityFence =
+        buildPaymentCheckoutAvailabilityFence(
+          db.paymentControl,
+          db.paymentMethods,
+          "STRIPE"
+        )
 
       const fresh = resolveCheckout(
         db.users as StoredUser[],
@@ -770,8 +863,13 @@ async function createStripeCheckout(
         inventoryReReservedAt: null,
       }
       orderStore.unshift(order)
-      return order
+      return {
+        order,
+        availabilityFence: freshAvailabilityFence,
+      }
     })
+    claimed = claim.order
+    availabilityFence = claim.availabilityFence
   }
 
   const orderId = String(claimed.id ?? "").trim()
@@ -797,11 +895,24 @@ async function createStripeCheckout(
     }
   }
 
-  assertPaymentStillAvailable(
-    input.snapshot.paymentControl,
-    input.snapshot.paymentMethods,
-    "STRIPE"
-  )
+  if (!availabilityFence) {
+    const freshSnapshot = initializeMockData()
+    const freshOrder = findExistingPaymentCheckout(
+      freshSnapshot.orders as StoredPaymentCheckoutOrder[],
+      input
+    )
+    if (!freshOrder || freshOrder.id !== orderId) {
+      throw new Error("PAYMENT_CHECKOUT_LOCAL_ORDER_MISSING")
+    }
+    assertMatchingPaymentCheckout(freshOrder, input, fingerprint)
+    availabilityFence = buildPaymentCheckoutAvailabilityFence(
+      freshSnapshot.paymentControl,
+      freshSnapshot.paymentMethods,
+      "STRIPE"
+    )
+  }
+
+  const checkoutAvailabilityFence = availabilityFence
 
   const session = await createOrRecoverStripeCheckoutSession(
     stripe,
@@ -812,24 +923,43 @@ async function createStripeCheckout(
     throw new Error("Stripe nie zwrócił adresu płatności.")
   }
 
-  await mutateMockData((db) => {
-    const existing = findExistingPaymentCheckout(
-      db.orders as StoredPaymentCheckoutOrder[],
-      input
+  try {
+    await mutateMockData((db) => {
+      const existing = findExistingPaymentCheckout(
+        db.orders as StoredPaymentCheckoutOrder[],
+        input
+      )
+      if (!existing || existing.id !== orderId) {
+        throw new Error("PAYMENT_CHECKOUT_LOCAL_ORDER_MISSING")
+      }
+      assertMatchingPaymentCheckout(existing, input, fingerprint)
+      assertPaymentCheckoutAvailabilityFence(
+        db.paymentControl,
+        db.paymentMethods,
+        "STRIPE",
+        checkoutAvailabilityFence
+      )
+      if (
+        existing.stripeCheckoutSessionId &&
+        existing.stripeCheckoutSessionId !== session.id
+      ) {
+        throw new Error("PAYMENT_CHECKOUT_PROVIDER_REPLAY_MISMATCH")
+      }
+      existing.stripeCheckoutSessionId = session.id
+      existing.paymentCheckoutRegistrationStatus = "READY"
+    })
+  } catch (error) {
+    if (!isCheckoutAvailabilityFenceError(error)) throw error
+
+    await settleStripeCheckoutAvailabilityRace(
+      stripe,
+      input,
+      fingerprint,
+      orderId,
+      session
     )
-    if (!existing || existing.id !== orderId) {
-      throw new Error("PAYMENT_CHECKOUT_LOCAL_ORDER_MISSING")
-    }
-    assertMatchingPaymentCheckout(existing, input, fingerprint)
-    if (
-      existing.stripeCheckoutSessionId &&
-      existing.stripeCheckoutSessionId !== session.id
-    ) {
-      throw new Error("PAYMENT_CHECKOUT_PROVIDER_REPLAY_MISMATCH")
-    }
-    existing.stripeCheckoutSessionId = session.id
-    existing.paymentCheckoutRegistrationStatus = "READY"
-  })
+    throw new Error("PAYMENT_CHECKOUT_AVAILABILITY_CHANGED")
+  }
 
   return {
     orderId,
