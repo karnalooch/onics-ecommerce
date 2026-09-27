@@ -11,7 +11,7 @@ import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
 import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart";
 import { buildCartOwnerKey } from "@/lib/cartIdentity";
 import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding";
-import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";\nimport { ORDER_IMPORT_MAX_BYTES, parseCeltronicsOrderXml, type OrderImportPreview } from "@/lib/orderImport";\nimport { validateOrderImportPreview } from "@/lib/orderImportPreviewContract";
 
 type CheckoutPaymentMethod = {
   id: string;
@@ -240,10 +240,12 @@ export default function CartPage() {
     setImportPreview(null);
 
     try {
+      const xml = await file.text();
+      const parsedImport = parseCeltronicsOrderXml(xml);
       const response = await fetch("/api/cart/import", {
         method: "POST",
         headers: { "Content-Type": "application/xml" },
-        body: await file.text(),
+        body: xml,
       });
       const data = await response.json().catch(() => null);
 
@@ -253,11 +255,12 @@ export default function CartPage() {
         );
       }
 
-      setImportPreview(data as OrderImportPreview);
+      const validatedPreview = validateOrderImportPreview(parsedImport, data);
+      setImportPreview(validatedPreview);
 
-      if (data?.accepted?.length) {
+      if (validatedPreview.accepted.length) {
         toast.success(
-          `Plik sprawdzony: ${data.accepted.length} pozycji gotowych do dodania.`
+          `Plik sprawdzony: ${validatedPreview.accepted.length} pozycji gotowych do dodania.`
         );
       } else {
         toast.error("Plik nie zawiera pozycji, które można dodać do koszyka.");
