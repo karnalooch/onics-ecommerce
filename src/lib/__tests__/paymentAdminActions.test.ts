@@ -3,6 +3,7 @@ import {
   PAYMENT_ADMIN_ACTIONS,
   classifyPaymentAdminActionPrecondition,
   isPaymentAdminActionReplay,
+  isPaymentAdminActionResume,
   listAvailablePaymentAdminActions,
   requiredPaymentAdminCapabilities,
   resolvePaymentAdminActionTarget,
@@ -45,6 +46,51 @@ describe("payment admin action dispatcher", () => {
         staleToken
       )
     ).toBe("conflict")
+  })
+
+  it("resumes partial automated refund flows instead of replaying them", () => {
+    const staleToken = "0".repeat(64)
+
+    const stripeReturn = {
+      paymentProvider: "STRIPE",
+      status: "SHIPPED",
+      paymentStatus: "PAID",
+      returnStatus: "RECEIVED",
+    }
+    expect(isPaymentAdminActionReplay(stripeReturn, "RECEIVE_RETURN")).toBe(false)
+    expect(isPaymentAdminActionResume(stripeReturn, "RECEIVE_RETURN")).toBe(true)
+    expect(
+      classifyPaymentAdminActionPrecondition(
+        stripeReturn,
+        "RECEIVE_RETURN",
+        staleToken
+      )
+    ).toBe("resume")
+
+    expect(
+      classifyPaymentAdminActionPrecondition(
+        {
+          paymentProvider: "STRIPE",
+          status: "CONFIRMED",
+          paymentStatus: "PAID",
+          refundRequestedAt: "2026-09-27T14:00:00.000Z",
+        },
+        "CANCEL",
+        staleToken
+      )
+    ).toBe("resume")
+
+    expect(
+      isPaymentAdminActionReplay(
+        {
+          paymentProvider: "BANK_TRANSFER",
+          status: "SHIPPED",
+          paymentStatus: "PAID",
+          returnStatus: "RECEIVED",
+        },
+        "RECEIVE_RETURN"
+      )
+    ).toBe(true)
   })
 
   it("does not treat a later refund as a replay of payment confirmation", () => {
