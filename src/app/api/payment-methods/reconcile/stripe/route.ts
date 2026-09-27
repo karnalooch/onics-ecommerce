@@ -105,12 +105,10 @@ export async function POST(req: Request) {
     )
   }
 
-  let stripeConfig: ReturnType<typeof resolveStripeCheckoutConfig>
-  try {
-    stripeConfig = resolveStripeCheckoutConfig({ requestUrl: req.url })
-  } catch {
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+  if (!stripeSecretKey) {
     return NextResponse.json(
-      { error: "Stripe nie jest poprawnie skonfigurowany." },
+      { error: "Stripe nie jest skonfigurowany." },
       { status: 503 }
     )
   }
@@ -152,7 +150,7 @@ export async function POST(req: Request) {
       .slice(0, MAX_BULK_RECONCILIATION)
   }
 
-  const stripe = new Stripe(stripeConfig.stripeSecretKey)
+  const stripe = new Stripe(stripeSecretKey)
   const results: ReconcileResult[] = []
 
   for (const snapshotOrder of selected) {
@@ -175,10 +173,14 @@ export async function POST(req: Request) {
           continue
         }
 
+        const recoveryConfig = resolveStripeCheckoutConfig({
+          requestUrl: req.url,
+          stripeSecretKey,
+        })
         const recoveredSession =
           await createStripeCheckoutSessionForOrder(
             stripe,
-            stripeConfig.appUrl,
+            recoveryConfig.appUrl,
             snapshotOrder
           )
 
