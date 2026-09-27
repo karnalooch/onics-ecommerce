@@ -32,6 +32,7 @@ import {
   resolvePrzelewy24Config,
 } from "@/lib/przelewy24"
 import { buildPaymentCheckoutFingerprint } from "@/lib/paymentCheckoutIdempotency"
+import { createStripeCheckoutSessionForOrder } from "@/lib/stripeCheckoutCreation"
 
 export type PaymentCheckoutItem = {
   id: string
@@ -694,55 +695,10 @@ async function createStripeCheckout(
     "STRIPE"
   )
 
-  const checkoutItems = claimed.items as
-    | Array<{
-        id: string
-        sku: string
-        name: string
-        quantity: number
-        price: number
-      }>
-    | undefined
-  const checkoutUser = claimed.user
-  if (!checkoutItems?.length || !checkoutUser) {
-    throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
-  }
-
-  const session = await stripe.checkout.sessions.create(
-    {
-      line_items: checkoutItems.map((item) => ({
-        price_data: {
-          currency: "pln",
-          unit_amount: moneyToMinorUnits(item.price),
-          product_data: {
-            name: item.name,
-            metadata: {
-              sku: item.sku,
-              product_id: item.id,
-            },
-          },
-        },
-        quantity: item.quantity,
-      })),
-      mode: "payment",
-      success_url: `${appUrl}/oferty/zamowienia?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/koszyk?payment=cancelled`,
-      client_reference_id: String(checkoutUser.id ?? ""),
-      customer_email: checkoutUser.email,
-      metadata: {
-        order_id: orderId,
-        pl_nip: checkoutUser.nip || "",
-        client_role: checkoutUser.roleType || "BIZ",
-      },
-      payment_intent_data: {
-        metadata: {
-          order_id: orderId,
-        },
-      },
-    },
-    {
-      idempotencyKey: `onics-checkout:${orderId}`,
-    }
+  const session = await createStripeCheckoutSessionForOrder(
+    stripe,
+    appUrl,
+    claimed
   )
 
   if (!session.url) {
