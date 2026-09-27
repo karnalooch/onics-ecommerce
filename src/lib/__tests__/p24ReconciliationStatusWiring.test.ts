@@ -24,12 +24,41 @@ describe("Przelewy24 transaction status reconciliation wiring", () => {
       "classifyPrzelewy24TransactionReconciliation(transaction)"
     )
     expect(flow).toContain('recovery === "provider-returned"')
+    expect(flow).toContain("applyReturnedPrzelewy24Payment(")
+    expect(flow).toContain('paymentAction = "RETURNED"')
     expect(flow).toContain('recovery === "provider-paid"')
     expect(flow).toContain('recovery === "verify-required"')
 
     const verifyBranch = flow.indexOf('recovery === "verify-required"')
     expect(flow.indexOf("verifyPrzelewy24TransactionIdentity("))
       .toBeGreaterThan(verifyBranch)
+  })
+
+  it("settles staged provider-returned recovery instead of replaying verify", () => {
+    const route = read(
+      "src/app/api/payment-methods/reconcile/przelewy24/route.ts"
+    )
+    const stagedStart = route.indexOf(
+      "if (snapshotOrder.p24VerificationPending) {"
+    )
+    const genericStart = route.indexOf(
+      "} else if (snapshotOrder.p24SessionId) {",
+      stagedStart
+    )
+    const flow = route.slice(stagedStart, genericStart)
+
+    const returnedBranch = flow.indexOf(
+      'recovery === "provider-returned"'
+    )
+    const returnedApply = flow.indexOf(
+      "applyReturnedPrzelewy24Payment("
+    )
+    const verify = flow.indexOf("verifyPrzelewy24Transaction(config, staged)")
+
+    expect(returnedBranch).toBeGreaterThan(-1)
+    expect(returnedApply).toBeGreaterThan(returnedBranch)
+    expect(verify).toBeGreaterThan(returnedApply)
+    expect(flow).toContain('paymentAction = "RETURNED"')
   })
 
   it("does not turn the unpaid branch into a local payment write", () => {
