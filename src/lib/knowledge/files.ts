@@ -50,9 +50,7 @@ export const ALLOWED_KNOWLEDGE_EXTENSIONS = new Set([
 export const MAX_KNOWLEDGE_UPLOAD_BYTES = 25 * 1024 * 1024
 
 function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\export const MAX_KNOWLEDGE_UPLOAD_BYTES = 25 * 1024 * 1024
-
-export function validateKnowledgeFilename")
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 export function knowledgeStoreReferencesUpload(
