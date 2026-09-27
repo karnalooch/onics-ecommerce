@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   buildWfMagCatalogProduct,
+  catalogCategoryRevision,
   ensureManufacturerRecord,
   findCatalogCategoryByName,
   findRemovedReferencedSubcategoryIds,
@@ -14,6 +15,7 @@ import {
   indexCatalogProductsBySku,
   indexCatalogSubcategoriesByName,
   isCatalogCategoryCreateReplay,
+  nextCatalogCategoryRevision,
   validateCatalogClassification,
 } from "@/lib/catalog"
 
@@ -147,6 +149,21 @@ describe("catalog manufacturer references", () => {
     expect(hasManufacturerProductReference(products, "HIKVISION")).toBe(true)
     expect(hasManufacturerProductReference(products, "Dahua")).toBe(false)
     expect(hasManufacturerProductReference(products, "")).toBe(false)
+  })
+})
+
+describe("catalog category revisions", () => {
+  it("normalizes legacy or invalid revisions to zero", () => {
+    expect(catalogCategoryRevision(undefined)).toBe(0)
+    expect(catalogCategoryRevision(null)).toBe(0)
+    expect(catalogCategoryRevision(-1)).toBe(0)
+    expect(catalogCategoryRevision(1.5)).toBe(0)
+    expect(catalogCategoryRevision(4)).toBe(4)
+  })
+
+  it("increments from the normalized current revision", () => {
+    expect(nextCatalogCategoryRevision(undefined)).toBe(1)
+    expect(nextCatalogCategoryRevision(7)).toBe(8)
   })
 })
 

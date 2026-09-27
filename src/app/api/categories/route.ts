@@ -3,12 +3,16 @@ import { z } from "zod"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
+  catalogCategoryRevision,
   findRemovedReferencedSubcategoryIds,
   hasCatalogCategoryNameConflict,
   hasCategoryProductReference,
   indexCatalogCategoriesByName,
+  indexCatalogSubcategoriesByName,
   isCatalogCategoryCreateReplay,
+  nextCatalogCategoryRevision,
   normalizeCatalogCategoryName,
+  normalizeCatalogSubcategoryName,
   type CatalogCategoryReference,
 } from "@/lib/catalog"
 
@@ -19,6 +23,7 @@ type Category = {
   id: string
   name: string
   iconName?: string
+  revision?: number
   subcategories: Subcategory[]
 }
 
@@ -37,22 +42,87 @@ const CategoryInput = z.object({
   subcategories: z.array(SubcategoryInput).max(500).optional(),
 })
 
+const CategoryUpdateInput = CategoryInput.extend({
+  id: z.string().trim().min(1),
+  expectedRevision: z.coerce.number().int().nonnegative().optional(),
+})
+
 function normalizeSubcategories(
-  values: z.infer<typeof SubcategoryInput>[] = []
+  values: z.infer<typeof SubcategoryInput>[] = [],
+  current: Subcategory[] = []
 ): Subcategory[] {
-  return values.map((value) =>
-    typeof value === "string"
-      ? { id: `s_${crypto.randomUUID()}`, name: value }
-      : {
-          id: value.id || `s_${crypto.randomUUID()}`,
-          name: value.name,
-        }
+  const currentByName = indexCatalogSubcategoriesByName(current)
+  const normalized = values.map((value) => {
+    const name = typeof value === "string" ? value : value.name
+    const requestedId = typeof value === "string" ? undefined : value.id
+    const existing = currentByName.get(
+      normalizeCatalogSubcategoryName(name)
+    )
+
+    return {
+      id: requestedId || existing?.id || `s_${crypto.randomUUID()}`,
+      name,
+    }
+  })
+
+  indexCatalogSubcategoriesByName(normalized)
+
+  const ids = new Set<string>()
+  for (const subcategory of normalized) {
+    if (ids.has(subcategory.id)) {
+      throw new Error("CATALOG_DUPLICATE_SUBCATEGORY_ID")
+    }
+    ids.add(subcategory.id)
+  }
+
+  return normalized
+}
+
+function sameSubcategoryState(
+  current: Subcategory[],
+  requested: Subcategory[]
+) {
+  return (
+    current.length === requested.length &&
+    current.every(
+      (subcategory, index) =>
+        subcategory.id === requested[index]?.id &&
+        normalizeCatalogSubcategoryName(subcategory.name) ===
+          normalizeCatalogSubcategoryName(requested[index]?.name)
+    )
   )
+}
+
+function isCategoryUpdateReplay(
+  current: Category,
+  data: z.infer<typeof CategoryUpdateInput>,
+  nextSubcategories: Subcategory[]
+) {
+  if (
+    normalizeCatalogCategoryName(current.name) !==
+    normalizeCatalogCategoryName(data.name)
+  ) {
+    return false
+  }
+
+  const currentIcon = String(current.iconName || "Folder").trim() || "Folder"
+  const requestedIcon =
+    String(data.iconName || current.iconName || "Folder").trim() || "Folder"
+  if (currentIcon !== requestedIcon) return false
+
+  return data.subcategories
+    ? sameSubcategoryState(current.subcategories || [], nextSubcategories)
+    : true
 }
 
 export async function GET() {
   const { categories } = initializeMockData()
-  return NextResponse.json(categories)
+  return NextResponse.json(
+    (categories as Category[]).map((category) => ({
+      ...category,
+      revision: catalogCategoryRevision(category.revision),
+    }))
+  )
 }
 
 export async function POST(req: Request) {
@@ -92,13 +162,20 @@ export async function POST(req: Request) {
         ) {
           throw new Error("CATEGORY_NAME_EXISTS")
         }
-        return { category: existing, replayed: true }
+        return {
+          category: {
+            ...existing,
+            revision: catalogCategoryRevision(existing.revision),
+          },
+          replayed: true,
+        }
       }
 
       const category: Category = {
         id: `c_${crypto.randomUUID()}`,
         name: parsed.data.name.toUpperCase(),
         iconName: parsed.data.iconName || "Folder",
+        revision: 0,
         subcategories: normalizeSubcategories(parsed.data.subcategories),
       }
 
@@ -134,6 +211,19 @@ export async function POST(req: Request) {
         { status: 409 }
       )
     }
+    if (
+      error instanceof Error &&
+      (error.message === "CATALOG_DUPLICATE_SUBCATEGORY_NAME" ||
+        error.message === "CATALOG_DUPLICATE_SUBCATEGORY_ID")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Lista podkategorii zawiera niejednoznaczne nazwy lub identyfikatory.",
+        },
+        { status: 409 }
+      )
+    }
     return NextResponse.json(
       { error: "Nie udało się zapisać kategorii." },
       { status: 500 }
@@ -145,9 +235,7 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CategoryInput.extend({
-    id: z.string().trim().min(1),
-  }).safeParse(await req.json())
+  const parsed = CategoryUpdateInput.safeParse(await req.json())
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -156,14 +244,45 @@ export async function PUT(req: Request) {
     )
   }
 
+  if (parsed.data.expectedRevision === undefined) {
+    return NextResponse.json(
+      {
+        error:
+          "Aktualizacja kategorii wymaga expectedRevision z ostatniego odczytu.",
+      },
+      { status: 428 }
+    )
+  }
+
   try {
-    const updated = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const categoryStore = db.categories as Category[]
       const index = categoryStore.findIndex(
         (category) => category.id === parsed.data.id
       )
 
       if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
+
+      const current = categoryStore[index]
+      const currentRevision = catalogCategoryRevision(current.revision)
+      const currentSubcategories = current.subcategories || []
+      const nextSubcategories = parsed.data.subcategories
+        ? normalizeSubcategories(
+            parsed.data.subcategories,
+            currentSubcategories
+          )
+        : currentSubcategories
+
+      if (parsed.data.expectedRevision !== currentRevision) {
+        if (isCategoryUpdateReplay(current, parsed.data, nextSubcategories)) {
+          return {
+            category: { ...current, revision: currentRevision },
+            replayed: true,
+          }
+        }
+        throw new Error("CATEGORY_REVISION_CONFLICT")
+      }
+
       indexCatalogCategoriesByName(categoryStore)
       if (
         hasCatalogCategoryNameConflict(
@@ -175,10 +294,12 @@ export async function PUT(req: Request) {
         throw new Error("CATEGORY_NAME_EXISTS")
       }
 
-      const current = categoryStore[index]
-      const nextSubcategories = parsed.data.subcategories
-        ? normalizeSubcategories(parsed.data.subcategories)
-        : current.subcategories
+      if (isCategoryUpdateReplay(current, parsed.data, nextSubcategories)) {
+        return {
+          category: { ...current, revision: currentRevision },
+          replayed: true,
+        }
+      }
 
       if (parsed.data.subcategories) {
         const removedReferencedSubcategoryIds =
@@ -197,19 +318,50 @@ export async function PUT(req: Request) {
         ...current,
         name: parsed.data.name.toUpperCase(),
         iconName: parsed.data.iconName || current.iconName || "Folder",
+        revision: nextCatalogCategoryRevision(currentRevision),
         subcategories: nextSubcategories,
       }
 
       categoryStore[index] = nextCategory
-      return nextCategory
+      return { category: nextCategory, replayed: false }
     })
 
-    return NextResponse.json(updated)
+    return NextResponse.json(submission.category, {
+      headers: submission.replayed
+        ? { "Idempotency-Replayed": "true" }
+        : undefined,
+    })
   } catch (error) {
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono kategorii." },
         { status: 404 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_REVISION_CONFLICT"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Kategoria zmieniła się od ostatniego odczytu. Odśwież dane i ponów zmianę.",
+          code: "CATEGORY_REVISION_CONFLICT",
+        },
+        { status: 409 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      (error.message === "CATALOG_DUPLICATE_SUBCATEGORY_NAME" ||
+        error.message === "CATALOG_DUPLICATE_SUBCATEGORY_ID")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Lista podkategorii zawiera niejednoznaczne nazwy lub identyfikatory.",
+        },
+        { status: 409 }
       )
     }
     if (
@@ -257,17 +409,48 @@ export async function DELETE(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const id = new URL(req.url).searchParams.get("id")
+  const url = new URL(req.url)
+  const id = url.searchParams.get("id")
+  const rawExpectedRevision = url.searchParams.get("expectedRevision")
   if (!id) {
     return NextResponse.json({ error: "Brak ID kategorii." }, { status: 400 })
   }
+  if (rawExpectedRevision === null) {
+    return NextResponse.json(
+      {
+        error:
+          "Usunięcie kategorii wymaga expectedRevision z ostatniego odczytu.",
+      },
+      { status: 428 }
+    )
+  }
+
+  const parsedRevision = z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .safeParse(rawExpectedRevision)
+  if (!parsedRevision.success) {
+    return NextResponse.json(
+      { error: "Nieprawidłowy expectedRevision." },
+      { status: 400 }
+    )
+  }
 
   try {
-    await mutateMockData((db) => {
+    const result = await mutateMockData((db) => {
       const categoryStore = db.categories as Category[]
       const index = categoryStore.findIndex((category) => category.id === id)
 
-      if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
+      if (index === -1) return { replayed: true }
+
+      const category = categoryStore[index]
+      if (
+        catalogCategoryRevision(category.revision) !== parsedRevision.data
+      ) {
+        throw new Error("CATEGORY_REVISION_CONFLICT")
+      }
+
       if (
         hasCategoryProductReference(
           db.products as CatalogCategoryReference[],
@@ -277,14 +460,29 @@ export async function DELETE(req: Request) {
         throw new Error("CATEGORY_IN_USE")
       }
       categoryStore.splice(index, 1)
+      return { replayed: false }
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json(
+      { success: true },
+      {
+        headers: result.replayed
+          ? { "Idempotency-Replayed": "true" }
+          : undefined,
+      }
+    )
   } catch (error) {
-    if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_REVISION_CONFLICT"
+    ) {
       return NextResponse.json(
-        { error: "Nie znaleziono kategorii." },
-        { status: 404 }
+        {
+          error:
+            "Kategoria zmieniła się od ostatniego odczytu. Odśwież dane przed usunięciem.",
+          code: "CATEGORY_REVISION_CONFLICT",
+        },
+        { status: 409 }
       )
     }
     if (error instanceof Error && error.message === "CATEGORY_IN_USE") {

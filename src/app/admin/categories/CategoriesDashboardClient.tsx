@@ -89,8 +89,13 @@ export function CategoriesDashboardClient({ initialCategories }: { initialCatego
 
   const handleDeleteCategory = (id: string) => {
     if (!confirm("Usunąć kategorię?")) return;
+    const category = initialCategories.find((candidate) => candidate.id === id);
+    const expectedRevision =
+      Number.isSafeInteger(category?.revision) && category.revision >= 0
+        ? category.revision
+        : 0;
     startTransition(async () => {
-      const res = await deleteCategoryAction(id);
+      const res = await deleteCategoryAction(id, expectedRevision);
       if (res.success) {
         if (activeCatId === id) setActiveCatId(null);
         toast.success("LOG: Kategoria została usunięta.");
