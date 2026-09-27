@@ -46,8 +46,9 @@ export async function POST(req: Request) {
   }
 
   const buffer = fs.readFileSync(fileInfo.absolutePath)
+  const knowledgeRevision = (await getKnowledge()).revision ?? 0
   const encoder = new TextEncoder()
-  const abortSignal = { aborted: false }
+  const abortSignal = { aborted: false, knowledgeRevision }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -100,6 +101,7 @@ export async function POST(req: Request) {
         }
 
         const store = await getKnowledge()
+        store.revision = knowledgeRevision
         if (!store.sources.includes(fileInfo.filename)) {
           store.sources.push(fileInfo.filename)
         }
@@ -118,9 +120,13 @@ export async function POST(req: Request) {
           timestamp: new Date().toLocaleTimeString("pl-PL"),
         })
       } catch (error) {
-        const message =
+        const rawMessage =
           error instanceof Error ? error.message : "Błąd podczas analizy."
-        if (message !== "PROCES_PRZERWANY") {
+        const message =
+          rawMessage === "KNOWLEDGE_STORE_RESET_DURING_TRAINING"
+            ? "Baza wiedzy została wyczyszczona podczas analizy. Uruchom analizę ponownie."
+            : rawMessage
+        if (rawMessage !== "PROCES_PRZERWANY") {
           send({
             type: "error",
             message,
