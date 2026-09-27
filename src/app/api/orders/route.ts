@@ -131,11 +131,19 @@ function withPaymentLifecycle(
     paymentLifecycle: describeOrderPaymentLifecycle(order),
   }
 
+  const checkoutRegistrationStatus =
+    internalCheckoutRegistrationStatus === "PENDING" ||
+    internalCheckoutRegistrationStatus === "READY" ||
+    internalCheckoutRegistrationStatus === "UNCERTAIN"
+      ? internalCheckoutRegistrationStatus
+      : null
+
   return includeAdminActions
     ? {
         ...described,
         adminStateToken: buildAdminOrderStateToken(order),
         paymentAdminActions: listAvailablePaymentAdminActions(order),
+        checkoutRegistrationStatus,
       }
     : described
 }

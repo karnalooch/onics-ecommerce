@@ -5,7 +5,7 @@ import {
   ShoppingBag, CalendarClock, Loader2, CheckCircle2, 
   Terminal, Activity, Package, Truck, Search, 
   ChevronRight, MoreHorizontal, FileText, Database,
-  ArrowRight, ShieldCheck, RefreshCcw, Box
+  ArrowRight, ShieldCheck, RefreshCcw, Box, AlertTriangle
 } from "lucide-react"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
@@ -477,11 +477,21 @@ export default function AdminOrdersPage() {
                                    <span className="text-[11px] font-black text-primary italic tabular-nums">#{o.id}</span>
                                 </td>
                                 <td className="px-6 py-6">
-                                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-950 text-white border border-slate-800">
-                                      {o.orderType === "ORDER" ? <Package className="w-3 h-3 text-primary" /> : <FileText className="w-3 h-3" />}
-                                      <span className="text-[8px] font-black uppercase italic tracking-widest">
-                                         {o.orderType === "ORDER" ? "HARD_RESERVATION" : "LIGHT_QUOTE"}
-                                      </span>
+                                   <div className="flex flex-col items-start gap-2">
+                                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-950 text-white border border-slate-800">
+                                         {o.orderType === "ORDER" ? <Package className="w-3 h-3 text-primary" /> : <FileText className="w-3 h-3" />}
+                                         <span className="text-[8px] font-black uppercase italic tracking-widest">
+                                            {o.orderType === "ORDER" ? "HARD_RESERVATION" : "LIGHT_QUOTE"}
+                                         </span>
+                                      </div>
+                                      {o.checkoutRegistrationStatus === "UNCERTAIN" && (
+                                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-200">
+                                            <AlertTriangle className="w-3 h-3" />
+                                            <span className="text-[8px] font-black uppercase tracking-widest">
+                                               PAYMENT_REGISTRATION_UNCERTAIN
+                                            </span>
+                                         </div>
+                                      )}
                                    </div>
                                 </td>
                                 <td className="px-6 py-6">
@@ -573,6 +583,19 @@ export default function AdminOrdersPage() {
                  </div>
 
                  <div className="p-10 space-y-10 overflow-y-auto custom-scrollbar">
+                    {validatingOrder.checkoutRegistrationStatus === "UNCERTAIN" && (
+                       <div className="border-l-4 border-amber-500 bg-amber-50 px-5 py-4 flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-amber-700 mt-0.5 shrink-0" />
+                          <div>
+                             <p className="text-[10px] font-black uppercase tracking-widest text-amber-900">
+                                Rejestracja płatności wymaga ręcznej weryfikacji
+                             </p>
+                             <p className="text-[10px] font-bold text-amber-800 mt-2 leading-relaxed">
+                                Wynik rejestracji checkoutu jest niepewny. Nie zwalniaj rezerwacji i nie twórz nowej płatności w ciemno. Uruchom synchronizację dostawcy w panelu płatności i zweryfikuj wynik operatora.
+                             </p>
+                          </div>
+                       </div>
+                    )}
                     
                     {/* LOGISTICS CONFIG */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
