@@ -3,6 +3,7 @@ import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
   isQuoteAdminActionable,
+  isQuoteAdminUpdateReplay,
   requirePositiveQuoteTotal,
   requireQuoteBasePrice,
 } from "../quoteAdmin"
@@ -68,6 +69,72 @@ describe("quote admin invariants", () => {
         deliveryTimeDays: null,
         additionalDiscount: 5,
       }).success
+    ).toBe(false)
+  })
+
+  it("recognizes exact terminal retries without reopening a quote", () => {
+    expect(
+      isQuoteAdminUpdateReplay(
+        {
+          status: "QUOTED",
+          deliveryTimeDays: 14,
+          additionalDiscount: 7.5,
+        },
+        {
+          id: "QUOTE-1",
+          status: "QUOTED",
+          deliveryTimeDays: 14,
+          additionalDiscount: 7.5,
+        }
+      )
+    ).toBe(true)
+
+    expect(
+      isQuoteAdminUpdateReplay(
+        {
+          status: "QUOTED",
+          deliveryTimeDays: 14,
+          additionalDiscount: 7.5,
+        },
+        {
+          id: "QUOTE-1",
+          status: "QUOTED",
+          deliveryTimeDays: 21,
+          additionalDiscount: 7.5,
+        }
+      )
+    ).toBe(false)
+
+    expect(
+      isQuoteAdminUpdateReplay(
+        {
+          status: "REJECTED",
+          deliveryTimeDays: null,
+          additionalDiscount: 0,
+        },
+        {
+          id: "QUOTE-1",
+          status: "REJECTED",
+          deliveryTimeDays: null,
+          additionalDiscount: 0,
+        }
+      )
+    ).toBe(true)
+
+    expect(
+      isQuoteAdminUpdateReplay(
+        {
+          status: "REJECTED",
+          deliveryTimeDays: null,
+          additionalDiscount: 0,
+        },
+        {
+          id: "QUOTE-1",
+          status: "QUOTED",
+          deliveryTimeDays: 14,
+          additionalDiscount: 0,
+        }
+      )
     ).toBe(false)
   })
 
