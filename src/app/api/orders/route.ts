@@ -99,8 +99,14 @@ function withPaymentLifecycle(
   order: StoredOrder,
   includeAdminActions = false
 ) {
+  const {
+    clientRequestFingerprint: internalRequestFingerprint,
+    ...publicOrder
+  } = order
+  void internalRequestFingerprint
+
   const described = {
-    ...order,
+    ...publicOrder,
     paymentLifecycle: describeOrderPaymentLifecycle(order),
   }
 
