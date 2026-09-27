@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest"
 import {
   buildWfMagCatalogProduct,
   ensureManufacturerRecord,
+  findCatalogCategoryByName,
   findRemovedReferencedSubcategoryIds,
+  hasCatalogCategoryNameConflict,
   hasCategoryProductReference,
   hasManufacturerProductReference,
   hasSkuConflict,
+  indexCatalogCategoriesByName,
   indexCatalogProductsBySku,
+  isCatalogCategoryCreateReplay,
   validateCatalogClassification,
 } from "@/lib/catalog"
 
@@ -140,6 +144,70 @@ describe("catalog manufacturer references", () => {
     expect(hasManufacturerProductReference(products, "HIKVISION")).toBe(true)
     expect(hasManufacturerProductReference(products, "Dahua")).toBe(false)
     expect(hasManufacturerProductReference(products, "")).toBe(false)
+  })
+})
+
+describe("catalog category identity", () => {
+  const categories = [
+    { id: "c1", name: "ALARMY" },
+    { id: "c2", name: "Monitoring" },
+  ]
+
+  it("finds category identity case-insensitively", () => {
+    expect(findCatalogCategoryByName(categories, " alarmy ")).toBe(
+      categories[0]
+    )
+  })
+
+  it("detects rename conflicts while allowing the current category", () => {
+    expect(
+      hasCatalogCategoryNameConflict(categories, "monitoring", "c1")
+    ).toBe(true)
+    expect(
+      hasCatalogCategoryNameConflict(categories, "alarmy", "c1")
+    ).toBe(false)
+  })
+
+  it("accepts only semantically identical category creation as replay", () => {
+    const existing = {
+      id: "c1",
+      name: "ALARMY",
+      iconName: "Folder",
+      subcategories: [{ id: "s1", name: "Centrale" }],
+    }
+
+    expect(
+      isCatalogCategoryCreateReplay(existing, {
+        name: " alarmy ",
+        iconName: "Folder",
+        subcategories: [{ name: " centrale " }],
+      })
+    ).toBe(true)
+
+    expect(
+      isCatalogCategoryCreateReplay(existing, {
+        name: "ALARMY",
+        iconName: "Layers",
+        subcategories: [{ name: "Centrale" }],
+      })
+    ).toBe(false)
+
+    expect(
+      isCatalogCategoryCreateReplay(existing, {
+        name: "ALARMY",
+        iconName: "Folder",
+        subcategories: [{ name: "Centrale" }, { name: "Sygnalizatory" }],
+      })
+    ).toBe(false)
+  })
+
+  it("fails closed when persisted categories already duplicate a name", () => {
+    expect(() =>
+      indexCatalogCategoriesByName([
+        { id: "c1", name: "ALARMY" },
+        { id: "c2", name: " alarmy " },
+      ])
+    ).toThrow("CATALOG_DUPLICATE_CATEGORY_NAME")
   })
 })
 

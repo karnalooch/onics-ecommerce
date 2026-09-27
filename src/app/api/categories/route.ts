@@ -4,7 +4,11 @@ import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
   findRemovedReferencedSubcategoryIds,
+  hasCatalogCategoryNameConflict,
   hasCategoryProductReference,
+  indexCatalogCategoriesByName,
+  isCatalogCategoryCreateReplay,
+  normalizeCatalogCategoryName,
   type CatalogCategoryReference,
 } from "@/lib/catalog"
 
@@ -64,8 +68,33 @@ export async function POST(req: Request) {
   }
 
   try {
-    const newCategory = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const categoryStore = db.categories as Category[]
+      const byName = indexCatalogCategoriesByName(categoryStore)
+      const existing = byName.get(
+        normalizeCatalogCategoryName(parsed.data.name)
+      )
+      if (existing) {
+        const requestedSubcategories = (parsed.data.subcategories || []).map(
+          (subcategory) => ({
+            name:
+              typeof subcategory === "string"
+                ? subcategory
+                : subcategory.name,
+          })
+        )
+        if (
+          !isCatalogCategoryCreateReplay(existing, {
+            name: parsed.data.name,
+            iconName: parsed.data.iconName || "Folder",
+            subcategories: requestedSubcategories,
+          })
+        ) {
+          throw new Error("CATEGORY_NAME_EXISTS")
+        }
+        return { category: existing, replayed: true }
+      }
+
       const category: Category = {
         id: `c_${crypto.randomUUID()}`,
         name: parsed.data.name.toUpperCase(),
@@ -74,11 +103,37 @@ export async function POST(req: Request) {
       }
 
       categoryStore.push(category)
-      return category
+      return { category, replayed: false }
     })
 
-    return NextResponse.json(newCategory, { status: 201 })
-  } catch {
+    return NextResponse.json(submission.category, {
+      status: submission.replayed ? 200 : 201,
+      headers: submission.replayed
+        ? { "Idempotency-Replayed": "true" }
+        : undefined,
+    })
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_NAME_EXISTS"
+    ) {
+      return NextResponse.json(
+        { error: "Kategoria o tej nazwie już istnieje z inną konfiguracją." },
+        { status: 409 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATALOG_DUPLICATE_CATEGORY_NAME"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Katalog zawiera zduplikowane nazwy kategorii. Usuń konflikt przed kolejną zmianą.",
+        },
+        { status: 409 }
+      )
+    }
     return NextResponse.json(
       { error: "Nie udało się zapisać kategorii." },
       { status: 500 }
@@ -109,6 +164,16 @@ export async function PUT(req: Request) {
       )
 
       if (index === -1) throw new Error("CATEGORY_NOT_FOUND")
+      indexCatalogCategoriesByName(categoryStore)
+      if (
+        hasCatalogCategoryNameConflict(
+          categoryStore,
+          parsed.data.name,
+          parsed.data.id
+        )
+      ) {
+        throw new Error("CATEGORY_NAME_EXISTS")
+      }
 
       const current = categoryStore[index]
       const nextSubcategories = parsed.data.subcategories
@@ -145,6 +210,27 @@ export async function PUT(req: Request) {
       return NextResponse.json(
         { error: "Nie znaleziono kategorii." },
         { status: 404 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_NAME_EXISTS"
+    ) {
+      return NextResponse.json(
+        { error: "Kategoria o tej nazwie już istnieje." },
+        { status: 409 }
+      )
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATALOG_DUPLICATE_CATEGORY_NAME"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Katalog zawiera zduplikowane nazwy kategorii. Usuń konflikt przed kolejną zmianą.",
+        },
+        { status: 409 }
       )
     }
     if (

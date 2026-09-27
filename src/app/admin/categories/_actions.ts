@@ -7,7 +7,11 @@ import { authorizeAPI } from "@/lib/authUtils";
 import { mutateMockData } from "@/store/serverStore";
 import {
   findRemovedReferencedSubcategoryIds,
+  hasCatalogCategoryNameConflict,
   hasCategoryProductReference,
+  indexCatalogCategoriesByName,
+  isCatalogCategoryCreateReplay,
+  normalizeCatalogCategoryName,
   type CatalogCategoryReference,
 } from "@/lib/catalog";
 
@@ -49,21 +53,61 @@ export async function addCategoryAction(name: string): Promise<ActionState> {
   if (!name.trim()) return { success: false, error: "Nazwa kategorii nie może być pusta" };
 
   try {
-    const newCat = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const categories = db.categories as CategoryRecord[]
+      const byName = indexCatalogCategoriesByName(categories)
+      const existing = byName.get(normalizeCatalogCategoryName(name))
+      if (existing) {
+        if (
+          !isCatalogCategoryCreateReplay(existing, {
+            name,
+            iconName: "Folder",
+            subcategories: [],
+          })
+        ) {
+          throw new Error("CATEGORY_NAME_EXISTS")
+        }
+        return { category: existing, replayed: true }
+      }
+
       const category: CategoryRecord = {
-        id: `c${Date.now()}`,
+        id: `c_${crypto.randomUUID()}`,
         name: name.trim().toUpperCase(),
         iconName: "Folder",
         subcategories: []
       }
       categories.push(category)
-      return category
+      return { category, replayed: false }
     })
 
     revalidatePath("/admin/categories");
-    return { success: true, message: "Kategoria została dodana", data: newCat };
-  } catch {
+    return {
+      success: true,
+      message: submission.replayed
+        ? "Kategoria już istnieje"
+        : "Kategoria została dodana",
+      data: submission.category
+    };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_NAME_EXISTS"
+    ) {
+      return {
+        success: false,
+        error: "Kategoria o tej nazwie już istnieje z inną konfiguracją."
+      };
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATALOG_DUPLICATE_CATEGORY_NAME"
+    ) {
+      return {
+        success: false,
+        error:
+          "Katalog zawiera zduplikowane nazwy kategorii. Usuń konflikt przed kolejną zmianą."
+      };
+    }
     return { success: false, error: "Błąd podczas dodawania kategorii" };
   }
 }
@@ -79,6 +123,18 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
       const categories = db.categories as CategoryRecord[]
       const idx = categories.findIndex((category) => category.id === validated.data.id)
       if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
+
+      indexCatalogCategoriesByName(categories)
+      if (
+        validated.data.name &&
+        hasCatalogCategoryNameConflict(
+          categories,
+          validated.data.name,
+          validated.data.id
+        )
+      ) {
+        throw new Error("CATEGORY_NAME_EXISTS")
+      }
 
       if (validated.data.subcategories) {
         const removedReferencedSubcategoryIds =
@@ -107,6 +163,25 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
   } catch (error) {
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_NAME_EXISTS"
+    ) {
+      return {
+        success: false,
+        error: "Kategoria o tej nazwie już istnieje"
+      };
+    }
+    if (
+      error instanceof Error &&
+      error.message === "CATALOG_DUPLICATE_CATEGORY_NAME"
+    ) {
+      return {
+        success: false,
+        error:
+          "Katalog zawiera zduplikowane nazwy kategorii. Usuń konflikt przed kolejną zmianą."
+      };
     }
     if (
       error instanceof Error &&
