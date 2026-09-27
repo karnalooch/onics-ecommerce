@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest"
 import {
+  STRIPE_CHECKOUT_IDEMPOTENCY_GUARD_MS,
   buildStripeCheckoutSessionParams,
+  isStripeCheckoutCreationRetrySafe,
   stripeCheckoutIdempotencyKey,
 } from "@/lib/stripeCheckoutCreation"
 
 describe("Stripe checkout creation contract", () => {
   const order = {
     id: "ORD-123",
+    createdAt: "2026-09-27T06:00:00.000Z",
     items: [
       {
         id: "p1",
@@ -69,6 +72,42 @@ describe("Stripe checkout creation contract", () => {
         quantity: 2,
       },
     ])
+  })
+
+
+  it("allows provider retry only inside the conservative retention guard", () => {
+    const now = Date.parse("2026-09-27T12:00:00.000Z")
+
+    expect(
+      isStripeCheckoutCreationRetrySafe(
+        {
+          ...order,
+          createdAt: new Date(
+            now - STRIPE_CHECKOUT_IDEMPOTENCY_GUARD_MS + 1
+          ).toISOString(),
+        },
+        now
+      )
+    ).toBe(true)
+
+    expect(
+      isStripeCheckoutCreationRetrySafe(
+        {
+          ...order,
+          createdAt: new Date(
+            now - STRIPE_CHECKOUT_IDEMPOTENCY_GUARD_MS
+          ).toISOString(),
+        },
+        now
+      )
+    ).toBe(false)
+
+    expect(
+      isStripeCheckoutCreationRetrySafe(
+        { ...order, createdAt: "invalid" },
+        now
+      )
+    ).toBe(false)
   })
 
   it("fails closed when the persisted order cannot reproduce checkout", () => {
