@@ -660,6 +660,30 @@ function validatePrzelewy24TransactionForOrder(
   }
 }
 
+export function recoverPrzelewy24CheckoutRegistration(
+  order: Przelewy24StoredOrder,
+  transaction: Przelewy24TransactionDetails,
+  now = new Date().toISOString()
+) {
+  validatePrzelewy24TransactionForOrder(order, transaction)
+
+  if (order.paymentCheckoutRegistrationStatus === "READY") {
+    return "unchanged" as const
+  }
+
+  if (
+    order.paymentCheckoutRegistrationStatus !== "PENDING" &&
+    order.paymentCheckoutRegistrationStatus !== "UNCERTAIN"
+  ) {
+    throw new Error("PRZELEWY24_REGISTRATION_STATE_INVALID")
+  }
+
+  order.paymentCheckoutRegistrationStatus = "READY"
+  order.p24OrderId = order.p24OrderId ?? transaction.orderId
+  order.paymentReconciledAt = now
+  return "ready" as const
+}
+
 export function applyReconciledPrzelewy24Payment(
   products: InventoryProduct[],
   order: Przelewy24StoredOrder,
