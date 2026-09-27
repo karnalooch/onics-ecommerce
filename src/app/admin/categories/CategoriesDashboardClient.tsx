@@ -12,7 +12,14 @@ import { CategoryList } from "./_components/CategoryList";
 import { IconPicker } from "./_components/IconPicker";
 import { SubcategoryGrid } from "./_components/SubcategoryGrid";
 import { Button } from "@/components/ui/button";
-import { addCategoryAction, updateCategoryAction, deleteCategoryAction } from "./_actions";
+import {
+  addCategoryAction,
+  addSubcategoryAction,
+  deleteCategoryAction,
+  deleteSubcategoryAction,
+  renameSubcategoryAction,
+  updateCategoryAction,
+} from "./_actions";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -54,14 +61,14 @@ export function CategoriesDashboardClient({ initialCategories }: { initialCatego
 
   const handleAddSubcategory = () => {
     if (!activeCat || !newSubcatName.trim()) return;
-    const subcategories = [...(activeCat.subcategories || []), { id: `s${Date.now()}`, name: newSubcatName.trim() }];
     startTransition(async () => {
-      const res = await updateCategoryAction({ id: activeCat.id, subcategories });
-      if (res.success) { 
-        setNewSubcatName(""); 
-        toast.success("LOG: Nowa gałąź zdefiniowana pod klastrem."); 
+      const res = await addSubcategoryAction(activeCat.id, newSubcatName);
+      if (res.success) {
+        setNewSubcatName("");
+        toast.success("LOG: Nowa gałąź zdefiniowana pod klastrem.");
+      } else {
+        toast.error(res.error);
       }
-      else toast.error("FAULT: Błąd rozszerzania struktury.");
     });
   };
 
@@ -71,12 +78,7 @@ export function CategoriesDashboardClient({ initialCategories }: { initialCatego
       const res = activeCat?.id === id
         ? await updateCategoryAction({ id, name })
         : activeCat
-          ? await updateCategoryAction({
-              id: activeCat.id,
-              subcategories: activeCat.subcategories.map((s: any) =>
-                s.id === id ? { ...s, name } : s
-              ),
-            })
+          ? await renameSubcategoryAction(activeCat.id, id, name)
           : null;
 
       if (res?.success) toast.success("LOG: Nazwa została zaktualizowana.");
@@ -100,15 +102,9 @@ export function CategoriesDashboardClient({ initialCategories }: { initialCatego
 
   const handleDeleteSubcategory = (subId: string) => {
     if (!activeCat || !confirm("Usunąć gałąź?")) return;
-    const subcategories = (activeCat.subcategories || []).filter(
-      (subcategory: any) => subcategory.id !== subId
-    );
 
     startTransition(async () => {
-      const res = await updateCategoryAction({
-        id: activeCat.id,
-        subcategories,
-      });
+      const res = await deleteSubcategoryAction(activeCat.id, subId);
       if (res.success) {
         toast.success("LOG: Gałąź została usunięta.");
       } else {
