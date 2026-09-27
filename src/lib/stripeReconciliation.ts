@@ -3,6 +3,7 @@ import type { StripeCancelableOrder } from "@/lib/refunds"
 export const STRIPE_STAGED_RECOVERY_MAX_AGE_MS = 23 * 60 * 60 * 1000
 
 export type StripeReconciliationOrder = StripeCancelableOrder & {
+  paymentProvider?: string | null
   createdAt?: string | null
   paymentCheckoutRegistrationStatus?: string | null
 }
