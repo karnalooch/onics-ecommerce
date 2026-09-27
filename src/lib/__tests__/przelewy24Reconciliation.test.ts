@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { shouldReconcilePrzelewy24Order } from "@/lib/przelewy24Reconciliation"
+import {
+  classifyPrzelewy24VerificationRecovery,
+  shouldReconcilePrzelewy24Order,
+} from "@/lib/przelewy24Reconciliation"
 import type { Przelewy24StoredOrder } from "@/lib/przelewy24"
 
 function order(
@@ -18,6 +21,73 @@ function order(
     ...overrides,
   }
 }
+
+describe("Przelewy24 verification crash recovery", () => {
+  const staged = {
+    merchantId: 123,
+    posId: 123,
+    sessionId: "ORD-P24-RECONCILE",
+    amount: 10000,
+    originAmount: 10000,
+    currency: "PLN",
+    orderId: 456,
+    methodId: 25,
+    statement: "ONICS",
+    sign: "a".repeat(96),
+  }
+
+  const transaction = {
+    orderId: 456,
+    sessionId: "ORD-P24-RECONCILE",
+    status: 1,
+    amount: 10000,
+    currency: "PLN",
+  }
+
+  it("uses authoritative paid status to finish locally without replaying verify", () => {
+    expect(
+      classifyPrzelewy24VerificationRecovery(
+        { ...transaction, status: 2 },
+        staged
+      )
+    ).toBe("provider-paid")
+  })
+
+  it("keeps unverified provider states on the verify-required path", () => {
+    expect(
+      classifyPrzelewy24VerificationRecovery(
+        { ...transaction, status: 0 },
+        staged
+      )
+    ).toBe("verify-required")
+    expect(
+      classifyPrzelewy24VerificationRecovery(transaction, staged)
+    ).toBe("verify-required")
+  })
+
+  it("fails closed on returned, unknown, or mismatched provider state", () => {
+    expect(
+      classifyPrzelewy24VerificationRecovery(
+        { ...transaction, status: 3 },
+        staged
+      )
+    ).toBe("provider-returned")
+
+    expect(() =>
+      classifyPrzelewy24VerificationRecovery(
+        { ...transaction, status: 99 },
+        staged
+      )
+    ).toThrow("PRZELEWY24_TRANSACTION_STATUS_UNKNOWN")
+
+    expect(() =>
+      classifyPrzelewy24VerificationRecovery(
+        { ...transaction, amount: 9999, status: 2 },
+        staged
+      )
+    ).toThrow("PRZELEWY24_STAGED_TRANSACTION_MISMATCH")
+  })
+})
 
 describe("Przelewy24 reconciliation selection", () => {
   it("selects unresolved payments", () => {
