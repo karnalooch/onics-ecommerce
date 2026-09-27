@@ -3,9 +3,11 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
+  bindKnowledgeTrainingRequestAbort,
   getKnowledge,
   parseExcel,
   parsePDFWithAI,
+  throwIfKnowledgeTrainingAborted,
 } from "@/lib/knowledge/parser"
 import { validateKnowledgeFilename } from "@/lib/knowledge/files"
 
@@ -38,28 +40,39 @@ export async function POST(req: Request) {
     const buffer = fs.readFileSync(fileInfo.absolutePath)
     const knowledgeRevision = (await getKnowledge()).revision ?? 0
     const knowledgeSignal = { aborted: false, knowledgeRevision }
-    const result = [".xlsx", ".xls", ".xlsm"].includes(fileInfo.extension)
-      ? await parseExcel(buffer, fileInfo.filename, undefined, {
-          apiKey: parsed.data.apiKey,
-          modelId: parsed.data.modelId,
-          signal: knowledgeSignal,
-        })
-      : await parsePDFWithAI(
-          buffer,
-          fileInfo.filename,
-          parsed.data.apiKey || undefined,
-          parsed.data.modelId,
-          [],
-          undefined,
-          knowledgeSignal
-        )
+    const detachRequestAbort = bindKnowledgeTrainingRequestAbort(
+      knowledgeSignal,
+      req.signal
+    )
 
-    return NextResponse.json({
-      success: true,
-      count: result.count,
-      stats: result.stats,
-      message: `Przetworzono plik ${fileInfo.filename}.`,
-    })
+    try {
+      throwIfKnowledgeTrainingAborted(knowledgeSignal)
+
+      const result = [".xlsx", ".xls", ".xlsm"].includes(fileInfo.extension)
+        ? await parseExcel(buffer, fileInfo.filename, undefined, {
+            apiKey: parsed.data.apiKey,
+            modelId: parsed.data.modelId,
+            signal: knowledgeSignal,
+          })
+        : await parsePDFWithAI(
+            buffer,
+            fileInfo.filename,
+            parsed.data.apiKey || undefined,
+            parsed.data.modelId,
+            [],
+            undefined,
+            knowledgeSignal
+          )
+
+      return NextResponse.json({
+        success: true,
+        count: result.count,
+        stats: result.stats,
+        message: `Przetworzono plik ${fileInfo.filename}.`,
+      })
+    } finally {
+      detachRequestAbort()
+    }
   } catch (error) {
     console.error("Knowledge training error:", error)
     if (
