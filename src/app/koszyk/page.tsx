@@ -16,6 +16,7 @@ import { ORDER_IMPORT_MAX_BYTES, parseCeltronicsOrderXml, type OrderImportPrevie
 import { validateOrderImportPreview } from "@/lib/orderImportPreviewContract";
 import { validateCheckoutPaymentDiscovery, type CheckoutPaymentMethod } from "@/lib/checkoutPaymentDiscoveryContract";
 import { validateCheckoutPaymentResponse } from "@/lib/checkoutPaymentResponseContract";
+import { clearOrderSubmissionRequestId, getOrCreateOrderSubmissionRequestId } from "@/lib/orderSubmissionIdempotency";
 
 
 type ManualPaymentConfirmation = {
@@ -458,11 +459,26 @@ export default function CartPage() {
         return;
       }
 
+      const submittedItems = items.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+      }));
+      const requestId = getOrCreateOrderSubmissionRequestId(
+        {
+          ownerKey: ownerScope.ownerKey,
+          orderType: action,
+          items: submittedItems,
+        },
+        window.sessionStorage,
+        () => crypto.randomUUID()
+      );
+
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items,
+          requestId,
+          items: submittedItems,
           orderType: action,
         }),
       });
@@ -478,6 +494,18 @@ export default function CartPage() {
         );
       }
 
+      if (
+        data?.clientRequestId !== requestId ||
+        data?.orderType !== action ||
+        typeof data?.id !== "string" ||
+        !data.id.trim()
+      ) {
+        throw new Error(
+          "Serwer zwrócił nieprawidłowe potwierdzenie zamówienia."
+        );
+      }
+
+      clearOrderSubmissionRequestId(requestId, window.sessionStorage);
       toast.success(
         action === "ORDER"
           ? "Zamówienie weryfikacyjne wysłane. Administrator nada termin dostawy."
