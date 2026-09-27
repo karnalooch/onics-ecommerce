@@ -77,6 +77,27 @@ describe("Przelewy24 transaction status reconciliation wiring", () => {
     )
   })
 
+  it("marks a found provider transaction as a recovered checkout registration", () => {
+    const route = read(
+      "src/app/api/payment-methods/reconcile/przelewy24/route.ts"
+    )
+    const genericStart = route.indexOf(
+      "} else if (snapshotOrder.p24SessionId) {"
+    )
+    const refundStart = route.indexOf(
+      "const currentSnapshot = initializeMockData()",
+      genericStart
+    )
+    const flow = route.slice(genericStart, refundStart)
+
+    expect(flow).toContain("recoverPrzelewy24CheckoutRegistration(")
+    expect(flow).toContain('registrationRecovery === "ready"')
+    expect(flow.indexOf("recoverPrzelewy24CheckoutRegistration("))
+      .toBeLessThan(
+        flow.indexOf("classifyPrzelewy24TransactionReconciliation(transaction)")
+      )
+  })
+
   it("flags an uncertain registration with no provider transaction for manual review", () => {
     const route = read(
       "src/app/api/payment-methods/reconcile/przelewy24/route.ts"
