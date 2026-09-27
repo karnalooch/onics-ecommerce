@@ -77,6 +77,30 @@ describe("Przelewy24 transaction status reconciliation wiring", () => {
     )
   })
 
+  it("flags an uncertain registration with no provider transaction for manual review", () => {
+    const route = read(
+      "src/app/api/payment-methods/reconcile/przelewy24/route.ts"
+    )
+    const genericStart = route.indexOf(
+      "} else if (snapshotOrder.p24SessionId) {"
+    )
+    const refundStart = route.indexOf(
+      "const currentSnapshot = initializeMockData()",
+      genericStart
+    )
+    const flow = route.slice(genericStart, refundStart)
+
+    expect(flow).toContain(
+      'snapshotOrder.paymentCheckoutRegistrationStatus === "UNCERTAIN"'
+    )
+    expect(flow).toContain("manualReview = true")
+    expect(flow).toContain(
+      'reviewReason = "PRZELEWY24_REGISTRATION_UNRESOLVED"'
+    )
+    expect(flow.indexOf("!transaction"))
+      .toBeLessThan(flow.indexOf("manualReview = true"))
+  })
+
   it("does not turn the unpaid branch into a local payment write", () => {
     const route = read(
       "src/app/api/payment-methods/reconcile/przelewy24/route.ts"
