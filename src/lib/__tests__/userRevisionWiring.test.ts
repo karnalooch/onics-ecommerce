@@ -75,6 +75,17 @@ describe("user revision fencing", () => {
     expect(page).toContain("&expectedRevision=")
   })
 
+  it("binds dashboard quick actions to the revision shown to the admin", () => {
+    const actions = read("src/app/admin/AdminActions.tsx")
+    const dashboard = read("src/app/admin/page.tsx")
+
+    expect(actions).toContain("userRevision?: number")
+    expect(actions).toContain("expectedRevision: userRevision")
+    expect(actions).toContain("&expectedRevision=${encodeURIComponent(userRevision)}")
+    expect(
+      dashboard.match(/userRevision=\{Number\(user\.revision \?\? 0\)\}/g)
+    ).toHaveLength(2)
+  })
   it("advances revision when the bootstrap password seals", () => {
     const bootstrap = read("src/lib/adminBootstrap.ts")
 
