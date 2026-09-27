@@ -44,9 +44,20 @@ export interface ParsingStrategy {
   execute(data: any): Promise<ExtractionResult[]>;
 }
 
+export type KnowledgeTrainingActor = {
+  id?: string | null;
+  email?: string | null;
+};
+
+export type KnowledgeTrainingSignal = {
+  aborted: boolean;
+  knowledgeRevision?: number;
+  actor: KnowledgeTrainingActor;
+};
+
 export interface ParserOptions {
   apiKey: string;
   modelId?: string;
   availableModels?: string[];
-  signal?: { aborted: boolean; knowledgeRevision?: number };
+  signal?: KnowledgeTrainingSignal;
 }
