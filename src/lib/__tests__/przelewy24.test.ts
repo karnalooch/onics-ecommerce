@@ -12,6 +12,7 @@ import {
   receivePrzelewy24Return,
   requestPrzelewy24Refund,
   requestPrzelewy24Return,
+  recoverPrzelewy24CheckoutRegistration,
   resolvePrzelewy24Config,
   stagePrzelewy24Refund,
   stagePrzelewy24Verification,
@@ -378,6 +379,50 @@ describe("Przelewy24 production protocol", () => {
         notification({ amount: 999 })
       )
     ).toThrow("PRZELEWY24_AMOUNT_MISMATCH")
+  })
+
+  it("recovers an uncertain checkout registration when P24 has the transaction", () => {
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-REGISTRATION",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PENDING",
+      paymentCheckoutRegistrationStatus: "UNCERTAIN",
+      p24SessionId: "ORD-P24-REGISTRATION",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+      items: [{ id: "p1", quantity: 1 }],
+    }
+    const transaction = {
+      orderId: 987654321,
+      sessionId: "ORD-P24-REGISTRATION",
+      status: 0,
+      amount: 12345,
+      currency: "PLN",
+    }
+
+    expect(
+      recoverPrzelewy24CheckoutRegistration(
+        order,
+        transaction,
+        "2026-09-27T18:00:00.000Z"
+      )
+    ).toBe("ready")
+    expect(order).toMatchObject({
+      paymentCheckoutRegistrationStatus: "READY",
+      p24OrderId: 987654321,
+      paymentStatus: "PENDING",
+      inventoryReservationStatus: "RESERVED",
+      paymentReconciledAt: "2026-09-27T18:00:00.000Z",
+    })
+
+    expect(
+      recoverPrzelewy24CheckoutRegistration(
+        order,
+        transaction,
+        "2026-09-27T18:01:00.000Z"
+      )
+    ).toBe("unchanged")
   })
 
   it("recovers a paid transaction from authoritative transaction details", () => {
