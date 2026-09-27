@@ -311,6 +311,16 @@ function przelewy24Result(
 async function createPrzelewy24Checkout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
+  const fingerprint = checkoutFingerprint(input)
+  const snapshotReplay = findExistingPaymentCheckout(
+    input.snapshot.orders as StoredPaymentCheckoutOrder[],
+    input
+  )
+  if (snapshotReplay) {
+    assertMatchingPaymentCheckout(snapshotReplay, input, fingerprint)
+    return przelewy24Result(snapshotReplay)
+  }
+
   const p24 = resolvePrzelewy24Config({ requestUrl: input.requestUrl })
   const { storedUser, resolved } = resolveCheckout(
     input.snapshot.users as StoredUser[],
@@ -318,16 +328,24 @@ async function createPrzelewy24Checkout(
     input.sessionUser,
     input.items
   )
-
   const email = storedUser.email?.trim() || input.sessionUser.email?.trim()
   if (!email) {
     throw new Error("Przelewy24 wymaga adresu e-mail klienta.")
   }
 
-  const orderId = `ORD-${crypto.randomUUID()}`
+  const orderId = deterministicCheckoutOrderId(input, storedUser)
   const amount = moneyToMinorUnits(resolved.total)
 
-  await mutateMockData((db) => {
+  const claimed = await mutateMockData((db) => {
+    const orderStore = db.orders as StoredPaymentCheckoutOrder[]
+    const existing = findExistingPaymentCheckout(orderStore, input)
+    if (existing) {
+      return {
+        order: assertMatchingPaymentCheckout(existing, input, fingerprint),
+        created: false,
+      }
+    }
+
     assertPaymentStillAvailable(
       db.paymentControl,
       db.paymentMethods,
@@ -340,7 +358,6 @@ async function createPrzelewy24Checkout(
       input.sessionUser,
       input.items
     )
-
     if (JSON.stringify(fresh.resolved) !== JSON.stringify(resolved)) {
       throw new Error("CHECKOUT_STATE_CHANGED")
     }
@@ -350,9 +367,11 @@ async function createPrzelewy24Checkout(
       fresh.resolved.items
     )
     const now = new Date().toISOString()
-
-    db.orders.unshift({
+    const order: StoredPaymentCheckoutOrder = {
       id: orderId,
+      clientCheckoutRequestId: input.requestId,
+      clientCheckoutFingerprint: fingerprint,
+      paymentCheckoutRegistrationStatus: "PENDING",
       orderType: "ORDER",
       createdAt: now,
       status: "PENDING_VERIFICATION",
@@ -370,6 +389,7 @@ async function createPrzelewy24Checkout(
       paymentStatus: "PENDING",
       p24SessionId: orderId,
       p24OrderId: null,
+      p24CheckoutRedirectUrl: null,
       p24LastNotificationSign: null,
       p24VerificationPending: null,
       p24VerificationPendingAt: null,
@@ -381,39 +401,69 @@ async function createPrzelewy24Checkout(
       inventoryReleasedAt: null,
       inventoryFinalizedAt: null,
       inventoryReReservedAt: null,
-    })
+    }
+    orderStore.unshift(order)
+    return { order, created: true }
   })
 
+  if (!claimed.created) {
+    return przelewy24Result(claimed.order)
+  }
+
+  let registration: Awaited<ReturnType<typeof registerPrzelewy24Transaction>>
   try {
-    const registration = await registerPrzelewy24Transaction(p24, {
+    registration = await registerPrzelewy24Transaction(p24, {
       sessionId: orderId,
       amount,
       email,
       description: `ONICS ${orderId}`,
     })
 
-    return {
-      orderId,
-      paymentMethod: "PRZELEWY24",
-      nextAction: {
-        type: "REDIRECT",
-        url: registration.redirectUrl,
-      },
-    }
-  } catch {
+    await mutateMockData((db) => {
+      const existing = findExistingPaymentCheckout(
+        db.orders as StoredPaymentCheckoutOrder[],
+        input
+      )
+      if (!existing || existing.id !== orderId) {
+        throw new Error("PAYMENT_CHECKOUT_LOCAL_ORDER_MISSING")
+      }
+      assertMatchingPaymentCheckout(existing, input, fingerprint)
+      existing.p24CheckoutRedirectUrl = registration.redirectUrl
+      existing.paymentCheckoutRegistrationStatus = "READY"
+    })
+  } catch (error) {
     try {
-      await cancelFailedPrzelewy24Registration(orderId)
-    } catch (compensationError) {
+      await mutateMockData((db) => {
+        const existing = findExistingPaymentCheckout(
+          db.orders as StoredPaymentCheckoutOrder[],
+          input
+        )
+        if (
+          existing &&
+          existing.id === orderId &&
+          existing.paymentCheckoutRegistrationStatus !== "READY"
+        ) {
+          existing.paymentCheckoutRegistrationStatus = "UNCERTAIN"
+        }
+      })
+    } catch (markError) {
       console.error(
-        "Nie udało się zwolnić rezerwacji po błędzie Przelewy24:",
-        compensationError
+        "Nie udało się oznaczyć niepewnej rejestracji Przelewy24:",
+        markError
       )
     }
 
-    console.error("Rejestracja transakcji Przelewy24 nie powiodła się.")
-    throw new Error(
-      "Nie udało się rozpocząć płatności Przelewy24. Spróbuj ponownie."
-    )
+    console.error("Niepewny wynik rejestracji transakcji Przelewy24:", error)
+    throw new Error("PAYMENT_CHECKOUT_REGISTRATION_UNCERTAIN")
+  }
+
+  return {
+    orderId,
+    paymentMethod: "PRZELEWY24",
+    nextAction: {
+      type: "REDIRECT",
+      url: registration.redirectUrl,
+    },
   }
 }
 
