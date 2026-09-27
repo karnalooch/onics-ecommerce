@@ -32,7 +32,10 @@ import {
   resolvePrzelewy24Config,
 } from "@/lib/przelewy24"
 import { buildPaymentCheckoutFingerprint } from "@/lib/paymentCheckoutIdempotency"
-import { createStripeCheckoutSessionForOrder } from "@/lib/stripeCheckoutCreation"
+import {
+  createStripeCheckoutSessionForOrder,
+  isStripeCheckoutCreationRetrySafe,
+} from "@/lib/stripeCheckoutCreation"
 
 export type PaymentCheckoutItem = {
   id: string
@@ -187,6 +190,7 @@ function assertPaymentStillAvailable(
 
 type StoredPaymentCheckoutOrder = {
   id?: string
+  createdAt?: string | null
   clientCheckoutRequestId?: string
   clientCheckoutFingerprint?: string
   paymentProvider?: string | null
@@ -694,6 +698,10 @@ async function createStripeCheckout(
     input.snapshot.paymentMethods,
     "STRIPE"
   )
+
+  if (!isStripeCheckoutCreationRetrySafe(claimed)) {
+    throw new Error("PAYMENT_CHECKOUT_RETRY_WINDOW_EXPIRED")
+  }
 
   const session = await createStripeCheckoutSessionForOrder(
     stripe,
