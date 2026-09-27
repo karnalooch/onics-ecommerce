@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner"
 
 type PaymentControl = {
+  settingsStateToken: string
   enabled: boolean
   state: "ready" | "disabled" | "maintenance"
   maintenanceMessage: string | null
@@ -41,6 +42,7 @@ type PaymentAuditEntry = {
 
 type PaymentMethod = {
   id: string
+  settingsStateToken: string
   name: string
   enabled: boolean
   configured: boolean
@@ -134,6 +136,8 @@ export default function AdminPaymentsPage() {
   }, [loadMethods])
 
   const saveGlobalControl = async (nextEnabled: boolean) => {
+    if (!control) return
+
     if (
       !nextEnabled &&
       !window.confirm(
@@ -150,6 +154,7 @@ export default function AdminPaymentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scope: "GLOBAL",
+          expectedStateToken: control.settingsStateToken,
           enabled: nextEnabled,
           maintenanceMessage: maintenanceMessage.trim() || null,
         }),
@@ -317,6 +322,7 @@ export default function AdminPaymentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: method.id,
+          expectedStateToken: method.settingsStateToken,
           displayName: method.name,
           displayOrder: method.displayOrder,
           maintenanceMessage: method.maintenanceMessage?.trim() || null,
@@ -363,6 +369,7 @@ export default function AdminPaymentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: method.id,
+          expectedStateToken: method.settingsStateToken,
           enabled: nextEnabled,
         }),
       })
