@@ -160,8 +160,16 @@ export default async function AdminDashboard() {
                       <TableCell className="font-bold text-center text-muted-foreground text-[12px] tabular-nums tracking-wider">{user.nip}</TableCell>
                       <TableCell className="text-right pr-6">
                          <div className="flex justify-end gap-3 scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all">
-                            <AdminActions actionType="approveUser" userId={user.id} />
-                            <AdminActions actionType="deleteUser" userId={user.id} />
+                            <AdminActions
+                              actionType="approveUser"
+                              userId={user.id}
+                              userRevision={Number(user.revision ?? 0)}
+                            />
+                            <AdminActions
+                              actionType="deleteUser"
+                              userId={user.id}
+                              userRevision={Number(user.revision ?? 0)}
+                            />
                          </div>
                       </TableCell>
                     </TableRow>
