@@ -39,7 +39,11 @@ export async function POST(req: Request) {
 
     const buffer = fs.readFileSync(fileInfo.absolutePath)
     const knowledgeRevision = (await getKnowledge()).revision ?? 0
-    const knowledgeSignal = { aborted: false, knowledgeRevision }
+    const knowledgeSignal = {
+      aborted: false,
+      knowledgeRevision,
+      actor: authCheck.user,
+    }
     const detachRequestAbort = bindKnowledgeTrainingRequestAbort(
       knowledgeSignal,
       req.signal
@@ -75,6 +79,18 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("Knowledge training error:", error)
+    if (
+      error instanceof Error &&
+      error.message === "KNOWLEDGE_ADMIN_ACCESS_REVOKED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Uprawnienia administratora zmieniły się podczas analizy. Zapis został anulowany.",
+        },
+        { status: 403 }
+      )
+    }
     if (
       error instanceof Error &&
       error.message === "KNOWLEDGE_STORE_RESET_DURING_TRAINING"
