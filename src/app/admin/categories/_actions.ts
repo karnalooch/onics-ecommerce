@@ -6,6 +6,7 @@ import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
 import { mutateMockData } from "@/store/serverStore";
 import {
+  catalogCategoryRevision,
   hasCatalogCategoryNameConflict,
   hasCatalogSubcategoryNameConflict,
   hasCategoryProductReference,
@@ -135,7 +136,7 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
   if (!validated.success) return { success: false, error: "Nieprawidłowe dane" };
 
   try {
-    await mutateMockData((db) => {
+    const result = await mutateMockData((db) => {
       const categories = db.categories as CategoryRecord[]
       const idx = categories.findIndex((category) => category.id === validated.data.id)
       if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
@@ -153,18 +154,31 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
       }
 
       const current = categories[idx]
+      const nextName = validated.data.name
+        ? validated.data.name.toUpperCase()
+        : current.name
+      const nextIcon = validated.data.iconName ?? current.iconName
+
+      if (nextName === current.name && nextIcon === current.iconName) {
+        return { replayed: true }
+      }
+
       categories[idx] = {
         ...current,
         ...validated.data,
-        name: validated.data.name
-          ? validated.data.name.toUpperCase()
-          : current.name,
+        name: nextName,
         revision: nextCatalogCategoryRevision(current.revision),
       }
+      return { replayed: false }
     })
 
     revalidatePath("/admin/categories");
-    return { success: true, message: "Zmiany zostały zapisane" };
+    return {
+      success: true,
+      message: result.replayed
+        ? "Zmiana była już zastosowana"
+        : "Zmiany zostały zapisane"
+    };
   } catch (error) {
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
@@ -297,6 +311,13 @@ export async function renameSubcategoryAction(
         throw new Error("SUBCATEGORY_NAME_EXISTS")
       }
 
+      if (
+        normalizeCatalogSubcategoryName(subcategory.name) ===
+        normalizeCatalogSubcategoryName(validated.data.name)
+      ) {
+        return subcategory
+      }
+
       subcategory.name = validated.data.name
       category.revision = nextCatalogCategoryRevision(category.revision)
       return subcategory
@@ -403,31 +424,66 @@ export async function deleteSubcategoryAction(
   }
 }
 
-export async function deleteCategoryAction(id: string): Promise<ActionState> {
+export async function deleteCategoryAction(
+  id: string,
+  expectedRevision: number
+): Promise<ActionState> {
   const accessError = await requireAdminAction();
   if (accessError) return accessError;
 
+  const validated = z.object({
+    id: z.string().min(1),
+    expectedRevision: z.number().int().nonnegative(),
+  }).safeParse({ id, expectedRevision });
+  if (!validated.success) {
+    return { success: false, error: "Nieprawidłowa kategoria" };
+  }
+
   try {
-    await mutateMockData((db) => {
+    const result = await mutateMockData((db) => {
       const categories = db.categories as CategoryRecord[]
-      const idx = categories.findIndex((category) => category.id === id)
-      if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
+      const idx = categories.findIndex(
+        (category) => category.id === validated.data.id
+      )
+      if (idx === -1) return { replayed: true }
+
+      const category = categories[idx]
+      if (
+        catalogCategoryRevision(category.revision) !==
+        validated.data.expectedRevision
+      ) {
+        throw new Error("CATEGORY_REVISION_CONFLICT")
+      }
+
       if (
         hasCategoryProductReference(
           db.products as CatalogCategoryReference[],
-          id
+          validated.data.id
         )
       ) {
         throw new Error("CATEGORY_IN_USE")
       }
       categories.splice(idx, 1)
+      return { replayed: false }
     })
 
     revalidatePath("/admin/categories");
-    return { success: true, message: "Kategoria została usunięta" };
+    return {
+      success: true,
+      message: result.replayed
+        ? "Kategoria była już usunięta"
+        : "Kategoria została usunięta"
+    };
   } catch (error) {
-    if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
-      return { success: false, error: "Nie znaleziono kategorii" };
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_REVISION_CONFLICT"
+    ) {
+      return {
+        success: false,
+        error:
+          "Kategoria zmieniła się od ostatniego odczytu. Odśwież dane przed usunięciem."
+      };
     }
     if (error instanceof Error && error.message === "CATEGORY_IN_USE") {
       return {
