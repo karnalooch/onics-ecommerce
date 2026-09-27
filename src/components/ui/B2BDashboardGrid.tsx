@@ -5,6 +5,9 @@ import { Database, Loader2, PackageSearch, Search, ShoppingCart } from "lucide-r
 import { useCartStore } from "@/store/cartStore"
 import { useRouter } from "next/navigation"
 import { QuoteRequestModal } from "@/components/ui/QuoteRequestModal"
+import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding"
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
+import { toast } from "sonner"
 
 type Product = {
   id: string
@@ -19,10 +22,19 @@ type Product = {
 interface B2BDashboardGridProps {
   nip: string
   email: string
+  ownerKey: string
 }
 
-export function B2BDashboardGrid({ nip, email }: B2BDashboardGridProps) {
+export function B2BDashboardGrid({
+  nip,
+  email,
+  ownerKey,
+}: B2BDashboardGridProps) {
   const addItem = useCartStore((state) => state.addItem)
+  const { cartOwnerReady } = useCartOwnerBinding({
+    identityKey: ownerKey,
+    resolved: true,
+  })
   const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,13 +82,22 @@ export function B2BDashboardGrid({ nip, email }: B2BDashboardGridProps) {
       return
     }
 
-    addItem({
+    if (!cartOwnerReady) return
+
+    const added = addItem({
       id: product.id,
       sku: product.sku,
       name: product.name,
       price,
       quantity: 1,
     })
+    if (!added) {
+      toast.error(
+        `Maksymalna ilość jednego produktu w koszyku to ${CART_ITEM_QUANTITY_MAX} szt.`
+      )
+      return
+    }
+
     router.push("/koszyk")
   }
 
@@ -154,7 +175,7 @@ export function B2BDashboardGrid({ nip, email }: B2BDashboardGridProps) {
 
                   <button
                     onClick={() => handleAddToCart(product)}
-                    disabled={price > 0 && !available}
+                    disabled={price > 0 && (!available || !cartOwnerReady)}
                     className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ShoppingCart className="h-4 w-4" />
