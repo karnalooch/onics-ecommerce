@@ -3,6 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema, ProgressCallback, ParserOptions } from './types';
+import { hasAccountRoleAccess } from '@/lib/accountAccess';
+import { findStoredUserBySession } from '@/lib/sessionIdentity';
 
 import { ToolkitParser } from './ToolkitParser';
 
@@ -17,6 +19,14 @@ interface AIItem {
 }
 
 import { initializeMockData, mutateMockData } from '@/store/serverStore';
+
+type KnowledgeWriteActor = {
+  id?: string | null;
+  email?: string | null;
+  roleType?: string;
+  isApproved?: boolean;
+  isBlocked?: boolean;
+};
 
 type KnowledgeDbSnapshot = {
   products: any[];
@@ -236,12 +246,28 @@ export function throwIfKnowledgeTrainingAborted(
   }
 }
 
+export function assertKnowledgeTrainingAdminAccess(
+  users: KnowledgeWriteActor[],
+  signal?: ParserOptions["signal"]
+) {
+  if (!signal) return
+
+  const actor = findStoredUserBySession(users, signal.actor)
+  if (!actor || !hasAccountRoleAccess(actor, ["ADMIN"])) {
+    throw new Error("KNOWLEDGE_ADMIN_ACCESS_REVOKED")
+  }
+}
+
 export async function saveKnowledge(
   data: KnowledgeStore,
   signal?: ParserOptions["signal"]
 ) {
   await mutateMockData((db) => {
     throwIfKnowledgeTrainingAborted(signal)
+    assertKnowledgeTrainingAdminAccess(
+      db.users as KnowledgeWriteActor[],
+      signal
+    )
     const merged = buildMergedKnowledgePersistence(db, data);
     db.knowledgeEntries = merged.knowledgeEntries;
     db.knowledgeMeta = merged.knowledgeMeta;
@@ -253,6 +279,7 @@ export function rethrowFatalKnowledgeTrainingError(error: unknown) {
 
   if (
     error.message === "KNOWLEDGE_STORE_RESET_DURING_TRAINING" ||
+    error.message === "KNOWLEDGE_ADMIN_ACCESS_REVOKED" ||
     error.message === "PROCES_PRZERWANY"
   ) {
     throw error
@@ -817,7 +844,7 @@ export async function parsePDFHeuristic(
   buffer: Buffer,
   filename: string,
   onProgress?: ProgressCallback,
-  signal?: { aborted: boolean; knowledgeRevision?: number }
+  signal?: ParserOptions["signal"]
 ): Promise<{ count: number, stats: any, sessionKnowledge: Record<string, KnowledgeEntry> }> {
   try {
     const pdf = require('pdf-parse/lib/pdf-parse.js');
@@ -1058,7 +1085,7 @@ export async function parsePDFWithAI(
   modelId: string = 'gemini-1.5-flash', 
   availableModels: string[] = [], 
   onProgress?: ProgressCallback,
-  signal?: { aborted: boolean; knowledgeRevision?: number }
+  signal?: ParserOptions["signal"]
 ): Promise<{ count: number, stats: any, sessionKnowledge: Record<string, KnowledgeEntry> }> {
   // --- FALLBACK TO HEURISTIC IF NO KEY ---
   if (!apiKey || apiKey === 'dummy' || apiKey.trim() === "") {

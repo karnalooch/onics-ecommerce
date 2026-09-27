@@ -50,7 +50,11 @@ export async function POST(req: Request) {
   const buffer = fs.readFileSync(fileInfo.absolutePath)
   const knowledgeRevision = (await getKnowledge()).revision ?? 0
   const encoder = new TextEncoder()
-  const abortSignal = { aborted: false, knowledgeRevision }
+  const abortSignal = {
+    aborted: false,
+    knowledgeRevision,
+    actor: authCheck.user,
+  }
   const detachRequestAbort = bindKnowledgeTrainingRequestAbort(
     abortSignal,
     req.signal
@@ -133,7 +137,9 @@ export async function POST(req: Request) {
         const message =
           rawMessage === "KNOWLEDGE_STORE_RESET_DURING_TRAINING"
             ? "Baza wiedzy została wyczyszczona podczas analizy. Uruchom analizę ponownie."
-            : rawMessage
+            : rawMessage === "KNOWLEDGE_ADMIN_ACCESS_REVOKED"
+              ? "Uprawnienia administratora zmieniły się podczas analizy. Zapis został anulowany."
+              : rawMessage
         if (rawMessage !== "PROCES_PRZERWANY") {
           send({
             type: "error",

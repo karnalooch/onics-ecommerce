@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  assertKnowledgeTrainingAdminAccess,
   bindKnowledgeTrainingRequestAbort,
   buildKnowledgeEntriesForPersistence,
   buildKnowledgeFromDb,
@@ -337,12 +338,14 @@ describe("knowledge storage boundary", () => {
       throwIfKnowledgeTrainingAborted({
         aborted: true,
         knowledgeRevision: 4,
+        actor: { id: "admin-1", email: "admin@example.com" },
       })
     ).toThrow("PROCES_PRZERWANY")
     expect(() =>
       throwIfKnowledgeTrainingAborted({
         aborted: false,
         knowledgeRevision: 4,
+        actor: { id: "admin-1", email: "admin@example.com" },
       })
     ).not.toThrow()
   })
@@ -350,7 +353,11 @@ describe("knowledge storage boundary", () => {
 
   it("propagates HTTP request aborts into the knowledge training fence", () => {
     const controller = new AbortController()
-    const trainingSignal = { aborted: false, knowledgeRevision: 5 }
+    const trainingSignal = {
+      aborted: false,
+      knowledgeRevision: 5,
+      actor: { id: "admin-1", email: "admin@example.com" },
+    }
     const detach = bindKnowledgeTrainingRequestAbort(
       trainingSignal,
       controller.signal
@@ -365,7 +372,10 @@ describe("knowledge storage boundary", () => {
   it("honors an already-aborted request and detaches cleanly", () => {
     const alreadyAborted = new AbortController()
     alreadyAborted.abort()
-    const abortedTraining = { aborted: false }
+    const abortedTraining = {
+      aborted: false,
+      actor: { id: "admin-1", email: "admin@example.com" },
+    }
 
     bindKnowledgeTrainingRequestAbort(
       abortedTraining,
@@ -374,7 +384,10 @@ describe("knowledge storage boundary", () => {
     expect(abortedTraining.aborted).toBe(true)
 
     const controller = new AbortController()
-    const detachedTraining = { aborted: false }
+    const detachedTraining = {
+      aborted: false,
+      actor: { id: "admin-1", email: "admin@example.com" },
+    }
     const detach = bindKnowledgeTrainingRequestAbort(
       detachedTraining,
       controller.signal
@@ -383,6 +396,60 @@ describe("knowledge storage boundary", () => {
     controller.abort()
 
     expect(detachedTraining.aborted).toBe(false)
+  })
+
+  it("requires the same current admin account before knowledge persistence", () => {
+    const signal = {
+      aborted: false,
+      knowledgeRevision: 8,
+      actor: { id: "admin-1", email: "admin@example.com" },
+    }
+
+    expect(() =>
+      assertKnowledgeTrainingAdminAccess(
+        [
+          {
+            id: "admin-1",
+            email: "admin@example.com",
+            roleType: "ADMIN",
+            isBlocked: false,
+          },
+        ],
+        signal
+      )
+    ).not.toThrow()
+
+    expect(() =>
+      assertKnowledgeTrainingAdminAccess(
+        [
+          {
+            id: "admin-1",
+            email: "admin@example.com",
+            roleType: "RETAIL",
+            isBlocked: false,
+          },
+        ],
+        signal
+      )
+    ).toThrow("KNOWLEDGE_ADMIN_ACCESS_REVOKED")
+
+    expect(() =>
+      assertKnowledgeTrainingAdminAccess(
+        [
+          {
+            id: "admin-1",
+            email: "admin@example.com",
+            roleType: "ADMIN",
+            isBlocked: true,
+          },
+        ],
+        signal
+      )
+    ).toThrow("KNOWLEDGE_ADMIN_ACCESS_REVOKED")
+
+    expect(() =>
+      assertKnowledgeTrainingAdminAccess([], signal)
+    ).toThrow("KNOWLEDGE_ADMIN_ACCESS_REVOKED")
   })
 
   it("propagates training generation fences instead of treating them as recoverable PDF chunk errors", () => {
@@ -394,6 +461,11 @@ describe("knowledge storage boundary", () => {
     expect(() =>
       rethrowFatalKnowledgeTrainingError(new Error("PROCES_PRZERWANY"))
     ).toThrow("PROCES_PRZERWANY")
+    expect(() =>
+      rethrowFatalKnowledgeTrainingError(
+        new Error("KNOWLEDGE_ADMIN_ACCESS_REVOKED")
+      )
+    ).toThrow("KNOWLEDGE_ADMIN_ACCESS_REVOKED")
     expect(() =>
       rethrowFatalKnowledgeTrainingError(new Error("TRANSIENT_AI_CHUNK_FAILURE"))
     ).not.toThrow()
