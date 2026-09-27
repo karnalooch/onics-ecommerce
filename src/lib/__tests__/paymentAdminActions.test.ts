@@ -1,12 +1,65 @@
 import { describe, expect, it } from "vitest"
 import {
   PAYMENT_ADMIN_ACTIONS,
+  classifyPaymentAdminActionPrecondition,
+  isPaymentAdminActionReplay,
   listAvailablePaymentAdminActions,
   requiredPaymentAdminCapabilities,
   resolvePaymentAdminActionTarget,
 } from "../paymentAdminActions"
 
 describe("payment admin action dispatcher", () => {
+  it("classifies exact completed action retries as safe replays", () => {
+    const staleToken = "0".repeat(64)
+
+    expect(
+      classifyPaymentAdminActionPrecondition(
+        {
+          paymentProvider: "BANK_TRANSFER",
+          status: "CANCELLED",
+          paymentStatus: "PENDING",
+        },
+        "CANCEL",
+        staleToken
+      )
+    ).toBe("replay")
+    expect(
+      isPaymentAdminActionReplay(
+        {
+          paymentProvider: "BANK_TRANSFER",
+          status: "SHIPPED",
+          paymentStatus: "PAID",
+          returnStatus: "RECEIVED",
+        },
+        "RECEIVE_RETURN"
+      )
+    ).toBe(true)
+    expect(
+      classifyPaymentAdminActionPrecondition(
+        {
+          paymentProvider: "BANK_TRANSFER",
+          status: "CONFIRMED",
+          paymentStatus: "PENDING",
+        },
+        "CONFIRM_PAYMENT",
+        staleToken
+      )
+    ).toBe("conflict")
+  })
+
+  it("does not treat a later refund as a replay of payment confirmation", () => {
+    expect(
+      isPaymentAdminActionReplay(
+        {
+          paymentProvider: "BANK_TRANSFER",
+          status: "CANCELLED",
+          paymentStatus: "REFUNDED",
+        },
+        "CONFIRM_PAYMENT"
+      )
+    ).toBe(false)
+  })
+
   it("keeps the public admin action vocabulary stable", () => {
     expect(PAYMENT_ADMIN_ACTIONS).toEqual([
       "CANCEL",
