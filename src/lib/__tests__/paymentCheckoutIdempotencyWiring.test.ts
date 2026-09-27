@@ -57,18 +57,47 @@ describe("payment checkout idempotency wiring", () => {
       .toBeLessThan(flow.indexOf("registerPrzelewy24Transaction("))
   })
 
-  it("stages Stripe locally and uses provider-native idempotency for session creation", () => {
+  it("stages Stripe locally and uses one provider-native replay helper", () => {
     const source = read("src/lib/paymentProviderCheckout.ts")
-    const start = source.indexOf("async function createStripeCheckout")
-    const end = source.indexOf("const paymentCheckoutAdapters", start)
-    const flow = source.slice(start, end)
+    const helperStart = source.indexOf(
+      "export async function createOrRecoverStripeCheckoutSession"
+    )
+    const checkoutStart = source.indexOf("async function createStripeCheckout")
+    const checkoutEnd = source.indexOf(
+      "const paymentCheckoutAdapters",
+      checkoutStart
+    )
+    const helper = source.slice(helperStart, checkoutStart)
+    const flow = source.slice(checkoutStart, checkoutEnd)
 
     expect(flow).toContain('paymentCheckoutRegistrationStatus: "PENDING"')
     expect(flow).toContain("stripeCheckoutSessionId: null")
-    expect(flow).toContain("idempotencyKey:")
-    expect(flow).toContain("onics-checkout:")
+    expect(flow).toContain("createOrRecoverStripeCheckoutSession(")
+    expect(helper).toContain("stripe.checkout.sessions.create(")
+    expect(helper).toContain("idempotencyKey:")
+    expect(helper).toContain("onics-checkout:")
     expect(flow.indexOf("reserveInventory("))
-      .toBeLessThan(flow.indexOf("stripe.checkout.sessions.create("))
+      .toBeLessThan(flow.indexOf("createOrRecoverStripeCheckoutSession("))
+  })
+
+  it("reconciles a sessionless Stripe registration through the same replay helper", () => {
+    const route = read(
+      "src/app/api/payment-methods/reconcile/stripe/route.ts"
+    )
+
+    expect(route).toContain("createOrRecoverStripeCheckoutSession(")
+    expect(route).toContain(
+      'snapshotOrder.paymentCheckoutRegistrationStatus !== "PENDING"'
+    )
+    expect(route).toContain(
+      'snapshotOrder.paymentCheckoutRegistrationStatus !== "UNCERTAIN"'
+    )
+    expect(route).toContain(
+      'order.paymentCheckoutRegistrationStatus = "READY"'
+    )
+    expect(route).toContain("PAYMENT_CHECKOUT_PROVIDER_REPLAY_MISMATCH")
+    expect(route).toContain("isPaymentControlEnabled(")
+    expect(route).toContain("isPaymentMethodEnabled(")
   })
 
   it("keeps replay fingerprints and provider redirect recovery metadata internal", () => {
