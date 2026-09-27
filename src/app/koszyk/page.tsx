@@ -14,16 +14,8 @@ import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding";
 import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";
 import { ORDER_IMPORT_MAX_BYTES, parseCeltronicsOrderXml, type OrderImportPreview } from "@/lib/orderImport";
 import { validateOrderImportPreview } from "@/lib/orderImportPreviewContract";
+import { validateCheckoutPaymentDiscovery, type CheckoutPaymentMethod } from "@/lib/checkoutPaymentDiscoveryContract";
 
-type CheckoutPaymentMethod = {
-  id: string;
-  name: string;
-  enabled: boolean;
-  configured: boolean;
-  available: boolean;
-  kind: "REDIRECT" | "MANUAL";
-  maintenanceMessage: string | null;
-};
 
 type ManualPaymentConfirmation = {
   orderId: string;
@@ -114,16 +106,17 @@ export default function CartPage() {
           throw new Error(data?.error || "PAYMENT_METHODS_UNAVAILABLE");
         }
 
-        const controlEnabled = data?.control?.enabled !== false;
+        const discovery = validateCheckoutPaymentDiscovery(data);
+        const controlEnabled = discovery.control.enabled;
 
         if (!cancelled) {
-          setPaymentMethods(data?.methods ?? []);
+          setPaymentMethods(discovery.methods);
           setPaymentControlEnabled(controlEnabled);
           setTransactionAccess("allowed");
           setPaymentNotice(
             controlEnabled
               ? null
-              : data?.control?.maintenanceMessage ||
+              : discovery.control.maintenanceMessage ||
                   "Płatności online są obecnie wyłączone."
           );
         }
