@@ -10,7 +10,7 @@ describe("cart offer response contract wiring", () => {
     )
 
     expect(page).toContain("validateCartOfferPreview")
-    expect(page).toContain("const requestedItems = items.map")
+    expect(page).toContain("const requestedItems: CartOfferPreviewRequestItem[] = items.map")
     expect(page).toContain("validateCartOfferPreview(requestedItems, data)")
     expect(page).not.toContain("setPreview(data as OfferPreview)")
   })
