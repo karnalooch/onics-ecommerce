@@ -50,7 +50,8 @@ export function canReplacePaymentOrderItems(
   if (
     stripeCheckoutSessionId ||
     paymentProvider === "STRIPE" ||
-    paymentProvider === "BANK_TRANSFER"
+    paymentProvider === "BANK_TRANSFER" ||
+    paymentProvider === "PRZELEWY24"
   ) {
     return orderItemsEqual(incoming, current ?? [])
   }
@@ -109,6 +110,38 @@ export function validateStripeOrderStatusTransition(
     nextStatus === "PENDING_VERIFICATION"
   ) {
     return "invalid-transition"
+  }
+
+  return "ok"
+}
+
+
+export function validatePrzelewy24OrderStatusTransition(
+  paymentProvider: string | null | undefined,
+  paymentStatus: string | null | undefined,
+  currentStatus: OrderStatus | string | null | undefined,
+  nextStatus: OrderStatus
+):
+  | "ok"
+  | "payment-required"
+  | "provider-cancel-unsupported"
+  | "invalid-przelewy24-status" {
+  if (paymentProvider !== "PRZELEWY24") return "ok"
+  if (currentStatus === nextStatus) return "ok"
+
+  if (nextStatus === "CANCELLED") {
+    return "provider-cancel-unsupported"
+  }
+
+  if (nextStatus === "INQUIRY") {
+    return "invalid-przelewy24-status"
+  }
+
+  if (
+    (nextStatus === "CONFIRMED" || nextStatus === "SHIPPED") &&
+    paymentStatus !== "PAID"
+  ) {
+    return "payment-required"
   }
 
   return "ok"
