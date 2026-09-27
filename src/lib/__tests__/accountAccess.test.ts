@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getAccountAccessDecision } from "@/lib/accountAccess"
+import { getAccountAccessDecision, hasAccountRoleAccess } from "@/lib/accountAccess"
 
 describe("account access", () => {
   it("blocks explicitly blocked accounts", () => {
@@ -55,5 +55,28 @@ describe("account access", () => {
         isBlocked: false,
       })
     ).toBe("allowed")
+  })
+
+  it("requires current allowed role access for delayed writes", () => {
+    expect(
+      hasAccountRoleAccess(
+        { roleType: "ADMIN", isBlocked: false },
+        ["ADMIN"]
+      )
+    ).toBe(true)
+
+    expect(
+      hasAccountRoleAccess(
+        { roleType: "RETAIL", isBlocked: false },
+        ["ADMIN"]
+      )
+    ).toBe(false)
+
+    expect(
+      hasAccountRoleAccess(
+        { roleType: "ADMIN", isBlocked: true },
+        ["ADMIN"]
+      )
+    ).toBe(false)
   })
 })
