@@ -73,7 +73,7 @@ export default function AdminClientsPage() {
         toast.error(
           await readApiError(
             res,
-            currentlyBlocked
+            user.isBlocked
               ? "Nie udało się odblokować konta."
               : "Nie udało się zablokować konta."
           )
