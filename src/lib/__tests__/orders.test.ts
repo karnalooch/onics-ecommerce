@@ -4,6 +4,7 @@ import {
   canReplacePaymentOrderItems,
   resolveEstimatedDeliveryDays,
   validateBankTransferOrderStatusTransition,
+  validatePrzelewy24OrderStatusTransition,
   validateReservedOrderStatusTransition,
   validateStripeOrderStatusTransition,
 } from "@/lib/orders"
@@ -317,6 +318,103 @@ describe("bank-transfer order safety", () => {
     ).toBe("manual-refund-required")
     expect(
       validateBankTransferOrderStatusTransition(
+        "BANK_TRANSFER",
+        "PENDING",
+        "PENDING_VERIFICATION",
+        "CANCELLED"
+      )
+    ).toBe("ok")
+  })
+})
+
+
+describe("Przelewy24 order safety", () => {
+  const items = [
+    {
+      id: "p1",
+      sku: "SKU-1",
+      name: "Produkt",
+      quantity: 1,
+      price: 100,
+    },
+  ]
+
+  it("locks provider-bound items and amount once P24 checkout exists", () => {
+    expect(
+      canReplacePaymentOrderItems(
+        "PRZELEWY24",
+        null,
+        [{ ...items[0], price: 120 }],
+        items
+      )
+    ).toBe(false)
+    expect(
+      canReplacePaymentOrderItems(
+        "PRZELEWY24",
+        null,
+        [{ ...items[0], quantity: 2 }],
+        items
+      )
+    ).toBe(false)
+    expect(
+      canReplacePaymentOrderItems(
+        "PRZELEWY24",
+        null,
+        items.map((item) => ({ ...item })),
+        items
+      )
+    ).toBe(true)
+  })
+
+  it("requires authoritative payment before fulfillment", () => {
+    expect(
+      validatePrzelewy24OrderStatusTransition(
+        "PRZELEWY24",
+        "PENDING",
+        "PENDING_VERIFICATION",
+        "CONFIRMED"
+      )
+    ).toBe("payment-required")
+    expect(
+      validatePrzelewy24OrderStatusTransition(
+        "PRZELEWY24",
+        "PAID",
+        "PENDING_VERIFICATION",
+        "CONFIRMED"
+      )
+    ).toBe("ok")
+    expect(
+      validatePrzelewy24OrderStatusTransition(
+        "PRZELEWY24",
+        "PENDING",
+        "CONFIRMED",
+        "SHIPPED"
+      )
+    ).toBe("payment-required")
+  })
+
+  it("does not fake P24 cancellation or downgrade through a local status write", () => {
+    expect(
+      validatePrzelewy24OrderStatusTransition(
+        "PRZELEWY24",
+        "PENDING",
+        "PENDING_VERIFICATION",
+        "CANCELLED"
+      )
+    ).toBe("provider-cancel-unsupported")
+    expect(
+      validatePrzelewy24OrderStatusTransition(
+        "PRZELEWY24",
+        "PENDING",
+        "PENDING_VERIFICATION",
+        "INQUIRY"
+      )
+    ).toBe("invalid-przelewy24-status")
+  })
+
+  it("leaves other provider semantics unchanged", () => {
+    expect(
+      validatePrzelewy24OrderStatusTransition(
         "BANK_TRANSFER",
         "PENDING",
         "PENDING_VERIFICATION",
