@@ -258,44 +258,60 @@ export type CatalogManufacturerRecord = {
   name: string
 }
 
-export type CatalogManufacturerReference = {
-  manufacturer?: string | null
+export function normalizeCatalogManufacturerName(value: unknown) {
+  return String(value ?? "").trim().toLowerCase()
 }
 
-function normalizeManufacturerReference(value: unknown) {
-  return String(value ?? "").trim().toLowerCase()
+export function indexCatalogManufacturersByName<
+  T extends CatalogManufacturerRecord,
+>(manufacturers: T[]) {
+  const index = new Map<string, T>()
+
+  for (const manufacturer of manufacturers) {
+    const name = normalizeCatalogManufacturerName(manufacturer.name)
+    if (!name) continue
+    if (index.has(name)) {
+      throw new Error("CATALOG_DUPLICATE_MANUFACTURER_NAME")
+    }
+    index.set(name, manufacturer)
+  }
+
+  return index
+}
+
+export type CatalogManufacturerReference = {
+  manufacturer?: string | null
 }
 
 export function hasManufacturerProductReference(
   products: CatalogManufacturerReference[],
   manufacturerName: unknown
 ) {
-  const normalizedName = normalizeManufacturerReference(manufacturerName)
+  const normalizedName = normalizeCatalogManufacturerName(manufacturerName)
   if (!normalizedName) return false
 
   return products.some(
     (product) =>
-      normalizeManufacturerReference(product.manufacturer) === normalizedName
+      normalizeCatalogManufacturerName(product.manufacturer) === normalizedName
   )
 }
 
 export function ensureManufacturerRecord(
   manufacturers: CatalogManufacturerRecord[],
   name: unknown,
-  id: string
+  id: string,
+  manufacturerByName = indexCatalogManufacturersByName(manufacturers)
 ) {
   const displayName = String(name ?? "").trim()
   if (!displayName) return null
 
-  const normalizedName = displayName.toLowerCase()
-  const existing = manufacturers.find(
-    (manufacturer) =>
-      String(manufacturer.name || "").trim().toLowerCase() === normalizedName
-  )
+  const normalizedName = normalizeCatalogManufacturerName(displayName)
+  const existing = manufacturerByName.get(normalizedName)
   if (existing) return existing
 
   const created = { id, name: displayName }
   manufacturers.push(created)
+  manufacturerByName.set(normalizedName, created)
   return created
 }
 
