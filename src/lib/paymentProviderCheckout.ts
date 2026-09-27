@@ -919,6 +919,9 @@ async function createStripeCheckout(
   }
 
   const checkoutAvailabilityFence = availabilityFence
+  if (!checkoutAvailabilityFence) {
+    throw new Error("PAYMENT_CHECKOUT_AVAILABILITY_FENCE_MISSING")
+  }
 
   const session = await createOrRecoverStripeCheckoutSession(
     stripe,
