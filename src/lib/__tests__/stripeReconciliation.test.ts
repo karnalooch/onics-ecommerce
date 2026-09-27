@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
+  STRIPE_STAGED_RECOVERY_MAX_AGE_MS,
   classifyStripeCheckoutForReconciliation,
+  isStagedStripeCheckout,
+  isStripeStagedRecoveryWithinIdempotencyWindow,
   shouldReconcileStripeOrder,
 } from "@/lib/stripeReconciliation"
 import type { StripeCancelableOrder } from "@/lib/refunds"
@@ -79,10 +82,67 @@ describe("Stripe payment reconciliation", () => {
     ).toBe(false)
   })
 
-  it("requires a Stripe checkout session", () => {
+  it("selects only explicitly staged Stripe registrations without a session", () => {
+    const staged = order({
+      paymentProvider: "STRIPE",
+      stripeCheckoutSessionId: null,
+      paymentCheckoutRegistrationStatus: "PENDING",
+      createdAt: "2026-09-27T06:00:00.000Z",
+    })
+
+    expect(isStagedStripeCheckout(staged)).toBe(true)
+    expect(shouldReconcileStripeOrder(staged)).toBe(true)
+
     expect(
       shouldReconcileStripeOrder(
-        order({ stripeCheckoutSessionId: null })
+        order({
+          paymentProvider: "STRIPE",
+          stripeCheckoutSessionId: null,
+          paymentCheckoutRegistrationStatus: "READY",
+        })
+      )
+    ).toBe(false)
+
+    expect(
+      shouldReconcileStripeOrder(
+        order({
+          paymentProvider: "PRZELEWY24",
+          stripeCheckoutSessionId: null,
+          paymentCheckoutRegistrationStatus: "PENDING",
+        })
+      )
+    ).toBe(false)
+  })
+
+  it("limits automatic staged recovery to less than 23 hours", () => {
+    const now = Date.parse("2026-09-27T12:00:00.000Z")
+    const staged = order({
+      paymentProvider: "STRIPE",
+      stripeCheckoutSessionId: null,
+      paymentCheckoutRegistrationStatus: "PENDING",
+      createdAt: new Date(now - STRIPE_STAGED_RECOVERY_MAX_AGE_MS + 1).toISOString(),
+    })
+
+    expect(
+      isStripeStagedRecoveryWithinIdempotencyWindow(staged, now)
+    ).toBe(true)
+
+    expect(
+      isStripeStagedRecoveryWithinIdempotencyWindow(
+        {
+          ...staged,
+          createdAt: new Date(
+            now - STRIPE_STAGED_RECOVERY_MAX_AGE_MS
+          ).toISOString(),
+        },
+        now
+      )
+    ).toBe(false)
+
+    expect(
+      isStripeStagedRecoveryWithinIdempotencyWindow(
+        { ...staged, createdAt: "not-a-date" },
+        now
       )
     ).toBe(false)
   })
