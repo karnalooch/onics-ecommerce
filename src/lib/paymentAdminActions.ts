@@ -208,7 +208,8 @@ export function isPaymentAdminActionResume(
     action === "CANCEL" &&
     provider === "STRIPE" &&
     status !== "CANCELLED" &&
-    paymentStatus === "PAID" &&
+    paymentStatus !== "REFUNDED" &&
+    paymentStatus !== "EXPIRED" &&
     typeof order.refundRequestedAt === "string"
   ) {
     return true
