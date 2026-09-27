@@ -567,6 +567,8 @@ async function createBankTransferCheckout(
 async function createStripeCheckout(
   input: PaymentCheckoutInput
 ): Promise<PaymentCheckoutResult> {
+  const fingerprint = checkoutFingerprint(input)
+
   let stripeConfig: ReturnType<typeof resolveStripeCheckoutConfig>
   try {
     stripeConfig = resolveStripeCheckoutConfig({
@@ -577,64 +579,36 @@ async function createStripeCheckout(
     throw new Error("PAYMENT_PROVIDER_NOT_CONFIGURED")
   }
 
-  const { storedUser, resolved } = resolveCheckout(
-    input.snapshot.users as StoredUser[],
-    input.snapshot.products as Parameters<typeof resolveCartItems>[1],
-    input.sessionUser,
-    input.items
-  )
-
   const stripe = new Stripe(stripeConfig.stripeSecretKey)
   const appUrl = stripeConfig.appUrl
-  const orderId = `ORD-${crypto.randomUUID()}`
+  const snapshotReplay = findExistingPaymentCheckout(
+    input.snapshot.orders as StoredPaymentCheckoutOrder[],
+    input
+  )
 
-  const session = await stripe.checkout.sessions.create({
-    line_items: resolved.items.map((item) => ({
-      price_data: {
-        currency: "pln",
-        unit_amount: moneyToMinorUnits(item.price),
-        product_data: {
-          name: item.name,
-          metadata: {
-            sku: item.sku,
-            product_id: item.id,
-          },
-        },
-      },
-      quantity: item.quantity,
-    })),
-    mode: "payment",
-    success_url: `${appUrl}/oferty/zamowienia?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/koszyk?payment=cancelled`,
-    client_reference_id: String(storedUser.id ?? ""),
-    customer_email: storedUser.email,
-    metadata: {
-      order_id: orderId,
-      pl_nip: storedUser.nip || "",
-      client_role: storedUser.roleType || "RETAIL",
-    },
-    payment_intent_data: {
-      metadata: {
-        order_id: orderId,
-      },
-    },
-  })
+  let claimed: StoredPaymentCheckoutOrder
+  if (snapshotReplay) {
+    claimed = assertMatchingPaymentCheckout(
+      snapshotReplay,
+      input,
+      fingerprint
+    )
+  } else {
+    const { storedUser, resolved } = resolveCheckout(
+      input.snapshot.users as StoredUser[],
+      input.snapshot.products as Parameters<typeof resolveCartItems>[1],
+      input.sessionUser,
+      input.items
+    )
+    const orderId = deterministicCheckoutOrderId(input, storedUser)
 
-  if (!session.url) {
-    try {
-      await stripe.checkout.sessions.expire(session.id)
-    } catch (expireError) {
-      console.error(
-        "Nie udało się wygasić sesji Stripe bez URL:",
-        expireError
-      )
-    }
-    throw new Error("Stripe nie zwrócił adresu płatności.")
-  }
-  const sessionUrl = session.url
+    claimed = await mutateMockData((db) => {
+      const orderStore = db.orders as StoredPaymentCheckoutOrder[]
+      const existing = findExistingPaymentCheckout(orderStore, input)
+      if (existing) {
+        return assertMatchingPaymentCheckout(existing, input, fingerprint)
+      }
 
-  try {
-    await mutateMockData((db) => {
       assertPaymentStillAvailable(
         db.paymentControl,
         db.paymentMethods,
@@ -647,7 +621,6 @@ async function createStripeCheckout(
         input.sessionUser,
         input.items
       )
-
       if (JSON.stringify(fresh.resolved) !== JSON.stringify(resolved)) {
         throw new Error("CHECKOUT_STATE_CHANGED")
       }
@@ -656,12 +629,14 @@ async function createStripeCheckout(
         db.products as InventoryProduct[],
         fresh.resolved.items
       )
-      const reservedAt = new Date().toISOString()
-
-      db.orders.unshift({
+      const now = new Date().toISOString()
+      const order: StoredPaymentCheckoutOrder = {
         id: orderId,
+        clientCheckoutRequestId: input.requestId,
+        clientCheckoutFingerprint: fingerprint,
+        paymentCheckoutRegistrationStatus: "PENDING",
         orderType: "ORDER",
-        createdAt: new Date().toISOString(),
+        createdAt: now,
         status: "PENDING_VERIFICATION",
         estimatedDeliveryDays: null,
         totalPriceOrig: fresh.resolved.total,
@@ -675,35 +650,130 @@ async function createStripeCheckout(
         },
         paymentProvider: "STRIPE",
         paymentStatus: "PENDING",
-        stripeCheckoutSessionId: session.id,
+        stripeCheckoutSessionId: null,
         stripePaymentIntentId: null,
         paidAt: null,
         inventoryReservationSource: "STRIPE",
         inventoryReservationStatus: "RESERVED",
-        inventoryReservedAt: reservedAt,
+        inventoryReservedAt: now,
         inventoryReleasedAt: null,
         inventoryFinalizedAt: null,
         inventoryReReservedAt: null,
-      })
+      }
+      orderStore.unshift(order)
+      return order
     })
-  } catch (persistenceError) {
-    try {
-      await stripe.checkout.sessions.expire(session.id)
-    } catch (expireError) {
-      console.error(
-        "Nie udało się wygasić osieroconej sesji Stripe:",
-        expireError
-      )
-    }
-    throw persistenceError
   }
+
+  const orderId = String(claimed.id ?? "").trim()
+  if (!orderId) {
+    throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
+  }
+
+  if (claimed.stripeCheckoutSessionId) {
+    const existingSession = await stripe.checkout.sessions.retrieve(
+      claimed.stripeCheckoutSessionId
+    )
+    if (!existingSession.url) {
+      throw new Error("Stripe nie zwrócił adresu płatności.")
+    }
+
+    return {
+      orderId,
+      paymentMethod: "STRIPE",
+      nextAction: {
+        type: "REDIRECT",
+        url: existingSession.url,
+      },
+    }
+  }
+
+  assertPaymentStillAvailable(
+    input.snapshot.paymentControl,
+    input.snapshot.paymentMethods,
+    "STRIPE"
+  )
+
+  const checkoutItems = claimed.items as
+    | Array<{
+        id: string
+        sku: string
+        name: string
+        quantity: number
+        price: number
+      }>
+    | undefined
+  const checkoutUser = claimed.user
+  if (!checkoutItems?.length || !checkoutUser) {
+    throw new Error("PAYMENT_PROVIDER_CHECKOUT_CONTRACT_INVALID")
+  }
+
+  const session = await stripe.checkout.sessions.create(
+    {
+      line_items: checkoutItems.map((item) => ({
+        price_data: {
+          currency: "pln",
+          unit_amount: moneyToMinorUnits(item.price),
+          product_data: {
+            name: item.name,
+            metadata: {
+              sku: item.sku,
+              product_id: item.id,
+            },
+          },
+        },
+        quantity: item.quantity,
+      })),
+      mode: "payment",
+      success_url: `${appUrl}/oferty/zamowienia?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/koszyk?payment=cancelled`,
+      client_reference_id: String(checkoutUser.id ?? ""),
+      customer_email: checkoutUser.email,
+      metadata: {
+        order_id: orderId,
+        pl_nip: checkoutUser.nip || "",
+        client_role: checkoutUser.roleType || "BIZ",
+      },
+      payment_intent_data: {
+        metadata: {
+          order_id: orderId,
+        },
+      },
+    },
+    {
+      idempotencyKey: `onics-checkout:${orderId}`,
+    }
+  )
+
+  if (!session.url) {
+    throw new Error("Stripe nie zwrócił adresu płatności.")
+  }
+
+  await mutateMockData((db) => {
+    const existing = findExistingPaymentCheckout(
+      db.orders as StoredPaymentCheckoutOrder[],
+      input
+    )
+    if (!existing || existing.id !== orderId) {
+      throw new Error("PAYMENT_CHECKOUT_LOCAL_ORDER_MISSING")
+    }
+    assertMatchingPaymentCheckout(existing, input, fingerprint)
+    if (
+      existing.stripeCheckoutSessionId &&
+      existing.stripeCheckoutSessionId !== session.id
+    ) {
+      throw new Error("PAYMENT_CHECKOUT_PROVIDER_REPLAY_MISMATCH")
+    }
+    existing.stripeCheckoutSessionId = session.id
+    existing.paymentCheckoutRegistrationStatus = "READY"
+  })
 
   return {
     orderId,
     paymentMethod: "STRIPE",
     nextAction: {
       type: "REDIRECT",
-      url: sessionUrl,
+      url: session.url,
     },
   }
 }
