@@ -4,6 +4,7 @@ import {
   applyPrzelewy24RefundNotification,
   applyReconciledPrzelewy24Refund,
   applyReconciledPrzelewy24Payment,
+  applyReturnedPrzelewy24Payment,
   applyVerifiedPrzelewy24Payment,
   calculatePrzelewy24Sign,
   describePrzelewy24Runtime,
@@ -288,6 +289,112 @@ describe("Przelewy24 production protocol", () => {
         "2026-09-26T10:50:00.000Z"
       )
     ).toBe("unchanged")
+    expect(products[0].stock).toBe(9)
+  })
+
+  it("settles a provider-returned payment by releasing the reservation exactly once", () => {
+    const products: InventoryProduct[] = [{ id: "p1", stock: 9 }]
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-RETURNED",
+      status: "PENDING_VERIFICATION",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PENDING",
+      p24SessionId: "ORD-P24-RETURNED",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+      inventoryReservedAt: "2026-09-27T14:00:00.000Z",
+      items: [{ id: "p1", quantity: 1 }],
+    }
+    const transaction = {
+      orderId: 987654321,
+      sessionId: "ORD-P24-RETURNED",
+      status: 3,
+      amount: 12345,
+      currency: "PLN",
+    }
+
+    expect(
+      applyReturnedPrzelewy24Payment(
+        products,
+        order,
+        transaction,
+        "2026-09-27T16:00:00.000Z"
+      )
+    ).toBe("returned")
+    expect(order).toMatchObject({
+      status: "CANCELLED",
+      paymentStatus: "REFUNDED",
+      refundStatus: "succeeded",
+      p24OrderId: 987654321,
+      inventoryReservationStatus: "RELEASED",
+      inventoryReleasedAt: "2026-09-27T16:00:00.000Z",
+      refundedAt: "2026-09-27T16:00:00.000Z",
+      cancelledAt: "2026-09-27T16:00:00.000Z",
+      paymentReconciledAt: "2026-09-27T16:00:00.000Z",
+    })
+    expect(products[0].stock).toBe(10)
+
+    expect(
+      applyReturnedPrzelewy24Payment(
+        products,
+        order,
+        transaction,
+        "2026-09-27T16:05:00.000Z"
+      )
+    ).toBe("unchanged")
+    expect(products[0].stock).toBe(10)
+  })
+
+  it("fails closed when a returned P24 payment conflicts with fulfilled inventory", () => {
+    const products: InventoryProduct[] = [{ id: "p1", stock: 9 }]
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-RETURNED-FINAL",
+      status: "SHIPPED",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PENDING",
+      p24SessionId: "ORD-P24-RETURNED-FINAL",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "FINALIZED",
+      items: [{ id: "p1", quantity: 1 }],
+    }
+
+    expect(() =>
+      applyReturnedPrzelewy24Payment(products, order, {
+        orderId: 987654321,
+        sessionId: "ORD-P24-RETURNED-FINAL",
+        status: 3,
+        amount: 12345,
+        currency: "PLN",
+      })
+    ).toThrow("PRZELEWY24_RETURNED_PAYMENT_REQUIRES_REVIEW")
+    expect(products[0].stock).toBe(9)
+  })
+
+  it("never treats a non-returned provider state as a returned payment", () => {
+    const products: InventoryProduct[] = [{ id: "p1", stock: 9 }]
+    const order: Przelewy24StoredOrder = {
+      id: "ORD-P24-NOT-RETURNED",
+      status: "PENDING_VERIFICATION",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PENDING",
+      p24SessionId: "ORD-P24-NOT-RETURNED",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+      items: [{ id: "p1", quantity: 1 }],
+    }
+
+    expect(() =>
+      applyReturnedPrzelewy24Payment(products, order, {
+        orderId: 987654321,
+        sessionId: "ORD-P24-NOT-RETURNED",
+        status: 2,
+        amount: 12345,
+        currency: "PLN",
+      })
+    ).toThrow("PRZELEWY24_TRANSACTION_NOT_RETURNED")
     expect(products[0].stock).toBe(9)
   })
 
