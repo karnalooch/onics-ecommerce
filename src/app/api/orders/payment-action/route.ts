@@ -6,6 +6,7 @@ import { POST as postStripeReturn } from "@/app/api/orders/return/route"
 import { POST as postPrzelewy24Return } from "@/app/api/orders/przelewy24-return/route"
 import { PUT as putOrder } from "@/app/api/orders/route"
 import { authorizeAPI } from "@/lib/authUtils"
+import { buildAdminOrderStateToken } from "@/lib/orderAdminState"
 import {
   PAYMENT_ADMIN_ACTIONS,
   listAvailablePaymentAdminActions,
@@ -70,6 +71,7 @@ async function withFreshPaymentOrder(
       ...body,
       order: {
         ...order,
+        adminStateToken: buildAdminOrderStateToken(order),
         paymentLifecycle: describeOrderPaymentLifecycle(order),
         paymentAdminActions: listAvailablePaymentAdminActions(order),
       },
@@ -159,6 +161,7 @@ export async function POST(req: Request) {
         response = await putOrder(
           forwardedRequest(req, "PUT", {
             id: parsed.data.id,
+            expectedStateToken: buildAdminOrderStateToken(order),
             status: "CANCELLED",
           })
         )
