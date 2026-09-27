@@ -39,6 +39,18 @@ export function indexCatalogProductsBySku<T extends CatalogSkuRecord>(
   return index
 }
 
+export function catalogCategoryRevision(value: unknown) {
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 0
+    ? value
+    : 0
+}
+
+export function nextCatalogCategoryRevision(value: unknown) {
+  return catalogCategoryRevision(value) + 1
+}
+
 export type CatalogCategoryNameRecord = {
   id?: string | null
   name?: string | null
