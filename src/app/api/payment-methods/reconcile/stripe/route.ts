@@ -5,6 +5,7 @@ import { authorizeAPI } from "@/lib/authUtils"
 import {
   nextPaymentStatus,
   verifyCheckoutPayment,
+  verifyStripeRefund,
 } from "@/lib/payments"
 import {
   applyExpiredCheckoutCancellation,
@@ -77,6 +78,65 @@ function getRefundStatus(value: unknown): StripeRefundStatus {
     return status
   }
   throw new Error("STRIPE_REFUND_UNKNOWN_STATUS")
+}
+
+function isStripeRmaRefundIntent(order: StoredOrder) {
+  return (
+    order.returnStatus === "RECEIVED" ||
+    order.returnStatus === "REFUND_PENDING"
+  )
+}
+
+function stripeRefundRecoveryKey(order: StoredOrder) {
+  return isStripeRmaRefundIntent(order)
+    ? `onics-order-return-refund:${order.id}:initial`
+    : `onics-order-refund:${order.id}`
+}
+
+function refundMatchesOrder(
+  order: StoredOrder,
+  refund: Stripe.Refund,
+  paymentIntentId: string
+) {
+  const orderId = refund.metadata?.order_id || null
+  if (orderId && orderId !== order.id) return false
+
+  return verifyStripeRefund(
+    {
+      id: order.id,
+      totalPriceFinal: Number(order.totalPriceFinal ?? 0),
+      stripeCheckoutSessionId: order.stripeCheckoutSessionId,
+      stripePaymentIntentId: paymentIntentId,
+      paymentStatus: order.paymentStatus,
+    },
+    {
+      orderId,
+      refundId: refund.id,
+      paymentIntentId: getRefundPaymentIntentId(refund),
+      amount: refund.amount,
+      currency: refund.currency,
+      status: refund.status,
+    }
+  ).ok
+}
+
+function selectRecoverableRefund(
+  order: StoredOrder,
+  refunds: Stripe.Refund[],
+  paymentIntentId: string
+) {
+  const matching = refunds.filter((refund) =>
+    refundMatchesOrder(order, refund, paymentIntentId)
+  )
+
+  if (matching.length <= 1) return matching[0] ?? null
+
+  const succeeded = matching.filter(
+    (refund) => refund.status === "succeeded"
+  )
+  if (succeeded.length === 1) return succeeded[0]
+
+  throw new Error("STRIPE_REFUND_RECOVERY_AMBIGUOUS")
 }
 
 export async function POST(req: Request) {
@@ -235,10 +295,52 @@ export async function POST(req: Request) {
         currentSnapshot.orders as StoredOrder[]
       ).find((order) => order.id === snapshotOrder.id)
 
+      let refund: Stripe.Refund | null = null
+
       if (currentOrder?.stripeRefundId) {
-        const refund = await stripe.refunds.retrieve(
+        refund = await stripe.refunds.retrieve(
           currentOrder.stripeRefundId
         )
+      } else if (
+        currentOrder?.refundRequestedAt &&
+        currentOrder.paymentStatus === "PAID"
+      ) {
+        const intentId =
+          currentOrder.stripePaymentIntentId ||
+          getPaymentIntentId(session)
+        if (!intentId) {
+          throw new Error("STRIPE_REFUND_PAYMENT_INTENT_MISSING")
+        }
+
+        const listed = await stripe.refunds.list({
+          payment_intent: intentId,
+          limit: 10,
+        })
+        refund = selectRecoverableRefund(
+          currentOrder,
+          listed.data,
+          intentId
+        )
+
+        if (!refund) {
+          const rma = isStripeRmaRefundIntent(currentOrder)
+          refund = await stripe.refunds.create(
+            {
+              payment_intent: intentId,
+              reason: "requested_by_customer",
+              metadata: {
+                order_id: currentOrder.id,
+                ...(rma ? { flow: "rma" } : {}),
+              },
+            },
+            {
+              idempotencyKey: stripeRefundRecoveryKey(currentOrder),
+            }
+          )
+        }
+      }
+
+      if (currentOrder && refund) {
         refundStatus = getRefundStatus(refund.status)
 
         await mutateMockData((db) => {

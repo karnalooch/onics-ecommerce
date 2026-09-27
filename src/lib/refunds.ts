@@ -40,6 +40,22 @@ export type RefundSnapshot = StripeRefundSnapshot & {
   status: StripeRefundStatus
 }
 
+export function stageStripeRefundIntent(
+  order: StripeCancelableOrder,
+  now = new Date().toISOString()
+) {
+  if (
+    order.paymentStatus === "REFUNDED" ||
+    order.refundStatus === "succeeded"
+  ) {
+    return "completed" as const
+  }
+
+  order.refundRequestedAt = order.refundRequestedAt ?? now
+  order.refundUpdatedAt = now
+  return "staged" as const
+}
+
 export function applyStripeRefundSnapshot(
   products: InventoryProduct[],
   order: StripeCancelableOrder,

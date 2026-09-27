@@ -4,6 +4,7 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
   applyStripeRefundSnapshot,
+  stageStripeRefundIntent,
   type StripeRefundStatus,
 } from "@/lib/refunds"
 import {
@@ -17,6 +18,7 @@ import {
   resolveOrderPaymentProvider,
 } from "@/lib/paymentProviders"
 import { classifyPaymentAdminActionPrecondition } from "@/lib/paymentAdminActions"
+import { buildAdminOrderStateToken } from "@/lib/orderAdminState"
 import { mutateMockData } from "@/store/serverStore"
 
 const ReturnOrderSchema = z.object({
@@ -207,25 +209,47 @@ export async function POST(req: Request) {
     }
     const resolvedIntentId = intentId
 
+    const staged = await mutateMockData((db) => {
+      const order = (db.orders as StripeReturnOrder[]).find(
+        (candidate) => candidate.id === parsed.data.id
+      )
+      if (!order) throw new Error("ORDER_NOT_FOUND")
+
+      if (
+        order.returnStatus !== "RECEIVED" &&
+        order.returnStatus !== "REFUND_PENDING"
+      ) {
+        throw new Error("RETURN_CHANGED")
+      }
+
+      order.stripePaymentIntentId =
+        order.stripePaymentIntentId ?? resolvedIntentId
+      stageStripeRefundIntent(order)
+      return {
+        order,
+        stateToken: buildAdminOrderStateToken(order),
+      }
+    })
+
     const previousRefundFailed =
-      received.order.refundStatus === "failed" ||
-      received.order.refundStatus === "canceled"
+      staged.order.refundStatus === "failed" ||
+      staged.order.refundStatus === "canceled"
 
     const refund =
-      received.order.stripeRefundId && !previousRefundFailed
-        ? await stripe.refunds.retrieve(received.order.stripeRefundId)
+      staged.order.stripeRefundId && !previousRefundFailed
+        ? await stripe.refunds.retrieve(staged.order.stripeRefundId)
         : await stripe.refunds.create(
             {
               payment_intent: resolvedIntentId,
               reason: "requested_by_customer",
               metadata: {
-                order_id: String(received.order.id),
+                order_id: String(staged.order.id),
                 flow: "rma",
               },
             },
             {
-              idempotencyKey: `onics-order-return-refund:${received.order.id}:${
-                received.order.stripeRefundId || "initial"
+              idempotencyKey: `onics-order-return-refund:${staged.order.id}:${
+                staged.order.stripeRefundId || "initial"
               }`,
             }
           )
@@ -239,7 +263,16 @@ export async function POST(req: Request) {
 
       if (
         order.returnStatus !== "RECEIVED" &&
-        order.returnStatus !== "REFUND_PENDING"
+        order.returnStatus !== "REFUND_PENDING" &&
+        !(order.status === "RETURNED" && order.paymentStatus === "REFUNDED")
+      ) {
+        throw new Error("RETURN_CHANGED")
+      }
+
+      if (
+        buildAdminOrderStateToken(order) !== staged.stateToken &&
+        order.stripeRefundId !== refund.id &&
+        !(order.status === "RETURNED" && order.paymentStatus === "REFUNDED")
       ) {
         throw new Error("RETURN_CHANGED")
       }
