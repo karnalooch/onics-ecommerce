@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
-  STRIPE_STAGED_RECOVERY_MAX_AGE_MS,
   classifyStripeCheckoutForReconciliation,
   isStagedStripeCheckout,
   isStripeStagedRecoveryWithinIdempotencyWindow,
   shouldReconcileStripeOrder,
 } from "@/lib/stripeReconciliation"
+import { STRIPE_CHECKOUT_IDEMPOTENCY_GUARD_MS } from "@/lib/stripeCheckoutCreation"
 import type { StripeCancelableOrder } from "@/lib/refunds"
 
 function order(
@@ -120,7 +120,7 @@ describe("Stripe payment reconciliation", () => {
       paymentProvider: "STRIPE",
       stripeCheckoutSessionId: null,
       paymentCheckoutRegistrationStatus: "PENDING",
-      createdAt: new Date(now - STRIPE_STAGED_RECOVERY_MAX_AGE_MS + 1).toISOString(),
+      createdAt: new Date(now - STRIPE_CHECKOUT_IDEMPOTENCY_GUARD_MS + 1).toISOString(),
     })
 
     expect(
@@ -132,7 +132,7 @@ describe("Stripe payment reconciliation", () => {
         {
           ...staged,
           createdAt: new Date(
-            now - STRIPE_STAGED_RECOVERY_MAX_AGE_MS
+            now - STRIPE_CHECKOUT_IDEMPOTENCY_GUARD_MS
           ).toISOString(),
         },
         now
