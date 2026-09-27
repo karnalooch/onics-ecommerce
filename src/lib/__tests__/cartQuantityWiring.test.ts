@@ -16,6 +16,10 @@ describe("cart quantity boundary wiring", () => {
       path.join(process.cwd(), "src/app/koszyk/page.tsx"),
       "utf8"
     )
+    const b2bOfferGrid = fs.readFileSync(
+      path.join(process.cwd(), "src/components/ui/B2BDashboardGrid.tsx"),
+      "utf8"
+    )
 
     expect(store).toContain("addItem: (item: CartItem) => boolean")
     expect(store).toContain("resolveMergedCartQuantity(")
@@ -29,6 +33,8 @@ describe("cart quantity boundary wiring", () => {
     expect(productCard).toContain("CART_ITEM_QUANTITY_MAX")
     expect(cartPage).toContain("Pominięto ${skippedCount} pozycji")
     expect(cartPage).toContain("item.quantity >= CART_ITEM_QUANTITY_MAX")
+    expect(b2bOfferGrid).toContain("if (!added)")
+    expect(b2bOfferGrid).toContain("CART_ITEM_QUANTITY_MAX")
   })
 
   it("reuses one quantity maximum across server transaction boundaries", () => {

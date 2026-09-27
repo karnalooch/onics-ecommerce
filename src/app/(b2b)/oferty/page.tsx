@@ -3,16 +3,30 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { ListTree, Info } from "lucide-react";
 import { B2BDashboardGrid } from "@/components/ui/B2BDashboardGrid";
+import { buildCartOwnerKey } from "@/lib/cartIdentity";
 
 export default async function B2BOfertyPage() {
   const session = await auth();
+  const sessionUser = session?.user as
+    | {
+        id?: string;
+        email?: string | null;
+        role?: string;
+        nip?: string | null;
+      }
+    | undefined;
 
-  if (!session || (session.user as any)?.role !== 'BIZ') {
+  if (!sessionUser || sessionUser.role !== "BIZ") {
     redirect("/logowanie");
   }
 
-  const userNIP = (session.user as any)?.nip || "BRAK PODPIĘTEGO KSEF";
-  const userEmail = session.user?.email || "unknown";
+  const cartOwnerKey = buildCartOwnerKey(sessionUser);
+  if (!cartOwnerKey) {
+    redirect("/logowanie");
+  }
+
+  const userNIP = sessionUser.nip || "BRAK PODPIĘTEGO KSEF";
+  const userEmail = sessionUser.email || "unknown";
 
   return (
     <div className="container mx-auto py-12 px-6 max-w-7xl animate-in fade-in duration-500">
@@ -49,7 +63,7 @@ export default async function B2BOfertyPage() {
           </div>
         </div>
       }>
-        <B2BDashboardGrid nip={userNIP} email={userEmail} />
+        <B2BDashboardGrid nip={userNIP} email={userEmail} ownerKey={cartOwnerKey} />
       </Suspense>
     </div>
   );
