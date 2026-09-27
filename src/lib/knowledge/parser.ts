@@ -219,6 +219,17 @@ export async function saveKnowledge(data: KnowledgeStore) {
   });
 }
 
+export function rethrowFatalKnowledgeTrainingError(error: unknown) {
+  if (!(error instanceof Error)) return
+
+  if (
+    error.message === "KNOWLEDGE_STORE_RESET_DURING_TRAINING" ||
+    error.message === "PROCES_PRZERWANY"
+  ) {
+    throw error
+  }
+}
+
 // --- CONFIG & UTILS ---
 
 const MODEL_KEYWORDS = ['SYMBOL', 'KOD', 'SKU', 'ARTYKUL', 'ARTYKUŁ', 'INDEKS', 'MODEL', 'TYP', 'OZNACZENIE', 'LABEL MODEL', 'ITEM CODE']; // Removed 'PRODUCT NAME', its too generic
@@ -1089,6 +1100,7 @@ export async function parsePDFWithAI(
                 if (added > 0) await saveKnowledge(currentStore);
             }
         } catch (localErr) {
+            rethrowFatalKnowledgeTrainingError(localErr);
             onProgress?.({ type: 'log', message: `Błąd AI: partia ${i + 1} niewyraźna. Przechodzę dalej.` });
         }
     }
