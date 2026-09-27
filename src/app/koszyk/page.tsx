@@ -11,7 +11,9 @@ import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
 import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart";
 import { buildCartOwnerKey } from "@/lib/cartIdentity";
 import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding";
-import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";\nimport { ORDER_IMPORT_MAX_BYTES, parseCeltronicsOrderXml, type OrderImportPreview } from "@/lib/orderImport";\nimport { validateOrderImportPreview } from "@/lib/orderImportPreviewContract";
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";
+import { ORDER_IMPORT_MAX_BYTES, parseCeltronicsOrderXml, type OrderImportPreview } from "@/lib/orderImport";
+import { validateOrderImportPreview } from "@/lib/orderImportPreviewContract";
 
 type CheckoutPaymentMethod = {
   id: string;
@@ -36,33 +38,6 @@ type ManualPaymentConfirmation = {
   note?: string;
 };
 
-type OrderImportPreview = {
-  format: "CELTRONICS_ORDER_XML_V1";
-  version: 1;
-  accepted: Array<{
-    id: string;
-    sku: string;
-    name: string;
-    price: number;
-    quantity: number;
-    sourceLines: number[];
-  }>;
-  rejected: Array<{
-    sku: string;
-    quantity: number;
-    sourceLines: number[];
-    reason: string;
-  }>;
-  summary: {
-    sourceLines: number;
-    acceptedLines: number;
-    rejectedLines: number;
-    acceptedQuantity: number;
-    rejectedQuantity: number;
-  };
-};
-
-const ORDER_IMPORT_MAX_BYTES = 256 * 1024;
 const ORDER_IMPORT_TEMPLATE = `<?xml version="1.0" encoding="UTF-8"?>
 <celtronics-order version="1">
   <item sku="ABC-123" quantity="2"/>
