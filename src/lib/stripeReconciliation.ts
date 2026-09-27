@@ -31,6 +31,7 @@ export function isStagedStripeCheckout(
     !order.stripeCheckoutSessionId &&
     order.paymentProvider === "STRIPE" &&
     order.paymentCheckoutRegistrationStatus === "PENDING" &&
+    order.status === "PENDING_VERIFICATION" &&
     order.paymentStatus === "PENDING" &&
     order.inventoryReservationSource === "STRIPE" &&
     order.inventoryReservationStatus === "RESERVED"
