@@ -78,6 +78,10 @@ type StoredOrder = InventoryReservationOrder & {
   id?: string
   clientRequestId?: string
   clientRequestFingerprint?: string
+  clientCheckoutRequestId?: string
+  clientCheckoutFingerprint?: string
+  paymentCheckoutRegistrationStatus?: string | null
+  p24CheckoutRedirectUrl?: string | null
   orderType?: "INQUIRY" | "ORDER" | string
   status?: string
   estimatedDeliveryDays?: number | null
@@ -101,9 +105,17 @@ function withPaymentLifecycle(
 ) {
   const {
     clientRequestFingerprint: internalRequestFingerprint,
+    clientCheckoutRequestId: internalCheckoutRequestId,
+    clientCheckoutFingerprint: internalCheckoutFingerprint,
+    paymentCheckoutRegistrationStatus: internalCheckoutRegistrationStatus,
+    p24CheckoutRedirectUrl: internalP24RedirectUrl,
     ...publicOrder
   } = order
   void internalRequestFingerprint
+  void internalCheckoutRequestId
+  void internalCheckoutFingerprint
+  void internalCheckoutRegistrationStatus
+  void internalP24RedirectUrl
 
   const described = {
     ...publicOrder,
