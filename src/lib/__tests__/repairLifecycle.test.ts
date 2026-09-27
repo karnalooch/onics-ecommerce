@@ -3,6 +3,7 @@ import {
   canDeleteRepair,
   isRepairStatus,
   validateRepairStatusTransition,
+  validateRepairStatusWrite,
 } from "@/lib/repairLifecycle"
 
 describe("repair lifecycle", () => {
@@ -40,6 +41,44 @@ describe("repair lifecycle", () => {
     expect(
       validateRepairStatusTransition("WERYFIKACJA", "HACKED")
     ).toBe("invalid-status")
+  })
+
+  it("fences stale status writers while preserving exact retries", () => {
+    expect(
+      validateRepairStatusWrite(
+        "WERYFIKACJA",
+        "WERYFIKACJA",
+        "DIAGNOSIS"
+      )
+    ).toBe("apply")
+
+    expect(
+      validateRepairStatusWrite(
+        "DIAGNOSIS",
+        "WERYFIKACJA",
+        "REPAIRING"
+      )
+    ).toBe("conflict")
+
+    expect(
+      validateRepairStatusWrite(
+        "DIAGNOSIS",
+        "WERYFIKACJA",
+        "DIAGNOSIS"
+      )
+    ).toBe("replay")
+  })
+
+  it("keeps terminal and invalid transitions protected under status fencing", () => {
+    expect(
+      validateRepairStatusWrite("RETURNED", "RETURNED", "REPAIRING")
+    ).toBe("terminal-status")
+    expect(
+      validateRepairStatusWrite("WERYFIKACJA", "WERYFIKACJA", "HACKED")
+    ).toBe("invalid-status")
+    expect(
+      validateRepairStatusWrite("RETURNED", "DIAGNOSIS", "RETURNED")
+    ).toBe("replay")
   })
 
   it("allows permanent deletion only before service handling starts", () => {
