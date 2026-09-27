@@ -704,11 +704,17 @@ async function settleStripeCheckoutAvailabilityRace(
         providerSession.id
       )
     } catch (expireError) {
-      const refreshed = await stripe.checkout.sessions.retrieve(
-        providerSession.id
-      )
-      providerSession = refreshed
-      if (refreshed.status !== "expired") {
+      try {
+        providerSession = await stripe.checkout.sessions.retrieve(
+          providerSession.id
+        )
+      } catch (refreshError) {
+        console.error(
+          "Stripe checkout availability-race refresh failed:",
+          refreshError
+        )
+      }
+      if (providerSession.status !== "expired") {
         console.error(
           "Stripe checkout availability-race expiry did not settle:",
           expireError
