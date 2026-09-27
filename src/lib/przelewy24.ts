@@ -794,7 +794,7 @@ export function stagePrzelewy24Verification(
   if (
     (order.paymentStatus === "PAID" ||
       order.paymentStatus === "REFUNDED") &&
-    order.p24OrderId === notification.orderId
+    przelewy24OrderIdsEqual(order.p24OrderId, notification.orderId)
   ) {
     return "already-final" as const
   }
@@ -803,7 +803,7 @@ export function stagePrzelewy24Verification(
   if (
     pending &&
     (pending.sessionId !== notification.sessionId ||
-      pending.orderId !== notification.orderId ||
+      !przelewy24OrderIdsEqual(pending.orderId, notification.orderId) ||
       pending.amount !== notification.amount ||
       pending.currency !== notification.currency ||
       pending.sign !== notification.sign)
@@ -828,7 +828,7 @@ export function applyVerifiedPrzelewy24Payment(
   if (
     (order.paymentStatus === "PAID" ||
       order.paymentStatus === "REFUNDED") &&
-    order.p24OrderId === notification.orderId
+    przelewy24OrderIdsEqual(order.p24OrderId, notification.orderId)
   ) {
     order.p24LastNotificationSign =
       order.p24LastNotificationSign ?? notification.sign

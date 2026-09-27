@@ -624,6 +624,52 @@ describe("Przelewy24 production protocol", () => {
     ).toThrow("PRZELEWY24_PENDING_NOTIFICATION_MISMATCH")
   })
 
+  it("treats equivalent numeric and string P24 order ids as the same replay identity", () => {
+    const incoming = notification()
+    const products: InventoryProduct[] = [{ id: "p1", stock: 9 }]
+
+    const stagedOrder: Przelewy24StoredOrder = {
+      id: "ORD-P24-1",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PENDING",
+      p24SessionId: "ORD-P24-1",
+      p24VerificationPending: {
+        ...incoming,
+        orderId: "987654321",
+      },
+      p24VerificationPendingAt: "2026-09-27T17:00:00.000Z",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "RESERVED",
+      items: [{ id: "p1", quantity: 1 }],
+    }
+
+    expect(stagePrzelewy24Verification(stagedOrder, incoming)).toBe(
+      "unchanged"
+    )
+
+    const finalOrder: Przelewy24StoredOrder = {
+      id: "ORD-P24-1",
+      paymentProvider: "PRZELEWY24",
+      totalPriceFinal: 123.45,
+      paymentStatus: "PAID",
+      p24SessionId: "ORD-P24-1",
+      p24OrderId: "987654321",
+      inventoryReservationSource: "ORDER",
+      inventoryReservationStatus: "FINALIZED",
+      items: [{ id: "p1", quantity: 1 }],
+    }
+
+    expect(stagePrzelewy24Verification(finalOrder, incoming)).toBe(
+      "already-final"
+    )
+    expect(
+      applyVerifiedPrzelewy24Payment(products, finalOrder, incoming)
+    ).toBe("unchanged")
+    expect(finalOrder.p24OrderId).toBe("987654321")
+    expect(products[0].stock).toBe(9)
+  })
+
   it("verifies the documented Przelewy24 refund notification checksum", () => {
     const refundBase = {
       orderId: 987654321,
