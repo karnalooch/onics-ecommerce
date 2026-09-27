@@ -61,17 +61,27 @@ export function buildOrderSubmissionSignature(input: {
   })
 }
 
+export function buildOrderSubmissionItemsFingerprint(
+  items: OrderSubmissionItem[]
+) {
+  return JSON.stringify(normalizedItems(items))
+}
+
 export function sameOrderSubmissionItems(
   requested: OrderSubmissionItem[],
   stored: OrderSubmissionItem[]
 ) {
   return (
-    JSON.stringify(normalizedItems(requested)) ===
-    JSON.stringify(normalizedItems(stored))
+    buildOrderSubmissionItemsFingerprint(requested) ===
+    buildOrderSubmissionItemsFingerprint(stored)
   )
 }
 
-function readRecords(storage: IdempotencyStorage): IdempotencyRecord[] {
+function readRecords(
+  storage: IdempotencyStorage | null
+): IdempotencyRecord[] {
+  if (!storage) return []
+
   try {
     const parsed = JSON.parse(storage.getItem(STORAGE_KEY) ?? "[]")
     if (!Array.isArray(parsed)) return []
@@ -95,9 +105,11 @@ function readRecords(storage: IdempotencyStorage): IdempotencyRecord[] {
 }
 
 function writeRecords(
-  storage: IdempotencyStorage,
+  storage: IdempotencyStorage | null,
   records: IdempotencyRecord[]
 ) {
+  if (!storage) return
+
   try {
     storage.setItem(
       STORAGE_KEY,
@@ -115,7 +127,7 @@ export function getOrCreateOrderSubmissionRequestId(
     orderType: OrderSubmissionType
     items: OrderSubmissionItem[]
   },
-  storage: IdempotencyStorage,
+  storage: IdempotencyStorage | null,
   createRequestId: () => string
 ) {
   const signature = buildOrderSubmissionSignature(input)
@@ -141,7 +153,7 @@ export function getOrCreateOrderSubmissionRequestId(
 
 export function clearOrderSubmissionRequestId(
   requestId: string,
-  storage: IdempotencyStorage
+  storage: IdempotencyStorage | null
 ) {
   const records = readRecords(storage)
   writeRecords(
