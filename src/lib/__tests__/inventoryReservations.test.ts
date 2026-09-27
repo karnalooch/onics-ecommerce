@@ -9,6 +9,7 @@ import {
   releaseInventory,
   reserveInventory,
   shouldDeferProductStockWrite,
+  type InventoryProduct,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations"
 
@@ -39,7 +40,7 @@ describe("inventory reservations", () => {
   })
 
   it("releases a reservation exactly once", () => {
-    const products = [{ id: "p1", stock: 2 }]
+    const products: InventoryProduct[] = [{ id: "p1", stock: 2 }]
     const order = {
       items: [{ id: "p1", quantity: 3 }],
       inventoryReservationStatus: "RESERVED" as const,
