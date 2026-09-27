@@ -3,10 +3,12 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
+import { buildRepairSubmissionFingerprint } from "@/lib/repairSubmissionIdempotency"
 
 export const dynamic = "force-dynamic"
 
 const CreateRepairSchema = z.object({
+  requestId: z.string().uuid(),
   item: z.string().trim().min(2).max(200),
   serial: z.string().trim().min(2).max(120),
   description: z.string().trim().min(5).max(3000),
@@ -19,6 +21,19 @@ type SessionUser = {
   role?: string
 }
 
+type StoredRepair = {
+  id?: string
+  clientRepairRequestId?: string
+  clientRepairRequestFingerprint?: string
+  repairSubmissionChannel?: "ACCOUNT_API" | "ADMIN_ACTION" | string
+  user?: {
+    id?: string
+    email?: string
+    companyName?: string
+  }
+  [key: string]: unknown
+}
+
 type StoredUser = {
   id?: string
   email?: string
@@ -29,6 +44,19 @@ type StoredUser = {
   isBlocked?: boolean
 }
 
+function publicRepair(repair: StoredRepair) {
+  const {
+    clientRepairRequestId: internalRequestId,
+    clientRepairRequestFingerprint: internalRequestFingerprint,
+    repairSubmissionChannel: internalSubmissionChannel,
+    ...publicRecord
+  } = repair
+  void internalRequestId
+  void internalRequestFingerprint
+  void internalSubmissionChannel
+  return publicRecord
+}
+
 export async function GET() {
   const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
   if (!authCheck.authorized) return authCheck.response
@@ -36,17 +64,20 @@ export async function GET() {
   const sessionUser = authCheck.user as SessionUser
   const { repairs } = initializeMockData()
 
+  const repairStore = repairs as StoredRepair[]
+
   if (authCheck.currentRole === "ADMIN") {
-    return NextResponse.json(repairs)
+    return NextResponse.json(repairStore.map(publicRepair))
   }
 
   return NextResponse.json(
-    repairs.filter(
-      (repair: { user?: { id?: string; email?: string } }) =>
+    repairStore
+      .filter((repair) =>
         repair.user
           ? Boolean(findStoredUserBySession([repair.user], sessionUser))
           : false
-    )
+      )
+      .map(publicRepair)
   )
 }
 
@@ -64,7 +95,7 @@ export async function POST(req: Request) {
     }
 
     const sessionUser = authCheck.user as SessionUser
-    const repair = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const storedUser = findStoredUserBySession(
         db.users as StoredUser[],
         sessionUser
@@ -78,8 +109,34 @@ export async function POST(req: Request) {
         throw new Error("BIZ_NOT_APPROVED")
       }
 
-      const nextRepair = {
+      const repairs = db.repairs as StoredRepair[]
+      const requestFingerprint = buildRepairSubmissionFingerprint({
+        item: parsed.data.item,
+        serial: parsed.data.serial,
+        description: parsed.data.description,
+      })
+      const existing = repairs.find(
+        (repair) =>
+          repair.repairSubmissionChannel === "ACCOUNT_API" &&
+          repair.clientRepairRequestId === parsed.data.requestId &&
+          repair.user &&
+          Boolean(findStoredUserBySession([repair.user], sessionUser))
+      )
+
+      if (existing) {
+        if (
+          existing.clientRepairRequestFingerprint !== requestFingerprint
+        ) {
+          throw new Error("REPAIR_IDEMPOTENCY_KEY_REUSED")
+        }
+        return { repair: existing, replayed: true }
+      }
+
+      const nextRepair: StoredRepair = {
         id: `RMA-${crypto.randomUUID()}`,
+        clientRepairRequestId: parsed.data.requestId,
+        clientRepairRequestFingerprint: requestFingerprint,
+        repairSubmissionChannel: "ACCOUNT_API",
         item: parsed.data.item,
         serial: parsed.data.serial,
         description: parsed.data.description,
@@ -94,11 +151,22 @@ export async function POST(req: Request) {
         },
       }
 
-      db.repairs.unshift(nextRepair)
-      return nextRepair
+      repairs.unshift(nextRepair)
+      return { repair: nextRepair, replayed: false }
     })
 
-    return NextResponse.json(repair, { status: 201 })
+    return NextResponse.json(
+      {
+        ...publicRepair(submission.repair),
+        clientRequestId: parsed.data.requestId,
+      },
+      {
+        status: submission.replayed ? 200 : 201,
+        headers: submission.replayed
+          ? { "Idempotency-Replayed": "true" }
+          : undefined,
+      }
+    )
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
     if (code === "ACCOUNT_UNAVAILABLE") {
@@ -111,6 +179,15 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Konto B2B oczekuje na zatwierdzenie." },
         { status: 403 }
+      )
+    }
+    if (code === "REPAIR_IDEMPOTENCY_KEY_REUSED") {
+      return NextResponse.json(
+        {
+          error:
+            "Identyfikator zgłoszenia został już użyty dla innej treści. Odśwież formularz i spróbuj ponownie.",
+        },
+        { status: 409 }
       )
     }
 
