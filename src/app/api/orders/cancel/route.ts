@@ -5,6 +5,7 @@ import { authorizeAPI } from "@/lib/authUtils"
 import {
   applyExpiredCheckoutCancellation,
   applyStripeRefundSnapshot,
+  stageStripeRefundIntent,
   type StripeCancelableOrder,
   type StripeRefundStatus,
 } from "@/lib/refunds"
@@ -14,6 +15,7 @@ import {
   supportsPaymentProviderCapability,
 } from "@/lib/paymentProviders"
 import { classifyPaymentAdminActionPrecondition } from "@/lib/paymentAdminActions"
+import { buildAdminOrderStateToken } from "@/lib/orderAdminState"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
 const CancelOrderSchema = z.object({
@@ -185,8 +187,58 @@ export async function POST(req: Request) {
         )
       }
 
-      const refund = order.stripeRefundId
-        ? await stripe.refunds.retrieve(order.stripeRefundId)
+      const staged = await mutateMockData((db) => {
+        const fresh = (db.orders as StripeCancelableOrder[]).find(
+          (candidate) => candidate.id === order.id
+        )
+        if (!fresh) throw new Error("ORDER_NOT_FOUND")
+        if (
+          fresh.stripeCheckoutSessionId !== order.stripeCheckoutSessionId
+        ) {
+          throw new Error("STRIPE_ORDER_CHANGED")
+        }
+
+        const stagePrecondition = classifyPaymentAdminActionPrecondition(
+          fresh,
+          "CANCEL",
+          expectedStateToken
+        )
+        if (stagePrecondition === "replay") {
+          return {
+            order: fresh,
+            replayed: true as const,
+            stateToken: buildAdminOrderStateToken(fresh),
+          }
+        }
+        if (stagePrecondition === "conflict") {
+          throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+        }
+
+        fresh.stripePaymentIntentId =
+          fresh.stripePaymentIntentId ?? intentId
+        stageStripeRefundIntent(fresh)
+        return {
+          order: fresh,
+          replayed: false as const,
+          stateToken: buildAdminOrderStateToken(fresh),
+        }
+      })
+
+      if (staged.replayed) {
+        return NextResponse.json(
+          {
+            success: true,
+            replayed: true,
+            status: staged.order.status,
+            paymentStatus: staged.order.paymentStatus,
+            refundStatus: staged.order.refundStatus ?? null,
+          },
+          { headers: { "Idempotency-Replayed": "true" } }
+        )
+      }
+
+      const refund = staged.order.stripeRefundId
+        ? await stripe.refunds.retrieve(staged.order.stripeRefundId)
         : await stripe.refunds.create(
             {
               payment_intent: intentId,
@@ -214,9 +266,12 @@ export async function POST(req: Request) {
         const freshPrecondition = classifyPaymentAdminActionPrecondition(
           fresh,
           "CANCEL",
-          expectedStateToken
+          staged.stateToken
         )
-        if (freshPrecondition === "conflict") {
+        if (
+          freshPrecondition === "conflict" &&
+          fresh.stripeRefundId !== refund.id
+        ) {
           throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
         }
         if (freshPrecondition === "replay") {
