@@ -147,7 +147,10 @@ export async function POST(req: Request) {
           id: storedUser.id,
           email: storedUser.email,
           companyName:
-            storedUser.companyName || storedUser.username || sessionUser.name,
+            storedUser.companyName ||
+            storedUser.username ||
+            sessionUser.name ||
+            undefined,
         },
       }
 
