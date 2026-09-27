@@ -33,7 +33,7 @@ describe("quote admin replay wiring", () => {
     const helper = read("src/lib/quoteAdmin.ts")
 
     expect(helper).toContain(
-      "if (current.status !== requested.status) return false"
+      "if (state.status !== requested.status) return false"
     )
     expect(helper).toContain(
       'throw new Error("QUOTE_NOT_ACTIONABLE")'
