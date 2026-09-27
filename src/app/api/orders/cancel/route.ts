@@ -62,7 +62,9 @@ export async function POST(req: Request) {
     )
   }
 
-  if (parsed.data.expectedStateToken === undefined) {
+  const expectedStateToken = parsed.data.expectedStateToken
+
+  if (expectedStateToken === undefined) {
     return NextResponse.json(
       {
         error:
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
   const precondition = classifyPaymentAdminActionPrecondition(
     order,
     "CANCEL",
-    parsed.data.expectedStateToken
+    expectedStateToken
   )
   if (precondition === "replay") {
     return NextResponse.json(
@@ -212,7 +214,7 @@ export async function POST(req: Request) {
         const freshPrecondition = classifyPaymentAdminActionPrecondition(
           fresh,
           "CANCEL",
-          parsed.data.expectedStateToken
+          expectedStateToken
         )
         if (freshPrecondition === "conflict") {
           throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
@@ -296,7 +298,7 @@ export async function POST(req: Request) {
       const freshPrecondition = classifyPaymentAdminActionPrecondition(
         fresh,
         "CANCEL",
-        parsed.data.expectedStateToken
+        expectedStateToken
       )
       if (freshPrecondition === "conflict") {
         throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
