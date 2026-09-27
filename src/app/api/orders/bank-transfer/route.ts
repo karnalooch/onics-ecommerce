@@ -67,7 +67,9 @@ export async function POST(req: Request) {
     )
   }
 
-  if (parsed.data.expectedStateToken === undefined) {
+  const expectedStateToken = parsed.data.expectedStateToken
+
+  if (expectedStateToken === undefined) {
     return NextResponse.json(
       {
         error:
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
       const precondition = classifyPaymentAdminActionPrecondition(
         order,
         parsed.data.action,
-        parsed.data.expectedStateToken
+        expectedStateToken
       )
       if (precondition === "replay") {
         return { order, outcome: "unchanged" as const, replayed: true }
