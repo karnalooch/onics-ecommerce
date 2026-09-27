@@ -82,5 +82,11 @@ describe("catalog category revision fencing", () => {
     expect(products).toContain(
       "category.revision = nextCatalogCategoryRevision("
     )
+    expect(products).toContain(
+      "indexCatalogSubcategoriesByName("
+    )
+    expect(products).toContain(
+      "CATALOG_DUPLICATE_SUBCATEGORY_NAME"
+    )
   })
 })
