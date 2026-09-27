@@ -2,10 +2,12 @@ import fs from "fs"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
+  bindKnowledgeTrainingRequestAbort,
   getKnowledge,
   parseExcel,
   parsePDFWithAI,
   saveKnowledge,
+  throwIfKnowledgeTrainingAborted,
 } from "@/lib/knowledge/parser"
 import { validateKnowledgeFilename } from "@/lib/knowledge/files"
 import type { ProgressCallback } from "@/lib/knowledge/types"
@@ -49,6 +51,10 @@ export async function POST(req: Request) {
   const knowledgeRevision = (await getKnowledge()).revision ?? 0
   const encoder = new TextEncoder()
   const abortSignal = { aborted: false, knowledgeRevision }
+  const detachRequestAbort = bindKnowledgeTrainingRequestAbort(
+    abortSignal,
+    req.signal
+  )
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -72,6 +78,8 @@ export async function POST(req: Request) {
       }
 
       try {
+        throwIfKnowledgeTrainingAborted(abortSignal)
+
         onProgress({
           type: "log",
           message: "Rozpoczynam analizę katalogu…",
@@ -135,6 +143,7 @@ export async function POST(req: Request) {
         }
       } finally {
         abortSignal.aborted = true
+        detachRequestAbort()
         closed = true
         try {
           controller.close()
