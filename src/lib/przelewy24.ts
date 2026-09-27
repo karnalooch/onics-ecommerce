@@ -571,6 +571,97 @@ export async function getPrzelewy24RefundDetails(
 }
 
 
+export function applyReconciledPrzelewy24Refund(
+  products: InventoryProduct[],
+  order: Przelewy24StoredOrder,
+  details: Przelewy24RefundDetails,
+  refund: Przelewy24RefundDetails["refunds"][number],
+  now = new Date().toISOString()
+) {
+  assertPrzelewy24ReturnOrder(order)
+
+  const expectedAmount = moneyToMinorUnits(
+    Number(order.totalPriceFinal ?? 0)
+  )
+  if (
+    order.p24OrderId !== details.orderId ||
+    order.p24SessionId !== details.sessionId ||
+    details.currency !== "PLN" ||
+    details.amount !== expectedAmount ||
+    order.p24RefundRequestId !== refund.requestId ||
+    refund.amount !== expectedAmount
+  ) {
+    throw new Error("PRZELEWY24_REFUND_DETAILS_MISMATCH")
+  }
+
+  if (
+    order.paymentStatus === "REFUNDED" &&
+    order.status === "RETURNED" &&
+    order.returnStatus === "COMPLETED"
+  ) {
+    order.paymentReconciledAt = now
+    return "completed" as const
+  }
+
+  if (order.status !== "SHIPPED") {
+    throw new Error("PRZELEWY24_RETURN_INVALID_ORDER_STATUS")
+  }
+  if (
+    order.returnStatus !== "RECEIVED" &&
+    order.returnStatus !== "REFUND_PENDING"
+  ) {
+    throw new Error("PRZELEWY24_RETURN_NOT_RECEIVED")
+  }
+
+  order.refundUpdatedAt = now
+  order.paymentReconciledAt = now
+
+  if (refund.status === 4) {
+    order.refundStatus = "failed"
+    order.returnStatus = "RECEIVED"
+    order.returnUpdatedAt = now
+    return "failed" as const
+  }
+
+  if (refund.status === 2 || refund.status === 3) {
+    if (order.paymentStatus !== "PAID") {
+      throw new Error("PRZELEWY24_REFUND_REQUIRES_PAID")
+    }
+    order.refundStatus = "pending"
+    order.returnStatus = "REFUND_PENDING"
+    order.returnUpdatedAt = now
+    return "pending" as const
+  }
+
+  if (refund.status !== 1) {
+    throw new Error("PRZELEWY24_REFUND_DETAILS_STATUS_INVALID")
+  }
+  if (order.paymentStatus !== "PAID") {
+    throw new Error("PRZELEWY24_REFUND_REQUIRES_PAID")
+  }
+  if (order.inventoryReservationStatus !== "FINALIZED") {
+    throw new Error("PRZELEWY24_RETURN_INVENTORY_NOT_FINALIZED")
+  }
+  if (!order.items?.length) {
+    throw new Error("INVENTORY_RESERVATION_MISSING_ITEMS")
+  }
+
+  if (!order.inventoryRefundRestockedAt) {
+    releaseInventory(products, order.items)
+    order.inventoryRefundRestockedAt = now
+  }
+
+  order.refundStatus = "succeeded"
+  order.paymentStatus = "REFUNDED"
+  order.refundedAt = order.refundedAt ?? now
+  order.paymentUpdatedAt = now
+  order.status = "RETURNED"
+  order.returnStatus = "COMPLETED"
+  order.returnUpdatedAt = now
+  order.returnCompletedAt = order.returnCompletedAt ?? now
+  return "completed" as const
+}
+
 export function validatePrzelewy24NotificationForOrder(
   order: Przelewy24StoredOrder,
   notification: Przelewy24Notification
