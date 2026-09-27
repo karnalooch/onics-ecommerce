@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest"
 import {
   buildWfMagCatalogProduct,
   ensureManufacturerRecord,
+  findCatalogCategoryByName,
   findRemovedReferencedSubcategoryIds,
+  hasCatalogCategoryNameConflict,
   hasCategoryProductReference,
   hasManufacturerProductReference,
   hasSkuConflict,
+  indexCatalogCategoriesByName,
   indexCatalogProductsBySku,
   validateCatalogClassification,
 } from "@/lib/catalog"
@@ -140,6 +143,37 @@ describe("catalog manufacturer references", () => {
     expect(hasManufacturerProductReference(products, "HIKVISION")).toBe(true)
     expect(hasManufacturerProductReference(products, "Dahua")).toBe(false)
     expect(hasManufacturerProductReference(products, "")).toBe(false)
+  })
+})
+
+describe("catalog category identity", () => {
+  const categories = [
+    { id: "c1", name: "ALARMY" },
+    { id: "c2", name: "Monitoring" },
+  ]
+
+  it("finds category identity case-insensitively", () => {
+    expect(findCatalogCategoryByName(categories, " alarmy ")).toBe(
+      categories[0]
+    )
+  })
+
+  it("detects rename conflicts while allowing the current category", () => {
+    expect(
+      hasCatalogCategoryNameConflict(categories, "monitoring", "c1")
+    ).toBe(true)
+    expect(
+      hasCatalogCategoryNameConflict(categories, "alarmy", "c1")
+    ).toBe(false)
+  })
+
+  it("fails closed when persisted categories already duplicate a name", () => {
+    expect(() =>
+      indexCatalogCategoriesByName([
+        { id: "c1", name: "ALARMY" },
+        { id: "c2", name: " alarmy " },
+      ])
+    ).toThrow("CATALOG_DUPLICATE_CATEGORY_NAME")
   })
 })
 
