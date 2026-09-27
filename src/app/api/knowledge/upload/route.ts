@@ -26,6 +26,8 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
+  let detachRequestAbort: (() => void) | undefined
+
   try {
     const formData = await parseBoundedKnowledgeUploadFormData(req)
     const file = formData.get("file")
@@ -50,81 +52,77 @@ export async function POST(req: Request) {
       knowledgeRevision,
       actor: authCheck.user,
     }
-    const detachRequestAbort = bindKnowledgeTrainingRequestAbort(
+    detachRequestAbort = bindKnowledgeTrainingRequestAbort(
       knowledgeSignal,
       req.signal
     )
 
+    fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
+    fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
+
+    let addedCount = 0
+    let learned = false
+
     try {
-      fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
-      fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
-  
-      let addedCount = 0
-      let learned = false
-  
-      try {
-        if ([".xlsx", ".xls", ".xlsm"].includes(extension)) {
-          const result = await parseExcel(buffer, filename, undefined, {
-            apiKey: transientApiKey,
-            modelId: "gemini-1.5-flash",
-            signal: knowledgeSignal,
-          })
-          addedCount = result.count
-          learned = addedCount > 0
-        } else if (extension === ".pdf" && transientApiKey) {
-          const result = await parsePDFWithAI(
-            buffer,
-            filename,
-            transientApiKey,
-            "gemini-1.5-flash",
-            [],
-            undefined,
-            knowledgeSignal
-          )
-          addedCount = result.count
-          learned = addedCount > 0
-        }
-  
-        const store = await getKnowledge()
-        store.revision = knowledgeRevision
-        if (!store.sources.includes(filename)) store.sources.push(filename)
-        if (learned && !store.processedSources.includes(filename)) {
-          store.processedSources.push(filename)
-        }
-        store.lastUpdated = new Date().toISOString()
-        await saveKnowledge(store, knowledgeSignal)
-      } catch (processingError) {
-        const canRemoveUpload = await canSafelyRemoveFailedKnowledgeUpload(
+      if ([".xlsx", ".xls", ".xlsm"].includes(extension)) {
+        const result = await parseExcel(buffer, filename, undefined, {
+          apiKey: transientApiKey,
+          modelId: "gemini-1.5-flash",
+          signal: knowledgeSignal,
+        })
+        addedCount = result.count
+        learned = addedCount > 0
+      } else if (extension === ".pdf" && transientApiKey) {
+        const result = await parsePDFWithAI(
+          buffer,
           filename,
-          getKnowledge
+          transientApiKey,
+          "gemini-1.5-flash",
+          [],
+          undefined,
+          knowledgeSignal
         )
-  
-        if (canRemoveUpload) {
-          fs.rmSync(absolutePath, { force: true })
-        } else {
-          console.warn(
-            `Knowledge upload retained after processing failure because persisted state may reference ${filename}.`
-          )
-        }
-  
-        throw processingError
+        addedCount = result.count
+        learned = addedCount > 0
       }
-  
-      return NextResponse.json(
-        {
-          success: true,
-          count: addedCount,
-          learned,
-          filename,
-          message: learned
-            ? `Plik ${filename} został zapisany i przetworzony.`
-            : `Plik ${filename} został bezpiecznie zapisany do późniejszej analizy.`,
-        },
-        { status: 201 }
+
+      const store = await getKnowledge()
+      store.revision = knowledgeRevision
+      if (!store.sources.includes(filename)) store.sources.push(filename)
+      if (learned && !store.processedSources.includes(filename)) {
+        store.processedSources.push(filename)
+      }
+      store.lastUpdated = new Date().toISOString()
+      await saveKnowledge(store, knowledgeSignal)
+    } catch (processingError) {
+      const canRemoveUpload = await canSafelyRemoveFailedKnowledgeUpload(
+        filename,
+        getKnowledge
       )
-    } finally {
-      detachRequestAbort()
+
+      if (canRemoveUpload) {
+        fs.rmSync(absolutePath, { force: true })
+      } else {
+        console.warn(
+          `Knowledge upload retained after processing failure because persisted state may reference ${filename}.`
+        )
+      }
+
+      throw processingError
     }
+
+    return NextResponse.json(
+      {
+        success: true,
+        count: addedCount,
+        learned,
+        filename,
+        message: learned
+          ? `Plik ${filename} został zapisany i przetworzony.`
+          : `Plik ${filename} został bezpiecznie zapisany do późniejszej analizy.`,
+      },
+      { status: 201 }
+    )
   } catch (error) {
     if (error instanceof KnowledgeUploadBodyTooLargeError) {
       return NextResponse.json(
@@ -171,5 +169,7 @@ export async function POST(req: Request) {
         : 500
     console.error("Knowledge upload error:", error)
     return NextResponse.json({ error: message }, { status })
+  } finally {
+    detachRequestAbort?.()
   }
 }
