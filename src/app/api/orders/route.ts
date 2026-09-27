@@ -7,6 +7,7 @@ import {
   canReplacePaymentOrderItems,
   resolveEstimatedDeliveryDays,
   validateBankTransferOrderStatusTransition,
+  validatePrzelewy24OrderStatusTransition,
   validateReservedOrderStatusTransition,
   validateStripeOrderStatusTransition,
 } from "@/lib/orders"
@@ -387,6 +388,21 @@ export async function PUT(req: Request) {
         )
       }
 
+      const p24StatusTransition =
+        validatePrzelewy24OrderStatusTransition(
+          currentOrder.paymentProvider,
+          currentOrder.paymentStatus,
+          currentOrder.status,
+          parsed.data.status
+        )
+      if (p24StatusTransition !== "ok") {
+        throw new Error(
+          `ORDER_PRZELEWY24_${p24StatusTransition
+            .toUpperCase()
+            .replaceAll("-", "_")}`
+        )
+      }
+
       const reservedStatusTransition =
         validateReservedOrderStatusTransition(
           currentOrder.inventoryReservationSource,
@@ -475,6 +491,45 @@ export async function PUT(req: Request) {
         {
           error:
             "Zamówienie Stripe musi być opłacone przed potwierdzeniem lub wysyłką.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_PRZELEWY24_PAYMENT_REQUIRED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Zamówienie Przelewy24 musi być opłacone przed potwierdzeniem lub wysyłką.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_PRZELEWY24_PROVIDER_CANCEL_UNSUPPORTED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Zamówienia Przelewy24 nie można anulować samą zmianą statusu, ponieważ aktywna transakcja może jeszcze zostać opłacona.",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "ORDER_PRZELEWY24_INVALID_PRZELEWY24_STATUS"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Zamówienia Przelewy24 nie można zmienić na zapytanie.",
         },
         { status: 409 }
       )
