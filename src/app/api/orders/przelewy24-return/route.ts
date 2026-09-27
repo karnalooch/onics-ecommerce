@@ -101,6 +101,40 @@ export async function POST(req: Request) {
     }
   }
 
+  const preflight = initializeMockData()
+  const preflightOrder = (preflight.orders as Przelewy24StoredOrder[]).find(
+    (candidate) => candidate.id === parsed.data.id
+  )
+  if (!preflightOrder) {
+    return NextResponse.json(
+      { error: "Nie znaleziono zamówienia." },
+      { status: 404 }
+    )
+  }
+
+  const preflightState = classifyPaymentAdminActionPrecondition(
+    preflightOrder,
+    "RECEIVE_RETURN",
+    parsed.data.expectedStateToken
+  )
+  if (preflightState === "replay") {
+    return NextResponse.json(
+      {
+        success: true,
+        replayed: true,
+        order: {
+          ...preflightOrder,
+          paymentLifecycle: describeOrderPaymentLifecycle(preflightOrder),
+          paymentAdminActions: listAvailablePaymentAdminActions(preflightOrder),
+        },
+      },
+      { headers: { "Idempotency-Replayed": "true" } }
+    )
+  }
+  if (preflightState === "conflict") {
+    return paymentError(new Error("PAYMENT_ADMIN_STATE_CONFLICT"))
+  }
+
   let config: ReturnType<typeof resolvePrzelewy24Config>
   try {
     config = resolvePrzelewy24Config()
