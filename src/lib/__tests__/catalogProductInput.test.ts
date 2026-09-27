@@ -45,6 +45,7 @@ describe("manual catalog product write boundary", () => {
       name: "Czujka ruchu",
       price: 199.99,
       stock: 12,
+      expectedRevision: "3",
       isVirtual: true,
       tempId: "staging-1",
     })
@@ -55,6 +56,7 @@ describe("manual catalog product write boundary", () => {
       name: "Czujka ruchu",
       price: 199.99,
       stock: 12,
+      expectedRevision: 3,
     })
     expect(parsed).not.toHaveProperty("isVirtual")
     expect(parsed).not.toHaveProperty("tempId")
