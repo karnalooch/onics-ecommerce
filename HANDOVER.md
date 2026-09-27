@@ -89,6 +89,7 @@ Aktualne zabezpieczenia obejmują między innymi:
 - throttling logowania i rejestracji,
 - jednorazowy bootstrap ADMIN zakończony trwałym hashem,
 - fail-closed readiness przy brakujących wymaganych sekretach.
+- długie operacje administracyjne, które zapisują stan po zewnętrznym `await`, ponownie sprawdzają bieżące konto/rolę pod write-lockiem przed mutacją; odebranie roli albo blokada konta w trakcie operacji anuluje zapis.
 
 W produkcji reverse proxy musi nadpisywać zaufane nagłówki IP zgodnie z opisem w `README.md`.
 
