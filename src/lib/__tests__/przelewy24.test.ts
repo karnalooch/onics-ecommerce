@@ -8,7 +8,9 @@ import {
   applyVerifiedPrzelewy24Payment,
   calculatePrzelewy24Sign,
   describePrzelewy24Runtime,
+  getPrzelewy24TransactionBySessionId,
   receivePrzelewy24Return,
+  requestPrzelewy24Refund,
   requestPrzelewy24Return,
   resolvePrzelewy24Config,
   stagePrzelewy24Refund,
@@ -17,6 +19,7 @@ import {
   validatePrzelewy24NotificationForOrder,
   verifyPrzelewy24NotificationSignature,
   verifyPrzelewy24RefundNotificationSignature,
+  verifyPrzelewy24TransactionIdentity,
   type Przelewy24Notification,
   type Przelewy24RefundNotification,
   type Przelewy24StoredOrder,
@@ -213,6 +216,144 @@ describe("Przelewy24 production protocol", () => {
         config()
       )
     ).toBe(false)
+  })
+
+  it("keeps the full signed-int64 orderId in P24 signatures", () => {
+    const orderId = "9223372036854775807"
+    const payload = {
+      merchantId: 123456,
+      posId: 123456,
+      sessionId: "ORD-P24-BIGINT",
+      amount: 12345,
+      originAmount: 12345,
+      currency: "PLN",
+      orderId,
+      methodId: 25,
+      statement: "ONICS ORD-P24-BIGINT",
+      crc: "crc-secret",
+    }
+    const canonical =
+      '{"merchantId":123456,"posId":123456,"sessionId":"ORD-P24-BIGINT","amount":12345,"originAmount":12345,"currency":"PLN","orderId":9223372036854775807,"methodId":25,"statement":"ONICS ORD-P24-BIGINT","crc":"crc-secret"}'
+    const expected = createHash("sha384")
+      .update(canonical, "utf8")
+      .digest("hex")
+
+    expect(calculatePrzelewy24Sign(payload)).toBe(expected)
+    expect(
+      verifyPrzelewy24NotificationSignature(
+        {
+          merchantId: 123456,
+          posId: 123456,
+          sessionId: "ORD-P24-BIGINT",
+          amount: 12345,
+          originAmount: 12345,
+          currency: "PLN",
+          orderId,
+          methodId: 25,
+          statement: "ONICS ORD-P24-BIGINT",
+          sign: expected,
+        },
+        config()
+      )
+    ).toBe(true)
+  })
+
+  it("sends an int64 orderId back to transaction verify without quoting or rounding", async () => {
+    const orderId = "9223372036854775807"
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: { status: "success" },
+          responseCode: 0,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      verifyPrzelewy24TransactionIdentity(config(), {
+        sessionId: "ORD-P24-BIGINT",
+        orderId,
+        amount: 12345,
+        currency: "PLN",
+      })
+    ).resolves.toBe(true)
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(String(init.body)).toContain(
+      `"orderId":${orderId}`
+    )
+    expect(String(init.body)).not.toContain(
+      `"orderId":"${orderId}"`
+    )
+  })
+
+  it("reads transaction lookup orderId without native JSON number loss", async () => {
+    const orderId = "9223372036854775807"
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          `{"data":{"orderId":${orderId},"sessionId":"ORD-P24-BIGINT","status":2,"amount":12345,"currency":"PLN"},"responseCode":0}`,
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    )
+
+    await expect(
+      getPrzelewy24TransactionBySessionId(
+        config(),
+        "ORD-P24-BIGINT"
+      )
+    ).resolves.toMatchObject({
+      orderId,
+      sessionId: "ORD-P24-BIGINT",
+      status: 2,
+      amount: 12345,
+      currency: "PLN",
+    })
+  })
+
+  it("keeps an int64 orderId exact across P24 refund request and response", async () => {
+    const orderId = "9223372036854775807"
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        `{"data":[{"orderId":${orderId},"sessionId":"ORD-P24-BIGINT","amount":12345,"status":true}],"responseCode":0}`,
+        {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    await expect(
+      requestPrzelewy24Refund(config(), {
+        orderId,
+        sessionId: "ORD-P24-BIGINT",
+        amount: 12345,
+        requestId: "request-bigint",
+        refundsUuid: "refund-bigint",
+      })
+    ).resolves.toMatchObject({
+      accepted: true,
+      duplicate: false,
+    })
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(String(init.body)).toContain(
+      `"orderId":${orderId}`
+    )
+    expect(String(init.body)).not.toContain(
+      `"orderId":"${orderId}"`
+    )
   })
 
   it("validates order identity, amount and currency before remote verification", () => {
