@@ -41,7 +41,9 @@ export async function POST(req: Request) {
     )
   }
 
-  if (parsed.data.expectedStateToken === undefined) {
+  const expectedStateToken = parsed.data.expectedStateToken
+
+  if (expectedStateToken === undefined) {
     return NextResponse.json(
       {
         error:
@@ -62,7 +64,7 @@ export async function POST(req: Request) {
         const precondition = classifyPaymentAdminActionPrecondition(
           order,
           "REQUEST_RETURN",
-          parsed.data.expectedStateToken
+          expectedStateToken
         )
         if (precondition === "replay") {
           return { order, outcome: "unchanged" as const, replayed: true }
@@ -115,7 +117,7 @@ export async function POST(req: Request) {
   const preflightState = classifyPaymentAdminActionPrecondition(
     preflightOrder,
     "RECEIVE_RETURN",
-    parsed.data.expectedStateToken
+    expectedStateToken
   )
   if (preflightState === "replay") {
     return NextResponse.json(
@@ -155,7 +157,7 @@ export async function POST(req: Request) {
       const precondition = classifyPaymentAdminActionPrecondition(
         order,
         "RECEIVE_RETURN",
-        parsed.data.expectedStateToken
+        expectedStateToken
       )
       if (precondition === "replay") {
         return { replayed: true as const, order }
