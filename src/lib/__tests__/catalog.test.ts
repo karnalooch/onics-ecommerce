@@ -5,11 +5,14 @@ import {
   findCatalogCategoryByName,
   findRemovedReferencedSubcategoryIds,
   hasCatalogCategoryNameConflict,
+  hasCatalogSubcategoryNameConflict,
   hasCategoryProductReference,
+  hasSubcategoryProductReference,
   hasManufacturerProductReference,
   hasSkuConflict,
   indexCatalogCategoriesByName,
   indexCatalogProductsBySku,
+  indexCatalogSubcategoriesByName,
   isCatalogCategoryCreateReplay,
   validateCatalogClassification,
 } from "@/lib/catalog"
@@ -208,6 +211,42 @@ describe("catalog category identity", () => {
         { id: "c2", name: " alarmy " },
       ])
     ).toThrow("CATALOG_DUPLICATE_CATEGORY_NAME")
+  })
+})
+
+describe("catalog subcategory identity", () => {
+  const subcategories = [
+    { id: "s1", name: "Centrale" },
+    { id: "s2", name: "Sygnalizatory" },
+  ]
+
+  it("detects same-category name collisions case-insensitively", () => {
+    expect(
+      hasCatalogSubcategoryNameConflict(subcategories, " centrale ", "s2")
+    ).toBe(true)
+    expect(
+      hasCatalogSubcategoryNameConflict(subcategories, "centrale", "s1")
+    ).toBe(false)
+  })
+
+  it("fails closed on persisted duplicate subcategory names", () => {
+    expect(() =>
+      indexCatalogSubcategoriesByName([
+        { id: "s1", name: "Centrale" },
+        { id: "s2", name: " centrale " },
+      ])
+    ).toThrow("CATALOG_DUPLICATE_SUBCATEGORY_NAME")
+  })
+
+  it("detects exact category/subcategory product references", () => {
+    const products = [
+      { id: "p1", categoryId: "c1", subcategoryId: "s1" },
+      { id: "p2", categoryId: "c2", subcategoryId: "s1" },
+    ]
+
+    expect(hasSubcategoryProductReference(products, "c1", "s1")).toBe(true)
+    expect(hasSubcategoryProductReference(products, "c1", "missing")).toBe(false)
+    expect(hasSubcategoryProductReference(products, "c2", "s1")).toBe(true)
   })
 })
 

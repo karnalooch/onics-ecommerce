@@ -219,6 +219,47 @@ export function ensureManufacturerRecord(
   return created
 }
 
+export type CatalogSubcategoryNameRecord = {
+  id?: string | null
+  name?: string | null
+}
+
+export function normalizeCatalogSubcategoryName(value: unknown) {
+  return String(value ?? "").trim().toLowerCase()
+}
+
+export function hasCatalogSubcategoryNameConflict(
+  subcategories: CatalogSubcategoryNameRecord[],
+  name: unknown,
+  excludedId?: string | null
+) {
+  const normalizedName = normalizeCatalogSubcategoryName(name)
+  if (!normalizedName) return false
+
+  return subcategories.some(
+    (subcategory) =>
+      String(subcategory.id ?? "") !== String(excludedId ?? "") &&
+      normalizeCatalogSubcategoryName(subcategory.name) === normalizedName
+  )
+}
+
+export function indexCatalogSubcategoriesByName<
+  T extends CatalogSubcategoryNameRecord,
+>(subcategories: T[]) {
+  const index = new Map<string, T>()
+
+  for (const subcategory of subcategories) {
+    const name = normalizeCatalogSubcategoryName(subcategory.name)
+    if (!name) continue
+    if (index.has(name)) {
+      throw new Error("CATALOG_DUPLICATE_SUBCATEGORY_NAME")
+    }
+    index.set(name, subcategory)
+  }
+
+  return index
+}
+
 export type CatalogCategoryReference = {
   categoryId?: string | null
   subcategoryId?: string | null
@@ -238,6 +279,23 @@ export function hasCategoryProductReference(
   return products.some(
     (product) =>
       normalizeCatalogReference(product.categoryId) === normalizedCategoryId
+  )
+}
+
+export function hasSubcategoryProductReference(
+  products: CatalogCategoryReference[],
+  categoryId: unknown,
+  subcategoryId: unknown
+) {
+  const normalizedCategoryId = normalizeCatalogReference(categoryId)
+  const normalizedSubcategoryId = normalizeCatalogReference(subcategoryId)
+  if (!normalizedCategoryId || !normalizedSubcategoryId) return false
+
+  return products.some(
+    (product) =>
+      normalizeCatalogReference(product.categoryId) === normalizedCategoryId &&
+      normalizeCatalogReference(product.subcategoryId) ===
+        normalizedSubcategoryId
   )
 }
 
