@@ -3,6 +3,7 @@ import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
   applyReconciledPrzelewy24Payment,
+  applyReconciledPrzelewy24Refund,
   applyVerifiedPrzelewy24Payment,
   getPrzelewy24RefundDetails,
   getPrzelewy24TransactionBySessionId,
@@ -177,51 +178,56 @@ export async function POST(req: Request) {
           currentOrder.p24OrderId
         )
 
-        if (!details) {
-          await requestPrzelewy24Refund(config, {
-            orderId: currentOrder.p24OrderId,
-            sessionId: currentOrder.p24SessionId,
-            amount: moneyToMinorUnits(
-              Number(currentOrder.totalPriceFinal ?? 0)
-            ),
-            requestId: currentOrder.p24RefundRequestId,
-            refundsUuid: currentOrder.p24RefundsUuid,
-            description: "Zwrot zamowienia ONICS",
-          })
-          refundAction = "REISSUED"
-          updated = true
-        } else {
-          if (
-            details.orderId !== currentOrder.p24OrderId ||
-            details.sessionId !== currentOrder.p24SessionId ||
-            details.currency !== "PLN"
-          ) {
-            throw new Error("PRZELEWY24_REFUND_DETAILS_MISMATCH")
-          }
+        let shouldReissue = !details
 
-          const expectedAmount = moneyToMinorUnits(
-            Number(currentOrder.totalPriceFinal ?? 0)
-          )
-          const matching = details.refunds.find(
-            (refund) =>
-              refund.requestId === currentOrder.p24RefundRequestId &&
-              refund.amount === expectedAmount
-          )
-
-          refundAction = "FOUND"
-          manualReview = true
-
-          if (!matching && details.refunds.length === 0) {
-            throw new Error("PRZELEWY24_REFUND_DETAILS_EMPTY")
-          }
-
-          await mutateMockData((db) => {
+        if (details) {
+          const reconciliation = await mutateMockData((db) => {
             const order = (db.orders as Przelewy24StoredOrder[]).find(
               (candidate) => candidate.id === snapshotOrder.id
             )
             if (!order) throw new Error("ORDER_NOT_FOUND")
-            order.paymentReconciledAt = new Date().toISOString()
+
+            return applyReconciledPrzelewy24Refund(
+              db.products as InventoryProduct[],
+              order,
+              details
+            )
           })
+
+          if (reconciliation === "missing") {
+            shouldReissue = true
+          } else {
+            refundAction = "FOUND"
+            updated = true
+          }
+        }
+
+        if (shouldReissue) {
+          const latestSnapshot = initializeMockData()
+          const latestOrder = (
+            latestSnapshot.orders as Przelewy24StoredOrder[]
+          ).find((candidate) => candidate.id === snapshotOrder.id)
+
+          if (
+            latestOrder?.refundStatus === "pending" &&
+            latestOrder.p24OrderId &&
+            latestOrder.p24SessionId &&
+            latestOrder.p24RefundRequestId &&
+            latestOrder.p24RefundsUuid
+          ) {
+            await requestPrzelewy24Refund(config, {
+              orderId: latestOrder.p24OrderId,
+              sessionId: latestOrder.p24SessionId,
+              amount: moneyToMinorUnits(
+                Number(latestOrder.totalPriceFinal ?? 0)
+              ),
+              requestId: latestOrder.p24RefundRequestId,
+              refundsUuid: latestOrder.p24RefundsUuid,
+              description: "Zwrot zamowienia ONICS",
+            })
+            refundAction = "REISSUED"
+            updated = true
+          }
         }
       } else if (updated) {
         await mutateMockData((db) => {
