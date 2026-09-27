@@ -30,6 +30,7 @@ export interface IProduct {
   specs?: string;
   isVirtual?: boolean;
   isIqSynced?: boolean;
+  revision?: number;
 }
 
 export interface IStagingItem {

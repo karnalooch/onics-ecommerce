@@ -6,7 +6,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 
 interface IProductTableRowProps {
   p: any;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, expectedRevision: number) => void;
   categories: any[];
 }
 
@@ -78,7 +78,7 @@ export function ProductTableRow({ p, onDelete, categories }: IProductTableRowPro
                   Edytuj
                 </Link>
                 <button 
-                  onClick={() => onDelete(p.id)}
+                  onClick={() => onDelete(p.id, Number(p.revision ?? 0))}
                   className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-all active-press"
                   title="Usuń produkt"
                 >

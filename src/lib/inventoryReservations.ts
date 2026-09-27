@@ -1,7 +1,10 @@
+import { nextCatalogProductRevision } from "@/lib/catalog"
+
 export type InventoryProduct = {
   id?: string | null
   sku?: string | null
   stock?: number | null
+  revision?: number | null
 }
 
 export type InventoryItem = {
@@ -42,6 +45,13 @@ function aggregateItems(items: InventoryItem[]) {
   }
 
   return quantities
+}
+
+function applyStockChange(product: InventoryProduct, stock: number) {
+  if (Number(product.stock ?? 0) === stock) return
+
+  product.stock = stock
+  product.revision = nextCatalogProductRevision(product.revision)
 }
 
 function planStockChange(
@@ -126,7 +136,9 @@ export function reserveInventory(
   items: InventoryItem[]
 ) {
   const changes = planStockChange(products, items, "reserve")
-  for (const change of changes) change.product.stock = change.stock
+  for (const change of changes) {
+    applyStockChange(change.product, change.stock)
+  }
 }
 
 export function releaseInventory(
@@ -134,7 +146,9 @@ export function releaseInventory(
   items: InventoryItem[]
 ) {
   const changes = planStockChange(products, items, "release")
-  for (const change of changes) change.product.stock = change.stock
+  for (const change of changes) {
+    applyStockChange(change.product, change.stock)
+  }
 }
 
 function inventoryQuantities(items: InventoryItem[]) {
@@ -188,7 +202,9 @@ export function adjustInventoryReservation(
     })
   }
 
-  for (const change of changes) change.product.stock = change.stock
+  for (const change of changes) {
+    applyStockChange(change.product, change.stock)
+  }
 }
 
 export function applyOrderInventoryTransition(

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   buildWfMagCatalogProduct,
   catalogCategoryRevision,
+  catalogProductRevision,
   ensureManufacturerRecord,
   findCatalogCategoryByName,
   findRemovedReferencedSubcategoryIds,
@@ -15,7 +16,10 @@ import {
   indexCatalogProductsBySku,
   indexCatalogSubcategoriesByName,
   isCatalogCategoryCreateReplay,
+  isCatalogProductStateEqual,
+  isCatalogProductUpdateReplay,
   nextCatalogCategoryRevision,
+  nextCatalogProductRevision,
   validateCatalogClassification,
 } from "@/lib/catalog"
 
@@ -55,6 +59,7 @@ describe("WF-Mag live product boundary", () => {
       subcategoryId: "s1",
       specs: "Specyfikacja",
       seoDescription: "",
+      revision: 0,
     })
     expect(product).not.toHaveProperty("tempId")
     expect(product).not.toHaveProperty("qualityLevel")
@@ -149,6 +154,59 @@ describe("catalog manufacturer references", () => {
     expect(hasManufacturerProductReference(products, "HIKVISION")).toBe(true)
     expect(hasManufacturerProductReference(products, "Dahua")).toBe(false)
     expect(hasManufacturerProductReference(products, "")).toBe(false)
+  })
+})
+
+describe("catalog product revisions", () => {
+  it("normalizes legacy or invalid revisions to zero", () => {
+    expect(catalogProductRevision(undefined)).toBe(0)
+    expect(catalogProductRevision(null)).toBe(0)
+    expect(catalogProductRevision(-1)).toBe(0)
+    expect(catalogProductRevision(1.5)).toBe(0)
+    expect(catalogProductRevision(4)).toBe(4)
+  })
+
+  it("increments from the normalized current revision", () => {
+    expect(nextCatalogProductRevision(undefined)).toBe(1)
+    expect(nextCatalogProductRevision(7)).toBe(8)
+  })
+
+  it("recognizes exact product retries but rejects divergent stale state", () => {
+    const current = {
+      id: "p1",
+      sku: "SKU-1",
+      name: "Centrala",
+      price: 120,
+      stock: 4,
+      manufacturer: "SATEL",
+      categoryId: "c1",
+      subcategoryId: "s1",
+      seoDescription: "Opis",
+      description: "Opis formularza",
+      revision: 3,
+    }
+
+    expect(
+      isCatalogProductUpdateReplay(current, {
+        id: "p1",
+        sku: " sku-1 ",
+        name: "Centrala",
+        price: 120,
+        stock: 4,
+        manufacturer: "SATEL",
+        categoryId: "c1",
+        subcategoryId: "s1",
+        seoDescription: "Opis",
+        description: "Opis formularza",
+      })
+    ).toBe(true)
+
+    expect(
+      isCatalogProductStateEqual(current, {
+        ...current,
+        stock: 5,
+      })
+    ).toBe(false)
   })
 })
 

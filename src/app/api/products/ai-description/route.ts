@@ -4,6 +4,10 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { findBestKnowledgeMatch } from "@/lib/knowledge/matcher"
+import {
+  catalogProductRevision,
+  nextCatalogProductRevision,
+} from "@/lib/catalog"
 
 export const dynamic = "force-dynamic"
 
@@ -19,6 +23,7 @@ type ProductRecord = {
   seoDescription?: string
   descriptionSource?: string
   descriptionUpdatedAt?: string
+  revision?: number | null
   [key: string]: unknown
 }
 
@@ -50,6 +55,7 @@ export async function POST(req: Request) {
     }
 
     const initialFingerprint = productFingerprint(product)
+    const initialRevision = catalogProductRevision(product.revision)
     let technicalContext = ""
     try {
       const localStore = await getKnowledge()
@@ -124,13 +130,17 @@ export async function POST(req: Request) {
       )
 
       if (!currentProduct) throw new Error("PRODUCT_NOT_FOUND")
-      if (productFingerprint(currentProduct) !== initialFingerprint) {
+      if (
+        catalogProductRevision(currentProduct.revision) !== initialRevision ||
+        productFingerprint(currentProduct) !== initialFingerprint
+      ) {
         throw new Error("PRODUCT_CHANGED")
       }
 
       currentProduct.seoDescription = generatedDescription
       currentProduct.descriptionSource = source
       currentProduct.descriptionUpdatedAt = new Date().toISOString()
+      currentProduct.revision = nextCatalogProductRevision(initialRevision)
     })
 
     return NextResponse.json({

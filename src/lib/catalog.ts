@@ -39,6 +39,73 @@ export function indexCatalogProductsBySku<T extends CatalogSkuRecord>(
   return index
 }
 
+export type CatalogProductRevisionRecord = CatalogSkuRecord & {
+  name?: string | null
+  price?: number | null
+  stock?: number | null
+  manufacturer?: string | null
+  categoryId?: string | null
+  subcategoryId?: string | null
+  seoDescription?: string | null
+  description?: string | null
+  revision?: number | null
+}
+
+export function catalogProductRevision(value: unknown) {
+  return typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 0
+    ? value
+    : 0
+}
+
+export function nextCatalogProductRevision(value: unknown) {
+  return catalogProductRevision(value) + 1
+}
+
+function normalizeCatalogProductText(value: unknown) {
+  return String(value ?? "").trim()
+}
+
+function normalizeCatalogProductNumber(value: unknown) {
+  return value === undefined || value === null ? null : Number(value)
+}
+
+export function isCatalogProductStateEqual(
+  left: CatalogProductRevisionRecord,
+  right: CatalogProductRevisionRecord
+) {
+  return (
+    normalizeSku(left.sku) === normalizeSku(right.sku) &&
+    normalizeCatalogProductText(left.name) ===
+      normalizeCatalogProductText(right.name) &&
+    normalizeCatalogProductNumber(left.price) ===
+      normalizeCatalogProductNumber(right.price) &&
+    normalizeCatalogProductNumber(left.stock) ===
+      normalizeCatalogProductNumber(right.stock) &&
+    normalizeCatalogProductText(left.manufacturer) ===
+      normalizeCatalogProductText(right.manufacturer) &&
+    normalizeCatalogProductText(left.categoryId) ===
+      normalizeCatalogProductText(right.categoryId) &&
+    normalizeCatalogProductText(left.subcategoryId) ===
+      normalizeCatalogProductText(right.subcategoryId) &&
+    normalizeCatalogProductText(left.seoDescription) ===
+      normalizeCatalogProductText(right.seoDescription) &&
+    normalizeCatalogProductText(left.description) ===
+      normalizeCatalogProductText(right.description)
+  )
+}
+
+export function isCatalogProductUpdateReplay(
+  current: CatalogProductRevisionRecord,
+  requested: CatalogProductRevisionRecord
+) {
+  return isCatalogProductStateEqual(current, {
+    ...current,
+    ...requested,
+  })
+}
+
 export function catalogCategoryRevision(value: unknown) {
   return typeof value === "number" &&
     Number.isSafeInteger(value) &&
@@ -181,6 +248,7 @@ export function buildWfMagCatalogProduct(
     subcategoryId: options.subcategoryId ?? null,
     specs: String(item.specs ?? ""),
     seoDescription: "",
+    revision: 0,
   }
 }
 
