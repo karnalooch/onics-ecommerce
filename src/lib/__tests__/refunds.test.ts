@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   applyExpiredCheckoutCancellation,
   applyStripeRefundSnapshot,
+  stageStripeRefundIntent,
   type StripeCancelableOrder,
 } from "@/lib/refunds"
 
@@ -18,6 +19,25 @@ function paidOrder(): StripeCancelableOrder {
     inventoryReservationStatus: "FINALIZED",
   }
 }
+
+describe("Stripe refund intent staging", () => {
+  it("persists a retryable intent before provider side effects without inventing a refund id", () => {
+    const order = paidOrder()
+
+    expect(
+      stageStripeRefundIntent(order, "2026-09-27T14:00:00.000Z")
+    ).toBe("staged")
+    expect(order.refundRequestedAt).toBe("2026-09-27T14:00:00.000Z")
+    expect(order.refundUpdatedAt).toBe("2026-09-27T14:00:00.000Z")
+    expect(order.stripeRefundId).toBeUndefined()
+
+    expect(
+      stageStripeRefundIntent(order, "2026-09-27T14:05:00.000Z")
+    ).toBe("staged")
+    expect(order.refundRequestedAt).toBe("2026-09-27T14:00:00.000Z")
+    expect(order.refundUpdatedAt).toBe("2026-09-27T14:05:00.000Z")
+  })
+})
 
 describe("Stripe refund lifecycle", () => {
   it("records pending refunds without cancelling or restocking", () => {
