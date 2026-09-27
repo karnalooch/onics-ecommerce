@@ -294,6 +294,7 @@ export default function AdminOrdersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: validatingOrder.id,
+          expectedStateToken: validatingOrder.adminStateToken,
           status: nextStatus,
           estimatedDeliveryDays: parseInt(deliveryDays),
           items: editableItems
