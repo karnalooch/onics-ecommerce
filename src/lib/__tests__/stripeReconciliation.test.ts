@@ -5,9 +5,13 @@ import {
 } from "@/lib/stripeReconciliation"
 import type { StripeCancelableOrder } from "@/lib/refunds"
 
+type StripeReconciliationTestOrder = StripeCancelableOrder & {
+  paymentCheckoutRegistrationStatus?: string | null
+}
+
 function order(
-  overrides: Partial<StripeCancelableOrder> = {}
-): StripeCancelableOrder {
+  overrides: Partial<StripeReconciliationTestOrder> = {}
+): StripeReconciliationTestOrder {
   return {
     id: "ORD-1",
     status: "PENDING_VERIFICATION",
