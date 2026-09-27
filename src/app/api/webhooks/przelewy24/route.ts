@@ -17,8 +17,13 @@ import {
 import type { InventoryProduct } from "@/lib/inventoryReservations"
 import {
   PaymentWebhookBodyTooLargeError,
-  readPaymentWebhookJson,
+  readPaymentWebhookBody,
 } from "@/lib/paymentWebhookIngress"
+import {
+  normalizePrzelewy24OrderId,
+  parsePrzelewy24Json,
+  przelewy24OrderIdsEqual,
+} from "@/lib/przelewy24Json"
 import {
   hasProcessedPaymentWebhookEvent,
   recordProcessedPaymentWebhookEvent,
@@ -32,7 +37,12 @@ const NotificationSchema = z.object({
   amount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   originAmount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   currency: z.string().length(3),
-  orderId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  orderId: z
+    .union([
+      z.string().regex(/^\d+$/),
+      z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    ])
+    .refine((value) => normalizePrzelewy24OrderId(value) !== null),
   methodId: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
   statement: z.string(),
   sign: z.string().regex(/^[0-9a-f]{96}$/i),
@@ -50,7 +60,7 @@ export async function POST(req: Request) {
 
   let payload: unknown
   try {
-    payload = await readPaymentWebhookJson(req)
+    payload = parsePrzelewy24Json(await readPaymentWebhookBody(req))
   } catch (error) {
     if (error instanceof PaymentWebhookBodyTooLargeError) {
       return NextResponse.json(
