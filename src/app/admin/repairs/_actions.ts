@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
 import { mutateMockData } from "@/store/serverStore";
+import { buildRepairSubmissionFingerprint } from "@/lib/repairSubmissionIdempotency";
 import {
   canDeleteRepair,
   validateRepairStatusTransition,
@@ -12,14 +13,18 @@ import {
 } from "@/lib/repairLifecycle";
 
 const RepairSchema = z.object({
-  client: z.string().min(2, "Nazwa klienta jest za krótka"),
-  item: z.string().min(2, "Nazwa urządzenia jest za krótka"),
-  serial: z.string().optional(),
-  description: z.string().max(3000).optional(),
+  requestId: z.string().uuid("Nieprawidłowy identyfikator zgłoszenia"),
+  client: z.string().trim().min(2, "Nazwa klienta jest za krótka"),
+  item: z.string().trim().min(2, "Nazwa urządzenia jest za krótka"),
+  serial: z.string().trim().optional(),
+  description: z.string().trim().max(3000).optional(),
 });
 
 type RepairRecord = {
   id: string
+  clientRepairRequestId?: string
+  clientRepairRequestFingerprint?: string
+  repairSubmissionChannel?: "ACCOUNT_API" | "ADMIN_ACTION" | string
   status?: string
   [key: string]: unknown
 }
@@ -41,6 +46,7 @@ export async function addRepairAction(formData: FormData): Promise<ActionState> 
   if (accessError) return accessError;
 
   const rawData = {
+    requestId: formData.get("requestId"),
     client: formData.get("client"),
     item: formData.get("item"),
     serial: formData.get("serial") || "N/A",
@@ -53,21 +59,74 @@ export async function addRepairAction(formData: FormData): Promise<ActionState> 
   }
 
   try {
-    const newRepair = await mutateMockData((db) => {
+    const submission = await mutateMockData((db) => {
       const repairs = db.repairs as RepairRecord[]
+      const requestFingerprint = buildRepairSubmissionFingerprint({
+        client: validated.data.client,
+        item: validated.data.item,
+        serial: validated.data.serial || "N/A",
+        description: validated.data.description || "",
+      })
+      const existing = repairs.find(
+        (repair) =>
+          repair.repairSubmissionChannel === "ADMIN_ACTION" &&
+          repair.clientRepairRequestId === validated.data.requestId
+      )
+
+      if (existing) {
+        if (
+          existing.clientRepairRequestFingerprint !== requestFingerprint
+        ) {
+          throw new Error("REPAIR_IDEMPOTENCY_KEY_REUSED")
+        }
+        return { repair: existing, replayed: true }
+      }
+
       const repair: RepairRecord = {
-        ...validated.data,
+        client: validated.data.client,
+        item: validated.data.item,
+        serial: validated.data.serial || "N/A",
+        description: validated.data.description || "",
         id: `RMA-${crypto.randomUUID()}`,
+        clientRepairRequestId: validated.data.requestId,
+        clientRepairRequestFingerprint: requestFingerprint,
+        repairSubmissionChannel: "ADMIN_ACTION",
         date: new Date().toISOString().split("T")[0],
-        status: "WERYFIKACJA"
+        status: "WERYFIKACJA",
       }
       repairs.unshift(repair)
-      return repair
+      return { repair, replayed: false }
     })
 
+    const {
+      clientRepairRequestId: internalRequestId,
+      clientRepairRequestFingerprint: internalRequestFingerprint,
+      repairSubmissionChannel: internalSubmissionChannel,
+      ...publicRepair
+    } = submission.repair
+    void internalRequestId
+    void internalRequestFingerprint
+    void internalSubmissionChannel
+
     revalidatePath("/admin/repairs");
-    return { success: true, message: "Zgłoszenie zostało dodane.", data: newRepair };
-  } catch {
+    return {
+      success: true,
+      message: submission.replayed
+        ? "Zgłoszenie już istniało — przywrócono jego wynik."
+        : "Zgłoszenie zostało dodane.",
+      data: publicRepair,
+    };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "REPAIR_IDEMPOTENCY_KEY_REUSED"
+    ) {
+      return {
+        success: false,
+        error:
+          "Identyfikator zgłoszenia został już użyty dla innej treści. Zamknij formularz i spróbuj ponownie.",
+      };
+    }
     return { success: false, error: "Wystąpił błąd podczas dodawania zgłoszenia." };
   }
 }
