@@ -87,9 +87,9 @@ describe("authoritative cart repricing wiring", () => {
     expect(
       cartPage.match(/if \(response\.status === 409\) refreshCart\(\);/g)
     ).toHaveLength(2)
-    expect(checkoutRoute).toContain(
-      'const checkoutConflict = code === "CHECKOUT_STATE_CHANGED" || inventoryConflict'
-    )
+    expect(checkoutRoute).toContain('code === "CHECKOUT_STATE_CHANGED"')
+    expect(checkoutRoute).toContain("inventoryConflict")
+    expect(checkoutRoute).toContain("idempotencyConflict")
     expect(checkoutRoute).toContain("checkoutConflict")
     expect(checkoutRoute).toContain("? 409")
   })
