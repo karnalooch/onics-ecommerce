@@ -67,7 +67,10 @@ describe("payment admin action order fencing wiring", () => {
     for (const path of terminalRoutes) {
       const route = read(path)
       expect(route).toContain("expectedStateToken:")
-      expect(route).toContain("parsed.data.expectedStateToken === undefined")
+      expect(route).toContain(
+        "const expectedStateToken = parsed.data.expectedStateToken"
+      )
+      expect(route).toContain("expectedStateToken === undefined")
       expect(route).toContain("classifyPaymentAdminActionPrecondition")
       expect(route).toContain("PAYMENT_ADMIN_STATE_CONFLICT")
     }
