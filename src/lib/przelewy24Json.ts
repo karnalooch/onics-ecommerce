@@ -1,4 +1,5 @@
-const P24_SIGNED_BIGINT_MAX = 9223372036854775807n
+const P24_SIGNED_BIGINT_MAX = BigInt("9223372036854775807")
+const BIGINT_ZERO = BigInt(0)
 
 export type Przelewy24OrderId = string | number
 
@@ -19,7 +20,7 @@ export function normalizePrzelewy24OrderId(
 
   try {
     const parsed = BigInt(value)
-    if (parsed <= 0n || parsed > P24_SIGNED_BIGINT_MAX) return null
+    if (parsed <= BIGINT_ZERO || parsed > P24_SIGNED_BIGINT_MAX) return null
     return parsed.toString()
   } catch {
     return null
