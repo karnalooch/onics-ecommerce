@@ -10,6 +10,7 @@ import {
   hasCatalogCategoryNameConflict,
   hasCategoryProductReference,
   indexCatalogCategoriesByName,
+  isCatalogCategoryCreateReplay,
   normalizeCatalogCategoryName,
   type CatalogCategoryReference,
 } from "@/lib/catalog";
@@ -57,6 +58,15 @@ export async function addCategoryAction(name: string): Promise<ActionState> {
       const byName = indexCatalogCategoriesByName(categories)
       const existing = byName.get(normalizeCatalogCategoryName(name))
       if (existing) {
+        if (
+          !isCatalogCategoryCreateReplay(existing, {
+            name,
+            iconName: "Folder",
+            subcategories: [],
+          })
+        ) {
+          throw new Error("CATEGORY_NAME_EXISTS")
+        }
         return { category: existing, replayed: true }
       }
 
@@ -79,6 +89,15 @@ export async function addCategoryAction(name: string): Promise<ActionState> {
       data: submission.category
     };
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "CATEGORY_NAME_EXISTS"
+    ) {
+      return {
+        success: false,
+        error: "Kategoria o tej nazwie już istnieje z inną konfiguracją."
+      };
+    }
     if (
       error instanceof Error &&
       error.message === "CATALOG_DUPLICATE_CATEGORY_NAME"
