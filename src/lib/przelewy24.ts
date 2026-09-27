@@ -523,8 +523,13 @@ export async function getPrzelewy24RefundDetails(
   config: Przelewy24Config,
   orderId: Przelewy24OrderId
 ): Promise<Przelewy24RefundDetails | null> {
+  const normalizedOrderId = normalizePrzelewy24OrderId(orderId)
+  if (!normalizedOrderId) {
+    throw new Error("PRZELEWY24_ORDER_ID_INVALID")
+  }
+
   const response = await fetch(
-    `${config.apiBaseUrl}/api/v1/refund/by/orderId/${orderId}`,
+    `${config.apiBaseUrl}/api/v1/refund/by/orderId/${normalizedOrderId}`,
     {
       headers: {
         Authorization: basicAuth(config),
