@@ -7,7 +7,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "@
 
 interface IProductTableProps {
   products: any[];
-  onDelete: (id: string) => void;
+  onDelete: (id: string, expectedRevision: number) => void;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
