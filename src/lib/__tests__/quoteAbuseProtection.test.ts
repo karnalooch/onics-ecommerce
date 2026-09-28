@@ -12,10 +12,13 @@ function readQuoteRoute() {
 describe("quote submission abuse protection", () => {
   it("rate-limits the authenticated account before reading request body", () => {
     const source = readQuoteRoute()
-    const authIndex = source.indexOf('authorizeAPI(["ADMIN", "BIZ"])')
+    const authIndex = source.indexOf(
+      "authorizeAPI([...COMMERCE_TRANSACTION_ROLES])"
+    )
     const limiterIndex = source.indexOf('"quote-submit-account"')
     const bodyIndex = source.indexOf("readQuoteJson(req)")
 
+    expect(source).toContain("COMMERCE_TRANSACTION_ROLES")
     expect(authIndex).toBeGreaterThanOrEqual(0)
     expect(limiterIndex).toBeGreaterThan(authIndex)
     expect(bodyIndex).toBeGreaterThan(limiterIndex)

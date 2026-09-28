@@ -74,6 +74,42 @@ describe("commerce transaction role boundary", () => {
     expect(post).toContain('throw new Error("ORDER_ROLE_NOT_ALLOWED")')
   })
 
+  it("rechecks the current commerce role before account-scoped quote and repair writes", () => {
+    for (const [relativePath, deniedCode, writeNeedle] of [
+      [
+        "src/app/api/quotes/route.ts",
+        "QUOTE_ROLE_NOT_ALLOWED",
+        "orders.unshift(quote)",
+      ],
+      [
+        "src/app/api/repairs/route.ts",
+        "REPAIR_ROLE_NOT_ALLOWED",
+        "repairs.unshift(nextRepair)",
+      ],
+    ] as const) {
+      const route = fs.readFileSync(
+        path.join(process.cwd(), relativePath),
+        "utf8"
+      )
+      const postStart = route.indexOf("export async function POST")
+      const post = route.slice(postStart)
+      const mutation = post.indexOf("mutateMockData((db) =>")
+      const currentRoleFence = post.indexOf(
+        "isCommerceTransactionRole(storedUser.roleType)",
+        mutation
+      )
+      const write = post.indexOf(writeNeedle, currentRoleFence)
+
+      expect(post).toContain(
+        "authorizeAPI([...COMMERCE_TRANSACTION_ROLES])"
+      )
+      expect(mutation).toBeGreaterThan(-1)
+      expect(currentRoleFence).toBeGreaterThan(mutation)
+      expect(write).toBeGreaterThan(currentRoleFence)
+      expect(post).toContain(`throw new Error("${deniedCode}")`)
+    }
+  })
+
   it("keeps RETAIL browse-only in storefront/cart UX", () => {
     const cartPage = fs.readFileSync(
       path.join(process.cwd(), "src/app/koszyk/page.tsx"),
