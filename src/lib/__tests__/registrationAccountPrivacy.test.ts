@@ -14,7 +14,8 @@ describe("registration account enumeration hardening", () => {
     expect(source).not.toContain("{ status: 409 }")
     expect(source).not.toContain("initializeMockData")
 
-    expect(source).toContain("const passwordHash = await bcrypt.hash(data.password, 12)")
+    expect(source).toContain("const passwordHash = await runPasswordWork(() =>")
+    expect(source).toContain("bcrypt.hash(data.password, 12)")
     expect(source).toContain("const alreadyExists = users.some(")
     expect(source).toContain("if (!alreadyExists) {")
     expect(source).toContain("users.push(newUser)")
@@ -22,7 +23,7 @@ describe("registration account enumeration hardening", () => {
     expect(source).toContain("{ status: 202 }")
 
     const hashIndex = source.indexOf(
-      "const passwordHash = await bcrypt.hash(data.password, 12)"
+      "const passwordHash = await runPasswordWork(() =>"
     )
     const mutationIndex = source.indexOf("await mutateMockData((db) =>")
 
