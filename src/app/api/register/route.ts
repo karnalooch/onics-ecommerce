@@ -105,10 +105,7 @@ export async function POST(req: Request) {
       }
     })
 
-    return NextResponse.json(
-      { success: true },
-      { status: 202 }
-    )
+    return NextResponse.json({ success: true }, { status: 202 })
   } catch (error) {
     if (error instanceof RegistrationBodyTooLargeError) {
       return NextResponse.json(
@@ -123,7 +120,6 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
-
 
     console.error("Błąd rejestracji:", error)
     return NextResponse.json(
