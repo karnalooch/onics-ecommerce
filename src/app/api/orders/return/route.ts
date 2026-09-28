@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
@@ -83,7 +88,24 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = ReturnOrderSchema.safeParse(await req.json())
+  let parsed: ReturnType<typeof ReturnOrderSchema.safeParse>
+  try {
+    parsed = ReturnOrderSchema.safeParse(await readCommerceJson(req))
+  } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie RMA Stripe jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie RMA Stripe." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Nieprawidłowe żądanie RMA." },
