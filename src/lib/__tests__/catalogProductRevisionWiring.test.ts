@@ -70,10 +70,13 @@ describe("catalog product revision fencing", () => {
     )
     expect(dashboard).toContain("expectedRevision")
     expect(dashboard).toContain("&expectedRevision=")
+    const deleteStart = route.indexOf("export async function DELETE")
+    const remove = route.slice(deleteStart)
+
     expect(row).toContain("Number(p.revision ?? 0)")
-    expect(route).toContain("if (index === -1) return { replayed: true }")
-    expect(route).toContain('"Idempotency-Replayed": "true"')
-    expect(route).not.toContain(
+    expect(remove).toContain("if (index === -1) return { replayed: true }")
+    expect(remove).toContain('"Idempotency-Replayed": "true"')
+    expect(remove).not.toContain(
       'error.message === "PRODUCT_NOT_FOUND"'
     )
   })
