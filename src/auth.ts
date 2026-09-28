@@ -4,6 +4,7 @@ import bcrypt from "bcrypt"
 import crypto from "crypto"
 import { sealAdminBootstrapPassword } from "@/lib/adminBootstrap"
 import { getAccountAccessDecision } from "@/lib/accountAccess"
+import { consumeRejectedLoginPasswordWork } from "@/lib/loginTiming"
 import { authorizePageRoute } from "@/lib/routeAccess"
 import {
   applicationRateLimiter,
@@ -44,10 +45,14 @@ async function verifyStoredPassword(user: StoredAuthUser, password: string) {
     return bcrypt.compare(password, user.passwordHash)
   }
 
-  if (user.roleType !== "ADMIN") return false
+  if (user.roleType !== "ADMIN") {
+    await consumeRejectedLoginPasswordWork(password)
+    return false
+  }
 
   const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD
   if (!bootstrapPassword || !safeSecretEqual(password, bootstrapPassword)) {
+    await consumeRejectedLoginPasswordWork(password)
     return false
   }
 
@@ -80,6 +85,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         )
         if (!clientLimit.allowed) return null
 
+        const accountLimit = applicationRateLimiter.check(
+          "login:account",
+          email,
+          LOGIN_ACCOUNT_POLICY
+        )
+        if (!accountLimit.allowed) return null
+
         const { initializeMockData } = await import("@/store/serverStore")
         const { users } = initializeMockData()
         const user = (users as StoredAuthUser[]).find(
@@ -87,15 +99,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         )
 
         if (!user || getAccountAccessDecision(user) !== "allowed") {
+          await consumeRejectedLoginPasswordWork(password)
           return null
         }
-
-        const accountLimit = applicationRateLimiter.check(
-          "login:account",
-          email,
-          LOGIN_ACCOUNT_POLICY
-        )
-        if (!accountLimit.allowed) return null
 
         const passwordValid = await verifyStoredPassword(user, password)
         if (!passwordValid) return null
