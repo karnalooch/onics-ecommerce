@@ -166,6 +166,18 @@ jobs:
             exit 1
           fi
 
+      - name: Reject tracked persistence backup artifacts
+        run: |
+          tracked_backups="$(
+            git ls-files 'src/data/**' 'src/store/**' |
+            grep -Ei '(\.bak($|\.)|\.deprecated[^/]*$)' || true
+          )"
+          if [ -n "$tracked_backups" ]; then
+            echo "Persistence backup/deprecated artifacts must not be committed under src/data or src/store."
+            printf '%s\n' "$tracked_backups"
+            exit 1
+          fi
+
       - name: Reject tracked supplier catalog fixtures
         run: |
           tracked_fixtures="$(git ls-files 'fixtures/catalogs/**')"
