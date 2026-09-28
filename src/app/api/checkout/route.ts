@@ -17,6 +17,14 @@ import {
   type PaymentMethodId,
 } from "@/lib/paymentMethods"
 import { initializeMockData } from "@/store/serverStore"
+import {
+  BoundedJsonBodyInvalidError,
+  BoundedJsonBodyTooLargeError,
+  readBoundedJson,
+} from "@/lib/boundedJsonIngress"
+
+
+const COMMERCE_JSON_MAX_BODY_BYTES = 128 * 1024
 
 const CartSchema = z.object({
   requestId: z.string().uuid(),
@@ -109,7 +117,26 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CartSchema.safeParse(await req.json())
+  let requestBody: unknown
+  try {
+    requestBody = await readBoundedJson(req, COMMERCE_JSON_MAX_BODY_BYTES)
+  } catch (error) {
+    if (error instanceof BoundedJsonBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie checkoutu jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof BoundedJsonBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe dane checkoutu." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
+
+  const parsed = CartSchema.safeParse(requestBody)
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Nieprawidłowy koszyk." },
