@@ -5,19 +5,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        CELTRONICS_PUBLIC_URL: "http://localhost:${CELTRONICS_PORT:-3100}"
     image: celtronics-onics:local
     init: true
     restart: unless-stopped
 
     ports:
-      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:${CELTRONICS_PORT:-3100}:3001"
 
     environment:
       NODE_ENV: production
       PORT: "3001"
       HOSTNAME: "0.0.0.0"
-      NEXTAUTH_URL: "http://localhost:3001"
-      NEXT_PUBLIC_APP_URL: "http://localhost:3001"
+      NEXTAUTH_URL: "http://localhost:${CELTRONICS_PORT:-3100}"
+      NEXT_PUBLIC_APP_URL: "http://localhost:${CELTRONICS_PORT:-3100}"
       CELTRONICS_DB_PATH: /app/var/celtronics/db.json
       CELTRONICS_UPLOAD_ROOT: /app/var/celtronics/uploads
       CELTRONICS_DB_BACKUP_DIR: /app/var/celtronics/backups
