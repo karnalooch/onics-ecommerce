@@ -102,7 +102,7 @@ The readiness payload reports only coarse check states (`ok` / `error`) and does
 Public credential work is protected by an in-process fixed-window limiter before expensive bcrypt verification:
 
 - registration: 5 attempts per client / 15 minutes and 3 attempts per normalized e-mail / hour; blocked registration returns HTTP 429 with `Retry-After`
-- credentials login: 30 attempts per client / 15 minutes and 20 attempts per normalized e-mail / 15 minutes; rejected account lookups consume equivalent bcrypt work before returning, and blocked login remains indistinguishable from invalid credentials
+- credentials login: 30 attempts per client / 15 minutes and 20 attempts per normalized e-mail / 15 minutes; rejected account lookups consume equivalent bcrypt work before returning, blocked login remains indistinguishable from invalid credentials, and passwords beyond bcrypt's 72-byte UTF-8 boundary are rejected before account lookup
 
 Client identity is taken from `CF-Connecting-IP`, then `X-Real-IP`, then the first `X-Forwarded-For` value. The production reverse proxy **must strip and overwrite** these incoming headers so clients cannot spoof them. If none is available, the limiter intentionally falls back to one shared `unknown` bucket.
 
@@ -127,7 +127,7 @@ AUTH_SECRET=...
 NEXTAUTH_SECRET=...
 ```
 
-`ADMIN_BOOTSTRAP_PASSWORD` is a controlled one-time bootstrap secret. It is required only while an active ADMIN record has no `passwordHash`. On the first successful bootstrap login, the application bcrypt-hashes the supplied password outside the database lock and atomically persists the hash. Subsequent logins use only the stored hash, so the bootstrap environment variable can then be removed. If sealing cannot be persisted safely, authentication fails closed.
+`ADMIN_BOOTSTRAP_PASSWORD` is a controlled one-time bootstrap secret. It is required only while an active ADMIN record has no `passwordHash` and must fit within bcrypt's 72-byte UTF-8 password boundary; readiness fails closed when an unsealed admin is configured with a longer secret. On the first successful bootstrap login, the application bcrypt-hashes the supplied password outside the database lock and atomically persists the hash. Subsequent logins use only the stored hash, so the bootstrap environment variable can then be removed. If sealing cannot be persisted safely, authentication fails closed.
 
 Do not commit real secrets. `.env.example` contains placeholders only.
 
