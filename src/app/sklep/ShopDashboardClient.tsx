@@ -1,17 +1,20 @@
-// src/app/sklep/ShopDashboardClient.tsx
-"use client";
+"use client"
 
-import { useState, useMemo } from "react";
-import { ShopSidebar } from "./_components/ShopSidebar";
-import { ProductGrid } from "./_components/ProductGrid";
-import { MiniCart } from "./_components/MiniCart";
-import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding";
+import { useMemo, useState } from "react"
+import type { StorefrontProduct } from "@/lib/storefrontCatalog"
+import { useCartOwnerBinding } from "@/lib/useCartOwnerBinding"
+import {
+  ShopSidebar,
+  type ShopCategory,
+} from "./_components/ShopSidebar"
+import { ProductGrid } from "./_components/ProductGrid"
+import { MiniCart } from "./_components/MiniCart"
 
-interface IShopDashboardClientProps {
-  initialProducts: any[];
-  categories: any[];
-  role: string;
-  cartOwnerKey: string;
+interface ShopDashboardClientProps {
+  initialProducts: StorefrontProduct[]
+  categories: ShopCategory[]
+  role: string
+  cartOwnerKey: string
 }
 
 export function ShopDashboardClient({
@@ -19,71 +22,71 @@ export function ShopDashboardClient({
   categories,
   role,
   cartOwnerKey,
-}: IShopDashboardClientProps) {
-  const [search, setSearch] = useState("");
-  const [selectedCatId, setSelectedCatId] = useState<string | null>(null);
-  const isB2B = role === "BIZ" || role === "ADMIN";
+}: ShopDashboardClientProps) {
+  const [search, setSearch] = useState("")
+  const [selectedCatId, setSelectedCatId] = useState<string | null>(null)
+  const isB2B = role === "BIZ" || role === "ADMIN"
   const { cartOwnerReady } = useCartOwnerBinding({
     identityKey: cartOwnerKey,
     resolved: true,
-  });
+  })
 
   const filteredProducts = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
+    const tokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean)
 
-    return initialProducts.filter((p: any) => {
+    return initialProducts.filter((product) => {
+      const haystack = [
+        product.name,
+        product.sku,
+        product.manufacturer,
+        product.specs,
+        product.catalogSpecs,
+        product.seoDescription,
+        product.categoryName,
+        product.subcategoryName,
+      ]
+        .map((value) => String(value ?? ""))
+        .join(" ")
+        .toLowerCase()
+
       const matchSearch =
-        !normalizedSearch ||
-        [
-          p.name,
-          p.sku,
-          p.manufacturer,
-          p.specs,
-          p.catalogSpecs,
-          p.seoDescription,
-          p.categoryName,
-          p.subcategoryName,
-        ]
-          .map((value) => String(value ?? "").toLowerCase())
-          .some((value) => value.includes(normalizedSearch));
-      const matchCat = !selectedCatId || p.categoryId === selectedCatId;
-      return matchSearch && matchCat;
-    });
-  }, [initialProducts, search, selectedCatId]);
+        tokens.length === 0 ||
+        tokens.every((token) => haystack.includes(token))
+
+      const matchCategory =
+        !selectedCatId || String(product.categoryId ?? "") === selectedCatId
+
+      return matchSearch && matchCategory
+    })
+  }, [initialProducts, search, selectedCatId])
 
   if (!cartOwnerReady) {
     return (
-      <div className="mt-12 flex min-h-[240px] items-center justify-center">
-        <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      <div className="mt-8 flex min-h-[240px] items-center justify-center">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-300 border-t-slate-950 dark:border-slate-700 dark:border-t-white" />
       </div>
-    );
+    )
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 mt-12 items-start animate-in fade-in duration-1000">
-       {/* Left: Advanced Filtering */}
-       <div className="lg:col-span-3">
-          <ShopSidebar 
-             categories={categories}
-             selectedCatId={selectedCatId}
-             onSelect={setSelectedCatId}
-             search={search}
-             onSearchChange={setSearch}
-          />
-       </div>
+    <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-start">
+      <div className="lg:col-span-3 xl:col-span-2">
+        <ShopSidebar
+          categories={categories}
+          selectedCatId={selectedCatId}
+          onSelect={setSelectedCatId}
+          search={search}
+          onSearchChange={setSearch}
+        />
+      </div>
 
-       {/* Middle: Catalog Grid */}
-       <div className="lg:col-span-6 min-h-[800px]">
-          <ProductGrid 
-             products={filteredProducts}
-             isB2B={isB2B}
-          />
-       </div>
+      <main className="min-w-0 lg:col-span-6 xl:col-span-7">
+        <ProductGrid products={filteredProducts} isB2B={isB2B} />
+      </main>
 
-       {/* Right: Smart Terminal (Cart) */}
-       <div className="lg:col-span-3">
-          <MiniCart isB2B={isB2B} identityKey={cartOwnerKey} />
-       </div>
+      <div className="lg:col-span-3">
+        <MiniCart isB2B={isB2B} identityKey={cartOwnerKey} />
+      </div>
     </div>
-  );
+  )
 }
