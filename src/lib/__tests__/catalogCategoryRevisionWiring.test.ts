@@ -147,10 +147,10 @@ describe("catalog category revision fencing", () => {
     const products = read("src/app/api/products/route.ts")
 
     expect(actions).toContain(
-      "revision: nextCatalogCategoryRevision(current.revision)"
+      "revision: nextCatalogCategoryRevision(currentRevision)"
     )
     expect(actions).toContain(
-      "category.revision = nextCatalogCategoryRevision(category.revision)"
+      "category.revision = nextCatalogCategoryRevision(currentRevision)"
     )
     expect(products).toContain("revision: 0")
     expect(products).toContain(
