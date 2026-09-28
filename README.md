@@ -102,7 +102,7 @@ The readiness payload reports only coarse check states (`ok` / `error`) and does
 Public credential work is protected by an in-process fixed-window limiter before expensive bcrypt verification:
 
 - registration: 5 attempts per client / 15 minutes and 3 attempts per normalized e-mail / hour; blocked registration returns HTTP 429 with `Retry-After`
-- credentials login: 30 attempts per client / 15 minutes and 20 attempts per existing account / 15 minutes; blocked login remains indistinguishable from invalid credentials
+- credentials login: 30 attempts per client / 15 minutes and 20 attempts per normalized e-mail / 15 minutes; rejected account lookups consume equivalent bcrypt work before returning, and blocked login remains indistinguishable from invalid credentials
 
 Client identity is taken from `CF-Connecting-IP`, then `X-Real-IP`, then the first `X-Forwarded-For` value. The production reverse proxy **must strip and overwrite** these incoming headers so clients cannot spoof them. If none is available, the limiter intentionally falls back to one shared `unknown` bucket.
 
