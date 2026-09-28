@@ -169,6 +169,15 @@ describe("admin server action authorization contract", () => {
             `${relativePath(file)}:${action.name} does not invoke an ADMIN guard`
           )
         }
+
+        if (
+          /mutateMockData\s*\(/.test(action.source) &&
+          !CURRENT_ADMIN_WRITE_FENCE_PATTERN.test(action.source)
+        ) {
+          offenders.push(
+            `${relativePath(file)}:${action.name} mutates admin state without a current-account ADMIN fence`
+          )
+        }
       }
     }
 
