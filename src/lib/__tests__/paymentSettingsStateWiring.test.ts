@@ -42,8 +42,11 @@ describe("payment settings state fencing wiring", () => {
     expect(flow).toContain("observedControlToken !== initialControlToken")
     expect(flow).toContain("observedControlToken !== freshToken")
     expect(flow).toContain("isGlobalPaymentSettingsReplay(")
-    expect(flow.indexOf("await validatePaymentProviderActivation(method)"))
-      .toBeLessThan(flow.indexOf("observedControlToken !== freshToken"))
+    const preflight = flow.indexOf("await validatePaymentProviderActivation(")
+    expect(preflight).toBeGreaterThan(-1)
+    expect(preflight).toBeLessThan(
+      flow.indexOf("observedControlToken !== freshToken")
+    )
     expect(flow.indexOf("observedControlToken !== freshToken"))
       .toBeLessThan(flow.indexOf("paymentControl.enabled ="))
   })
@@ -56,10 +59,63 @@ describe("payment settings state fencing wiring", () => {
     expect(flow).toContain("observedMethodToken !== initialMethodToken")
     expect(flow).toContain("observedMethodToken !== freshToken")
     expect(flow).toContain("isMethodPaymentSettingsReplay(")
-    expect(flow.indexOf("await validatePaymentProviderActivation(method)"))
-      .toBeLessThan(flow.indexOf("observedMethodToken !== freshToken"))
+    const preflight = flow.indexOf("await validatePaymentProviderActivation(")
+    expect(preflight).toBeGreaterThan(-1)
+    expect(preflight).toBeLessThan(
+      flow.indexOf("observedMethodToken !== freshToken")
+    )
     expect(flow.indexOf("observedMethodToken !== freshToken"))
       .toBeLessThan(flow.indexOf("paymentMethods[method] ="))
+  })
+
+  it("rechecks current admin access under the write lock before every settings write", () => {
+    const route = read("src/app/api/payment-methods/route.ts")
+    const globalStart = route.indexOf(
+      'if (parsed.data.scope === "GLOBAL")'
+    )
+    const methodStart = route.indexOf(
+      "const methodUpdate = parsed.data",
+      globalStart
+    )
+    const globalFlow = route.slice(globalStart, methodStart)
+    const methodFlow = route.slice(methodStart)
+
+    for (const [flow, write] of [
+      [globalFlow, "paymentControl.enabled ="],
+      [methodFlow, "paymentMethods[method] ="],
+    ] as const) {
+      const mutation = flow.indexOf("mutateMockData((db) =>")
+      const guard = flow.indexOf("assertCurrentPaymentAdmin(", mutation)
+      const writeIndex = flow.indexOf(write, guard)
+
+      expect(mutation).toBeGreaterThan(-1)
+      expect(guard).toBeGreaterThan(mutation)
+      expect(writeIndex).toBeGreaterThan(guard)
+    }
+
+    expect(route).toContain("findStoredUserBySession(users, sessionUser)")
+    expect(route).toContain(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])'
+    )
+    expect(route).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
+  })
+
+  it("binds provider activation to the HTTP request lifetime", () => {
+    const route = read("src/app/api/payment-methods/route.ts")
+    const activation = read("src/lib/paymentProviderActivation.ts")
+    const przelewy24 = read("src/lib/przelewy24.ts")
+
+    expect(route).toContain("req.signal")
+    expect(route).toContain('new Error("REQUEST_ABORTED")')
+    expect(route).toContain("{ status: 499 }")
+    expect(activation).toContain("requestSignal?: AbortSignal")
+    expect(activation).toContain(
+      "testPrzelewy24Access(config, requestSignal)"
+    )
+    expect(przelewy24).toContain("requestSignal?: AbortSignal")
+    expect(przelewy24).toContain(
+      "AbortSignal.any([requestSignal, AbortSignal.timeout(10_000)])"
+    )
   })
 
   it("keeps emergency shutdown authoritative and unfenced", () => {
