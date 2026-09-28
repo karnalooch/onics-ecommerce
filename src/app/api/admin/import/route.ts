@@ -24,21 +24,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Nieautoryzowany dostęp." }, { status: 401 })
   }
 
-  try {
-    const rawData = await req.text()
-    if (!rawData.trim()) {
-      return NextResponse.json({ error: "Brak danych do importu." }, { status: 400 })
-    }
-
-    return NextResponse.json(
-      {
-        error:
-          "Legacy endpoint nie importuje jeszcze rzeczywistych danych WF-Mag. Użyj importera w panelu administracyjnym.",
-      },
-      { status: 501 }
-    )
-  } catch (error) {
-    console.error("Błąd podczas importu WF-Mag:", error)
-    return NextResponse.json({ error: "Błąd serwera." }, { status: 500 })
-  }
+  return NextResponse.json(
+    {
+      error:
+        "Legacy endpoint nie importuje jeszcze rzeczywistych danych WF-Mag. Użyj importera w panelu administracyjnym.",
+    },
+    { status: 501 }
+  )
 }
