@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
@@ -36,12 +38,31 @@ export async function GET() {
   }
 }
 
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
 export async function DELETE() {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
   try {
     await mutateMockData((db) => {
+      const currentActor = findStoredUserBySession(
+        db.users as StoredActor[],
+        authCheck.user
+      )
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("KNOWLEDGE_ADMIN_ACCESS_REVOKED")
+      }
+
       db.knowledgeEntries = {};
       db.knowledgeMeta = {
         revision: db.knowledgeMeta.revision + 1,
@@ -56,6 +77,19 @@ export async function DELETE() {
       message: "Baza wiedzy i metadane źródeł zostały wyczyszczone bez zmiany live katalogu produktów.",
     })
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "KNOWLEDGE_ADMIN_ACCESS_REVOKED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Uprawnienia administratora zmieniły się przed wyczyszczeniem bazy. Operacja została anulowana.",
+        },
+        { status: 403 }
+      )
+    }
+
     console.error("DELETE Knowledge API Error:", error)
     return NextResponse.json(
       { error: "Błąd podczas czyszczenia bazy." },

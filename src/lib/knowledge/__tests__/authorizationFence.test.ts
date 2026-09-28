@@ -35,6 +35,27 @@ describe("knowledge training authorization fence wiring", () => {
     expect(parser).toContain('"KNOWLEDGE_ADMIN_ACCESS_REVOKED"')
   })
 
+  it("rechecks current admin access before destructive knowledge reset", () => {
+    const route = read("src/app/api/knowledge/route.ts")
+    const deleteStart = route.indexOf("export async function DELETE")
+    const remove = route.slice(deleteStart)
+    const mutation = remove.indexOf("mutateMockData((db) =>")
+    const currentAdminFence = remove.indexOf(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])',
+      mutation
+    )
+    const destructiveWrite = remove.indexOf(
+      "db.knowledgeEntries = {}",
+      currentAdminFence
+    )
+
+    expect(deleteStart).toBeGreaterThan(-1)
+    expect(mutation).toBeGreaterThan(-1)
+    expect(currentAdminFence).toBeGreaterThan(mutation)
+    expect(destructiveWrite).toBeGreaterThan(currentAdminFence)
+    expect(remove).toContain('throw new Error("KNOWLEDGE_ADMIN_ACCESS_REVOKED")')
+  })
+
   it("binds upload parsing to the HTTP request lifetime and always detaches", () => {
     const upload = read("src/app/api/knowledge/upload/route.ts")
 
