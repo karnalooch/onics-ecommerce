@@ -3,6 +3,8 @@
 export interface ICategory {
   id: string;
   name: string;
+  iconName?: string;
+  revision?: number;
   subcategories: ISubcategory[];
 }
 
