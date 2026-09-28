@@ -1,5 +1,6 @@
 import fs from "fs"
 import { needsAdminBootstrap } from "@/lib/adminBootstrap"
+import { isPasswordWithinBcryptLimit } from "@/lib/passwordPolicy"
 import { getDbLockSettings } from "@/lib/jsonDb"
 import { resolveKnowledgeUploadRoot } from "@/lib/knowledge/files"
 import { resolvePersistentPath } from "@/lib/storageConfig"
@@ -100,11 +101,21 @@ function validateAdminBootstrap(options: ReadinessOptions) {
   const database = readDatabaseRoot(options)
   if (!needsAdminBootstrap(database.users)) return
 
+  const bootstrapPassword =
+    options.adminBootstrapPassword ?? process.env.ADMIN_BOOTSTRAP_PASSWORD
+
   requireProductionSecret(
     nodeEnv,
     "ADMIN_BOOTSTRAP_PASSWORD",
-    options.adminBootstrapPassword ?? process.env.ADMIN_BOOTSTRAP_PASSWORD
+    bootstrapPassword
   )
+
+  if (
+    typeof bootstrapPassword !== "string" ||
+    !isPasswordWithinBcryptLimit(bootstrapPassword)
+  ) {
+    throw new Error("ADMIN_BOOTSTRAP_PASSWORD exceeds bcrypt password limit.")
+  }
 }
 
 function paymentRuntimeOptions(

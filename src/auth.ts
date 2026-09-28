@@ -5,6 +5,7 @@ import crypto from "crypto"
 import { sealAdminBootstrapPassword } from "@/lib/adminBootstrap"
 import { getAccountAccessDecision } from "@/lib/accountAccess"
 import { consumeRejectedLoginPasswordWork } from "@/lib/loginTiming"
+import { isPasswordWithinBcryptLimit } from "@/lib/passwordPolicy"
 import { authorizePageRoute } from "@/lib/routeAccess"
 import {
   applicationRateLimiter,
@@ -91,6 +92,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           LOGIN_ACCOUNT_POLICY
         )
         if (!accountLimit.allowed) return null
+
+        if (!isPasswordWithinBcryptLimit(password)) return null
 
         const { initializeMockData } = await import("@/store/serverStore")
         const { users } = initializeMockData()

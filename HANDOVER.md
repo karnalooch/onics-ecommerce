@@ -86,7 +86,7 @@ Aktualne zabezpieczenia obejmują między innymi:
 - page/API RBAC,
 - stabilne powiązanie sesji z kontem,
 - blokadę dostępu dla zablokowanych/niezatwierdzonych kont B2B,
-- throttling logowania i rejestracji; limiter logowania per znormalizowany e-mail działa przed lookupem konta, a odrzucone lookupy wykonują równoważny koszt bcrypt, żeby nie tworzyć szybkiej ścieżki enumeracji kont; publiczny ingress rejestracji jest dodatkowo czytany strumieniowo z twardym limitem rozmiaru i fail-closed UTF-8/JSON,
+- throttling logowania i rejestracji; limiter logowania per znormalizowany e-mail działa przed lookupem konta, a odrzucone lookupy wykonują równoważny koszt bcrypt, żeby nie tworzyć szybkiej ścieżki enumeracji kont; rejestracja, login i aktywny bootstrap ADMIN egzekwują wspólną granicę 72 bajtów UTF-8 dla haseł bcrypt; publiczny ingress rejestracji jest dodatkowo czytany strumieniowo z twardym limitem rozmiaru i fail-closed UTF-8/JSON,
 - jednorazowy bootstrap ADMIN zakończony trwałym hashem,
 - fail-closed readiness przy brakujących wymaganych sekretach.
 - długie operacje administracyjne, które zapisują stan po zewnętrznym `await`, wiążą zewnętrzną pracę z lifetime HTTP requestu oraz ponownie sprawdzają bieżące konto/rolę pod write-lockiem przed mutacją; disconnect klienta, odebranie roli albo blokada konta w trakcie operacji anulują dalszy zapis.

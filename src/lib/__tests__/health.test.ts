@@ -158,6 +158,26 @@ describe("production readiness", () => {
     })
   })
 
+  it("rejects an admin bootstrap password beyond bcrypt's UTF-8 byte limit", () => {
+    writeDb([
+      {
+        id: "u_admin",
+        roleType: "ADMIN",
+        isBlocked: false,
+      },
+    ])
+
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        adminBootstrapPassword: "🙂".repeat(19),
+      })
+    ).toMatchObject({
+      ready: false,
+      checks: { adminBootstrap: "error" },
+    })
+  })
+
   it("does not require the bootstrap secret after the admin is sealed", () => {
     writeDb([
       {
