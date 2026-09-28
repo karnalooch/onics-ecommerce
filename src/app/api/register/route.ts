@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import bcrypt from "bcrypt"
 import { z } from "zod"
 import { validateNip } from "@/lib/validation"
+import { isPasswordWithinBcryptLimit } from "@/lib/passwordPolicy"
 import {
   applicationRateLimiter,
   getClientRateLimitKey,
@@ -29,7 +30,7 @@ function rateLimited(result: RateLimitResult) {
 
 const RegistrationSchema = z.object({
   email: z.string().trim().email("Nieprawidłowy adres e-mail").transform((value) => value.toLowerCase()),
-  password: z.string().min(8, "Hasło musi mieć co najmniej 8 znaków").max(72, "Hasło jest zbyt długie"),
+  password: z\n    .string()\n    .min(8, "Hasło musi mieć co najmniej 8 znaków")\n    .refine(isPasswordWithinBcryptLimit, "Hasło jest zbyt długie"),
   nip: z
     .string()
     .transform((value) => value.replace(/\D/g, ""))
