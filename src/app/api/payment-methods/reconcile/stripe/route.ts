@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   CommerceBodyInvalidError,
   CommerceBodyTooLargeError,
@@ -47,6 +49,25 @@ const ReconcileSchema = z.union([
 ])
 
 const MAX_BULK_RECONCILIATION = 50
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+function assertFreshAdminAccess(actor: { id?: string; email?: string | null }) {
+  const fresh = initializeMockData()
+  const currentActor = findStoredUserBySession(
+    fresh.users as StoredActor[],
+    actor
+  )
+  if (!currentActor || !hasAccountRoleAccess(currentActor, ["ADMIN"])) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
 
 type StoredOrder = StripeCancelableOrder &
   StoredPaymentCheckoutOrder & {
@@ -263,6 +284,7 @@ export async function POST(req: Request) {
           throw new Error("STRIPE_CHECKOUT_REGISTRATION_NOT_RECOVERABLE")
         }
 
+        assertFreshAdminAccess(authCheck.user)
         session = await createOrRecoverStripeCheckoutSession(
           stripe,
           snapshotOrder,
@@ -433,6 +455,7 @@ export async function POST(req: Request) {
 
         if (!refund) {
           const rma = isStripeRmaRefundIntent(currentOrder)
+          assertFreshAdminAccess(authCheck.user)
           refund = await stripe.refunds.create(
             {
               payment_intent: intentId,
