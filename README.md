@@ -18,7 +18,7 @@ npm ci
 npm run dev
 ```
 
-The development server runs on http://localhost:3001.
+The development server runs on http://localhost:3100.
 
 When `CELTRONICS_DB_PATH` and `CELTRONICS_UPLOAD_ROOT` are omitted in development, the app uses repository-local fallback paths. Knowledge uploads are stored under `.local/celtronics/uploads`, outside `public/`, so uploaded supplier files are not exposed as static assets.
 
@@ -33,13 +33,28 @@ Start or rebuild the application:
 docker compose up -d --build
 ```
 
+Use another host port without editing Compose:
+
+PowerShell:
+
+```powershell
+$env:CELTRONICS_PORT=3210
+docker compose up -d --build
+```
+
+Bash:
+
+```bash
+CELTRONICS_PORT=3210 docker compose up -d --build
+```
+
 Open:
 
 ```text
-http://localhost:3001
+http://localhost:3100
 ```
 
-The Compose preset binds port 3001 to `127.0.0.1` only. It is intentionally a **local-machine preset**, not an internet-facing production deployment.
+The Compose preset binds host port 3100 to `127.0.0.1` only; the container still listens on 3001. It is intentionally a **local-machine preset**, not an internet-facing production deployment.
 
 On first boot the container:
 
