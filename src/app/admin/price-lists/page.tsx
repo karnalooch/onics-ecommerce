@@ -274,7 +274,7 @@ export default function PricelistGenerator() {
                         onClick={() => toggleCategory(cat.id)}
                         className={`w-full h-10 px-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest border transition-all active-press mb-1 italic ${selectedCategoryIds.includes(cat.id) ? 'bg-slate-950 border-slate-950 text-white' : 'bg-transparent border-transparent text-slate-400 hover:text-slate-950'}`}
                      >
-                        {getIcon(cat.iconName, "w-4 h-4 opacity-40")}
+                        {getIcon(cat.iconName || "Folder", "w-4 h-4 opacity-40")}
                         <span className="truncate">{cat.name}</span>
                         {selectedCategoryIds.includes(cat.id) && <CheckCircle2 className="w-3.5 h-3.5 text-primary ml-auto" />}
                      </button>
