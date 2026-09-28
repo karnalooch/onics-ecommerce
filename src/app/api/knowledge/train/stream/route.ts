@@ -29,7 +29,7 @@ const RequestSchema = z.object({
   filename: z.string().min(1).max(255),
   apiKey: z.string().max(512).optional().default(""),
   modelId: z.string().trim().max(120).optional().default("internal-v9"),
-  availableModels: z.array(z.string().trim().max(120)).max(50).optional().default([]),
+  availableModels: z.array(z.string().trim().max(120)).max(5).optional().default([]),
 })
 
 export async function POST(req: Request) {
