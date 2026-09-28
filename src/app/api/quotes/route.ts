@@ -299,7 +299,7 @@ export async function PUT(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = AdminQuoteUpdateSchema.safeParse(await req.json())
+    const parsed = AdminQuoteUpdateSchema.safeParse(await readQuoteJson(req))
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowa aktualizacja wyceny." },
@@ -410,6 +410,19 @@ export async function PUT(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof QuoteBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Aktualizacja wyceny jest zbyt duża." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof QuoteBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body aktualizacji wyceny." },
+        { status: 400 }
+      )
+    }
+
     if (error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED") {
       return NextResponse.json(
         { error: "Uprawnienia administratora zmieniły się przed aktualizacją wyceny." },

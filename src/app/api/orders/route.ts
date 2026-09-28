@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import {
   COMMERCE_TRANSACTION_ROLES,
@@ -33,6 +38,8 @@ import {
 } from "@/lib/orderAdminState"
 
 export const dynamic = "force-dynamic"
+
+const ORDER_MAX_BODY_BYTES = 512 * 1024
 
 const OrderItemInputSchema = z.object({
   id: z.string().min(1),
@@ -183,7 +190,7 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = CreateOrderSchema.safeParse(await req.json())
+    const parsed = CreateOrderSchema.safeParse(await readCommerceJson(req, ORDER_MAX_BODY_BYTES))
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane zamówienia." },
@@ -308,6 +315,19 @@ export async function POST(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie zamówienia jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body zamówienia." },
+        { status: 400 }
+      )
+    }
+
     const message = error instanceof Error ? error.message : "Błąd serwera."
     const inventoryConflict =
       message === "INVENTORY_NOT_AVAILABLE" ||
@@ -343,7 +363,7 @@ export async function PUT(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = UpdateOrderSchema.safeParse(await req.json())
+    const parsed = UpdateOrderSchema.safeParse(await readCommerceJson(req, ORDER_MAX_BODY_BYTES))
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowa aktualizacja." },
@@ -499,6 +519,19 @@ export async function PUT(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Aktualizacja zamówienia jest zbyt duża." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body aktualizacji zamówienia." },
+        { status: 400 }
+      )
+    }
+
     if (error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED") {
       return NextResponse.json(
         { error: "Uprawnienia administratora zmieniły się przed aktualizacją zamówienia." },
