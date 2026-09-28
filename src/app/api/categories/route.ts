@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   catalogCategoryRevision,
   findRemovedReferencedSubcategoryIds,
@@ -25,6 +27,38 @@ type Category = {
   iconName?: string
   revision?: number
   subcategories: Subcategory[]
+}
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+type SessionActor = {
+  id?: string
+  email?: string | null
+}
+
+function assertCurrentAdminAccess(users: StoredActor[], actor: SessionActor) {
+  const currentActor = findStoredUserBySession(users, actor)
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
+
+function catalogAdminAccessErrorResponse(error: unknown) {
+  return error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED"
+    ? NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed zapisem katalogu." },
+        { status: 403 }
+      )
+    : null
 }
 
 const SubcategoryInput = z.union([
@@ -139,6 +173,7 @@ export async function POST(req: Request) {
 
   try {
     const submission = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const categoryStore = db.categories as Category[]
       const byName = indexCatalogCategoriesByName(categoryStore)
       const existing = byName.get(
@@ -190,6 +225,8 @@ export async function POST(req: Request) {
         : undefined,
     })
   } catch (error) {
+    const adminAccessResponse = catalogAdminAccessErrorResponse(error)
+    if (adminAccessResponse) return adminAccessResponse
     if (
       error instanceof Error &&
       error.message === "CATEGORY_NAME_EXISTS"
@@ -256,6 +293,7 @@ export async function PUT(req: Request) {
 
   try {
     const submission = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const categoryStore = db.categories as Category[]
       const index = categoryStore.findIndex(
         (category) => category.id === parsed.data.id
@@ -332,6 +370,8 @@ export async function PUT(req: Request) {
         : undefined,
     })
   } catch (error) {
+    const adminAccessResponse = catalogAdminAccessErrorResponse(error)
+    if (adminAccessResponse) return adminAccessResponse
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono kategorii." },
@@ -439,6 +479,7 @@ export async function DELETE(req: Request) {
 
   try {
     const result = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const categoryStore = db.categories as Category[]
       const index = categoryStore.findIndex((category) => category.id === id)
 
@@ -472,6 +513,8 @@ export async function DELETE(req: Request) {
       }
     )
   } catch (error) {
+    const adminAccessResponse = catalogAdminAccessErrorResponse(error)
+    if (adminAccessResponse) return adminAccessResponse
     if (
       error instanceof Error &&
       error.message === "CATEGORY_REVISION_CONFLICT"
