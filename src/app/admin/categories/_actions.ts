@@ -26,22 +26,26 @@ const CategoryUpdateSchema = z.object({
   id: z.string().min(1),
   name: z.string().trim().min(1).max(120).optional(),
   iconName: z.string().trim().max(80).optional(),
+  expectedRevision: z.number().int().nonnegative(),
 }).strict();
 
 const AddSubcategorySchema = z.object({
   categoryId: z.string().min(1),
   name: z.string().trim().min(1).max(120),
+  expectedRevision: z.number().int().nonnegative(),
 });
 
 const RenameSubcategorySchema = z.object({
   categoryId: z.string().min(1),
   subcategoryId: z.string().min(1),
   name: z.string().trim().min(1).max(120),
+  expectedRevision: z.number().int().nonnegative(),
 });
 
 const DeleteSubcategorySchema = z.object({
   categoryId: z.string().min(1),
   subcategoryId: z.string().min(1),
+  expectedRevision: z.number().int().nonnegative(),
 });
 
 type CategoryRecord = {
@@ -104,6 +108,16 @@ function currentAdminActionError(error: unknown): ActionState | null {
         success: false,
         error:
           "Uprawnienia administratora zmieniły się przed zapisem. Odśwież panel i spróbuj ponownie.",
+      }
+    : null;
+}
+
+function categoryRevisionActionError(error: unknown): ActionState | null {
+  return error instanceof Error && error.message === "CATEGORY_REVISION_CONFLICT"
+    ? {
+        success: false,
+        error:
+          "Kategoria zmieniła się od ostatniego odczytu. Odśwież dane i ponów zmianę.",
       }
     : null;
 }
@@ -209,12 +223,20 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
       }
 
       const current = categories[idx]
+      const currentRevision = catalogCategoryRevision(current.revision)
       const nextName = validated.data.name
         ? validated.data.name.toUpperCase()
         : current.name
       const nextIcon = validated.data.iconName ?? current.iconName
+      const isReplay =
+        nextName === current.name && nextIcon === current.iconName
 
-      if (nextName === current.name && nextIcon === current.iconName) {
+      if (validated.data.expectedRevision !== currentRevision) {
+        if (isReplay) return { replayed: true }
+        throw new Error("CATEGORY_REVISION_CONFLICT")
+      }
+
+      if (isReplay) {
         return { replayed: true }
       }
 
@@ -222,7 +244,7 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
         ...current,
         ...validated.data,
         name: nextName,
-        revision: nextCatalogCategoryRevision(current.revision),
+        revision: nextCatalogCategoryRevision(currentRevision),
       }
       return { replayed: false }
     })
@@ -237,6 +259,8 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
   } catch (error) {
     const adminError = currentAdminActionError(error);
     if (adminError) return adminError;
+    const revisionError = categoryRevisionActionError(error);
+    if (revisionError) return revisionError;
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
     }
@@ -265,12 +289,17 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
 
 export async function addSubcategoryAction(
   categoryId: string,
-  name: string
+  name: string,
+  expectedRevision: number
 ): Promise<ActionState> {
   const adminAuth = await requireAdminAction();
   if (!adminAuth.authorized) return adminAuth.response;
 
-  const validated = AddSubcategorySchema.safeParse({ categoryId, name });
+  const validated = AddSubcategorySchema.safeParse({
+    categoryId,
+    name,
+    expectedRevision,
+  });
   if (!validated.success) {
     return { success: false, error: "Nieprawidłowa nazwa podkategorii" };
   }
@@ -287,6 +316,7 @@ export async function addSubcategoryAction(
       )
       if (!category) throw new Error("CATEGORY_NOT_FOUND")
 
+      const currentRevision = catalogCategoryRevision(category.revision)
       const subcategories = category.subcategories || []
       const byName = indexCatalogSubcategoriesByName(subcategories)
       const existing = byName.get(
@@ -295,6 +325,9 @@ export async function addSubcategoryAction(
       if (existing) {
         return { subcategory: existing, replayed: true }
       }
+      if (validated.data.expectedRevision !== currentRevision) {
+        throw new Error("CATEGORY_REVISION_CONFLICT")
+      }
 
       const subcategory = {
         id: `s_${crypto.randomUUID()}`,
@@ -302,7 +335,7 @@ export async function addSubcategoryAction(
       }
       subcategories.push(subcategory)
       category.subcategories = subcategories
-      category.revision = nextCatalogCategoryRevision(category.revision)
+      category.revision = nextCatalogCategoryRevision(currentRevision)
       return { subcategory, replayed: false }
     })
 
@@ -317,6 +350,8 @@ export async function addSubcategoryAction(
   } catch (error) {
     const adminError = currentAdminActionError(error);
     if (adminError) return adminError;
+    const revisionError = categoryRevisionActionError(error);
+    if (revisionError) return revisionError;
     const code = error instanceof Error ? error.message : "";
     if (code === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
@@ -335,7 +370,8 @@ export async function addSubcategoryAction(
 export async function renameSubcategoryAction(
   categoryId: string,
   subcategoryId: string,
-  name: string
+  name: string,
+  expectedRevision: number
 ): Promise<ActionState> {
   const adminAuth = await requireAdminAction();
   if (!adminAuth.authorized) return adminAuth.response;
@@ -344,6 +380,7 @@ export async function renameSubcategoryAction(
     categoryId,
     subcategoryId,
     name,
+    expectedRevision,
   });
   if (!validated.success) {
     return { success: false, error: "Nieprawidłowa podkategoria" };
@@ -361,12 +398,23 @@ export async function renameSubcategoryAction(
       )
       if (!category) throw new Error("CATEGORY_NOT_FOUND")
 
+      const currentRevision = catalogCategoryRevision(category.revision)
       const subcategories = category.subcategories || []
       indexCatalogSubcategoriesByName(subcategories)
       const subcategory = subcategories.find(
         (candidate) => candidate.id === validated.data.subcategoryId
       )
       if (!subcategory) throw new Error("SUBCATEGORY_NOT_FOUND")
+
+      if (
+        normalizeCatalogSubcategoryName(subcategory.name) ===
+        normalizeCatalogSubcategoryName(validated.data.name)
+      ) {
+        return subcategory
+      }
+      if (validated.data.expectedRevision !== currentRevision) {
+        throw new Error("CATEGORY_REVISION_CONFLICT")
+      }
 
       if (
         hasCatalogSubcategoryNameConflict(
@@ -378,15 +426,8 @@ export async function renameSubcategoryAction(
         throw new Error("SUBCATEGORY_NAME_EXISTS")
       }
 
-      if (
-        normalizeCatalogSubcategoryName(subcategory.name) ===
-        normalizeCatalogSubcategoryName(validated.data.name)
-      ) {
-        return subcategory
-      }
-
       subcategory.name = validated.data.name
-      category.revision = nextCatalogCategoryRevision(category.revision)
+      category.revision = nextCatalogCategoryRevision(currentRevision)
       return subcategory
     })
 
@@ -399,6 +440,8 @@ export async function renameSubcategoryAction(
   } catch (error) {
     const adminError = currentAdminActionError(error);
     if (adminError) return adminError;
+    const revisionError = categoryRevisionActionError(error);
+    if (revisionError) return revisionError;
     const code = error instanceof Error ? error.message : "";
     if (code === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
@@ -425,7 +468,8 @@ export async function renameSubcategoryAction(
 
 export async function deleteSubcategoryAction(
   categoryId: string,
-  subcategoryId: string
+  subcategoryId: string,
+  expectedRevision: number
 ): Promise<ActionState> {
   const adminAuth = await requireAdminAction();
   if (!adminAuth.authorized) return adminAuth.response;
@@ -433,6 +477,7 @@ export async function deleteSubcategoryAction(
   const validated = DeleteSubcategorySchema.safeParse({
     categoryId,
     subcategoryId,
+    expectedRevision,
   });
   if (!validated.success) {
     return { success: false, error: "Nieprawidłowa podkategoria" };
@@ -450,12 +495,16 @@ export async function deleteSubcategoryAction(
       )
       if (!category) throw new Error("CATEGORY_NOT_FOUND")
 
+      const currentRevision = catalogCategoryRevision(category.revision)
       const subcategories = category.subcategories || []
       const index = subcategories.findIndex(
         (candidate) => candidate.id === validated.data.subcategoryId
       )
       if (index === -1) {
         return { replayed: true }
+      }
+      if (validated.data.expectedRevision !== currentRevision) {
+        throw new Error("CATEGORY_REVISION_CONFLICT")
       }
 
       if (
@@ -470,7 +519,7 @@ export async function deleteSubcategoryAction(
 
       subcategories.splice(index, 1)
       category.subcategories = subcategories
-      category.revision = nextCatalogCategoryRevision(category.revision)
+      category.revision = nextCatalogCategoryRevision(currentRevision)
       return { replayed: false }
     })
 
@@ -484,6 +533,8 @@ export async function deleteSubcategoryAction(
   } catch (error) {
     const adminError = currentAdminActionError(error);
     if (adminError) return adminError;
+    const revisionError = categoryRevisionActionError(error);
+    if (revisionError) return revisionError;
     const code = error instanceof Error ? error.message : "";
     if (code === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
