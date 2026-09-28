@@ -44,6 +44,23 @@ type StoredActor = {
   isBlocked?: boolean
 }
 
+function assertFreshAdminAccess(actor: {
+  id?: string
+  email?: string | null
+}) {
+  const snapshot = initializeMockData()
+  const currentActor = findStoredUserBySession(
+    snapshot.users as StoredActor[],
+    actor
+  )
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
+
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
@@ -153,6 +170,7 @@ export async function POST(req: Request) {
 
   const stripe = new Stripe(stripeSecretKey)
   const results: ShutdownOrderResult[] = []
+  let accessRevoked = false
 
   for (const candidate of candidates) {
     const sessionId = candidate.stripeCheckoutSessionId
@@ -184,8 +202,16 @@ export async function POST(req: Request) {
 
       if (session.status === "open") {
         try {
+          assertFreshAdminAccess(authCheck.user)
           session = await stripe.checkout.sessions.expire(session.id)
         } catch (expireError) {
+          if (
+            expireError instanceof Error &&
+            expireError.message === "ADMIN_ACCESS_REVOKED"
+          ) {
+            throw expireError
+          }
+
           const refreshed = await stripe.checkout.sessions.retrieve(
             session.id
           )
@@ -253,6 +279,14 @@ export async function POST(req: Request) {
         throw stateError
       }
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "ADMIN_ACCESS_REVOKED"
+      ) {
+        accessRevoked = true
+        break
+      }
+
       console.error(
         `Emergency Stripe shutdown failed for order ${candidate.id}:`,
         error
@@ -284,13 +318,21 @@ export async function POST(req: Request) {
 
   return NextResponse.json(
     {
-      success: unresolved === 0,
+      success: !accessRevoked && unresolved === 0,
       globalDisabled: true,
       candidates: candidates.length,
       processed: results.length,
       counts,
       results,
+      ...(accessRevoked
+        ? {
+            error:
+              "Uprawnienia administratora zmieniły się podczas awaryjnego wygaszania sesji. Dalsze operacje Stripe zostały zatrzymane.",
+          }
+        : {}),
     },
-    { status: unresolved === 0 ? 200 : 207 }
+    {
+      status: accessRevoked ? 403 : unresolved === 0 ? 200 : 207,
+    }
   )
 }
