@@ -11,8 +11,18 @@ import { useCatalogStore } from "@/store/catalogStore";
 import { ShieldCheck } from "lucide-react";
 import { useKnowledge } from "@/lib/knowledge/KnowledgeContext";
 import { useRouter } from "next/navigation";
-import { IProduct, ICategory, IManufacturer } from "./_lib/types";
+import { IProduct, ICategory, IManufacturer, IStagingItem } from "./_lib/types";
 import { processInventoryData } from "./_lib/inventoryLogic";
+
+type KnowledgeSessionResult = {
+  model?: unknown;
+  name?: unknown;
+  price?: unknown;
+  manufacturer?: unknown;
+  category?: unknown;
+  subcategory?: unknown;
+  specs?: unknown;
+};
 
 export function ProductsDashboardClient({ 
   initialProducts, 
@@ -61,49 +71,98 @@ export function ProductsDashboardClient({
     }
   }, []);
 
-  useEffect(() => { fetchKnowledgeData(); }, [fetchKnowledgeData]);
-
   useEffect(() => {
-    if (isDone && sessionResults && Object.keys(sessionResults).length > 0) {
-       const aiItems = Object.entries(sessionResults).map(([sku, details]: [string, any]) => ({
-          sku,
-          name: details.model || details.name || sku,
-          price: details.price || 0,
-          stock: 0,
-          manufacturer: details.manufacturer || "",
-          xlsCategoryName: details.category || "",
-          xlsSubcategoryName: details.subcategory || "",
-          specs: details.specs || ""
-       }));
-       handleProcessExcelData(aiItems);
-    }
-  }, [isDone, sessionResults]);
+    let cancelled = false;
 
-  const manufacturersList = useMemo(() => localManufacturers.map(m => m.name), [localManufacturers]);
+    void fetch("/api/knowledge")
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled || !data) return;
+        setKnowledgeSources(Array.isArray(data.sources) ? data.sources : []);
+        setProcessedSources(
+          Array.isArray(data.processedSources) ? data.processedSources : []
+        );
+        if (Array.isArray(data.registry?.categories)) {
+          setLocalCategories(data.registry.categories);
+        }
+        if (Array.isArray(data.registry?.manufacturers)) {
+          setLocalManufacturers(data.registry.manufacturers);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const manufacturersList = useMemo(
+    () => localManufacturers.map((manufacturer) => manufacturer.name),
+    [localManufacturers]
+  );
 
   const refreshAllData = useCallback(async () => {
-    router.refresh(); 
-    const [resP, resC] = await Promise.all([fetch('/api/products'), fetch('/api/categories')]);
+    router.refresh();
+    const [resP, resC] = await Promise.all([
+      fetch("/api/products"),
+      fetch("/api/categories"),
+    ]);
     if (resP.ok) setProducts(await resP.json());
     if (resC.ok) setLocalCategories(await resC.json());
   }, [router]);
 
-  const handleProcessExcelData = (data: any[]) => {
-    const { staging, pendingStructure: ps } = processInventoryData(data, products, localCategories, localManufacturers);
-    setStagingPayload(staging);
-    if (ps.categories.length > 0 || ps.subcategories.length > 0 || ps.manufacturers.length > 0) {
-      setPendingStructure(ps);
-      setIsStructureModalOpen(true);
+  const handleProcessExcelData = useCallback(
+    (data: Array<Record<string, unknown>>) => {
+      const { staging, pendingStructure: ps } = processInventoryData(
+        data,
+        products,
+        localCategories,
+        localManufacturers
+      );
+      setStagingPayload(staging);
+      if (
+        ps.categories.length > 0 ||
+        ps.subcategories.length > 0 ||
+        ps.manufacturers.length > 0
+      ) {
+        setPendingStructure(ps);
+        setIsStructureModalOpen(true);
+      }
+      toast.success(`Przetworzono ${staging.length} pozycji.`);
+    },
+    [
+      localCategories,
+      localManufacturers,
+      products,
+      setStagingPayload,
+    ]
+  );
+
+  useEffect(() => {
+    if (isDone && sessionResults && Object.keys(sessionResults).length > 0) {
+      const typedResults = sessionResults as Record<string, KnowledgeSessionResult>;
+      const aiItems = Object.entries(typedResults).map(([sku, details]) => ({
+        sku,
+        name: String(details.model || details.name || sku),
+        price: Number(details.price || 0),
+        stock: 0,
+        manufacturer: String(details.manufacturer || ""),
+        xlsCategoryName: String(details.category || ""),
+        xlsSubcategoryName: String(details.subcategory || ""),
+        specs: String(details.specs || ""),
+      }));
+      handleProcessExcelData(aiItems);
     }
-    toast.success(`Przetworzono ${staging.length} pozycji.`);
-  };
+  }, [handleProcessExcelData, isDone, sessionResults]);
 
   const readResponseError = async (response: Response, fallback: string) => {
     const payload = await response.json().catch(() => ({}));
     return typeof payload?.error === "string" ? payload.error : fallback;
   };
 
-  const commitStagingItems = (items: any[]) => {
+  const commitStagingItems = (items: IStagingItem[]) => {
     if (items.length === 0) return;
 
     startTransition(async () => {
@@ -159,7 +218,11 @@ export function ProductsDashboardClient({
     );
   };
 
-  const handleBatchUpdate = (ids: string[], field: string, value: any) => {
+  const handleBatchUpdate = (
+    ids: string[],
+    field: keyof IStagingItem,
+    value: unknown
+  ) => {
     const selected = new Set(ids);
     setStagingPayload(
       stagingPayload.map((item) => {
@@ -167,12 +230,12 @@ export function ProductsDashboardClient({
         if (field === "categoryId" && item.categoryId !== value) {
           return { ...item, categoryId: value, subcategoryId: null };
         }
-        return { ...item, [field]: value };
+        return { ...item, [field]: value } as IStagingItem;
       })
     );
   };
 
-  const isStagingItemConfirmed = (item: any) => {
+  const isStagingItemConfirmed = (item: IStagingItem) => {
     const price = Number(item.price);
     const stock = Number(item.stock);
     const hasCategory =
