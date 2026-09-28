@@ -5,6 +5,8 @@ import { z } from "zod"
 import { auth } from "@/auth"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   CatalogProductInputSchema,
   CatalogProductUpdateSchema,
@@ -49,6 +51,38 @@ type CategoryRecord = {
   iconName?: string
   revision?: number
   subcategories: Subcategory[]
+}
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+type SessionActor = {
+  id?: string
+  email?: string | null
+}
+
+function assertCurrentAdminAccess(users: StoredActor[], actor: SessionActor) {
+  const currentActor = findStoredUserBySession(users, actor)
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
+
+function catalogAdminAccessErrorResponse(error: unknown) {
+  return error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED"
+    ? NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed zapisem katalogu." },
+        { status: 403 }
+      )
+    : null
 }
 
 const ImportItemSchema = z
@@ -146,6 +180,7 @@ export async function POST(req: Request) {
 
     try {
       const result = await mutateMockData((db) => {
+        assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
         const productStore = db.products as ProductRecord[]
         const categoryStore = db.categories as CategoryRecord[]
         const manufacturerStore =
@@ -280,6 +315,8 @@ export async function POST(req: Request) {
       )
       return NextResponse.json({ success: true, ...result })
     } catch (error) {
+    const adminAccessResponse = catalogAdminAccessErrorResponse(error)
+    if (adminAccessResponse) return adminAccessResponse
       const classificationResponse =
         catalogClassificationErrorResponse(error)
       if (classificationResponse) return classificationResponse
@@ -350,6 +387,7 @@ export async function POST(req: Request) {
 
   try {
     const newProduct = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const productStore = db.products as ProductRecord[]
       if (hasSkuConflict(productStore, parsed.data.sku)) {
         throw new Error("SKU_EXISTS")
@@ -371,6 +409,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json(newProduct, { status: 201 })
   } catch (error) {
+    const adminAccessResponse = catalogAdminAccessErrorResponse(error)
+    if (adminAccessResponse) return adminAccessResponse
     if (error instanceof Error && error.message === "SKU_EXISTS") {
       return NextResponse.json(
         { error: "Produkt z tym SKU już istnieje." },
@@ -414,6 +454,7 @@ export async function PUT(req: Request) {
 
   try {
     const submission = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const productStore = db.products as ProductRecord[]
       const index = productStore.findIndex(
         (product) => product.id === parsed.data.id
@@ -476,6 +517,8 @@ export async function PUT(req: Request) {
         : undefined,
     })
   } catch (error) {
+    const adminAccessResponse = catalogAdminAccessErrorResponse(error)
+    if (adminAccessResponse) return adminAccessResponse
     if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono produktu." },
@@ -558,6 +601,7 @@ export async function DELETE(req: Request) {
 
   try {
     await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const productStore = db.products as ProductRecord[]
       const index = productStore.findIndex((product) => product.id === id)
       if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
@@ -581,6 +625,8 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    const adminAccessResponse = catalogAdminAccessErrorResponse(error)
+    if (adminAccessResponse) return adminAccessResponse
     if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono produktu." },
