@@ -6,6 +6,11 @@ import { auth } from "@/auth"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   CatalogProductInputSchema,
@@ -42,6 +47,8 @@ import {
 
 export const dynamic = "force-dynamic"
 
+const PRODUCT_IMPORT_MAX_BODY_BYTES = 8 * 1024 * 1024
+
 type ProductRecord = ProductCatalogRecord
 
 type Subcategory = { id: string; name: string }
@@ -74,6 +81,22 @@ function assertCurrentAdminAccess(users: StoredActor[], actor: SessionActor) {
   ) {
     throw new Error("ADMIN_ACCESS_REVOKED")
   }
+}
+
+function catalogJsonIngressErrorResponse(error: unknown) {
+  if (error instanceof CommerceBodyTooLargeError) {
+    return NextResponse.json(
+      { error: "Żądanie katalogowe jest zbyt duże." },
+      { status: 413 }
+    )
+  }
+  if (error instanceof CommerceBodyInvalidError) {
+    return NextResponse.json(
+      { error: "Nieprawidłowe body żądania katalogowego." },
+      { status: 400 }
+    )
+  }
+  return null
 }
 
 function catalogAdminAccessErrorResponse(error: unknown) {
@@ -159,7 +182,14 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const body: unknown = await req.json()
+  let body: unknown
+  try {
+    body = await readCommerceJson(req, PRODUCT_IMPORT_MAX_BODY_BYTES)
+  } catch (error) {
+    const ingressResponse = catalogJsonIngressErrorResponse(error)
+    if (ingressResponse) return ingressResponse
+    throw error
+  }
   const isImportRequest =
     typeof body === "object" &&
     body !== null &&
@@ -433,7 +463,16 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CatalogProductUpdateSchema.safeParse(await req.json())
+  let body: unknown
+  try {
+    body = await readCommerceJson(req)
+  } catch (error) {
+    const ingressResponse = catalogJsonIngressErrorResponse(error)
+    if (ingressResponse) return ingressResponse
+    throw error
+  }
+
+  const parsed = CatalogProductUpdateSchema.safeParse(body)
 
   if (!parsed.success) {
     return NextResponse.json(
