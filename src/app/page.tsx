@@ -4,259 +4,198 @@ import {
   BellRing,
   Camera,
   Cable,
-  CheckCircle2,
   DoorOpen,
   Flame,
-  ShieldCheck,
+  Mail,
+  MapPin,
+  Phone,
+  ShoppingBag,
   Wrench,
 } from "lucide-react"
 
 const services = [
   {
     title: "Systemy alarmowe",
-    label: "SSWiN",
+    code: "SSWiN",
     description:
-      "Projekt, montaż i rozbudowa systemów sygnalizacji włamania i napadu dla domów, firm i instytucji.",
+      "Projekt, montaż, uruchomienie i rozbudowa systemów sygnalizacji włamania i napadu.",
     icon: BellRing,
   },
   {
-    title: "Monitoring CCTV",
-    label: "CCTV",
+    title: "Monitoring wizyjny",
+    code: "CCTV",
     description:
-      "Monitoring wizyjny, rejestracja i zdalny dostęp — od małych instalacji po rozbudowane obiekty.",
+      "Kamery, rejestracja, sieć i zdalny dostęp projektowane jako jeden system.",
     icon: Camera,
   },
   {
     title: "Kontrola dostępu",
-    label: "KD / RCP",
+    code: "KD / RCP",
     description:
-      "Identyfikacja użytkowników, kontrola przejść i integracja z pozostałymi warstwami bezpieczeństwa.",
+      "Kontrola przejść, identyfikacja użytkowników i rejestracja czasu pracy.",
     icon: DoorOpen,
   },
   {
     title: "Systemy przeciwpożarowe",
-    label: "SSP / PPOŻ",
+    code: "SSP / PPOŻ",
     description:
-      "Systemy wykrywania pożaru i rozwiązania wspierające bezpieczną reakcję oraz ewakuację.",
+      "Systemy wykrywania pożaru, alarmowania i rozwiązania wspierające bezpieczną ewakuację.",
     icon: Flame,
   },
   {
     title: "Instalacje teletechniczne",
-    label: "INFRASTRUKTURA",
+    code: "INFRASTRUKTURA",
     description:
-      "Okablowanie, sieci strukturalne i infrastruktura techniczna przygotowana pod niezawodną eksploatację.",
+      "Okablowanie, sieci i infrastruktura techniczna przygotowana pod stabilną eksploatację.",
     icon: Cable,
   },
   {
     title: "Serwis i modernizacje",
-    label: "OPIEKA",
+    code: "SERWIS",
     description:
-      "Diagnostyka, naprawy, konserwacja i dostosowanie istniejących systemów do nowych potrzeb.",
+      "Diagnostyka, naprawy, konserwacja i rozbudowa istniejących instalacji.",
     icon: Wrench,
   },
 ]
 
 const process = [
-  {
-    index: "01",
-    title: "Analiza i projekt",
-    description:
-      "Poznajemy obiekt, sposób jego użytkowania, istniejącą infrastrukturę i wymagania bezpieczeństwa.",
-  },
-  {
-    index: "02",
-    title: "Montaż i uruchomienie",
-    description:
-      "Instalujemy, konfigurujemy i testujemy system tak, aby był czytelny, stabilny i serwisowalny.",
-  },
-  {
-    index: "03",
-    title: "Serwis i rozwój",
-    description:
-      "Zostajemy przy instalacji po uruchomieniu: diagnozujemy, konserwujemy i rozbudowujemy ją wraz z potrzebami obiektu.",
-  },
+  ["01", "Rozpoznanie", "Ustalamy potrzeby obiektu, istniejącą infrastrukturę i zakres odpowiedzialności."],
+  ["02", "Projekt i wykonanie", "Dobieramy rozwiązanie, montujemy urządzenia, konfigurujemy i uruchamiamy system."],
+  ["03", "Serwis", "Diagnozujemy, konserwujemy i rozwijamy instalację po uruchomieniu."],
 ]
 
 export default function Home() {
   return (
-    <div className="overflow-hidden">
-      <section className="relative px-2 pb-16 pt-8 sm:px-4 lg:pb-24 lg:pt-14">
-        <div className="absolute inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(circle_at_15%_10%,rgba(0,120,212,0.12),transparent_32%),radial-gradient(circle_at_85%_20%,rgba(14,165,233,0.10),transparent_30%)]" />
-        <div className="mx-auto grid max-w-[1440px] items-center gap-12 lg:grid-cols-[1.08fr_.92fr] lg:gap-16">
+    <div className="bg-[#f6f6f3]">
+      <section className="border-b border-[#dedfdf] bg-white">
+        <div className="mx-auto grid max-w-[1320px] gap-10 px-5 py-14 sm:px-7 sm:py-18 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-16 lg:py-20">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/8 px-4 py-2 text-xs font-extrabold tracking-wide text-primary">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Siedlce i region · ponad 30 lat doświadczenia
-            </div>
-
-            <h1 className="mt-7 max-w-4xl text-5xl font-extrabold leading-[1.02] tracking-[-0.045em] text-foreground sm:text-6xl lg:text-7xl">
-              Technologia, która chroni ludzi, obiekty i ciągłość działania.
+            <p className="text-base font-semibold text-primary">CEL-TRONICS · Siedlce</p>
+            <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-[1.08] tracking-[-0.03em] text-slate-950 sm:text-5xl lg:text-[56px]">
+              Systemy zabezpieczeń. Projekt, montaż i serwis.
             </h1>
-
-            <p className="mt-7 max-w-3xl text-lg font-medium leading-8 text-muted-foreground sm:text-xl">
-              Projektujemy, wdrażamy i serwisujemy systemy zabezpieczeń elektronicznych —
-              od alarmów i monitoringu CCTV po kontrolę dostępu, systemy przeciwpożarowe,
-              sieci teletechniczne i instalacje elektryczne.
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-600">
+              Realizujemy systemy alarmowe, monitoring CCTV, kontrolę dostępu,
+              systemy przeciwpożarowe i instalacje teletechniczne. Obsługujemy
+              nowe realizacje, modernizacje oraz istniejące instalacje wymagające serwisu.
             </p>
 
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/kontakt"
-                className="inline-flex h-14 items-center justify-center gap-3 rounded-xl bg-primary px-7 text-sm font-extrabold text-white shadow-xl shadow-primary/20 transition hover:brightness-110"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white transition hover:bg-[#a9161c]"
               >
-                Porozmawiaj z nami
+                Omów instalację
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/produkty"
-                className="inline-flex h-14 items-center justify-center rounded-xl border border-black/10 bg-white px-7 text-sm font-extrabold text-foreground transition hover:bg-black/[0.03] dark:border-white/10 dark:bg-white/5"
+                href="/uslugi"
+                className="inline-flex min-h-12 items-center justify-center rounded-lg border border-[#d6d8d9] bg-white px-5 text-base font-semibold text-slate-800 transition hover:border-slate-400"
               >
-                Przejdź do katalogu B2B
+                Zobacz zakres usług
               </Link>
             </div>
-
-            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4 text-sm text-muted-foreground">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 text-primary" />
-                <span>
-                  <strong className="block text-foreground">Projekt + montaż + serwis</strong>
-                  jeden zespół odpowiedzialny za całość
-                </span>
-              </div>
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
-                <span>
-                  <strong className="block text-foreground">Siedlce</strong>
-                  ul. Niklowa 22, 08-110
-                </span>
-              </div>
-            </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0d1c2d] p-7 text-white shadow-2xl sm:p-10">
-            <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-500/30 blur-[90px]" />
-            <div className="relative">
-              <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-300">
-                Kompleksowe systemy bezpieczeństwa
-              </span>
-              <h2 className="mt-5 max-w-xl text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl">
-                Od projektu instalacji do wieloletniej opieki serwisowej.
-              </h2>
-
-              <div className="mt-9 grid grid-cols-2 gap-3">
-                {[
-                  ["SSWiN", "systemy alarmowe"],
-                  ["CCTV", "monitoring wizyjny"],
-                  ["KD / RCP", "kontrola dostępu"],
-                  ["SSP / PPOŻ", "sygnalizacja pożaru"],
-                  ["Teletechnika", "sieci i infrastruktura"],
-                  ["Serwis", "konserwacja i modernizacje"],
-                ].map(([name, description]) => (
-                  <div
-                    key={name}
-                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-5"
-                  >
-                    <strong className="block text-base">{name}</strong>
-                    <span className="mt-1 block text-xs font-medium leading-5 text-slate-300">
-                      {description}
-                    </span>
-                  </div>
-                ))}
+          <aside className="rounded-xl border border-[#d9dbdc] bg-[#fafaf8] p-6">
+            <h2 className="text-lg font-semibold text-slate-950">Kontakt techniczny</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Najszybsza ścieżka do wyceny, serwisu albo konsultacji przed realizacją.
+            </p>
+            <div className="mt-6 space-y-4 text-[15px]">
+              <a href="tel:+48256336800" className="flex items-start gap-3 text-slate-800 hover:text-primary">
+                <Phone className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <span><strong className="block font-semibold">25 633 68 00</strong>telefon do CEL-TRONICS</span>
+              </a>
+              <a href="mailto:serwis@celtronics.pl" className="flex items-start gap-3 text-slate-800 hover:text-primary">
+                <Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <span><strong className="block font-semibold">serwis@celtronics.pl</strong>zapytania i serwis</span>
+              </a>
+              <div className="flex items-start gap-3 text-slate-700">
+                <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <span>ul. Niklowa 22<br />08-110 Siedlce</span>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </section>
 
-      <section id="uslugi" className="px-2 py-16 sm:px-4 lg:py-24">
-        <div className="mx-auto max-w-[1440px]">
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <div>
-              <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
-                Zakres usług
-              </span>
-              <h2 className="mt-3 max-w-3xl text-4xl font-extrabold tracking-[-0.035em] sm:text-5xl">
-                Bezpieczeństwo bez przypadkowych elementów.
-              </h2>
-            </div>
-            <p className="max-w-2xl text-base font-medium leading-7 text-muted-foreground">
-              Dobieramy system do obiektu i sposobu jego użytkowania. Nie sprzedajemy
-              przypadkowego zestawu urządzeń — projektujemy rozwiązanie, które ma działać jako całość.
+      <section className="mx-auto max-w-[1320px] px-5 py-14 sm:px-7 lg:py-18">
+        <div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-12">
+          <div>
+            <p className="text-base font-semibold text-primary">Zakres prac</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-slate-950">
+              Jedna firma dla instalacji i późniejszego serwisu.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-slate-600">
+              Dobór urządzeń jest częścią rozwiązania. Punktem wyjścia pozostaje obiekt,
+              wymagania i możliwość późniejszego utrzymania systemu.
             </p>
           </div>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid border-t border-l border-[#dcdddd] sm:grid-cols-2">
             {services.map((service) => (
               <article
-                key={service.title}
-                className="rounded-2xl border border-black/5 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-white/[0.04]"
+                key={service.code}
+                className="min-h-52 border-r border-b border-[#dcdddd] bg-white p-5 sm:p-6"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <service.icon className="h-6 w-6" />
+                <div className="flex items-center justify-between gap-4">
+                  <service.icon className="h-5 w-5 text-primary" />
+                  <span className="font-mono text-xs font-semibold text-slate-500">{service.code}</span>
                 </div>
-                <span className="mt-7 block text-[11px] font-extrabold uppercase tracking-[0.16em] text-primary">
-                  {service.label}
-                </span>
-                <h3 className="mt-2 text-2xl font-extrabold tracking-tight">{service.title}</h3>
-                <p className="mt-4 text-sm font-medium leading-6 text-muted-foreground">
-                  {service.description}
-                </p>
+                <h3 className="mt-8 text-xl font-semibold text-slate-950">{service.title}</h3>
+                <p className="mt-3 text-[15px] leading-6 text-slate-600">{service.description}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-[#102033] px-2 py-16 text-white sm:px-4 lg:py-24">
-        <div className="mx-auto max-w-[1440px]">
-          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+      <section className="border-y border-[#dedfdf] bg-white">
+        <div className="mx-auto max-w-[1320px] px-5 py-14 sm:px-7 lg:py-18">
+          <div className="grid gap-8 lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-12">
             <div>
-              <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-blue-300">
-                Jak pracujemy
-              </span>
-              <h2 className="mt-3 max-w-3xl text-4xl font-extrabold tracking-[-0.035em] sm:text-5xl">
-                Jedna odpowiedzialność od początku do końca.
+              <p className="text-base font-semibold text-primary">Jak pracujemy</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-slate-950">
+                Od rozpoznania do utrzymania instalacji.
               </h2>
             </div>
-            <p className="max-w-2xl text-base font-medium leading-7 text-slate-300">
-              Najpierw rozumiemy ryzyko i obiekt. Dopiero potem dobieramy technologię,
-              wykonujemy instalację i zostajemy przy niej serwisowo.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-4 lg:grid-cols-3">
-            {process.map((step) => (
-              <article key={step.index} className="rounded-2xl border border-white/10 p-7">
-                <span className="text-xs font-extrabold tracking-[0.16em] text-blue-300">
-                  {step.index}
-                </span>
-                <h3 className="mt-5 text-2xl font-extrabold">{step.title}</h3>
-                <p className="mt-4 text-sm font-medium leading-6 text-slate-300">
-                  {step.description}
-                </p>
-              </article>
-            ))}
+            <ol className="divide-y divide-[#dedfdf] border-y border-[#dedfdf]">
+              {process.map(([index, title, description]) => (
+                <li key={index} className="grid gap-3 py-5 sm:grid-cols-[56px_180px_minmax(0,1fr)] sm:items-start">
+                  <span className="font-mono text-sm font-semibold text-primary">{index}</span>
+                  <strong className="text-base font-semibold text-slate-950">{title}</strong>
+                  <span className="text-[15px] leading-6 text-slate-600">{description}</span>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       </section>
 
-      <section className="px-2 py-16 sm:px-4 lg:py-24">
-        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-8 rounded-[28px] bg-primary p-8 text-white shadow-2xl shadow-primary/20 sm:p-10 lg:flex-row lg:items-center">
+      <section className="mx-auto max-w-[1320px] px-5 py-14 sm:px-7 lg:py-18">
+        <div className="grid gap-6 rounded-xl border border-[#d9dbdc] bg-white p-6 sm:p-8 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-              Masz obiekt, który wymaga dobrego projektu?
+            <div className="flex items-center gap-2 text-primary">
+              <ShoppingBag className="h-5 w-5" />
+              <span className="text-base font-semibold">Dla partnerów i instalatorów</span>
+            </div>
+            <h2 className="mt-3 text-2xl font-semibold text-slate-950">
+              Katalog urządzeń, ceny konta, zamówienia i serwis.
             </h2>
-            <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-blue-100">
-              Opisz potrzeby. Wrócimy z konkretnymi pytaniami i propozycją dalszych kroków.
+            <p className="mt-2 max-w-3xl text-base leading-7 text-slate-600">
+              Strefa partnera korzysta z tych samych danych katalogowych i warunków handlowych,
+              które są weryfikowane po zalogowaniu.
             </p>
           </div>
-          <Link
-            href="/kontakt"
-            className="inline-flex h-13 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-7 text-sm font-extrabold text-primary"
-          >
-            Skontaktuj się
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link href="/produkty" className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#d6d8d9] px-4 text-[15px] font-semibold text-slate-800">
+              Przejdź do katalogu
+            </Link>
+            <Link href="/logowanie" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-950 px-4 text-[15px] font-semibold text-white">
+              Strefa partnera
+            </Link>
+          </div>
         </div>
       </section>
     </div>
