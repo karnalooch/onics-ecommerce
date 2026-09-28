@@ -7,6 +7,7 @@ export type AdminCostOperation =
   | "product-ai-description"
   | "knowledge-training"
   | "knowledge-validate-key"
+  | "knowledge-export"
 
 type AccountIdentity = {
   id?: string | null
@@ -17,6 +18,7 @@ export const ADMIN_COST_RATE_LIMIT_POLICIES = {
   "product-ai-description": { limit: 30, windowMs: 10 * 60_000 },
   "knowledge-training": { limit: 4, windowMs: 60 * 60_000 },
   "knowledge-validate-key": { limit: 20, windowMs: 10 * 60_000 },
+  "knowledge-export": { limit: 6, windowMs: 10 * 60_000 },
 } as const satisfies Record<AdminCostOperation, RateLimitPolicy>
 
 export function adminCostRateLimitKey(actor: AccountIdentity) {

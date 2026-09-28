@@ -16,6 +16,7 @@ const ROUTES = {
   stream: "src/app/api/knowledge/train/stream/route.ts",
   upload: "src/app/api/knowledge/upload/route.ts",
   validate: "src/app/api/knowledge/validate-key/route.ts",
+  export: "src/app/api/knowledge/export/route.ts",
 } as const
 
 describe("admin external-cost abuse protection", () => {
@@ -41,6 +42,23 @@ describe("admin external-cost abuse protection", () => {
         'checkAdminCostLimit("knowledge-training", authCheck.user)'
       )
     }
+  })
+
+  it("rate-limits knowledge export before workbook generation", () => {
+    expect(ADMIN_COST_RATE_LIMIT_POLICIES["knowledge-export"]).toEqual({
+      limit: 6,
+      windowMs: 10 * 60_000,
+    })
+
+    const source = read(ROUTES.export)
+    expect(source).toContain(
+      'checkAdminCostLimit("knowledge-export", authCheck.user)'
+    )
+    expect(source.indexOf("checkAdminCostLimit(")).toBeLessThan(
+      source.indexOf("XLSX.utils.book_new()")
+    )
+    expect(source).toContain("buildKnowledgeExportRows(store)")
+    expect(source).toContain("assertKnowledgeExportBufferSize(buffer)")
   })
 
   it("bounds JSON before expensive work and removes raw req.json reads", () => {
