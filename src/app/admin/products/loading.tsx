@@ -1,17 +1,25 @@
-// src/app/admin/products/loading.tsx
-import { ShoppingBag } from "lucide-react";
-
 export default function ProductsLoading() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-pulse">
-      <div className="relative">
-        <div className="w-20 h-20 border-4 border-primary/20 rounded-full border-t-primary animate-spin"></div>
-        <ShoppingBag className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-primary/40" />
+    <div className="mx-auto max-w-[1500px] space-y-5">
+      <div className="border-b border-[var(--ops-border)] pb-6">
+        <div className="h-3 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="mt-3 h-8 w-56 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="mt-3 h-4 w-80 max-w-full animate-pulse rounded bg-slate-100 dark:bg-slate-900" />
       </div>
-      <div className="text-center px-4">
-        <h3 className="text-2xl font-black uppercase tracking-tighter text-slate-800 italic">Analiza bazy <span className="text-primary underline decoration-primary/20 underline-offset-8">Magazynowej</span></h3>
-        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-3 max-w-sm mx-auto">Przeszukiwanie tysięcy produktów i weryfikacja stanów magazynowych...</p>
+
+      <div className="overflow-hidden rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)]">
+        {[1, 2, 3, 4, 5, 6].map((row) => (
+          <div
+            key={row}
+            className="grid min-h-16 grid-cols-[120px_minmax(0,1fr)_120px_100px] items-center gap-4 border-b border-[var(--ops-border)] px-4 last:border-b-0"
+          >
+            <div className="h-4 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-900" />
+            <div className="h-4 animate-pulse rounded bg-slate-100 dark:bg-slate-900" />
+            <div className="h-8 animate-pulse rounded bg-slate-100 dark:bg-slate-900" />
+          </div>
+        ))}
       </div>
     </div>
-  );
+  )
 }
