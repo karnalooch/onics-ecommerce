@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema, ProgressCallback, ParserOptions } from './types';
+import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema, ProgressCallback, ParserOptions, KnowledgeTrainingActor } from './types';
 import { hasAccountRoleAccess } from '@/lib/accountAccess';
 import { findStoredUserBySession } from '@/lib/sessionIdentity';
 
@@ -159,8 +159,17 @@ export function deleteKnowledgeEntryFromDb(
   return true
 }
 
-export async function deleteKnowledgeEntry(model: string) {
-  return mutateMockData((db) => deleteKnowledgeEntryFromDb(db, model))
+export async function deleteKnowledgeEntry(
+  model: string,
+  actor: KnowledgeTrainingActor
+) {
+  return mutateMockData((db) => {
+    assertKnowledgeTrainingAdminAccess(
+      db.users as KnowledgeWriteActor[],
+      { aborted: false, actor }
+    )
+    return deleteKnowledgeEntryFromDb(db, model)
+  })
 }
 
 function latestKnowledgeTimestamp(
