@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   nextUserRevision,
   toSafeUserResponse,
@@ -10,6 +12,10 @@ import { mutateMockData } from "@/store/serverStore"
 
 type DiscountUser = {
   id: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
   discount?: number
   tierName?: string
   revision?: number | null
@@ -48,6 +54,14 @@ export async function PUT(req: Request) {
 
     const submission = await mutateMockData((db) => {
       const userStore = db.users as DiscountUser[]
+      const currentActor = findStoredUserBySession(userStore, authCheck.user)
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("ADMIN_ACCESS_REVOKED")
+      }
+
       const userIndex = userStore.findIndex(
         (candidate) => candidate.id === parsed.data.id
       )
@@ -102,6 +116,12 @@ export async function PUT(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed zmianą warunków handlowych." },
+        { status: 403 }
+      )
+    }
     if (error instanceof Error && error.message === "USER_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono użytkownika." },
