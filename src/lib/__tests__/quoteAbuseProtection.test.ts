@@ -14,7 +14,7 @@ describe("quote submission abuse protection", () => {
     const source = readQuoteRoute()
     const authIndex = source.indexOf('authorizeAPI(["ADMIN", "BIZ"])')
     const limiterIndex = source.indexOf('"quote-submit-account"')
-    const bodyIndex = source.indexOf("await req.json()")
+    const bodyIndex = source.indexOf("readQuoteJson(req)")
 
     expect(authIndex).toBeGreaterThanOrEqual(0)
     expect(limiterIndex).toBeGreaterThan(authIndex)
@@ -22,6 +22,8 @@ describe("quote submission abuse protection", () => {
     expect(source).toContain("QUOTE_SUBMISSION_RATE_LIMIT")
     expect(source).toContain('"Retry-After": String(result.retryAfterSeconds)')
     expect(source).toContain("status: 429")
+    expect(source).toContain("QuoteBodyTooLargeError")
+    expect(source).toContain("QuoteBodyInvalidError")
   })
 
   it("bounds SMTP connection and socket lifetime", () => {
