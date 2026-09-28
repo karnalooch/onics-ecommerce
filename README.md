@@ -97,12 +97,13 @@ The application exposes two uncached operational endpoints:
 
 The readiness payload reports only coarse check states (`ok` / `error`) and does not expose filesystem paths, secrets or raw exception messages.
 
-## Authentication throttling
+## Abuse throttling
 
 Public credential work is protected by an in-process fixed-window limiter before expensive bcrypt verification:
 
 - registration: 5 attempts per client / 15 minutes and 3 attempts per normalized e-mail / hour; valid submissions return the same generic HTTP 202 response whether the e-mail is new or already registered, while duplicate prevention remains atomic under the file-store lock; blocked registration returns HTTP 429 with `Retry-After`
 - credentials login: 30 attempts per client / 15 minutes and 20 attempts per normalized e-mail / 15 minutes; rejected account lookups consume equivalent bcrypt work before returning, blocked login remains indistinguishable from invalid credentials, and passwords beyond bcrypt's 72-byte UTF-8 boundary are rejected before account lookup
+- authenticated quote submissions: 20 new attempts per current account / hour before request-body parsing; blocked submissions return HTTP 429 with `Retry-After`, and outbound SMTP uses bounded connection/greeting/socket timeouts so one delivery cannot pin a worker indefinitely
 
 Client identity is taken from `CF-Connecting-IP`, then `X-Real-IP`, then the first `X-Forwarded-For` value. The production reverse proxy **must strip and overwrite** these incoming headers so clients cannot spoof them. If none is available, the limiter intentionally falls back to one shared `unknown` bucket.
 
