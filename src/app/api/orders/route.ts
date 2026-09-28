@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { readBoundedJson } from "@/lib/boundedJsonIngress"
 import { resolveCartItems } from "@/lib/commerce"
 import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
 import {
@@ -178,7 +179,20 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = CreateOrderSchema.safeParse(await req.json())
+    const body = await readBoundedJson(req)
+    if (!body.ok) {
+      return NextResponse.json(
+        {
+          error:
+            body.error === "too-large"
+              ? "Żądanie zamówienia jest zbyt duże."
+              : "Nieprawidłowy JSON zamówienia.",
+        },
+        { status: body.error === "too-large" ? 413 : 400 }
+      )
+    }
+
+    const parsed = CreateOrderSchema.safeParse(body.value)
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane zamówienia." },
@@ -331,7 +345,20 @@ export async function PUT(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = UpdateOrderSchema.safeParse(await req.json())
+    const body = await readBoundedJson(req)
+    if (!body.ok) {
+      return NextResponse.json(
+        {
+          error:
+            body.error === "too-large"
+              ? "Żądanie aktualizacji zamówienia jest zbyt duże."
+              : "Nieprawidłowy JSON aktualizacji zamówienia.",
+        },
+        { status: body.error === "too-large" ? 413 : 400 }
+      )
+    }
+
+    const parsed = UpdateOrderSchema.safeParse(body.value)
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowa aktualizacja." },
