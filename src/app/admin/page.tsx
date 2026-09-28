@@ -19,16 +19,38 @@ import {
   isSupportedKnowledgeUploadFilename,
   listKnowledgeUploadFiles,
 } from "@/lib/knowledge/files"
-import { auditKnowledgeSourceInvariants } from "@/lib/knowledge/invariants"
+import { auditCurrentKnowledgeSourceInvariants } from "@/lib/knowledge/invariants"
+
+type AdminUserRow = {
+  id?: string
+  email?: string
+  username?: string
+  companyName?: string
+  nip?: string | null
+  roleType?: string
+  isApproved?: boolean
+  revision?: number
+}
+
+type AdminStatusRecord = {
+  status?: unknown
+}
+
+type AdminProductRecord = {
+  sku?: string
+  name?: string
+  manufacturer?: string
+  categoryId?: string | null
+  price?: number | null
+}
 
 async function readKnowledgeStatus() {
   try {
     const store = await getKnowledge()
     const files = listKnowledgeUploadFiles()
-    const report = auditKnowledgeSourceInvariants({
+    const report = auditCurrentKnowledgeSourceInvariants({
       store,
       files,
-      now: Date.now(),
       retentionMs: UNREFERENCED_KNOWLEDGE_UPLOAD_RETENTION_MS,
       isSupportedFilename: isSupportedKnowledgeUploadFilename,
     })
@@ -48,21 +70,21 @@ export default async function AdminDashboard() {
   const { users, orders, repairs, products } = initializeMockData()
   const knowledge = await readKnowledgeStatus()
 
-  const unapprovedUsers = users.filter(
-    (user: any) => user.roleType === "BIZ" && !user.isApproved
+  const unapprovedUsers = (users as AdminUserRow[]).filter(
+    (user) => user.roleType === "BIZ" && !user.isApproved
   )
-  const pendingQuotes = orders.filter((order: any) =>
+  const pendingQuotes = (orders as AdminStatusRecord[]).filter((order) =>
     isQuoteAdminActionable(order.status)
   )
-  const activeRepairs = repairs.filter(
-    (repair: any) => !isRepairTerminalStatus(repair.status)
+  const activeRepairs = (repairs as AdminStatusRecord[]).filter(
+    (repair) => !isRepairTerminalStatus(repair.status)
   )
-  const unpricedProducts = products.filter(
-    (product: any) =>
+  const unpricedProducts = (products as AdminProductRecord[]).filter(
+    (product) =>
       !Number.isFinite(Number(product.price)) || Number(product.price) <= 0
   )
-  const incompleteProducts = products.filter(
-    (product: any) =>
+  const incompleteProducts = (products as AdminProductRecord[]).filter(
+    (product) =>
       !String(product.sku || "").trim() ||
       !String(product.name || "").trim() ||
       !String(product.manufacturer || "").trim() ||
@@ -212,7 +234,7 @@ export default async function AdminDashboard() {
               </div>
             ) : (
               <div className="divide-y divide-[var(--ops-border)]">
-                {unapprovedUsers.slice(0, 6).map((user: any) => (
+                {unapprovedUsers.slice(0, 6).map((user) => (
                   <div
                     key={user.id}
                     className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_140px_auto] sm:items-center"
