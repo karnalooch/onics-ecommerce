@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
 import { useState } from "react"
-import { ArrowLeft, KeyRound, Loader2, Mail } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -44,152 +44,107 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-[calc(100vh-72px)] bg-white dark:bg-[#0b0d10] lg:grid-cols-[.9fr_1.1fr]">
-      <section className="hidden border-r border-slate-800 bg-[#111820] p-10 text-white lg:flex lg:items-center xl:p-16">
-        <div className="mx-auto w-full max-w-xl">
-          <div className="inline-flex rounded-md bg-white px-3 py-2">
+    <div className="min-h-[calc(100vh-68px)] bg-[#f2f2ef] px-5 py-12 sm:py-16">
+      <div className="mx-auto w-full max-w-[540px]">
+        <div className="mb-8 flex justify-center">
+          <Link href="/" aria-label="Wróć do CEL-TRONICS">
             <Image
               src="/assets/logo.svg"
               alt="CEL-TRONICS"
-              width={220}
+              width={210}
               height={42}
-              className="h-auto w-[220px]"
               priority
+              className="h-auto w-[190px] sm:w-[210px]"
             />
-          </div>
-
-          <div className="mt-12 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-            Strefa partnera
-          </div>
-          <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight">
-            Dostęp do katalogu, cen i obsługi CEL-TRONICS.
-          </h1>
-          <p className="mt-5 max-w-lg text-base leading-7 text-slate-300">
-            Jedno konto do katalogu urządzeń, zapytań, zamówień, serwisu i
-            danych firmowych przypisanych do Twojej firmy.
-          </p>
-
-          <dl className="mt-10 divide-y divide-white/10 border-y border-white/10 text-sm">
-            <div className="grid grid-cols-[150px_1fr] gap-4 py-4">
-              <dt className="text-slate-400">Katalog</dt>
-              <dd>urządzenia, ceny konta i dostępność</dd>
-            </div>
-            <div className="grid grid-cols-[150px_1fr] gap-4 py-4">
-              <dt className="text-slate-400">Obsługa</dt>
-              <dd>zapytania, zamówienia i terminy realizacji</dd>
-            </div>
-            <div className="grid grid-cols-[150px_1fr] gap-4 py-4">
-              <dt className="text-slate-400">Serwis</dt>
-              <dd>zgłoszenia RMA i status napraw</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
-
-      <section className="flex items-center justify-center px-5 py-12 sm:px-10 lg:px-14">
-        <div className="w-full max-w-[460px]">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Wróć do CEL-TRONICS
           </Link>
+        </div>
 
-          <div className="mt-10 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+        <main className="rounded-2xl border border-[#dedfdf] bg-white p-6 shadow-[0_18px_45px_rgba(18,24,32,0.06)] sm:p-9">
+          <p className="text-[15px] font-semibold text-primary">
             CEL-TRONICS · strefa partnera
-          </div>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight">
-            Zaloguj się
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Użyj danych przypisanych do konta Twojej firmy.
+          </p>
+          <h1 className="mt-2 text-[34px] font-semibold leading-[1.12] tracking-[-0.025em] text-slate-950 sm:text-[38px]">
+            Zaloguj się do konta firmy
+          </h1>
+          <p className="mt-4 text-[17px] leading-7 text-slate-600">
+            Katalog z cenami Twojej firmy, zamówienia, zapytania i obsługa serwisowa w jednym miejscu.
           </p>
 
           {error ? (
             <div
               role="alert"
-              className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100"
+              className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[15px] leading-6 text-red-800"
             >
               {error}
             </div>
           ) : null}
 
-          <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-            <label>
-              <span className="mb-2 block text-sm font-semibold">
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+            <label className="block">
+              <span className="mb-2 block text-base font-medium text-slate-900">
                 Adres e-mail
               </span>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input
-                  id="login-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  placeholder="partner@firma.pl"
-                  className="h-12 w-full rounded-lg border border-slate-300 bg-transparent pl-10 pr-3 text-sm outline-none focus:border-slate-950 dark:border-slate-700 dark:focus:border-white"
-                />
-              </div>
+              <input
+                id="login-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                placeholder="partner@firma.pl"
+                className="h-13 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 text-base text-slate-950 outline-none transition focus:border-primary"
+              />
             </label>
 
-            <label>
-              <span className="mb-2 block text-sm font-semibold">Hasło</span>
-              <div className="relative">
-                <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input
-                  id="login-password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  className="h-12 w-full rounded-lg border border-slate-300 bg-transparent pl-10 pr-3 text-sm outline-none focus:border-slate-950 dark:border-slate-700 dark:focus:border-white"
-                />
-              </div>
+            <label className="block">
+              <span className="mb-2 block text-base font-medium text-slate-900">
+                Hasło
+              </span>
+              <input
+                id="login-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                className="h-13 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 text-base text-slate-950 outline-none transition focus:border-primary"
+              />
             </label>
 
             <button
               type="submit"
               disabled={loading}
-              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60 dark:bg-white dark:text-slate-950"
+              className="flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white transition hover:bg-[#a9161c] disabled:cursor-wait disabled:opacity-60"
             >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : null}
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
               {loading ? "Logowanie…" : "Zaloguj się"}
             </button>
           </form>
 
-          <div className="mt-7 border-t border-slate-200 pt-5 text-sm leading-6 text-slate-500 dark:border-slate-800">
-            <p>
-              Potrzebujesz dostępu dla swojej firmy albo pomocy z kontem?
+          <div className="mt-8 border-t border-[#e2e3e3] pt-6">
+            <p className="text-base leading-7 text-slate-600">
+              Nie masz jeszcze dostępu firmowego?
             </p>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-              <Link
-                href="/rejestracja"
-                className="font-semibold text-foreground underline-offset-4 hover:underline"
-              >
-                Załóż konto partnera
-              </Link>
-              <a
-                href="tel:+48256336800"
-                className="font-semibold text-foreground underline-offset-4 hover:underline"
-              >
-                25 633 68 00
-              </a>
-              <a
-                href="mailto:serwis@celtronics.pl"
-                className="font-semibold text-foreground underline-offset-4 hover:underline"
-              >
-                serwis@celtronics.pl
-              </a>
-            </div>
+            <Link
+              href="/rejestracja"
+              className="mt-2 inline-flex text-base font-semibold text-primary hover:underline"
+            >
+              Załóż konto partnera
+            </Link>
           </div>
+        </main>
+
+        <div className="mt-6 text-center text-sm leading-6 text-slate-600">
+          Pomoc z kontem:{" "}
+          <a href="tel:+48256336800" className="font-semibold text-slate-900 hover:text-primary">
+            25 633 68 00
+          </a>
+          {" · "}
+          <a href="mailto:serwis@celtronics.pl" className="font-semibold text-slate-900 hover:text-primary">
+            serwis@celtronics.pl
+          </a>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
