@@ -1,107 +1,105 @@
-// src/app/sklep/_components/ProductCard.tsx
-"use client";
+"use client"
 
-import { ShoppingCart, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useCartStore } from "@/store/cartStore";
-import { toast } from "sonner";
-import { hasActiveCartPrice } from "@/lib/cartPricing";
-import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity";
+import { Send, ShoppingCart } from "lucide-react"
+import { useCartStore } from "@/store/cartStore"
+import { toast } from "sonner"
+import { hasActiveCartPrice } from "@/lib/cartPricing"
+import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
+import type { StorefrontProduct } from "@/lib/storefrontCatalog"
 
-interface IProductCardProps {
-  product: any;
-  isB2B: boolean;
+interface ProductCardProps {
+  product: StorefrontProduct
+  isB2B: boolean
 }
 
-export function ProductCard({ product, isB2B }: IProductCardProps) {
-  const { addItem } = useCartStore();
-  const hasActivePrice = hasActiveCartPrice(product.price);
-  const available = Number(product.stock ?? 0) > 0;
-  const canAdd = isB2B && (hasActivePrice ? available : true);
+export function ProductCard({ product, isB2B }: ProductCardProps) {
+  const { addItem } = useCartStore()
+  const hasActivePrice = hasActiveCartPrice(product.price)
+  const available = Number(product.stock ?? 0) > 0
+  const canAdd = isB2B && (hasActivePrice ? available : true)
+
+  const manufacturer =
+    typeof product.manufacturer === "string" ? product.manufacturer : "—"
+
+  const description =
+    [product.specs, product.catalogSpecs, product.seoDescription].find(
+      (value) => typeof value === "string" && value.trim()
+    ) || ""
 
   const handleAddToCart = () => {
-    const added = addItem({ ...product, quantity: 1 });
+    const added = addItem({
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      price: Number(product.price ?? 0),
+      quantity: 1,
+    })
+
     if (!added) {
       toast.error(
-        `Maksymalna ilość jednego produktu w koszyku to ${CART_ITEM_QUANTITY_MAX} szt.`
-      );
-      return;
+        "Maksymalna ilość jednego produktu w koszyku to " +
+          String(CART_ITEM_QUANTITY_MAX) +
+          " szt."
+      )
+      return
     }
 
     toast.success(
       hasActivePrice
-        ? `Dodano do koszyka: ${product.name}`
-        : `Dodano do zapytania: ${product.name}`,
-      {
-        icon: hasActivePrice
-          ? <ShoppingCart className="w-4 h-4 text-primary" />
-          : <Send className="w-4 h-4 text-primary" />,
-        className: "rounded-2xl font-bold"
-      }
-    );
-  };
+        ? "Dodano do wyboru: " + product.name
+        : "Dodano do zapytania: " + product.name
+    )
+  }
 
   return (
-    <div className="group flex flex-col h-full bg-white border border-slate-100 rounded-[2.5rem] overflow-hidden hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500">
-      {/* Visual Area */}
-      <div className="relative h-48 bg-slate-50 flex items-center justify-center p-8 overflow-hidden">
-        <div className="absolute inset-0 bg-grid-slate-200/50 [mask-image:linear-gradient(0deg,white,transparent)]" />
-        <div className="relative z-10 w-full h-full border-2 border-dashed border-slate-200 rounded-[2rem] flex items-center justify-center text-slate-300 group-hover:scale-110 transition-transform duration-500">
-          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 rotate-12">Preview Model</span>
-        </div>
-        <div className="absolute top-4 left-4">
-           {product.stock > 0 ? (
-             <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none rounded-full text-[9px] font-black tracking-tight flex items-center gap-1">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> DOSTĘPNY
-             </Badge>
-           ) : (
-             <Badge variant="secondary" className="bg-slate-100 text-slate-400 border-none rounded-full text-[9px] font-black uppercase">BRAK</Badge>
-           )}
+    <article className="grid gap-4 px-4 py-4 lg:grid-cols-[120px_minmax(0,1fr)_120px_150px_130px] lg:items-center">
+      <div className="font-mono text-sm font-semibold">{product.sku}</div>
+
+      <div className="min-w-0">
+        <div className="truncate font-semibold">{product.name}</div>
+        <div className="mt-1 text-xs text-slate-500">
+          {manufacturer}
+          {description ? " · " + String(description) : ""}
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="p-8 flex flex-col flex-grow">
-        <div className="mb-4">
-           <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-black text-primary uppercase tracking-widest leading-none">{product.manufacturer || 'General'}</span>
-              <div className="w-1 h-1 bg-slate-200 rounded-full" />
-              <span className="font-mono text-[9px] font-black text-slate-400 uppercase tracking-widest">{product.sku}</span>
-           </div>
-           <h3 className="text-lg font-black text-slate-800 leading-tight group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem] mt-2">
-             {product.name}
-           </h3>
-        </div>
-
-        <p className="text-sm text-slate-500 font-medium line-clamp-2 mb-6 flex-grow">
-           {product.specs || product.catalogSpecs || product.seoDescription || "Wysokiej klasy komponent systemów zabezpieczeń spełniający normy profesjonalnej certyfikacji."}
-        </p>
-
-        <div className="pt-6 border-t border-slate-100 flex items-center justify-between mt-auto">
-           <div className="flex flex-col">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{isB2B ? "Twoja Cena B2B" : "Cena Brutto"}</span>
-              <span className="text-2xl font-black text-slate-900 tracking-tight">
-                {hasActivePrice ? `${Number(product.price).toLocaleString('pl-PL', { minimumFractionDigits: 2 })} zł` : "Na zapytanie"}
-              </span>
-           </div>
-           <Button 
-             onClick={handleAddToCart}
-             disabled={!canAdd}
-             title={
-               !isB2B
-                 ? "Zakupy online są dostępne dla partnerów B2B."
-                 : hasActivePrice
-                   ? "Dodaj do koszyka"
-                   : "Dodaj do zapytania"
-             }
-             className="h-12 w-12 rounded-2xl bg-slate-900 hover:bg-primary text-white shadow-xl shadow-slate-900/10 transition-all active:scale-95 group-hover:rotate-[360deg] duration-700"
-             size="icon"
-           >
-             {hasActivePrice ? <ShoppingCart className="w-5 h-5" /> : <Send className="w-5 h-5" />}
-           </Button>
-        </div>
+      <div className="text-sm">
+        <span
+          className={
+            "inline-flex rounded-md border px-2 py-1 text-xs font-semibold " +
+            (available
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
+              : "border-slate-200 text-slate-500 dark:border-slate-800")
+          }
+        >
+          {available ? String(Number(product.stock ?? 0)) + " szt." : "Brak"}
+        </span>
       </div>
-    </div>
-  );
+
+      <div className="font-mono text-sm font-semibold">
+        {hasActivePrice
+          ? Number(product.price).toLocaleString("pl-PL", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }) + " zł netto"
+          : "Na zapytanie"}
+      </div>
+
+      <div className="lg:text-right">
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={!canAdd}
+          className="min-h-10 rounded-lg bg-slate-950 px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-950"
+        >
+          {hasActivePrice ? (
+            <ShoppingCart className="mr-2 inline h-4 w-4" />
+          ) : (
+            <Send className="mr-2 inline h-4 w-4" />
+          )}
+          {hasActivePrice ? "Dodaj" : "Zapytaj"}
+        </button>
+      </div>
+    </article>
+  )
 }
