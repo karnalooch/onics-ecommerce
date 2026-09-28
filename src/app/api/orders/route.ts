@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import {
   COMMERCE_TRANSACTION_ROLES,
   isCommerceTransactionRole,
@@ -361,6 +362,17 @@ export async function PUT(req: Request) {
     }
 
     const submission = await mutateMockData((db) => {
+      const currentActor = findStoredUserBySession(
+        db.users as StoredUser[],
+        authCheck.user
+      )
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("ADMIN_ACCESS_REVOKED")
+      }
+
       const orderStore = db.orders as StoredOrder[]
       const index = orderStore.findIndex((order) => order.id === parsed.data.id)
 
@@ -487,6 +499,13 @@ export async function PUT(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed aktualizacją zamówienia." },
+        { status: 403 }
+      )
+    }
+
     if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono zamówienia." }, { status: 404 })
     }

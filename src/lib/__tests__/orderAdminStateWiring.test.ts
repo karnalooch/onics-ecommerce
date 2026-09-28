@@ -53,6 +53,32 @@ describe("admin order state fencing wiring", () => {
     )
   })
 
+  it("rechecks current admin access inside the order update mutation", () => {
+    const route = read("src/app/api/orders/route.ts")
+    const start = route.indexOf("export async function PUT")
+    const flow = route.slice(start)
+    const mutation = flow.indexOf("mutateMockData((db) =>")
+    const adminFence = flow.indexOf(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])',
+      mutation
+    )
+    const targetLookup = flow.indexOf(
+      "const index = orderStore.findIndex(",
+      adminFence
+    )
+    const inventoryWrite = flow.indexOf(
+      "applyOrderInventoryTransition(",
+      adminFence
+    )
+
+    expect(start).toBeGreaterThan(-1)
+    expect(mutation).toBeGreaterThan(-1)
+    expect(adminFence).toBeGreaterThan(mutation)
+    expect(targetLookup).toBeGreaterThan(adminFence)
+    expect(inventoryWrite).toBeGreaterThan(adminFence)
+    expect(flow).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
+  })
+
   it("requires the observed token before an admin PUT", () => {
     const route = read("src/app/api/orders/route.ts")
 
