@@ -4,16 +4,17 @@ import { PackageSearch, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { ProductTableRow } from "./ProductTableRow";
 import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from "@/components/ui/table";
+import type { ICategory, IProduct } from "../_lib/types";
 
 interface IProductTableProps {
-  products: any[];
+  products: IProduct[];
   onDelete: (id: string, expectedRevision: number) => void;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   pageSize: number;
   onPageSizeChange: (size: number) => void;
-  categories: any[];
+  categories: ICategory[];
 }
 
 export function ProductTable({ 
