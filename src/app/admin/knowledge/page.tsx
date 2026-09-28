@@ -5,16 +5,15 @@ import {
   isSupportedKnowledgeUploadFilename,
   listKnowledgeUploadFiles,
 } from "@/lib/knowledge/files"
-import { auditKnowledgeSourceInvariants } from "@/lib/knowledge/invariants"
+import { auditCurrentKnowledgeSourceInvariants } from "@/lib/knowledge/invariants"
 import { KnowledgeMaintenanceActions } from "./KnowledgeMaintenanceActions"
 
 export default async function KnowledgeOperationsPage() {
   const store = await getKnowledge()
   const files = listKnowledgeUploadFiles()
-  const report = auditKnowledgeSourceInvariants({
+  const report = auditCurrentKnowledgeSourceInvariants({
     store,
     files,
-    now: Date.now(),
     retentionMs: UNREFERENCED_KNOWLEDGE_UPLOAD_RETENTION_MS,
     isSupportedFilename: isSupportedKnowledgeUploadFilename,
   })
