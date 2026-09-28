@@ -69,23 +69,28 @@ export function PartnerRegistrationForm({
 
   return (
     <div>
-      <div className="grid border-b border-slate-200 sm:grid-cols-3 dark:border-slate-800">
+      <div className="grid border-b border-[#d9dbdc] sm:grid-cols-3">
         {steps.map(([label, index]) => {
-          const active = step >= index
+          const active = step === index
+          const completed = step > index
           return (
             <div
               key={index}
               className={
-                "flex min-h-14 items-center gap-3 px-4 text-sm " +
-                (active ? "font-semibold text-foreground" : "text-slate-400")
+                "flex min-h-16 items-center gap-3 border-b-2 px-5 text-[15px] sm:border-b-0 sm:border-t-2 " +
+                (active
+                  ? "border-primary bg-[#fbf7f7] font-semibold text-slate-950"
+                  : completed
+                    ? "border-transparent font-medium text-slate-700"
+                    : "border-transparent text-slate-500")
               }
             >
               <span
                 className={
-                  "flex h-7 w-7 items-center justify-center rounded-md border text-xs font-mono " +
-                  (active
-                    ? "border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950"
-                    : "border-slate-200 dark:border-slate-800")
+                  "flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold " +
+                  (active || completed
+                    ? "border-primary text-primary"
+                    : "border-[#cfd2d4] text-slate-500")
                 }
               >
                 {index}
@@ -96,15 +101,17 @@ export function PartnerRegistrationForm({
         })}
       </div>
 
-      <div className="p-5 sm:p-6">
+      <div className="p-5 sm:p-7 lg:p-8">
         {step === 1 ? (
           <section>
-            <h2 className="text-xl font-semibold">Dostęp do strefy partnera</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Ustaw służbowy adres e-mail i hasło do konta CEL-TRONICS.
+            <h2 className="text-2xl font-semibold tracking-[-0.01em] text-slate-950">
+              Dane logowania
+            </h2>
+            <p className="mt-2 text-base leading-7 text-slate-600">
+              Podaj służbowy adres e-mail i ustaw hasło do strefy partnera CEL-TRONICS.
             </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-6 grid gap-5 md:grid-cols-2">
               <Field
                 label="Adres e-mail"
                 icon={<Mail className="h-4 w-4" />}
@@ -130,15 +137,15 @@ export function PartnerRegistrationForm({
             </div>
 
             <InfoBox>
-              Konto partnera aktywujemy po sprawdzeniu danych firmy. W razie
-              problemów z dostępem skontaktuj się bezpośrednio z CEL-TRONICS.
+              Konto partnera aktywujemy po sprawdzeniu danych firmy. Samo wysłanie
+              formularza nie udostępnia cen ani funkcji zamówień.
             </InfoBox>
 
-            <div className="mt-5 flex justify-end">
+            <div className="mt-6 flex justify-end">
               <NextButton
                 disabled={!isStep1Valid}
                 onClick={nextStep}
-                label="Dalej"
+                label="Dalej: dane firmy"
               />
             </div>
           </section>
@@ -146,13 +153,15 @@ export function PartnerRegistrationForm({
 
         {step === 2 ? (
           <section>
-            <h2 className="text-xl font-semibold">Dane firmy</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Dane służą do identyfikacji kontrahenta i przypisania warunków
-              handlowych.
+            <h2 className="text-2xl font-semibold tracking-[-0.01em] text-slate-950">
+              Dane firmy
+            </h2>
+            <p className="mt-2 text-base leading-7 text-slate-600">
+              Na ich podstawie identyfikujemy kontrahenta i przypisujemy właściwe
+              warunki handlowe.
             </p>
 
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="mt-6 grid gap-5 md:grid-cols-2">
               <Field
                 label="NIP"
                 icon={<ShieldCheck className="h-4 w-4" />}
@@ -202,12 +211,12 @@ export function PartnerRegistrationForm({
               />
             </div>
 
-            <div className="mt-5 flex items-center justify-between">
+            <div className="mt-6 flex items-center justify-between gap-4">
               <BackButton onClick={prevStep} />
               <NextButton
                 disabled={!isStep2Valid}
                 onClick={nextStep}
-                label="Dalej"
+                label="Dalej: potwierdzenie"
               />
             </div>
           </section>
@@ -215,13 +224,14 @@ export function PartnerRegistrationForm({
 
         {step === 3 ? (
           <section>
-            <h2 className="text-xl font-semibold">Potwierdzenie zgłoszenia</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              Zaakceptuj wymagane warunki i wyślij dane do weryfikacji
-              CEL-TRONICS.
+            <h2 className="text-2xl font-semibold tracking-[-0.01em] text-slate-950">
+              Potwierdzenie zgłoszenia
+            </h2>
+            <p className="mt-2 text-base leading-7 text-slate-600">
+              Zaakceptuj wymagane warunki i wyślij dane firmy do weryfikacji.
             </p>
 
-            <div className="mt-5 space-y-3">
+            <div className="mt-6 space-y-3">
               <Consent
                 label="Akceptuję regulamin strefy partnera CEL-TRONICS"
                 checked={formData.consentReg}
@@ -243,7 +253,7 @@ export function PartnerRegistrationForm({
               przypisanych do partnera CEL-TRONICS.
             </InfoBox>
 
-            <div className="mt-5 flex items-center justify-between">
+            <div className="mt-6 flex items-center justify-between gap-4">
               <BackButton onClick={prevStep} />
               <button
                 type="button"
@@ -251,7 +261,7 @@ export function PartnerRegistrationForm({
                   if (isStep3Valid) void onSubmit(formData)
                 }}
                 disabled={!isStep3Valid || loading}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-950"
+                className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white hover:bg-[#a9161c] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {loading ? "Wysyłanie…" : "Wyślij zgłoszenie"}
                 <Check className="h-4 w-4" />
@@ -286,9 +296,9 @@ function Field({
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
 }) {
   return (
-    <label>
-      <span className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        {icon}
+    <label className="block">
+      <span className="mb-2 flex items-center gap-2 text-base font-medium text-slate-900">
+        <span className="text-slate-500">{icon}</span>
         {label}
       </span>
       <input
@@ -299,7 +309,7 @@ function Field({
         maxLength={maxLength}
         autoComplete={autoComplete}
         inputMode={inputMode}
-        className="h-11 w-full rounded-lg border border-slate-300 bg-transparent px-3 text-sm outline-none focus:border-slate-950 dark:border-slate-700 dark:focus:border-white"
+        className="h-12 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 text-base text-slate-950 outline-none focus:border-primary"
       />
     </label>
   )
@@ -315,21 +325,21 @@ function Consent({
   onChange: (value: boolean) => void
 }) {
   return (
-    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[#d9dbdc] bg-[#fafaf8] p-4">
       <input
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 h-4 w-4 accent-slate-950"
+        className="mt-1 h-4 w-4 accent-[#c61f26]"
       />
-      <span className="text-sm font-medium leading-5">{label}</span>
+      <span className="text-base leading-6 text-slate-800">{label}</span>
     </label>
   )
 }
 
 function InfoBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-white/[0.03] dark:text-slate-300">
+    <div className="mt-6 border-l-2 border-primary bg-[#fbf7f7] px-4 py-3 text-[15px] leading-6 text-slate-700">
       {children}
     </div>
   )
@@ -340,7 +350,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-slate-500"
+      className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2 text-base font-medium text-slate-600 hover:text-slate-950"
     >
       <ChevronLeft className="h-4 w-4" />
       Wstecz
@@ -362,7 +372,7 @@ function NextButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-950"
+      className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white hover:bg-[#a9161c] disabled:cursor-not-allowed disabled:opacity-40"
     >
       {label}
       <ChevronRight className="h-4 w-4" />
