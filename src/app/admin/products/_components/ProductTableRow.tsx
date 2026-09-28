@@ -30,7 +30,7 @@ export function ProductTableRow({ p, onDelete, categories }: IProductTableRowPro
            <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
                  <h3 className="text-[14px] font-bold text-foreground truncate tracking-tight group-hover/row:text-primary transition-colors">{p.name}</h3>
-                 {p.isBaza wiedzy && <span className="text-[9px] font-bold px-2 py-0.5 bg-black/5 dark:bg-white/10 text-muted-foreground rounded uppercase ">Virtual</span>}
+                 {p.isVirtual && <span className="text-[9px] font-bold px-2 py-0.5 bg-black/5 dark:bg-white/10 text-muted-foreground rounded uppercase ">Baza wiedzy</span>}
               </div>
               <div className="flex items-center gap-3 mt-1">
                  <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase opacity-60">{p.sku || "N/A"}</span>
