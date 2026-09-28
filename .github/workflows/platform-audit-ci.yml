@@ -109,6 +109,11 @@ jobs:
           src/app/field/FieldWorkbench.tsx
           src/app/\(b2b\)/layout.tsx
           src/app/\(b2b\)/dashboard/page.tsx
+          'src/app/(b2b)/loading.tsx'
+          'src/app/(b2b)/oferty/page.tsx'
+          'src/app/(b2b)/oferty/zamowienia/page.tsx'
+          'src/app/(b2b)/oferty/naprawy/page.tsx'
+          'src/app/(b2b)/ustawienia/page.tsx'
           src/app/api/health/live/route.ts
           src/app/api/health/ready/route.ts
           src/app/admin/price-lists/_lib/priceLogic.ts
