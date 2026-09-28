@@ -60,7 +60,8 @@ describe("solar data hardening", () => {
 
     expect(source).toContain("AbortSignal.timeout(SOLAR_FETCH_TIMEOUT_MS)")
     expect(source).toContain('timeZone: WARSAW_TIME_ZONE')
-    expect(source).toContain("return stale ?? fallbackSolarData()")
+    expect(source).toContain("const failureFallback = stale ?? fallbackSolarData()")
+    expect(source).toContain("runtime.__celtronicsSolarFailureFallback = failureFallback")
     expect(source).not.toContain("writeFileSync(")
     expect(source).not.toContain("mkdirSync(")
   })
