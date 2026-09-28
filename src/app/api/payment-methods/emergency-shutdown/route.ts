@@ -44,6 +44,18 @@ type StoredActor = {
   isBlocked?: boolean
 }
 
+function hasFreshAdminAccess(actor: { id?: string; email?: string | null }) {
+  const snapshot = initializeMockData()
+  const currentActor = findStoredUserBySession(
+    snapshot.users as StoredActor[],
+    actor
+  )
+  return Boolean(
+    currentActor &&
+      hasAccountRoleAccess(currentActor, ["ADMIN"])
+  )
+}
+
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
@@ -153,6 +165,7 @@ export async function POST(req: Request) {
 
   const stripe = new Stripe(stripeSecretKey)
   const results: ShutdownOrderResult[] = []
+  let providerWritesAllowed = true
 
   for (const candidate of candidates) {
     const sessionId = candidate.stripeCheckoutSessionId
@@ -183,6 +196,18 @@ export async function POST(req: Request) {
       const wasAlreadyExpired = session.status === "expired"
 
       if (session.status === "open") {
+        if (
+          !providerWritesAllowed ||
+          !hasFreshAdminAccess(authCheck.user)
+        ) {
+          providerWritesAllowed = false
+          results.push({
+            orderId: candidate.id,
+            outcome: "failed",
+          })
+          continue
+        }
+
         try {
           session = await stripe.checkout.sessions.expire(session.id)
         } catch (expireError) {
@@ -290,6 +315,7 @@ export async function POST(req: Request) {
       processed: results.length,
       counts,
       results,
+      providerWritesStopped: !providerWritesAllowed,
     },
     { status: unresolved === 0 ? 200 : 207 }
   )
