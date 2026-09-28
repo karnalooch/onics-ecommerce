@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { readBoundedJson } from "@/lib/boundedJsonIngress"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { buildRepairSubmissionFingerprint } from "@/lib/repairSubmissionIdempotency"
@@ -86,7 +87,20 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = CreateRepairSchema.safeParse(await req.json())
+    const body = await readBoundedJson(req)
+    if (!body.ok) {
+      return NextResponse.json(
+        {
+          error:
+            body.error === "too-large"
+              ? "Żądanie serwisowe jest zbyt duże."
+              : "Nieprawidłowy JSON zgłoszenia.",
+        },
+        { status: body.error === "too-large" ? 413 : 400 }
+      )
+    }
+
+    const parsed = CreateRepairSchema.safeParse(body.value)
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowe zgłoszenie." },
