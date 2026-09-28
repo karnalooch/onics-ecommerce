@@ -35,6 +35,24 @@ describe("knowledge training authorization fence wiring", () => {
     expect(parser).toContain('"KNOWLEDGE_ADMIN_ACCESS_REVOKED"')
   })
 
+  it("rechecks current admin access inside single-snippet deletion", () => {
+    const route = read("src/app/api/knowledge/snippets/[model]/route.ts")
+    const parser = read("src/lib/knowledge/parser.ts")
+    const deleteStart = parser.indexOf(
+      "export async function deleteKnowledgeEntry("
+    )
+    const deleteFlow = parser.slice(
+      deleteStart,
+      parser.indexOf("function latestKnowledgeTimestamp", deleteStart)
+    )
+
+    expect(route).toContain("authCheck.user")
+    expect(route).toContain("KNOWLEDGE_ADMIN_ACCESS_REVOKED")
+    expect(deleteFlow).toContain("assertKnowledgeTrainingAdminAccess(")
+    expect(deleteFlow.indexOf("assertKnowledgeTrainingAdminAccess("))
+      .toBeLessThan(deleteFlow.indexOf("deleteKnowledgeEntryFromDb("))
+  })
+
   it("rechecks current admin access before destructive knowledge reset", () => {
     const route = read("src/app/api/knowledge/route.ts")
     const deleteStart = route.indexOf("export async function DELETE")

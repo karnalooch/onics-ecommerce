@@ -12,7 +12,10 @@ export async function DELETE(
 
     const { model } = await params
     const decodedModel = decodeURIComponent(model).trim().toUpperCase()
-    const deleted = await deleteKnowledgeEntry(decodedModel)
+    const deleted = await deleteKnowledgeEntry(
+      decodedModel,
+      authCheck.user
+    )
 
     if (!deleted) {
       return NextResponse.json(
@@ -26,6 +29,19 @@ export async function DELETE(
       message: `Model ${decodedModel} został usunięty z wyekstrahowanej bazy wiedzy.`,
     })
   } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message === "KNOWLEDGE_ADMIN_ACCESS_REVOKED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Uprawnienia administratora zmieniły się przed usunięciem wpisu wiedzy.",
+        },
+        { status: 403 }
+      )
+    }
+
     console.error("DELETE Snippet Error:", err)
     return NextResponse.json(
       { error: "Błąd serwera podczas usuwania." },
