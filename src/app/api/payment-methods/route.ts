@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { COMMERCE_TRANSACTION_ROLES } from "@/lib/commerceAccess"
 import { appendPaymentAudit } from "@/lib/paymentAudit"
 import {
@@ -28,6 +30,14 @@ import {
   type PaymentControlSettings,
   type PaymentMethodSettings,
 } from "@/store/serverStore"
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
 
 function describeAdminPaymentControl(
   snapshot: ReturnType<typeof initializeMockData>
@@ -85,8 +95,58 @@ function paymentSettingsConflict() {
   )
 }
 
+function paymentSettingsRequestAborted() {
+  return NextResponse.json(
+    { error: "Zmiana ustawień płatności została przerwana." },
+    { status: 499 }
+  )
+}
+
+function paymentSettingsAccessRevoked() {
+  return NextResponse.json(
+    {
+      error:
+        "Uprawnienia administratora zmieniły się podczas weryfikacji operatora. Zapis został anulowany.",
+    },
+    { status: 403 }
+  )
+}
+
+function paymentSettingsMutationErrorResponse(
+  error: unknown,
+  requestSignal: AbortSignal
+) {
+  const code = error instanceof Error ? error.message : ""
+
+  if (requestSignal.aborted || code === "REQUEST_ABORTED") {
+    return paymentSettingsRequestAborted()
+  }
+
+  if (code === "ADMIN_ACCESS_REVOKED") {
+    return paymentSettingsAccessRevoked()
+  }
+
+  return null
+}
+
+function assertCurrentPaymentAdmin(
+  users: StoredActor[],
+  sessionUser: { id?: string | null; email?: string | null },
+  requestSignal: AbortSignal
+) {
+  if (requestSignal.aborted) {
+    throw new Error("REQUEST_ABORTED")
+  }
+
+  const currentActor = findStoredUserBySession(users, sessionUser)
+  if (!currentActor || !hasAccountRoleAccess(currentActor, ["ADMIN"])) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
+
 async function validatePaymentProviderActivation(
-  method: PaymentMethodId
+  method: PaymentMethodId,
+  requestSignal: AbortSignal
 ) {
   const status = paymentMethodOperationalStatus(method)
   if (!status.configured) {
@@ -99,7 +159,10 @@ async function validatePaymentProviderActivation(
     )
   }
 
-  const preflight = await runPaymentProviderActivationPreflight(method)
+  const preflight = await runPaymentProviderActivationPreflight(
+    method,
+    requestSignal
+  )
   if (preflight.ok) return null
 
   console.warn(
@@ -230,13 +293,26 @@ export async function PUT(req: Request) {
     ) {
       for (const method of PAYMENT_PROVIDER_IDS) {
         if (!activationSnapshot.paymentMethods[method]?.enabled) continue
-        const activationError =
-          await validatePaymentProviderActivation(method)
+        const activationError = await validatePaymentProviderActivation(
+          method,
+          req.signal
+        )
+        if (req.signal.aborted) {
+          return paymentSettingsRequestAborted()
+        }
         if (activationError) return activationError
       }
     }
 
-    const result = await mutateMockData((db) => {
+    let result: { conflict: boolean; replayed: boolean }
+    try {
+      result = await mutateMockData((db) => {
+      assertCurrentPaymentAdmin(
+        db.users as StoredActor[],
+        authCheck.user,
+        req.signal
+      )
+
       const paymentControl = db.paymentControl as PaymentControlSettings
       const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
       const freshToken = buildPaymentControlStateToken(paymentControl)
@@ -284,7 +360,12 @@ export async function PUT(req: Request) {
       }
 
       return { conflict: false, replayed: false }
-    })
+      })
+    } catch (error) {
+      const response = paymentSettingsMutationErrorResponse(error, req.signal)
+      if (response) return response
+      throw error
+    }
 
     if (result.conflict) return paymentSettingsConflict()
 
@@ -316,11 +397,25 @@ export async function PUT(req: Request) {
     methodUpdate.enabled === true &&
     initialMethod?.enabled !== true
   ) {
-    const activationError = await validatePaymentProviderActivation(method)
+    const activationError = await validatePaymentProviderActivation(
+      method,
+      req.signal
+    )
+    if (req.signal.aborted) {
+      return paymentSettingsRequestAborted()
+    }
     if (activationError) return activationError
   }
 
-  const result = await mutateMockData((db) => {
+  let result: { conflict: boolean; replayed: boolean }
+  try {
+    result = await mutateMockData((db) => {
+    assertCurrentPaymentAdmin(
+      db.users as StoredActor[],
+      authCheck.user,
+      req.signal
+    )
+
     const paymentMethods = db.paymentMethods as PaymentMethodSettings
     const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
     const previous = paymentMethods[method]
@@ -373,7 +468,12 @@ export async function PUT(req: Request) {
     }
 
     return { conflict: false, replayed: false }
-  })
+    })
+  } catch (error) {
+    const response = paymentSettingsMutationErrorResponse(error, req.signal)
+    if (response) return response
+    throw error
+  }
 
   if (result.conflict) return paymentSettingsConflict()
 
