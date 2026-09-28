@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
@@ -69,7 +74,24 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = BankTransferActionSchema.safeParse(await req.json())
+  let parsed: ReturnType<typeof BankTransferActionSchema.safeParse>
+  try {
+    parsed = BankTransferActionSchema.safeParse(await readCommerceJson(req))
+  } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie operacji przelewu bankowego jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie operacji przelewu bankowego." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Nieprawidłowa operacja przelewu bankowego." },
