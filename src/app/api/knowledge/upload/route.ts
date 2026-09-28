@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import fs from "fs"
 import {
+  bindKnowledgeTrainingRequestAbort,
   getKnowledge,
   parseExcel,
   parsePDFWithAI,
@@ -24,6 +25,8 @@ export const runtime = "nodejs"
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
+
+  let detachRequestAbort: (() => void) | undefined
 
   try {
     const formData = await parseBoundedKnowledgeUploadFormData(req)
@@ -49,6 +52,10 @@ export async function POST(req: Request) {
       knowledgeRevision,
       actor: authCheck.user,
     }
+    detachRequestAbort = bindKnowledgeTrainingRequestAbort(
+      knowledgeSignal,
+      req.signal
+    )
 
     fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
     fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
@@ -131,6 +138,12 @@ export async function POST(req: Request) {
     }
 
     const message = error instanceof Error ? error.message : "Błąd serwera."
+    if (req.signal.aborted || message === "PROCES_PRZERWANY") {
+      return NextResponse.json(
+        { error: "Przesyłanie lub analiza pliku zostały przerwane." },
+        { status: 499 }
+      )
+    }
     if (message === "KNOWLEDGE_ADMIN_ACCESS_REVOKED") {
       return NextResponse.json(
         {
@@ -156,5 +169,7 @@ export async function POST(req: Request) {
         : 500
     console.error("Knowledge upload error:", error)
     return NextResponse.json({ error: message }, { status })
+  } finally {
+    detachRequestAbort?.()
   }
 }

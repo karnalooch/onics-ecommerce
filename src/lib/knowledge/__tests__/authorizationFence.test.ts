@@ -34,4 +34,13 @@ describe("knowledge training authorization fence wiring", () => {
     )
     expect(parser).toContain('"KNOWLEDGE_ADMIN_ACCESS_REVOKED"')
   })
+
+  it("binds upload parsing to the HTTP request lifetime and always detaches", () => {
+    const upload = read("src/app/api/knowledge/upload/route.ts")
+
+    expect(upload).toContain("bindKnowledgeTrainingRequestAbort(")
+    expect(upload).toContain("req.signal")
+    expect(upload).toContain("detachRequestAbort?.()")
+    expect(upload).toContain('message === "PROCES_PRZERWANY"')
+  })
 })
