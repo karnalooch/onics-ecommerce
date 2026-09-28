@@ -1,85 +1,26 @@
 import { auth } from "@/auth"
+import Link from "next/link"
 import { redirect } from "next/navigation"
 import {
-  Activity,
-  Calendar,
   FileText,
-  HelpCircle,
-  Package,
-  Percent,
-  ReceiptText,
+  Search,
   ShieldCheck,
   Wrench,
-  Zap,
 } from "lucide-react"
-import { InstallerTier } from "@/components/ui/InstallerTier"
 import { initializeMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
-import { StatCard } from "./_components/StatCard"
-import { QuickActionTerminal } from "./_components/QuickActionTerminal"
-
-type DashboardUser = {
-  id?: string
-  email?: string | null
-  name?: string | null
-  role?: string
-  isApproved?: boolean
-  nip?: string | null
-  discount?: number
-  tierName?: string
-}
-
-type StoredUser = {
-  id?: string
-  email?: string
-  companyName?: string
-  nip?: string | null
-  roleType?: string
-  isApproved?: boolean
-  isBlocked?: boolean
-  discount?: number
-  tierName?: string
-}
-
-type OrderRecord = {
-  orderType?: string
-  status?: string
-  createdAt?: string
-  totalPriceFinal?: number
-  user?: { id?: string; email?: string }
-}
-
-type RepairRecord = {
-  status?: string
-  user?: { id?: string; email?: string }
-}
-
-function belongsTo(
-  recordUser: { id?: string; email?: string } | undefined,
-  currentUser: StoredUser
-) {
-  return Boolean(
-    recordUser &&
-      findStoredUserBySession([recordUser], {
-        id: currentUser.id,
-        email: currentUser.email,
-      })
-  )
-}
+import { isRepairTerminalStatus } from "@/lib/repairLifecycle"
 
 export default async function DashboardPage() {
   const session = await auth()
-  const sessionUser = session?.user as DashboardUser | undefined
+  const sessionUser = session?.user as
+    | { id?: string; email?: string | null; name?: string | null }
+    | undefined
 
-  if (!sessionUser) {
-    redirect("/logowanie")
-  }
+  if (!sessionUser) redirect("/logowanie")
 
   const { users, orders, repairs } = initializeMockData()
-  const storedUser = findStoredUserBySession(
-    users as StoredUser[],
-    sessionUser
-  )
+  const storedUser = findStoredUserBySession(users as any[], sessionUser)
 
   if (
     !storedUser ||
@@ -90,129 +31,92 @@ export default async function DashboardPage() {
     redirect("/logowanie")
   }
 
-  const ownOrders = (orders as OrderRecord[]).filter((order) =>
-    belongsTo(order.user, storedUser)
-  )
-  const ownRepairs = (repairs as RepairRecord[]).filter((repair) =>
-    belongsTo(repair.user, storedUser)
-  )
-  const activeRma = ownRepairs.filter(
-    (repair) => !["DONE", "COMPLETED", "RETURNED", "REJECTED"].includes(repair.status || "")
-  ).length
+  const belongsToCurrentUser = (record: any) =>
+    Boolean(
+      record?.user &&
+        findStoredUserBySession([record.user], {
+          id: storedUser.id,
+          email: storedUser.email,
+        })
+    )
 
-  const currentYear = new Date().getFullYear()
-  const ytdTurnover = ownOrders
-    .filter((order) => {
-      if (order.orderType !== "ORDER" || order.status === "CANCELLED") return false
-      const date = order.createdAt ? new Date(order.createdAt) : null
-      return date && !Number.isNaN(date.getTime()) && date.getFullYear() === currentYear
-    })
-    .reduce((sum, order) => sum + Number(order.totalPriceFinal || 0), 0)
+  const ownOrders = orders.filter(belongsToCurrentUser)
+  const activeRepairs = repairs.filter(
+    (repair: any) =>
+      belongsToCurrentUser(repair) && !isRepairTerminalStatus(repair.status)
+  )
 
-  const discount = Number(storedUser.discount ?? 0)
-  const tierName = storedUser.tierName || "BASIC"
-  const companyName = storedUser.companyName || sessionUser.name || "Partner B2B"
-  const nip = storedUser.nip || "Brak NIP"
+  const companyName =
+    storedUser.companyName ||
+    storedUser.username ||
+    sessionUser.name ||
+    "Partner"
 
   return (
-    <div className="flex flex-col gap-10 animate-in fade-in duration-500">
-      <header className="flex flex-col justify-between gap-6 border-b border-border pb-8 md:flex-row md:items-end">
-        <div>
-          <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
-            Panel partnera B2B
-          </span>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-[-0.04em] sm:text-5xl">
-            {companyName}
-          </h1>
-          <p className="mt-3 text-sm font-medium text-muted-foreground">
-            NIP: {nip}
-          </p>
+    <div className="mx-auto max-w-[1200px] space-y-7">
+      <header className="border-b border-slate-200 pb-6 dark:border-slate-800">
+        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          Konto techniczne
         </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4">
-          <ShieldCheck className="h-5 w-5 text-emerald-600" />
-          <div>
-            <span className="block text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-              Status konta
-            </span>
-            <strong className="text-sm">Zweryfikowany partner B2B</strong>
-          </div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          {companyName}
+        </h1>
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-slate-500">
+          <span className="inline-flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+            Konto zweryfikowane
+          </span>
+          <span>NIP: {storedUser.nip || "brak"}</span>
+          <span>Poziom: {storedUser.tierName || "BASIC"}</span>
+          <span>
+            Rabat: {Number(storedUser.discount || 0).toFixed(1)}%
+          </span>
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8">
-          <div className="h-full rounded-3xl border border-border bg-card p-8 shadow-sm">
-            <InstallerTier currentLevel={tierName} discount={discount} />
+      <Link
+        href="/field"
+        className="flex min-h-24 items-center justify-between gap-4 rounded-xl bg-slate-950 p-5 text-white dark:bg-white dark:text-slate-950"
+      >
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] opacity-70">
+            Najszybsza ścieżka
+          </div>
+          <div className="mt-2 text-xl font-semibold">
+            Szukaj urządzenia, ceny lub instrukcji
           </div>
         </div>
-        <div className="grid gap-6 lg:col-span-4">
-          <StatCard
-            label={`Obroty ${currentYear}`}
-            value={`${ytdTurnover.toFixed(2)} PLN`}
-            subValue="Zapisane zamówienia, bez anulowanych"
-            Icon={ReceiptText}
-          />
-          <StatCard
-            label="Aktywne RMA"
-            value={String(activeRma)}
-            subValue="Twoje zgłoszenia niezakończone"
-            Icon={Calendar}
-          />
-        </div>
-      </div>
+        <Search className="h-7 w-7 shrink-0" />
+      </Link>
 
-      <section>
-        <h2 className="text-2xl font-extrabold tracking-tight">Najczęstsze działania</h2>
-        <div className="mt-6">
-          <QuickActionTerminal
-            actions={[
-              {
-                title: "Katalog B2B",
-                desc: "Aktualny katalog, ceny przypisane do konta i stany magazynowe.",
-                href: "/sklep",
-                Icon: FileText,
-                badge: "B2B",
-              },
-              {
-                title: "Zapytanie projektowe",
-                desc: "Kontakt w sprawie indywidualnej wyceny i warunków projektu.",
-                href: "/kontakt",
-                Icon: Zap,
-              },
-              {
-                title: "Serwis RMA",
-                desc: "Nowe zgłoszenie serwisowe i status bieżących napraw.",
-                href: "/oferty/naprawy",
-                Icon: Wrench,
-              },
-              {
-                title: "Pomoc techniczna",
-                desc: "Kontakt z zespołem CEL-TRONICS.",
-                href: "/kontakt",
-                Icon: HelpCircle,
-              },
-            ]}
-          />
-        </div>
-      </section>
-
-      <div className="grid gap-4 border-t border-border pt-8 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Poziom", value: tierName, icon: Package },
-          { label: "Rabat konta", value: `${discount.toFixed(1)}%`, icon: Percent },
-          { label: "Zamówienia", value: String(ownOrders.length), icon: ReceiptText },
-          { label: "Aktywne RMA", value: String(activeRma), icon: Activity },
-        ].map((item) => (
-          <div key={item.label} className="flex items-center gap-4 rounded-2xl bg-muted/30 p-4">
-            <item.icon className="h-5 w-5 text-primary" />
-            <div>
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                {item.label}
-              </span>
-              <strong className="mt-1 block text-sm">{item.value}</strong>
-            </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Link
+          href="/oferty/zamowienia"
+          className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0f1216]"
+        >
+          <FileText className="h-5 w-5 text-slate-500" />
+          <div className="mt-4 text-sm font-semibold">Zamówienia</div>
+          <div className="mt-1 font-mono text-2xl font-semibold">
+            {ownOrders.length}
           </div>
-        ))}
+          <div className="mt-2 text-sm text-slate-500">
+            Historia i bieżące statusy.
+          </div>
+        </Link>
+
+        <Link
+          href="/oferty/naprawy"
+          className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0f1216]"
+        >
+          <Wrench className="h-5 w-5 text-slate-500" />
+          <div className="mt-4 text-sm font-semibold">Aktywny serwis</div>
+          <div className="mt-1 font-mono text-2xl font-semibold">
+            {activeRepairs.length}
+          </div>
+          <div className="mt-2 text-sm text-slate-500">
+            Zgłoszenia jeszcze niezakończone.
+          </div>
+        </Link>
       </div>
     </div>
   )
