@@ -6,6 +6,11 @@ import { POST as postStripeReturn } from "@/app/api/orders/return/route"
 import { POST as postPrzelewy24Return } from "@/app/api/orders/przelewy24-return/route"
 import { PUT as putOrder } from "@/app/api/orders/route"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { buildAdminOrderStateToken } from "@/lib/orderAdminState"
 import {
   PAYMENT_ADMIN_ACTIONS,
@@ -106,7 +111,24 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = PaymentAdminActionSchema.safeParse(await req.json())
+  let parsed: ReturnType<typeof PaymentAdminActionSchema.safeParse>
+  try {
+    parsed = PaymentAdminActionSchema.safeParse(await readCommerceJson(req))
+  } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie operacji płatniczej jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie operacji płatniczej." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Nieprawidłowa operacja płatnicza." },
