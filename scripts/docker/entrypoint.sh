@@ -64,20 +64,7 @@ ensure_secret NEXTAUTH_SECRET .nextauth-secret
 
 BOOTSTRAP_FILE="$RUNTIME_ROOT/.admin-bootstrap-password"
 
-needs_bootstrap="$(
-  node -e '
-    const fs = require("fs");
-    const db = JSON.parse(fs.readFileSync(process.env.CELTRONICS_DB_PATH, "utf8"));
-    const users = Array.isArray(db.users) ? db.users : [];
-    const needs = users.some((user) =>
-      user &&
-      user.roleType === "ADMIN" &&
-      user.isBlocked !== true &&
-      typeof user.passwordHash !== "string"
-    );
-    process.stdout.write(needs ? "yes" : "no");
-  '
-)"
+needs_bootstrap="$(node /app/bootstrap-state.cjs)"
 
 if [ "$needs_bootstrap" = "yes" ] && [ -z "${ADMIN_BOOTSTRAP_PASSWORD:-}" ]; then
   if [ ! -f "$BOOTSTRAP_FILE" ]; then

@@ -46,6 +46,7 @@ COPY --from=builder --chown=node:node /app/public ./public
 COPY --from=builder --chown=node:node /app/src/data/db.json ./seed/db.json
 COPY --from=builder --chown=node:node /app/scripts/storage ./scripts/storage
 COPY --from=builder --chown=node:node /app/package.json ./package.json
+COPY --chown=node:node scripts/docker/bootstrap-state.cjs ./bootstrap-state.cjs
 COPY --chown=node:node scripts/docker/entrypoint.sh ./docker-entrypoint.sh
 
 RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \

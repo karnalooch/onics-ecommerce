@@ -54,6 +54,12 @@ describe("admin bootstrap sealing", () => {
 
     expect(
       needsAdminBootstrap([
+        { roleType: "ADMIN", isBlocked: false, passwordHash: "" },
+      ])
+    ).toBe(true)
+
+    expect(
+      needsAdminBootstrap([
         { roleType: "ADMIN", isBlocked: false, passwordHash: "sealed" },
         { roleType: "ADMIN", isBlocked: true },
       ])
