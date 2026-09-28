@@ -7,12 +7,39 @@ import { calculateCustomerUnitPrice, roundMoney } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { buildQuoteSubmissionFingerprint } from "@/lib/quoteSubmissionIdempotency"
 import {
+  QuoteBodyInvalidError,
+  QuoteBodyTooLargeError,
+  readQuoteJson,
+} from "@/lib/quoteIngress"
+import {
+  applicationRateLimiter,
+  type RateLimitResult,
+} from "@/lib/rateLimit"
+import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
   isQuoteAdminUpdateReplay,
   requirePositiveQuoteTotal,
   requireQuoteBasePrice,
 } from "@/lib/quoteAdmin"
+
+const QUOTE_SUBMISSION_RATE_LIMIT = {
+  limit: 20,
+  windowMs: 60 * 60 * 1000,
+} as const
+
+function quoteRateLimited(result: RateLimitResult) {
+  return NextResponse.json(
+    { error: "Zbyt wiele zapytań ofertowych. Spróbuj ponownie później." },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(result.retryAfterSeconds),
+        "Cache-Control": "no-store",
+      },
+    }
+  )
+}
 
 const QuoteSchema = z.object({
   requestId: z.string().uuid(),
@@ -68,8 +95,18 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
   if (!authCheck.authorized) return authCheck.response
 
+  const accountRateLimitKey = String(
+    authCheck.currentUser.id ?? authCheck.currentUser.email ?? "unknown"
+  )
+  const accountLimit = applicationRateLimiter.check(
+    "quote-submit-account",
+    accountRateLimitKey,
+    QUOTE_SUBMISSION_RATE_LIMIT
+  )
+  if (!accountLimit.allowed) return quoteRateLimited(accountLimit)
+
   try {
-    const parsed = QuoteSchema.safeParse(await req.json())
+    const parsed = QuoteSchema.safeParse(await readQuoteJson(req))
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowe zapytanie." },
@@ -156,6 +193,9 @@ export async function POST(req: Request) {
             user: smtpUser,
             pass: smtpPass,
           },
+          connectionTimeout: 5_000,
+          greetingTimeout: 5_000,
+          socketTimeout: 10_000,
         })
 
         await transporter.sendMail({
@@ -195,6 +235,19 @@ export async function POST(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof QuoteBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Zapytanie ofertowe jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof QuoteBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body zapytania ofertowego." },
+        { status: 400 }
+      )
+    }
+
     const code = error instanceof Error ? error.message : ""
     if (code === "ACCOUNT_UNAVAILABLE") {
       return NextResponse.json({ error: "Konto jest niedostępne." }, { status: 403 })
