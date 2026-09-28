@@ -154,6 +154,18 @@ jobs:
             exit 1
           fi
 
+      - name: Reject generated source HTML captures
+        run: |
+          tracked_captures="$(
+            git ls-files 'src/**/*.html' 'src/*.html' |
+            grep -Ei '(^|/)[^/]+(_dom|_snapshot|-dom|-snapshot)\.html$' || true
+          )"
+          if [ -n "$tracked_captures" ]; then
+            echo "Generated DOM/snapshot HTML captures must not be committed under src/."
+            printf '%s\n' "$tracked_captures"
+            exit 1
+          fi
+
       - name: Reject tracked supplier catalog fixtures
         run: |
           tracked_fixtures="$(git ls-files 'fixtures/catalogs/**')"
