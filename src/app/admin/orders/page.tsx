@@ -45,6 +45,7 @@ type AdminOrder = {
   adminStateToken?: string
 }
 
+// PAYMENT_REGISTRATION_UNCERTAIN is retained as the backend/audit token; the visible label is humanized.
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
