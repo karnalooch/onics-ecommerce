@@ -43,6 +43,8 @@ COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
 COPY --from=builder --chown=node:node /app/src/data/db.json ./seed/db.json
+COPY --from=builder --chown=node:node /app/scripts/storage ./scripts/storage
+COPY --from=builder --chown=node:node /app/package.json ./package.json
 COPY --chown=node:node scripts/docker/entrypoint.sh ./docker-entrypoint.sh
 
 RUN chmod 0755 /app/docker-entrypoint.sh
