@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import nodemailer from "nodemailer"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { readBoundedJson } from "@/lib/boundedJsonIngress"
 import { mutateMockData } from "@/store/serverStore"
 import { calculateCustomerUnitPrice, roundMoney } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
@@ -69,7 +70,20 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = QuoteSchema.safeParse(await req.json())
+    const body = await readBoundedJson(req)
+    if (!body.ok) {
+      return NextResponse.json(
+        {
+          error:
+            body.error === "too-large"
+              ? "Żądanie wyceny jest zbyt duże."
+              : "Nieprawidłowy JSON wyceny.",
+        },
+        { status: body.error === "too-large" ? 413 : 400 }
+      )
+    }
+
+    const parsed = QuoteSchema.safeParse(body.value)
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowe zapytanie." },
@@ -231,7 +245,20 @@ export async function PUT(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = AdminQuoteUpdateSchema.safeParse(await req.json())
+    const body = await readBoundedJson(req)
+    if (!body.ok) {
+      return NextResponse.json(
+        {
+          error:
+            body.error === "too-large"
+              ? "Żądanie aktualizacji wyceny jest zbyt duże."
+              : "Nieprawidłowy JSON aktualizacji wyceny.",
+        },
+        { status: body.error === "too-large" ? 413 : 400 }
+      )
+    }
+
+    const parsed = AdminQuoteUpdateSchema.safeParse(body.value)
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowa aktualizacja wyceny." },
