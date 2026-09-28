@@ -48,7 +48,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pl" suppressHydrationWarning>
       <body className={bodyClasses} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          forcedTheme="light"
+        >
           <Toaster position="top-right" richColors />
           <SessionProvider>
             <AppChrome>{children}</AppChrome>
