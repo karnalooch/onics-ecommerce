@@ -4,6 +4,10 @@ import { z } from "zod"
 import { validateNip } from "@/lib/validation"
 import { isPasswordWithinBcryptLimit } from "@/lib/passwordPolicy"
 import {
+  PasswordWorkCapacityError,
+  runPasswordWork,
+} from "@/lib/passwordWorkBudget"
+import {
   applicationRateLimiter,
   getClientRateLimitKey,
   type RateLimitResult,
@@ -73,7 +77,9 @@ export async function POST(req: Request) {
     )
     if (!emailLimit.allowed) return rateLimited(emailLimit)
 
-    const passwordHash = await bcrypt.hash(data.password, 12)
+    const passwordHash = await runPasswordWork(() =>
+      bcrypt.hash(data.password, 12)
+    )
     const newUser = {
       id: `u_${crypto.randomUUID()}`,
       username: data.email,
@@ -107,6 +113,13 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true }, { status: 202 })
   } catch (error) {
+    if (error instanceof PasswordWorkCapacityError) {
+      return NextResponse.json(
+        { error: "Serwer jest chwilowo zajęty. Spróbuj ponownie za moment." },
+        { status: 503, headers: { "Retry-After": "1" } }
+      )
+    }
+
     if (error instanceof RegistrationBodyTooLargeError) {
       return NextResponse.json(
         { error: "Żądanie rejestracji jest zbyt duże." },

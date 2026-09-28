@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt"
 import { mutateMockData } from "@/store/serverStore"
 import { nextUserRevision } from "@/lib/userResponse"
+import { runPasswordWork } from "@/lib/passwordWorkBudget"
 
 type BootstrapUser = {
   id?: string
@@ -51,7 +52,9 @@ export function needsAdminBootstrap(users: unknown) {
 export async function sealAdminBootstrapPassword(
   options: SealBootstrapOptions
 ) {
-  const candidateHash = await bcrypt.hash(options.password, 12)
+  const candidateHash = await runPasswordWork(() =>
+    bcrypt.hash(options.password, 12)
+  )
 
   return mutateMockData((db) => {
     const user = findAdmin(db.users as BootstrapUser[], options)
