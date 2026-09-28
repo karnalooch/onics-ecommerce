@@ -1,10 +1,11 @@
-import { auth, signOut } from "@/auth"
+import { auth } from "@/auth"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { KnowledgeProvider } from "@/lib/knowledge/KnowledgeContext"
 import { initializeMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { AdminNavigation } from "./_components/AdminNavigation"
+import { AdminLogoutButton } from "./_components/AdminLogoutButton"
 import "./operations.css"
 
 export default async function AdminLayout({
@@ -61,20 +62,9 @@ export default async function AdminLayout({
             <div className="mt-1 text-xs text-[var(--ops-muted)]">
               ADMIN · dostęp operacyjny
             </div>
-            <form
-              action={async () => {
-                "use server"
-                await signOut({ redirectTo: "/" })
-              }}
-              className="mt-4"
-            >
-              <button
-                type="submit"
-                className="min-h-11 w-full rounded-lg border border-[var(--ops-border)] px-3 text-left text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/5"
-              >
-                Wyloguj
-              </button>
-            </form>
+            <div className="mt-4">
+              <AdminLogoutButton />
+            </div>
           </div>
         </aside>
 
