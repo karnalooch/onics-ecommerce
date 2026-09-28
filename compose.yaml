@@ -1,0 +1,49 @@
+name: celtronics-local
+
+services:
+  celtronics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: celtronics-onics:local
+    init: true
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3001:3001"
+
+    environment:
+      NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+      NEXTAUTH_URL: "http://localhost:3001"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3001"
+      CELTRONICS_DB_PATH: /app/var/celtronics/db.json
+      CELTRONICS_UPLOAD_ROOT: /app/var/celtronics/uploads
+      CELTRONICS_DB_BACKUP_DIR: /app/var/celtronics/backups
+
+    volumes:
+      - celtronics-data:/app/var/celtronics
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:3001/api/health/ready')
+          .then((response) => { if (!response.ok) process.exit(1) })
+          .catch(() => process.exit(1))
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+volumes:
+  celtronics-data:
