@@ -3,15 +3,16 @@
 
 import { Check, AlertTriangle, RefreshCw, FileText, Brain, Database, Trash2 } from "lucide-react";
 import { memo } from "react";
+import type { ICategory, IStagingItem } from "../_lib/types";
 
 interface IStagingItemProps {
-  item: any;
-  categories: any[];
+  item: IStagingItem;
+  categories: ICategory[];
   manufacturers: string[];
-  onUpdate: (tempId: string, field: string, value: any) => void;
+  onUpdate: (tempId: string, field: string, value: unknown) => void;
   onCommit: (tempId: string) => void;
   onRemove: (id: string, sku: string) => void;
-  isItemConfirmed: (item: any) => boolean;
+  isItemConfirmed: (item: IStagingItem) => boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
 }
@@ -101,7 +102,7 @@ export const StagingItem = memo(function StagingItem({
                className="h-9 px-3 bg-white border border-slate-100 text-[9px] font-semibold uppercase outline-none focus:border-primary transition-all text-slate-950 disabled:opacity-20"
             >
                <option value="">— brak —</option>
-               {selectedCat?.subcategories?.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+               {selectedCat?.subcategories?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
          </div>
          <div className="flex flex-col gap-1">
