@@ -13,7 +13,21 @@ mkdir -p "$RUNTIME_ROOT" "$UPLOAD_ROOT" "$BACKUP_ROOT"
 if [ ! -e "$DB_PATH" ]; then
   cp /app/seed/db.json "$DB_PATH"
   chmod 600 "$DB_PATH"
+
+  CELTRONICS_DOCKER_SEED_PATH="$DB_PATH" node -e '
+    const fs = require("fs");
+    const dbPath = process.env.CELTRONICS_DOCKER_SEED_PATH;
+    const db = JSON.parse(fs.readFileSync(dbPath, "utf8"));
+    db.paymentControl = {
+      enabled: false,
+      maintenanceMessage: null,
+      updatedAt: null,
+    };
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2), { mode: 0o600 });
+  '
+
   echo "[docker] initialized persistent database from packaged development seed"
+  echo "[docker] local payment control starts disabled until real providers are configured"
 fi
 
 node -e '
