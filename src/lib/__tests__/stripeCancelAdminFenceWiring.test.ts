@@ -41,7 +41,7 @@ describe("Stripe cancel current-admin launch fencing", () => {
     expect(preflight).toBeGreaterThan(-1)
     expect(adminFence).toBeGreaterThan(preflight)
     expect(providerWrite).toBeGreaterThan(adminFence)
-    expect(route).toContain('error.message === "ADMIN_ACCESS_REVOKED"')
+    expect(route).toContain('code === "ADMIN_ACCESS_REVOKED"')
   })
 
   it("does not authority-fence post-provider refund reconciliation", () => {
