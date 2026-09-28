@@ -88,7 +88,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           phone,
           address,
-          expectedRevision: profile.revision,
+          expectedRevision: profile?.revision ?? 0,
         }),
       })
       const payload: unknown = await response.json().catch(() => null)
