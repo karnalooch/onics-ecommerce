@@ -16,7 +16,11 @@ describe("commerce transaction role boundary", () => {
     expect(isCommerceTransactionRole(undefined)).toBe(false)
   })
 
-  it("keeps checkout, payment discovery and provider adapters on the same boundary", () => {
+  it("keeps order, checkout, payment discovery and provider adapters on the same boundary", () => {
+    const ordersRoute = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/orders/route.ts"),
+      "utf8"
+    )
     const checkoutRoute = fs.readFileSync(
       path.join(process.cwd(), "src/app/api/checkout/route.ts"),
       "utf8"
@@ -30,6 +34,9 @@ describe("commerce transaction role boundary", () => {
       "utf8"
     )
 
+    expect(ordersRoute).toContain(
+      "authorizeAPI([...COMMERCE_TRANSACTION_ROLES])"
+    )
     expect(checkoutRoute).toContain(
       "authorizeAPI([...COMMERCE_TRANSACTION_ROLES])"
     )
@@ -40,6 +47,31 @@ describe("commerce transaction role boundary", () => {
       "isCommerceTransactionRole(user.roleType)"
     )
     expect(checkoutRoute).toContain('code === "CHECKOUT_ROLE_NOT_ALLOWED"')
+  })
+
+  it("rechecks the current commerce role under the order write lock before reserving inventory", () => {
+    const ordersRoute = fs.readFileSync(
+      path.join(process.cwd(), "src/app/api/orders/route.ts"),
+      "utf8"
+    )
+    const postStart = ordersRoute.indexOf("export async function POST")
+    const putStart = ordersRoute.indexOf(
+      "export async function PUT",
+      postStart
+    )
+    const post = ordersRoute.slice(postStart, putStart)
+
+    const mutation = post.indexOf("mutateMockData((db) =>")
+    const currentRoleFence = post.indexOf(
+      "isCommerceTransactionRole(storedUser.roleType)",
+      mutation
+    )
+    const reservation = post.indexOf("reserveInventory(", currentRoleFence)
+
+    expect(mutation).toBeGreaterThan(-1)
+    expect(currentRoleFence).toBeGreaterThan(mutation)
+    expect(reservation).toBeGreaterThan(currentRoleFence)
+    expect(post).toContain('throw new Error("ORDER_ROLE_NOT_ALLOWED")')
   })
 
   it("keeps RETAIL browse-only in storefront/cart UX", () => {
