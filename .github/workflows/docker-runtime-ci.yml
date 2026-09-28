@@ -58,8 +58,8 @@ jobs:
 
       - name: Verify HTTP health endpoints
         run: |
-          curl --fail --silent --show-error http://127.0.0.1:3001/api/health/live
-          curl --fail --silent --show-error http://127.0.0.1:3001/api/health/ready
+          curl --fail --silent --show-error http://127.0.0.1:3100/api/health/live
+          curl --fail --silent --show-error http://127.0.0.1:3100/api/health/ready
 
       - name: Verify non-root runtime and durable volume
         shell: bash
