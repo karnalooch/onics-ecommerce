@@ -49,3 +49,40 @@
 .operations-admin table {
   font-variant-numeric: tabular-nums;
 }
+
+
+/* T218: legacy-screen normalization.
+   Old admin screens can keep their business logic while presentation is migrated. */
+.operations-admin .font-black {
+  font-weight: 650 !important;
+}
+
+.operations-admin .italic {
+  font-style: normal !important;
+}
+
+.operations-admin [class*="tracking-[0."],
+.operations-admin .tracking-widest {
+  letter-spacing: 0.04em !important;
+}
+
+.operations-admin [class*="rounded-[2"],
+.operations-admin [class*="rounded-[3"] {
+  border-radius: 12px !important;
+}
+
+.operations-admin .animate-pulse:not(.skeleton-allow-pulse) {
+  animation: none !important;
+}
+
+.operations-admin [class*="hover:scale-"],
+.operations-admin [class*="active:scale-"] {
+  transform: none !important;
+}
+
+.operations-admin [class*="bg-gradient"],
+.operations-admin [class*="from-"],
+.operations-admin [class*="via-"],
+.operations-admin [class*="to-"] {
+  background-image: none !important;
+}
