@@ -46,8 +46,9 @@ On first boot the container:
 1. creates the durable database/upload/backup directories;
 2. copies the packaged development seed only when the persistent `db.json` does not exist;
 3. generates session secrets inside the named Docker volume;
-4. generates a local admin bootstrap password when the seeded admin is still unsealed;
-5. exposes readiness through `GET /api/health/ready`.
+4. starts the fresh local seed with global payment processing disabled until real provider configuration is supplied;
+5. generates a local admin bootstrap password when the seeded admin is still unsealed;
+6. exposes readiness through `GET /api/health/ready`.
 
 The local admin account is:
 
