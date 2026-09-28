@@ -49,19 +49,17 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="px-4 py-20 sm:px-6">
-        <div className="mx-auto max-w-lg rounded-xl border border-emerald-200 bg-white p-7 text-center dark:border-emerald-900 dark:bg-[#0f1216]">
-          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700">
-            <CheckCircle2 className="h-5 w-5" />
-          </div>
-          <h1 className="mt-5 text-2xl font-semibold tracking-tight">
+      <div className="min-h-[calc(100vh-68px)] bg-[#f6f6f3] px-5 py-14 sm:px-7">
+        <div className="mx-auto max-w-[620px] rounded-xl border border-[#cfd8d2] bg-white p-7 sm:p-9">
+          <CheckCircle2 className="h-8 w-8 text-[#16794b]" />
+          <h1 className="mt-5 text-3xl font-semibold tracking-[-0.02em] text-slate-950">
             Zgłoszenie wysłane do CEL-TRONICS
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-500">
+          <p className="mt-4 text-base leading-7 text-slate-600">
             Dane firmy trafiły do weryfikacji. Po aktywacji konta otrzymasz
             dostęp do strefy partnera i przypisanych warunków handlowych.
           </p>
-          <div className="mt-5 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
+          <div className="mt-6 flex items-center gap-2 text-sm font-medium text-slate-600">
             <Loader2 className="h-4 w-4 animate-spin" />
             Przechodzimy do logowania…
           </div>
@@ -71,42 +69,49 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="px-4 py-12 sm:px-6 lg:py-16">
-      <div className="mx-auto max-w-5xl">
-        <header className="border-b border-slate-200 pb-6 dark:border-slate-800">
-          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            CEL-TRONICS · strefa partnera
+    <div className="bg-[#f6f6f3] px-5 py-12 sm:px-7 lg:py-16">
+      <div className="mx-auto max-w-[1040px]">
+        <header className="grid gap-6 border-b border-[#d9dbdc] pb-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
+          <div>
+            <p className="text-base font-semibold text-primary">CEL-TRONICS · strefa partnera</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-5xl">
+              Załóż konto firmowe
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+              Zgłoszenie tworzy dostęp dla firmy. Po weryfikacji konta udostępniamy
+              ceny, katalog, zamówienia i obsługę serwisową przypisaną do partnera.
+            </p>
           </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Załóż konto firmowe
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-500">
-            Konto służy do obsługi cen, katalogu, zapytań i zamówień partnera.
-            Dostęp aktywujemy po weryfikacji danych firmy.
-          </p>
+
+          <div className="border-l-2 border-primary pl-5 text-sm leading-6 text-slate-600">
+            <strong className="block text-base font-semibold text-slate-950">
+              Dostęp nie jest aktywowany automatycznie.
+            </strong>
+            Dane firmy sprawdza zespół CEL-TRONICS przed udostępnieniem warunków handlowych.
+          </div>
         </header>
 
         {error ? (
           <div
             role="alert"
-            className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100"
+            className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[15px] leading-6 text-red-800"
           >
             {error}
           </div>
         ) : null}
 
-        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
+        <div className="mt-7 border border-[#d9dbdc] bg-white">
           <PartnerRegistrationForm
             onSubmit={handleRegister}
             loading={loading}
           />
         </div>
 
-        <p className="mt-5 text-sm text-slate-500">
+        <p className="mt-5 text-[15px] text-slate-600">
           Masz już konto?{" "}
           <Link
             href="/logowanie"
-            className="font-semibold text-foreground underline-offset-4 hover:underline"
+            className="font-semibold text-primary hover:underline"
           >
             Zaloguj się do strefy partnera CEL-TRONICS
           </Link>
