@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { checkAdminCostLimit } from "@/lib/adminCostRateLimit"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
@@ -12,6 +18,9 @@ import {
 } from "@/lib/catalog"
 
 export const dynamic = "force-dynamic"
+
+const AI_DESCRIPTION_MAX_BODY_BYTES = 8 * 1024
+const AI_DESCRIPTION_CONTEXT_MAX_CHARS = 8_000
 
 const RequestSchema = z.object({
   productId: z.string().min(1),
@@ -49,8 +58,21 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
+  const costLimit = checkAdminCostLimit("product-ai-description", authCheck.user)
+  if (!costLimit.allowed) {
+    return NextResponse.json(
+      { error: "Zbyt wiele prób generowania opisu. Spróbuj ponownie później." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(costLimit.retryAfterSeconds) },
+      }
+    )
+  }
+
   try {
-    const parsed = RequestSchema.safeParse(await req.json())
+    const parsed = RequestSchema.safeParse(
+      await readCommerceJson(req, AI_DESCRIPTION_MAX_BODY_BYTES)
+    )
     if (!parsed.success) {
       return NextResponse.json({ error: "Nieprawidłowy produkt." }, { status: 400 })
     }
@@ -74,7 +96,10 @@ export async function POST(req: Request) {
         String(product.sku || ""),
         localStore
       )
-      technicalContext = match?.entry.specs?.trim() || ""
+      technicalContext =
+        match?.entry.specs
+          ?.trim()
+          .slice(0, AI_DESCRIPTION_CONTEXT_MAX_CHARS) || ""
     } catch (error) {
       console.warn("Knowledge lookup failed:", error)
     }
@@ -178,6 +203,19 @@ export async function POST(req: Request) {
       foundInCatalog: Boolean(technicalContext),
     })
   } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie generowania opisu jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie generowania opisu." },
+        { status: 400 }
+      )
+    }
+
     const code = error instanceof Error ? error.message : ""
     if (req.signal.aborted || code === "REQUEST_ABORTED") {
       return NextResponse.json(
