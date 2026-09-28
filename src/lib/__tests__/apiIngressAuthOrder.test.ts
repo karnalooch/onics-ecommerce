@@ -42,8 +42,14 @@ function handlerSource(source: string, method: MutationMethod) {
 }
 
 function firstBodyReadIndex(source: string) {
-  const match = /req\.(?:json|text|formData|arrayBuffer)\s*\(/.exec(source)
-  return match?.index ?? -1
+  const matches = [
+    /req\.(?:json|text|formData|arrayBuffer)\s*\(/.exec(source),
+    /read[A-Za-z0-9]*(?:Json|Body|FormData)\s*\(\s*req\b/.exec(source),
+  ].filter((match): match is RegExpExecArray => Boolean(match))
+
+  return matches.length > 0
+    ? Math.min(...matches.map((match) => match.index))
+    : -1
 }
 
 describe("API ingress authorization order", () => {
