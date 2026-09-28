@@ -8,6 +8,11 @@ import {
   type RateLimitResult,
 } from "@/lib/rateLimit"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import {
+  RegistrationBodyInvalidError,
+  RegistrationBodyTooLargeError,
+  readRegistrationJson,
+} from "@/lib/registrationIngress"
 
 const REGISTER_CLIENT_POLICY = { limit: 5, windowMs: 15 * 60_000 } as const
 const REGISTER_EMAIL_POLICY = { limit: 3, windowMs: 60 * 60_000 } as const
@@ -47,7 +52,7 @@ export async function POST(req: Request) {
     )
     if (!clientLimit.allowed) return rateLimited(clientLimit)
 
-    const parsed = RegistrationSchema.safeParse(await req.json())
+    const parsed = RegistrationSchema.safeParse(await readRegistrationJson(req))
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -124,6 +129,20 @@ export async function POST(req: Request) {
       { status: 201 }
     )
   } catch (error) {
+    if (error instanceof RegistrationBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie rejestracji jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+
+    if (error instanceof RegistrationBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe dane rejestracji." },
+        { status: 400 }
+      )
+    }
+
     if (error instanceof Error && error.message === "EMAIL_EXISTS") {
       return NextResponse.json(
         { error: "Użytkownik o tym adresie e-mail już istnieje." },
