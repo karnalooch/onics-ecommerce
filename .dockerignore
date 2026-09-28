@@ -1,0 +1,12 @@
+.git
+.github
+.next
+node_modules
+coverage
+.local
+.vercel
+*.log
+.env*
+!.env.example
+public/uploads/catalogs
+scratch

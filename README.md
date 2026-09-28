@@ -22,6 +22,86 @@ The development server runs on http://localhost:3001.
 
 When `CELTRONICS_DB_PATH` and `CELTRONICS_UPLOAD_ROOT` are omitted in development, the app uses repository-local fallback paths. Knowledge uploads are stored under `.local/celtronics/uploads`, outside `public/`, so uploaded supplier files are not exposed as static assets.
 
+
+## Local Docker runtime
+
+For a local CEL-TRONICS/ONICS runtime with persistent data, Docker Desktop is enough.
+
+Start or rebuild the application:
+
+```bash
+docker compose up -d --build
+```
+
+Open:
+
+```text
+http://localhost:3001
+```
+
+The Compose preset binds port 3001 to `127.0.0.1` only. It is intentionally a **local-machine preset**, not an internet-facing production deployment.
+
+On first boot the container:
+
+1. creates the durable database/upload/backup directories;
+2. copies the packaged development seed only when the persistent `db.json` does not exist;
+3. generates session secrets inside the named Docker volume;
+4. starts the fresh local seed with global payment processing disabled until real provider configuration is supplied;
+5. generates a local admin bootstrap password when the seeded admin is still unsealed;
+6. exposes readiness through `GET /api/health/ready`.
+
+The local admin account is:
+
+```text
+admin@celtronics.pl
+```
+
+Read the generated bootstrap password from the container log:
+
+PowerShell:
+
+```powershell
+docker compose logs celtronics | Select-String "local bootstrap password"
+```
+
+Bash:
+
+```bash
+docker compose logs celtronics | grep "local bootstrap password"
+```
+
+After the first successful bootstrap login the password is sealed as a bcrypt hash in the persistent database. A later container restart does not reset it.
+
+Check container health:
+
+```bash
+docker compose ps
+```
+
+Verify the persistent JSON database from inside the running container:
+
+```bash
+docker compose exec -T celtronics npm run db:verify
+```
+
+Create a backup in the persistent volume:
+
+```bash
+docker compose exec -T celtronics npm run db:backup
+```
+
+Stop the application without deleting persistent data:
+
+```bash
+docker compose down
+```
+
+The named `celtronics-data` volume survives `docker compose down`, container recreation and image rebuilds.
+
+> **Destructive reset:** `docker compose down --volumes` deletes the local Docker volume, including the JSON database, uploads, generated local secrets and backups. Use it only when you intentionally want a completely fresh local instance.
+
+For an exposed/production deployment, do not reuse this local Compose preset unchanged. Supply real secrets, TLS/reverse-proxy handling, trusted forwarded-header rewriting, durable backup policy and the production payment configuration described in `PAYMENTS_PRODUCTION_RUNBOOK.md`.
+
 ## Validation
 
 The pull-request gates run:
