@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { nextUserRevision, userRevision } from "@/lib/userResponse"
@@ -15,6 +16,7 @@ type ProfileUser = {
   address?: string
   discount?: number
   tierName?: string
+  roleType?: string
   isApproved?: boolean
   isBlocked?: boolean
   revision?: number | null
@@ -80,6 +82,9 @@ export async function PUT(req: Request) {
       const user = findStoredUserBySession(db.users as ProfileUser[], sessionUser)
       if (!user) throw new Error("PROFILE_NOT_FOUND")
       if (user.isBlocked) throw new Error("ACCOUNT_BLOCKED")
+      if (!hasAccountRoleAccess(user, ["BIZ"])) {
+        throw new Error("PROFILE_ACCESS_REVOKED")
+      }
 
       const currentRevision = userRevision(user.revision)
       const isReplay =
@@ -139,6 +144,12 @@ export async function PUT(req: Request) {
     }
     if (code === "ACCOUNT_BLOCKED") {
       return NextResponse.json({ error: "Konto jest zablokowane." }, { status: 403 })
+    }
+    if (code === "PROFILE_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Konto nie ma już uprawnień do aktualizacji profilu." },
+        { status: 403 }
+      )
     }
     if (code === "PROFILE_REVISION_CONFLICT") {
       return NextResponse.json(
