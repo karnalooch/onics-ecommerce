@@ -18,6 +18,7 @@ type SolarRuntimeStore = typeof globalThis & {
   __celtronicsSolarCache?: SolarData
   __celtronicsSolarRefresh?: Promise<SolarData>
   __celtronicsSolarRetryAfter?: number
+  __celtronicsSolarFailureFallback?: SolarData
 }
 
 function isClockTime(value: unknown): value is string {
@@ -144,6 +145,14 @@ export async function getSolarTimes(): Promise<SolarData> {
 
   if (memory && isSolarDataFresh(memory)) return memory
 
+  if (
+    typeof runtime.__celtronicsSolarRetryAfter === "number" &&
+    runtime.__celtronicsSolarRetryAfter > Date.now() &&
+    isSolarData(runtime.__celtronicsSolarFailureFallback)
+  ) {
+    return runtime.__celtronicsSolarFailureFallback
+  }
+
   const seed = readSeedSolarData()
   if (seed && isSolarDataFresh(seed)) {
     runtime.__celtronicsSolarCache = seed
@@ -168,11 +177,14 @@ export async function getSolarTimes(): Promise<SolarData> {
       const fresh = await fetchSolarTimes()
       runtime.__celtronicsSolarCache = fresh
       runtime.__celtronicsSolarRetryAfter = undefined
+      runtime.__celtronicsSolarFailureFallback = undefined
       return fresh
     } catch (error) {
       console.error("Błąd pobierania danych słońca:", error)
+      const failureFallback = stale ?? fallbackSolarData()
       runtime.__celtronicsSolarRetryAfter = Date.now() + SOLAR_FAILURE_RETRY_MS
-      return stale ?? fallbackSolarData()
+      runtime.__celtronicsSolarFailureFallback = failureFallback
+      return failureFallback
     }
   })()
 
