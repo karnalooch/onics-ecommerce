@@ -29,6 +29,10 @@ node_modules/
 /public/uploads/catalogs/
 
 # debug
+/src/*_dom.html
+/src/**/*_dom.html
+/src/*_snapshot.html
+/src/**/*_snapshot.html
 /public/debug-*
 npm-debug.log*
 yarn-debug.log*
