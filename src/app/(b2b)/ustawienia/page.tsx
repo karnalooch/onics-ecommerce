@@ -104,14 +104,14 @@ export default function SettingsPage() {
         throw new Error(error)
       }
 
-      const patch = payload as Partial<Profile>
+      const data = payload as Partial<Profile>
       setProfile((current) =>
         current
           ? {
               ...current,
-              phone: patch.phone ?? phone,
-              address: patch.address ?? address,
-              revision: Number(patch.revision ?? current.revision),
+              phone: data.phone ?? phone,
+              address: data.address ?? address,
+              revision: Number(data.revision ?? current.revision),
             }
           : current
       )
