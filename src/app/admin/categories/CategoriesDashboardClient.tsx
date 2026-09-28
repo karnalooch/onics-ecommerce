@@ -92,6 +92,21 @@ export function CategoriesDashboardClient({
 
   const activeCategory =
     initialCategories.find((category) => category.id === activeCatId) || null
+
+  const addSubcategoryAtomic = (activeCat: Category, newSubcatName: string) =>
+    addSubcategoryAction(activeCat.id, newSubcatName)
+
+  const renameSubcategoryAtomic = (
+    activeCat: Category,
+    id: string,
+    name: string
+  ) => renameSubcategoryAction(activeCat.id, id, name)
+
+  const deleteSubcategoryAtomic = (activeCat: Category, subId: string) =>
+    deleteSubcategoryAction(activeCat.id, subId)
+
+  const deleteCategoryByRevision = (id: string, expectedRevision: number) =>
+    deleteCategoryAction(id, expectedRevision)
   const ActiveIcon = activeCategory
     ? ICONS[activeCategory.iconName || "Folder"] || Folder
     : Folder
@@ -134,7 +149,7 @@ export function CategoriesDashboardClient({
     if (!activeCategory || !name) return
 
     run(async () => {
-      const result = await addSubcategoryAction(activeCategory.id, name)
+      const result = await addSubcategoryAtomic(activeCategory, name)
       if (result.success) setNewSubcatName("")
       return result
     }, "Podkategoria dodana.")
@@ -163,7 +178,7 @@ export function CategoriesDashboardClient({
 
     run(
       () =>
-        renameSubcategoryAction(activeCategory.id, subcategory.id, name),
+        renameSubcategoryAtomic(activeCategory, subcategory.id, name),
       "Nazwa podkategorii zapisana."
     )
     setRenamingSubcategory(null)
@@ -186,7 +201,7 @@ export function CategoriesDashboardClient({
         : 0
 
     run(
-      () => deleteCategoryAction(category.id, revision),
+      () => deleteCategoryByRevision(category.id, revision),
       "Kategoria usunięta."
     )
   }
@@ -204,7 +219,7 @@ export function CategoriesDashboardClient({
     }
 
     run(
-      () => deleteSubcategoryAction(activeCategory.id, subcategory.id),
+      () => deleteSubcategoryAtomic(activeCategory, subcategory.id),
       "Podkategoria usunięta."
     )
   }
