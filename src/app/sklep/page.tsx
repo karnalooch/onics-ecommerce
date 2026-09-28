@@ -1,105 +1,132 @@
-// src/app/sklep/page.tsx
-import { auth } from "@/auth";
-import { redirect } from "next/navigation";
-import { initializeMockData } from "@/store/serverStore";
-import { ShopDashboardClient } from "./ShopDashboardClient";
-import { ShieldAlert, Clock, ArrowLeft } from "lucide-react";
+import Link from "next/link"
+import { ArrowLeft, Clock, ShieldAlert } from "lucide-react"
+import { auth } from "@/auth"
+import { redirect } from "next/navigation"
+import { initializeMockData } from "@/store/serverStore"
+import { ShopDashboardClient } from "./ShopDashboardClient"
 import {
   buildStorefrontCatalogSnapshot,
   type StorefrontProduct,
   type StorefrontUser,
-} from "@/lib/storefrontCatalog";
+} from "@/lib/storefrontCatalog"
 import {
   buildStoredProductCatalog,
   type ProductCatalogCategory,
   type ProductCatalogRecord,
-} from "@/lib/productCatalogView";
-import Link from "next/link";
-import { buildCartOwnerKey } from "@/lib/cartIdentity";
+} from "@/lib/productCatalogView"
+import { buildCartOwnerKey } from "@/lib/cartIdentity"
 
-/**
- * Modern Retail & B2B Shop Page (Server Component)
- * Consolidated architecture: RSC + Atomic Atoms + Premium Styling.
- * Replaces legacy ClientShop monolithic component.
- */
 export default async function SklepPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/logowanie");
+  const session = await auth()
+  if (!session?.user) redirect("/logowanie")
 
-  const { products, categories, users } = initializeMockData();
+  const { products, categories, users } = initializeMockData()
   const sessionUser = session.user as {
     id?: string
     email?: string | null
-  };
+  }
+
   const catalogProducts = await buildStoredProductCatalog(
     products as unknown as ProductCatalogRecord[],
     categories as unknown as ProductCatalogCategory[]
-  );
+  )
   const storefront = buildStorefrontCatalogSnapshot(
     catalogProducts as unknown as StorefrontProduct[],
     users as StorefrontUser[],
     sessionUser
-  );
+  )
 
   if (storefront.status === "denied") {
-    redirect("/logowanie");
+    redirect("/logowanie")
   }
 
   if (storefront.status === "pending") {
-    return <PendingApprovalView />;
+    return <PendingApprovalView />
   }
 
-  const user = storefront.user;
-  const cartOwnerKey = buildCartOwnerKey(sessionUser);
-  if (!cartOwnerKey) redirect("/logowanie");
+  const cartOwnerKey = buildCartOwnerKey(sessionUser)
+  if (!cartOwnerKey) redirect("/logowanie")
+
+  const shopCategories = categories.map((category) => ({
+    id: String(category.id ?? ""),
+    name: String(category.name ?? ""),
+  }))
 
   return (
-    <div className="container mx-auto py-12 px-6 max-w-[1600px] min-h-screen">
-       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-black tracking-tighter uppercase italic">Katalog <span className="text-primary italic">Produktów</span></h1>
-            <p className="text-slate-500 font-medium">Dostęp do {storefront.products.length} profesjonalnych rozwiązań SSWiN i CCTV.</p>
+    <div className="mx-auto min-h-screen max-w-[1500px] px-4 py-8 sm:px-6 lg:py-10">
+      <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 dark:border-slate-800 md:flex-row md:items-end">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            CEL-TRONICS · strefa partnera
           </div>
-          
-          <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 px-6 py-3 rounded-[2rem] shadow-sm">
-             <div className={`w-2 h-2 rounded-full animate-pulse ${user.role === 'BIZ' ? 'bg-primary' : 'bg-emerald-500'}`} />
-             <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-               Profil: {user.role === 'BIZ' ? 'Systemy B2B / Instalator' : 'Klient Detaliczny'}
-             </span>
-          </div>
-       </header>
-       
-       <ShopDashboardClient
-         initialProducts={storefront.products}
-         categories={categories}
-         role={user.role}
-         cartOwnerKey={cartOwnerKey}
-       />
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            Katalog i zamówienia
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+            Aktualny katalog urządzeń, ceny przypisane do konta i dostępność
+            magazynowa.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm dark:border-slate-800 dark:bg-[#0f1216]">
+          <span className="text-slate-500">Typ konta</span>
+          <strong className="ml-3 font-mono">
+            {storefront.user.role === "BIZ"
+              ? "PARTNER"
+              : storefront.user.role === "ADMIN"
+                ? "ADMIN"
+                : "KLIENT"}
+          </strong>
+        </div>
+      </header>
+
+      <ShopDashboardClient
+        initialProducts={storefront.products}
+        categories={shopCategories}
+        role={storefront.user.role}
+        cartOwnerKey={cartOwnerKey}
+      />
     </div>
-  );
+  )
 }
 
 function PendingApprovalView() {
   return (
-    <div className="container mx-auto flex items-center justify-center min-h-[80vh] px-6">
-      <div className="max-w-xl w-full bg-white border-2 border-slate-100 rounded-[3rem] p-12 text-center shadow-2xl shadow-slate-200/50 animate-in zoom-in-95 duration-500">
-         <div className="bg-amber-50 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto mb-8">
-            <Clock className="w-10 h-10 text-amber-500" />
-         </div>
-         <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight italic mb-6">Weryfikacja <span className="text-amber-500 italic">NIP</span> w toku</h2>
-         <p className="text-slate-500 font-medium leading-relaxed mb-10">
-            Twoje dane firmowe zostały przesłane do administratora. Po zatwierdzeniu otrzymasz dostęp do cen hurtowych B2B oraz systemu przedsprzedaży.
-         </p>
-         <div className="flex flex-col gap-4">
-            <div className="p-4 bg-slate-50 rounded-2xl flex items-center gap-4 border border-slate-100">
-               <ShieldAlert className="w-5 h-5 text-slate-400" />
-               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Status: oczekuje na weryfikację administratora</span>
+    <div className="mx-auto flex min-h-[70vh] max-w-3xl items-center px-4 py-12 sm:px-6">
+      <div className="w-full rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-[#0f1216]">
+        <div className="flex items-start gap-4">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            <Clock className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              CEL-TRONICS · strefa partnera
             </div>
-            <Link href="/" className="inline-flex items-center justify-center gap-3 h-14 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10">
-               <ArrowLeft className="w-4 h-4" /> Powrót do Strony Głównej
-            </Link>
-         </div>
+            <h1 className="mt-2 text-2xl font-semibold">
+              Konto oczekuje na weryfikację
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
+              Dane firmy zostały zapisane. Po zatwierdzeniu konta udostępnimy
+              ceny i funkcje handlowe przypisane do Twojej firmy.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-white/[0.03] dark:text-slate-300">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Status: weryfikacja danych firmy przez zespół CEL-TRONICS.
+          </span>
+        </div>
+
+        <Link
+          href="/"
+          className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white dark:bg-white dark:text-slate-950"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Wróć do CEL-TRONICS
+        </Link>
       </div>
     </div>
-  );
+  )
 }
