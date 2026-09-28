@@ -4,6 +4,8 @@
 
 This document is the design and implementation contract introduced by T216. It treats the existing backend as the stable product engine and replaces the presentation model with three intentionally separate surfaces.
 
+**Visual reset — 29.09.2026:** the pre-reset presentation implementation is not a visual reference. Existing layouts, color choices, typography scale, Fluent/Mica utilities and dark-theme treatment may be removed. Functional information architecture, authorization boundaries, data-truth rules and lifecycle safety remain authoritative. New presentation must be derived from the product tasks and backend contracts described here, not from screenshots or legacy components.
+
 ## 1. Product surfaces
 
 ### Field / installer
@@ -261,3 +263,24 @@ Forbidden public presentation patterns include:
 - `Finalizuj Wybór`
 
 Business behavior remains unchanged during brand migration: authentication, registration payloads, account approval, pricing, cart quantity limits, quote semantics and checkout rules stay authoritative in their existing backend/domain modules.
+
+
+## 11. T224 visual reset foundation
+
+The product is treated as three task-specific surfaces sharing one backend:
+
+- **CEL-TRONICS public** — company, services, catalog discovery and entry to partner access;
+- **Partner / installer** — device search, account price and stock first; then orders, service and company settings;
+- **Operations** — action queues, catalog/data quality, partner approval, orders/offers, payments, knowledge and RMA.
+
+Presentation baseline:
+
+- 16 px root type size; routine body copy should normally be 16–18 px;
+- high-contrast light surfaces as the default product environment;
+- CEL-TRONICS red is the interaction accent, not a decorative background treatment;
+- no Mica/Acrylic blur, radial ambient gradients, cinematic theme transitions or hidden low-contrast controls;
+- no public/partner-facing ONICS branding; CEL-TRONICS owns the customer relationship;
+- navigation is grouped by user task and backend domain rather than by legacy screen order;
+- visual changes must not alter auth, role checks, pricing, stock truth, idempotency, payment/RMA transitions or destructive-action semantics.
+
+The migration starts with global tokens and the public/partner/admin shells. Individual feature screens migrate afterward without changing their backend contracts.

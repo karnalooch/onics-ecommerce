@@ -1,152 +1,111 @@
-/* src/app/globals.css */
 @import "tailwindcss";
 
 @theme {
-  /* --- WINDOWS 11 FLUENT DESIGN SYSTEM --- */
-  
-  /* Color Palette: Core */
-  --color-primary: #0078d4;          /* Windows Electric Blue */
+  --color-primary: #c61f26;
   --color-primary-foreground: #ffffff;
-  
-  /* Surfaces: Light Mode (Mica-like) */
-  --color-background: #f3f3f3;
-  --color-foreground: #1c1c1c;
-  --color-card: rgba(255, 255, 255, 0.7);
-  --color-card-foreground: #1c1c1c;
-  
-  /* Surfaces: Dark Mode (Acrylic-like) */
-  --color-background-dark: #202020;
-  --color-foreground-dark: #ffffff;
-  --color-card-dark: rgba(43, 43, 43, 0.6);
-  --color-card-foreground-dark: #ffffff;
-  
-  /* Precision Palette */
-  --color-input-bg: rgba(255, 255, 255, 0.5);
-  --color-input-bg-dark: rgba(255, 255, 255, 0.05);
-  
-  /* Geometry & Scaling (Fluent Standard: 8px, 12px, 16px) */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --color-background: #f6f6f3;
+  --color-foreground: #191919;
+  --color-card: #ffffff;
+  --color-card-foreground: #191919;
+  --color-muted: #efefeb;
+  --color-muted-foreground: #60646b;
+  --color-border: #d9dbdc;
+  --color-input-bg: #ffffff;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   --radius-pill: 9999px;
-  
-  /* Transitions */
-  --animate-in: fade-in 0.3s ease-out;
-  --animate-out: fade-out 0.2s ease-in;
 }
 
 :root {
-  --radius: 0.75rem; /* Standard Fluent Corner (12px) */
-  --background: #f3f3f3;
-  --foreground: #1c1c1c;
-}
-
-.dark {
-  --background: #202020;
-  --foreground: #ffffff;
+  --background: #f6f6f3;
+  --foreground: #191919;
+  --surface: #ffffff;
+  --surface-muted: #efefeb;
+  --border: #d9dbdc;
+  --muted: #60646b;
+  --accent: #c61f26;
+  --accent-strong: #a9161c;
+  --success: #16794b;
+  --warning: #9a6500;
+  --danger: #b42318;
 }
 
 @layer base {
   html {
-    font-size: 14px;
-    @apply selection:bg-primary/30 selection:text-white;
+    font-size: 16px;
+    background: var(--background);
+    @apply selection:bg-primary/20 selection:text-foreground;
   }
 
   body {
-    @apply bg-background text-foreground antialiased min-h-screen transition-colors duration-500 underline-offset-4;
-    font-family: 'Inter', system-ui, sans-serif;
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(0, 120, 212, 0.05) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(0, 120, 212, 0.05) 0px, transparent 50%);
-  }
-  
-  .dark body {
-    @apply bg-background-dark text-foreground-dark;
-    background-image: 
-      radial-gradient(at 0% 0%, rgba(0, 120, 212, 0.1) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, rgba(203, 213, 225, 0.05) 0px, transparent 50%);
+    min-height: 100vh;
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-inter), Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    text-rendering: optimizeLegibility;
   }
 
-  input, select, textarea {
-    @apply bg-input-bg border border-black/5 rounded-md px-4 h-10 transition-all outline-none ring-0 backdrop-blur-md;
-  }
-  
-  .dark input, .dark select, .dark textarea {
-    @apply bg-input-bg-dark border-white/10;
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
   }
 
-  input:focus, select:focus {
-    @apply bg-white ring-2 ring-primary/40 border-primary/50;
+  input,
+  select,
+  textarea {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #8a8f96;
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  button:focus-visible,
+  a:focus-visible {
+    outline: 3px solid rgba(198, 31, 38, 0.22);
+    outline-offset: 2px;
   }
 }
 
 @layer utilities {
-  /* WINDOWS 11 MATERIAL: MICA / ACRYLIC */
-  .glass-mica {
-    backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    background: rgba(255, 255, 255, 0.7);
-  }
-  
-  .dark .glass-mica {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-    background: rgba(43, 43, 43, 0.6);
-  }
-
-  /* WINDOWS 11 CARD STYLE */
-  .fluent-card {
-    /* Manual inclusion of glass-mica properties to avoid @apply issues */
-    backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    background: rgba(255, 255, 255, 0.7);
-    
-    border-radius: 8px;
-    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .dark .fluent-card {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(43, 43, 43, 0.6);
+  .glass-mica,
+  .fluent-card,
+  .satel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: none;
+    backdrop-filter: none;
   }
 
   .fluent-card:hover {
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-    transform: scale(1.005);
-    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: none;
+    transform: none;
   }
 
-  .dark .fluent-card:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-
-  /* NO-DECORATION PURGE (Legacy support) */
   .no-blur {
     backdrop-filter: none !important;
   }
-
-  /* SATEL Legacy fallbacks mapping to Fluent */
-  .satel-card {
-    /* Use properties instead of @apply to avoid layering issues */
-    backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 8px;
-  }
 }
 
-/* INTERACTION PHYSICS (SOFT & BOUNCY) - Top Level Utilities for v4 */
 @utility active-press {
-  transition: transform 150ms;
   &:active {
-    transform: scale(0.97);
+    opacity: 0.82;
   }
 }
 
 @utility pill-action {
-  @apply px-6 py-2 rounded-full bg-primary text-white font-bold text-[12px] transition-all hover:brightness-110 active-press shadow-lg shadow-primary/30;
+  @apply rounded-lg bg-primary px-5 py-3 font-semibold text-white transition hover:bg-[#a9161c];
 }
