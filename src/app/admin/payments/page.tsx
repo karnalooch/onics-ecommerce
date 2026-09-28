@@ -93,7 +93,7 @@ const PROVIDER_STATE_LABELS: Record<PaymentMethod["state"], string> = {
   ready: "GOTOWY",
   misconfigured: "BŁĘDNA KONFIGURACJA",
   disabled: "WYŁĄCZONY",
-  maintenance: "MAINTENANCE",
+  maintenance: "Wyłączone",
 }
 
 export default function AdminPaymentsPage() {
@@ -400,17 +400,17 @@ export default function AdminPaymentsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-10 animate-in fade-in duration-500 pb-20 max-w-[1400px] mx-auto">
-      <div className="border-b-2 border-slate-950 pb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+    <div className="mx-auto max-w-[1400px] space-y-6 pb-12">
+      <div className="flex flex-col justify-between gap-4 border-b border-[var(--ops-border)] pb-6 lg:flex-row lg:items-end">
         <div className="flex items-center gap-5">
-          <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center">
+          <div className="hidden">
             <CreditCard className="w-7 h-7 text-primary" />
           </div>
           <div>
             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">
-              PAYMENT_CONTROL
+              Płatności
             </span>
-            <h1 className="text-4xl font-black text-slate-950 uppercase tracking-tighter italic">
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
               Metody płatności
             </h1>
           </div>
@@ -426,7 +426,7 @@ export default function AdminPaymentsPage() {
         </button>
       </div>
 
-      <div className="border-l-4 border-primary bg-primary/5 px-6 py-5">
+      <div className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] p-5">
         <div className="flex items-start gap-4">
           <ShieldCheck className="w-5 h-5 text-primary mt-0.5" />
           <div>
@@ -443,7 +443,7 @@ export default function AdminPaymentsPage() {
       </div>
 
       {!loading && control && (
-        <section className="bg-slate-950 text-white shadow-sm">
+        <section className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)]">
           <div className="p-8 grid gap-8 xl:grid-cols-[1fr_360px] xl:items-end">
             <div className="space-y-5">
               <div className="flex flex-wrap items-center gap-3">
@@ -458,18 +458,18 @@ export default function AdminPaymentsPage() {
                       : "bg-red-400/15 text-red-300"
                   }`}
                 >
-                  {control.enabled ? "ONLINE" : "MAINTENANCE"}
+                  {control.enabled ? "Aktywne" : "Wyłączone"}
                 </span>
               </div>
 
-              <p className="text-sm text-slate-300 leading-relaxed max-w-3xl">
+              <p className="text-sm text-[var(--ops-muted)] leading-relaxed max-w-3xl">
                 Ten przełącznik blokuje tworzenie wszystkich nowych płatności
                 online niezależnie od ustawień pojedynczych operatorów. Nie
                 zatrzymuje obsługi istniejących transakcji.
               </p>
 
               <div className="space-y-2">
-                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                <label className="text-[9px] font-black uppercase tracking-widest text-[var(--ops-muted)]">
                   Komunikat dla klienta podczas przerwy
                 </label>
                 <textarea
@@ -480,7 +480,7 @@ export default function AdminPaymentsPage() {
                   rows={3}
                   maxLength={160}
                   placeholder="Płatności online są chwilowo niedostępne. Spróbuj ponownie później."
-                  className="w-full bg-white/5 border border-white/15 px-4 py-3 text-sm text-white outline-none focus:border-primary resize-none"
+                  className="w-full bg-transparent border border-[var(--ops-border)] px-4 py-3 text-sm text-foreground outline-none focus:border-primary resize-none"
                 />
                 <div className="text-right text-[9px] font-black text-slate-500">
                   {maintenanceMessage.length}/160
@@ -505,13 +505,13 @@ export default function AdminPaymentsPage() {
                 )}
                 {control.enabled
                   ? "WYŁĄCZ WSZYSTKIE PŁATNOŚCI"
-                  : "WŁĄCZ PŁATNOŚCI ONLINE"}
+                  : "WŁĄCZ PŁATNOŚCI Aktywne"}
               </button>
 
               <button
                 onClick={() => saveGlobalControl(control.enabled)}
                 disabled={saving !== null}
-                className="h-11 px-6 border border-white/15 text-[9px] font-black uppercase tracking-widest text-slate-300 hover:border-white/40 disabled:opacity-40"
+                className="h-11 px-6 border border-[var(--ops-border)] text-[9px] font-black uppercase tracking-widest text-[var(--ops-muted)] hover:border-slate-400 disabled:opacity-40"
               >
                 ZAPISZ KOMUNIKAT
               </button>
@@ -541,7 +541,7 @@ export default function AdminPaymentsPage() {
             <button
               onClick={runEmergencyShutdown}
               disabled={saving !== null || emergencyRunning}
-              className="min-w-[300px] h-14 px-6 bg-red-700 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="min-w-[300px] h-14 px-6 bg-red-700 text-foreground text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {emergencyRunning ? (
                 <RefreshCcw className="w-4 h-4 animate-spin" />
@@ -549,7 +549,7 @@ export default function AdminPaymentsPage() {
                 <AlertTriangle className="w-4 h-4" />
               )}
               {emergencyRunning
-                ? "WYGASZANIE_SESJI..."
+                ? "Wygaszanie sesji…"
                 : "AWARYJNIE WYŁĄCZ I WYGASZ SESJE"}
             </button>
           </div>
@@ -579,7 +579,7 @@ export default function AdminPaymentsPage() {
                         className={`w-12 h-12 flex items-center justify-center ${
                           method.enabled
                             ? "bg-green-50 text-green-600"
-                            : "bg-slate-100 text-slate-400"
+                            : "bg-slate-100 text-[var(--ops-muted)]"
                         }`}
                       >
                         <CreditCard className="w-6 h-6" />
@@ -653,7 +653,7 @@ export default function AdminPaymentsPage() {
                         )}
 
                         {method.updatedAt && (
-                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-4">
+                          <p className="text-[9px] text-[var(--ops-muted)] font-bold uppercase tracking-widest mt-4">
                             Ostatnia zmiana:{" "}
                             {new Date(method.updatedAt).toLocaleString("pl-PL")}
                           </p>
@@ -674,7 +674,7 @@ export default function AdminPaymentsPage() {
                           key={String(label)}
                           className="border border-slate-100 bg-slate-50 px-3 py-3"
                         >
-                          <div className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                          <div className="text-[8px] font-black uppercase tracking-widest text-[var(--ops-muted)]">
                             {label}
                           </div>
                           <div className="text-xl font-black tabular-nums text-slate-950 mt-1">
@@ -687,7 +687,7 @@ export default function AdminPaymentsPage() {
                     {(method.operations.lastReconciledAt ||
                       method.operations.lastErrorAt ||
                       method.operations.ordersRequiringAttention > 0) && (
-                      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[9px] font-black uppercase tracking-widest text-[var(--ops-muted)]">
                         {method.operations.lastReconciledAt && (
                           <span>
                             Ostatni reconcile:{" "}
@@ -804,7 +804,7 @@ export default function AdminPaymentsPage() {
                       className={`h-14 px-6 flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                         method.enabled
                           ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
-                          : "bg-slate-950 text-white hover:bg-slate-800"
+                          : "bg-slate-950 text-foreground hover:bg-slate-800"
                       }`}
                     >
                       {saving === method.id ? (
@@ -859,7 +859,7 @@ export default function AdminPaymentsPage() {
                 <h2 className="text-sm font-black uppercase tracking-widest text-slate-950">
                   Historia zmian płatności
                 </h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                <p className="text-[10px] text-[var(--ops-muted)] font-bold uppercase tracking-widest mt-1">
                   Ostatnie {audit.length} zdarzeń
                 </p>
               </div>
@@ -904,7 +904,7 @@ export default function AdminPaymentsPage() {
                           {targetName}
                         </span>
                         {entry.operation === "EMERGENCY_SHUTDOWN" && (
-                          <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-red-700 text-white">
+                          <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-red-700 text-foreground">
                             AWARYJNE_WYŁĄCZENIE
                           </span>
                         )}
@@ -921,12 +921,12 @@ export default function AdminPaymentsPage() {
                         )}
                         {messageChanged && (
                           <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-amber-100 text-amber-700">
-                            KOMUNIKAT_ZMIENIONY
+                            Komunikat zmieniony
                           </span>
                         )}
                         {presentationChanged && (
                           <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest bg-blue-100 text-blue-700">
-                            PREZENTACJA_ZMIENIONA
+                            Ustawienia prezentacji zmienione
                           </span>
                         )}
                       </div>
@@ -934,14 +934,14 @@ export default function AdminPaymentsPage() {
                         Operator: <span className="font-bold">{actor}</span>
                       </p>
                       {messageChanged && entry.nextMaintenanceMessage && (
-                        <p className="text-xs text-slate-400 mt-2 italic">
+                        <p className="text-xs text-[var(--ops-muted)] mt-2 italic">
                           „{entry.nextMaintenanceMessage}”
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <time className="text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
+                  <time className="text-[10px] font-black text-[var(--ops-muted)] uppercase tracking-widest tabular-nums">
                     {new Date(entry.createdAt).toLocaleString("pl-PL")}
                   </time>
                 </div>
