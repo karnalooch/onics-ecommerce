@@ -8,6 +8,10 @@ import { consumeRejectedLoginPasswordWork } from "@/lib/loginTiming"
 import { isPasswordWithinBcryptLimit } from "@/lib/passwordPolicy"
 import { authorizePageRoute } from "@/lib/routeAccess"
 import {
+  PasswordWorkCapacityError,
+  runPasswordWork,
+} from "@/lib/passwordWorkBudget"
+import {
   applicationRateLimiter,
   getClientRateLimitKey,
 } from "@/lib/rateLimit"
@@ -43,7 +47,7 @@ type StoredAuthUser = {
 
 async function verifyStoredPassword(user: StoredAuthUser, password: string) {
   if (typeof user.passwordHash === "string" && user.passwordHash.length > 0) {
-    return bcrypt.compare(password, user.passwordHash)
+    return runPasswordWork(() => bcrypt.compare(password, user.passwordHash as string))
   }
 
   if (user.roleType !== "ADMIN") {
@@ -62,7 +66,7 @@ async function verifyStoredPassword(user: StoredAuthUser, password: string) {
     email: user.email,
     password,
   })
-  return bcrypt.compare(password, sealedHash)
+  return runPasswordWork(() => bcrypt.compare(password, sealedHash))
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -101,13 +105,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           (entry) => normalizeEmail(entry.email) === email
         )
 
-        if (!user || getAccountAccessDecision(user) !== "allowed") {
-          await consumeRejectedLoginPasswordWork(password)
-          return null
-        }
+        try {
+          if (!user || getAccountAccessDecision(user) !== "allowed") {
+            await consumeRejectedLoginPasswordWork(password)
+            return null
+          }
 
-        const passwordValid = await verifyStoredPassword(user, password)
-        if (!passwordValid) return null
+          const passwordValid = await verifyStoredPassword(user, password)
+          if (!passwordValid) return null
+        } catch (error) {
+          if (error instanceof PasswordWorkCapacityError) return null
+          throw error
+        }
 
         return {
           id: String(user.id),
