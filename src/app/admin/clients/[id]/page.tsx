@@ -31,15 +31,15 @@ export default function ClientProfilePage() {
     fetchUser();
   }, [params.id]);
 
-  if (loading) return <div className="p-12 text-center text-muted-foreground animate-pulse">Pobieranie akt klienta...</div>;
-  if (!user) return <div className="p-12 text-center text-destructive">Nie znaleziono takiego profilu. Został usunięty lub nie istnieje.</div>;
+  if (loading) return <div className="p-12 text-center text-muted-foreground animate-pulse">Pobieranie danych partnera…</div>;
+  if (!user) return <div className="p-12 text-center text-destructive">Nie znaleziono konta partnera.</div>;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mx-auto max-w-[1200px] space-y-6">
       
       <div className="flex items-center gap-4">
         <Link href="/admin/clients">
-          <Button variant="outline" size="icon" className="rounded-full shadow-sm">
+          <Button variant="outline" size="icon" className="rounded-lg">
             <ArrowLeft className="w-4 h-4" />
           </Button>
         </Link>
@@ -57,7 +57,7 @@ export default function ClientProfilePage() {
         
         {/* Kolumna Lewa: Główne Detale */}
         <div className="col-span-1 md:col-span-2 space-y-6">
-          <Card className="shadow-sm border-blue-100 overflow-hidden relative">
+          <Card className=" border-blue-100 overflow-hidden relative">
             <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
             <CardHeader className="pb-4">
               <CardTitle className="text-xl">Tożsamość Operacyjna</CardTitle>
@@ -112,7 +112,7 @@ export default function ClientProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-xl flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-muted-foreground" /> Adres do wysyłki (Domyślny)
@@ -128,39 +128,39 @@ export default function ClientProfilePage() {
 
         {/* Kolumna Prawa: Obsługa i Logi */}
         <div className="col-span-1 space-y-6">
-          <Card className="shadow-sm border-orange-100 bg-orange-50/30">
+          <Card className=" border-orange-100 bg-orange-50/30">
             <CardHeader className="pb-4">
               <CardTitle className="text-lg">Akcje Dopuszczalne</CardTitle>
               <CardDescription>Wyegzekwuj procedury e-commerce.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Link href={`mailto:${user.email}`} className="w-full block">
-                <Button className="w-full justify-start gap-3 bg-blue-600 hover:bg-blue-700 h-12 shadow-sm font-semibold rounded-xl">
+                <Button className="w-full justify-start gap-3 bg-blue-600 hover:bg-blue-700 h-12  font-semibold rounded-xl">
                   <Mail className="w-4 h-4" /> Wyślij E-mail
                 </Button>
               </Link>
               
-              <Button variant="outline" className={`w-full justify-start gap-3 h-12 border shadow-sm font-semibold rounded-xl ${user.isBlocked ? 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'text-orange-700 border-orange-200 bg-orange-50 hover:bg-orange-100'}`}>
-                <Ban className="w-4 h-4" /> {user.isBlocked ? "Odblokuj Dostęp do Sklepu" : "Zawrzyj Blokadę (Ban)"}
+              <Button variant="outline" className={`w-full justify-start gap-3 h-12 border  font-semibold rounded-xl ${user.isBlocked ? 'text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'text-orange-700 border-orange-200 bg-orange-50 hover:bg-orange-100'}`}>
+                <Ban className="w-4 h-4" /> {user.isBlocked ? "Odblokuj konto" : "Zablokuj konto"}
               </Button>
 
-              <Button variant="destructive" className="w-full justify-start gap-3 h-12 shadow-sm font-semibold rounded-xl mt-6">
-                <Trash2 className="w-4 h-4" /> Eksterminuj Klienta
+              <Button variant="destructive" className="w-full justify-start gap-3 h-12  font-semibold rounded-xl mt-6">
+                <Trash2 className="w-4 h-4" /> Usuń konto
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm">
+          <Card className="">
              <CardHeader>
-                <CardTitle className="text-lg">Dodatkowe Logi</CardTitle>
+                <CardTitle className="text-lg">Stan konta</CardTitle>
              </CardHeader>
              <CardContent>
                 <div className="text-sm text-muted-foreground bg-slate-50 p-4 rounded-lg flex flex-col gap-2">
                   <div className="flex justify-between border-b pb-2">
-                     <span>Sesja B2B:</span> <span className="font-mono text-xs">{user.jwt ? "Aktywny Token" : "Zdezaktualizowany"}</span>
+                     <span>Sesja B2B:</span> <span className="font-mono text-xs">{user.jwt ? "Aktywna sesja" : "Brak aktywnej sesji"}</span>
                   </div>
                   <div className="flex justify-between pt-1">
-                     <span>Potwierdzenie:</span> <span>{user.isApproved ? "Zweryfikowany" : "Świeży"}</span>
+                     <span>Potwierdzenie:</span> <span>{user.isApproved ? "Zweryfikowany" : "Oczekuje na weryfikację"}</span>
                   </div>
                 </div>
              </CardContent>
