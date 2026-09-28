@@ -10,7 +10,10 @@ import {
   knowledgeSourceProvenanceIncludes,
   mergeKnowledgeSourceProvenance,
 } from "@/lib/knowledge/provenance"
-import { validateKnowledgeFilename } from "@/lib/knowledge/files"
+import {
+  knowledgeStoreReferencesUpload,
+  validateKnowledgeFilename,
+} from "@/lib/knowledge/files"
 
 describe("knowledge source lifecycle", () => {
   it("matches provenance by exact source token, not substring", () => {
@@ -47,6 +50,19 @@ describe("knowledge source lifecycle", () => {
     expect(() =>
       validateKnowledgeFilename("vendor, stale.pdf")
     ).toThrow(/Nieprawidłowa nazwa pliku/)
+  })
+
+  it("never auto-prunes ambiguous legacy filenames", () => {
+    expect(
+      knowledgeStoreReferencesUpload(
+        {
+          sources: [],
+          processedSources: [],
+          knowledge: {},
+        },
+        "vendor, stale.pdf"
+      )
+    ).toBe(true)
   })
 
   it("removes all knowledge entries derived from the deleted source", () => {
