@@ -178,7 +178,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
+  const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
   try {
@@ -313,13 +313,14 @@ export async function POST(req: Request) {
       message === "INVENTORY_PRODUCT_NOT_FOUND"
     const idempotencyConflict =
       message === "ORDER_IDEMPOTENCY_KEY_REUSED"
-    const publicMessage = message === "ORDER_ROLE_NOT_ALLOWED"
-      ? "Konto nie ma uprawnień do składania zamówień."
-      : inventoryConflict
-        ? "Stan magazynowy zmienił się podczas składania zamówienia. Odśwież koszyk i spróbuj ponownie."
-      : idempotencyConflict
-        ? "Identyfikator żądania został już użyty dla innego zamówienia. Odśwież koszyk i spróbuj ponownie."
-        : message
+    const publicMessage =
+      message === "ORDER_ROLE_NOT_ALLOWED"
+        ? "Konto nie ma uprawnień do składania zamówień."
+        : inventoryConflict
+          ? "Stan magazynowy zmienił się podczas składania zamówienia. Odśwież koszyk i spróbuj ponownie."
+          : idempotencyConflict
+            ? "Identyfikator żądania został już użyty dla innego zamówienia. Odśwież koszyk i spróbuj ponownie."
+            : message
     const status =
       message === "Konto nie istnieje."
         ? 401
