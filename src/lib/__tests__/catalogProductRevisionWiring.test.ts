@@ -71,6 +71,11 @@ describe("catalog product revision fencing", () => {
     expect(dashboard).toContain("expectedRevision")
     expect(dashboard).toContain("&expectedRevision=")
     expect(row).toContain("Number(p.revision ?? 0)")
+    expect(route).toContain("if (index === -1) return { replayed: true }")
+    expect(route).toContain('"Idempotency-Replayed": "true"')
+    expect(route).not.toContain(
+      'error.message === "PRODUCT_NOT_FOUND"'
+    )
   })
 
   it("binds server-rendered admin edits to the observed revision", () => {
