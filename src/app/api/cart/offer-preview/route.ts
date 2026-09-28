@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { readBoundedJson } from "@/lib/boundedJsonIngress"
 import {
   buildCartOfferPreview,
   createCartOfferReference,
@@ -39,7 +40,20 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = OfferPreviewSchema.safeParse(await req.json())
+    const body = await readBoundedJson(req)
+    if (!body.ok) {
+      return NextResponse.json(
+        {
+          error:
+            body.error === "too-large"
+              ? "Żądanie oferty jest zbyt duże."
+              : "Nieprawidłowe dane oferty.",
+        },
+        { status: body.error === "too-large" ? 413 : 400 }
+      )
+    }
+
+    const parsed = OfferPreviewSchema.safeParse(body.value)
     if (!parsed.success) {
       return NextResponse.json(
         {
