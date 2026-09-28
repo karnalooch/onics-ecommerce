@@ -3,11 +3,12 @@
 import { Trash2 as TrashIcon, Package as PackageIcon } from "lucide-react";
 import Link from "next/link";
 import { TableCell, TableRow } from "@/components/ui/table";
+import type { ICategory, IProduct } from "../_lib/types";
 
 interface IProductTableRowProps {
-  p: any;
+  p: IProduct;
   onDelete: (id: string, expectedRevision: number) => void;
-  categories: any[];
+  categories: ICategory[];
 }
 
 export function ProductTableRow({ p, onDelete, categories }: IProductTableRowProps) {
