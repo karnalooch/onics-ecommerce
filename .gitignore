@@ -28,6 +28,12 @@ node_modules/
 /.local/
 /public/uploads/catalogs/
 
+# persistence backups
+/src/data/*.bak
+/src/data/*.deprecated*
+/src/store/*.bak
+/src/store/*.deprecated*
+
 # debug
 /src/*_dom.html
 /src/**/*_dom.html
