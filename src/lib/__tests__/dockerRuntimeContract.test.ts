@@ -19,9 +19,12 @@ describe("local Docker runtime contract", () => {
   it("keeps the default Compose runtime local-only and durable", () => {
     const compose = read("compose.yaml")
 
-    expect(compose).toContain('"127.0.0.1:3001:3001"')
+    expect(compose).toContain('"127.0.0.1:${CELTRONICS_PORT:-3100}:3001"')
     expect(compose).toContain(
       "celtronics-data:/app/var/celtronics"
+    )
+    expect(compose).toContain(
+      'CELTRONICS_PUBLIC_URL: "http://localhost:${CELTRONICS_PORT:-3100}"'
     )
     expect(compose).toContain("/api/health/ready")
     expect(compose).toContain("no-new-privileges:true")
