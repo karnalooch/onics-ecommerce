@@ -639,11 +639,11 @@ export async function DELETE(req: Request) {
   }
 
   try {
-    await mutateMockData((db) => {
+    const result = await mutateMockData((db) => {
       assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const productStore = db.products as ProductRecord[]
       const index = productStore.findIndex((product) => product.id === id)
-      if (index === -1) throw new Error("PRODUCT_NOT_FOUND")
+      if (index === -1) return { replayed: true }
 
       const product = productStore[index]
       if (
@@ -660,18 +660,20 @@ export async function DELETE(req: Request) {
         throw new Error("PRODUCT_HAS_INVENTORY_LIFECYCLE")
       }
       productStore.splice(index, 1)
+      return { replayed: false }
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json(
+      { success: true },
+      {
+        headers: result.replayed
+          ? { "Idempotency-Replayed": "true" }
+          : undefined,
+      }
+    )
   } catch (error) {
     const adminAccessResponse = catalogAdminAccessErrorResponse(error)
     if (adminAccessResponse) return adminAccessResponse
-    if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
-      return NextResponse.json(
-        { error: "Nie znaleziono produktu." },
-        { status: 404 }
-      )
-    }
     if (
       error instanceof Error &&
       error.message === "PRODUCT_REVISION_CONFLICT"
