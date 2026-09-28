@@ -4,24 +4,25 @@ import { memo, useMemo, useState } from "react"
 import { AlertTriangle, Check, ChevronDown, Search, Trash2 } from "lucide-react"
 import { StagingItem } from "./StagingItem"
 import { StagingBatchActions } from "./StagingBatchActions"
+import type { ICategory, IStagingItem } from "../_lib/types"
 
 interface IStagingDashboardProps {
-  payload: any[]
+  payload: IStagingItem[]
   importing: boolean
   onClear: () => void
   onCommitAll: () => void
   onRemoveItem: (id: string, sku: string) => void
-  onUpdateItem: (id: string, field: string, value: any) => void
+  onUpdateItem: (id: string, field: string, value: unknown) => void
   onCommitItem: (id: string) => void
-  onBatchUpdate: (ids: string[], field: string, value: any) => void
+  onBatchUpdate: (ids: string[], field: string, value: unknown) => void
   onBatchCommit: (ids: string[]) => void
   isTraining?: boolean
   progressPercent?: number
-  categories: any[]
+  categories: ICategory[]
   manufacturers: string[]
   importSummary?: string | null
   importSummaryType?: "success" | "error"
-  isItemConfirmed: (item: any) => boolean
+  isItemConfirmed: (item: IStagingItem) => boolean
 }
 
 export const StagingDashboard = memo(function StagingDashboard({
