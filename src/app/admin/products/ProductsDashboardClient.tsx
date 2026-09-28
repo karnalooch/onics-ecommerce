@@ -227,7 +227,7 @@ export function ProductsDashboardClient({
 
   const handleBatchUpdate = (
     ids: string[],
-    field: keyof IStagingItem,
+    field: string,
     value: unknown
   ) => {
     const selected = new Set(ids);
