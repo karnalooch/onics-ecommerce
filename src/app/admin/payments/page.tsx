@@ -265,7 +265,7 @@ export default function AdminPaymentsPage() {
       const response = await fetch("/api/payment-methods/reconcile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: method.id }),
+        body: JSON.stringify({ provider: method.id, scope: "bulk" }),
       })
       const data = await response.json().catch(() => null)
 
