@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  COMMERCE_TRANSACTION_ROLES,
+  isCommerceTransactionRole,
+} from "@/lib/commerceAccess"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { buildRepairSubmissionFingerprint } from "@/lib/repairSubmissionIdempotency"
@@ -58,7 +62,7 @@ function publicRepair(repair: StoredRepair) {
 }
 
 export async function GET() {
-  const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
+  const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
   const sessionUser = authCheck.user as SessionUser
@@ -82,7 +86,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
+  const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
   try {
@@ -103,6 +107,10 @@ export async function POST(req: Request) {
 
       if (!storedUser || storedUser.isBlocked) {
         throw new Error("ACCOUNT_UNAVAILABLE")
+      }
+
+      if (!isCommerceTransactionRole(storedUser.roleType)) {
+        throw new Error("REPAIR_ROLE_NOT_ALLOWED")
       }
 
       if (storedUser.roleType === "BIZ" && !storedUser.isApproved) {
@@ -175,6 +183,12 @@ export async function POST(req: Request) {
     if (code === "ACCOUNT_UNAVAILABLE") {
       return NextResponse.json(
         { error: "Konto jest niedostępne." },
+        { status: 403 }
+      )
+    }
+    if (code === "REPAIR_ROLE_NOT_ALLOWED") {
+      return NextResponse.json(
+        { error: "Konto nie ma uprawnień do składania zgłoszeń serwisowych." },
         { status: 403 }
       )
     }
