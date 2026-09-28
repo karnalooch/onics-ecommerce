@@ -141,20 +141,27 @@ export function ProductsDashboardClient({
   );
 
   useEffect(() => {
-    if (isDone && sessionResults && Object.keys(sessionResults).length > 0) {
-      const typedResults = sessionResults as Record<string, KnowledgeSessionResult>;
-      const aiItems = Object.entries(typedResults).map(([sku, details]) => ({
-        sku,
-        name: String(details.model || details.name || sku),
-        price: Number(details.price || 0),
-        stock: 0,
-        manufacturer: String(details.manufacturer || ""),
-        xlsCategoryName: String(details.category || ""),
-        xlsSubcategoryName: String(details.subcategory || ""),
-        specs: String(details.specs || ""),
-      }));
-      handleProcessExcelData(aiItems);
+    if (!isDone || !sessionResults || Object.keys(sessionResults).length === 0) {
+      return;
     }
+
+    const typedResults = sessionResults as Record<string, KnowledgeSessionResult>;
+    const aiItems = Object.entries(typedResults).map(([sku, details]) => ({
+      sku,
+      name: String(details.model || details.name || sku),
+      price: Number(details.price || 0),
+      stock: 0,
+      manufacturer: String(details.manufacturer || ""),
+      xlsCategoryName: String(details.category || ""),
+      xlsSubcategoryName: String(details.subcategory || ""),
+      specs: String(details.specs || ""),
+    }));
+
+    const timer = window.setTimeout(() => {
+      handleProcessExcelData(aiItems);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [handleProcessExcelData, isDone, sessionResults]);
 
   const readResponseError = async (response: Response, fallback: string) => {
