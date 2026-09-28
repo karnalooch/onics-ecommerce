@@ -1,6 +1,5 @@
 "use client"
 
-import { Activity, CheckCircle2, Clock, ShieldAlert } from "lucide-react"
 import type { AdminRma } from "../RepairsDashboardClient"
 
 const completedStatuses = new Set(["COMPLETED", "DONE", "RETURNED"])
@@ -12,26 +11,20 @@ export function RmaStats({ rmas }: { rmas: AdminRma[] }) {
   const inProgress = rmas.filter((rma) => serviceStatuses.has(rma.status)).length
   const completed = rmas.filter((rma) => completedStatuses.has(rma.status)).length
 
-  const stats = [
-    { label: "W kolejce", value: pending, icon: Clock },
-    { label: "W serwisie", value: inProgress, icon: Activity },
-    { label: "Zakończone", value: completed, icon: CheckCircle2 },
-    { label: "Wszystkie", value: rmas.length, icon: ShieldAlert },
-  ]
-
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {stats.map((stat) => (
-        <div key={stat.label} className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <stat.icon className="h-5 w-5 text-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {stat.label}
-            </span>
-          </div>
-          <strong className="mt-4 block text-4xl">{stat.value}</strong>
-        </div>
-      ))}
+    <div className="flex flex-wrap gap-2 text-sm">
+      <span className="rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] px-3 py-2">
+        W kolejce <strong className="ml-2 font-mono">{pending}</strong>
+      </span>
+      <span className="rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] px-3 py-2">
+        W serwisie <strong className="ml-2 font-mono">{inProgress}</strong>
+      </span>
+      <span className="rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] px-3 py-2">
+        Zakończone <strong className="ml-2 font-mono">{completed}</strong>
+      </span>
+      <span className="rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] px-3 py-2">
+        Wszystkie <strong className="ml-2 font-mono">{rmas.length}</strong>
+      </span>
     </div>
   )
 }
