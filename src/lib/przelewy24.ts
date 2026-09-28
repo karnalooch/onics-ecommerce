@@ -297,7 +297,8 @@ function basicAuth(config: Przelewy24Config) {
 }
 
 export async function testPrzelewy24Access(
-  config: Przelewy24Config
+  config: Przelewy24Config,
+  requestSignal?: AbortSignal
 ) {
   let response: Response
 
@@ -307,7 +308,9 @@ export async function testPrzelewy24Access(
       headers: {
         Authorization: basicAuth(config),
       },
-      signal: AbortSignal.timeout(10_000),
+      signal: requestSignal
+        ? AbortSignal.any([requestSignal, AbortSignal.timeout(10_000)])
+        : AbortSignal.timeout(10_000),
     })
   } catch {
     throw new Error("PRZELEWY24_ACCESS_UNAVAILABLE")
