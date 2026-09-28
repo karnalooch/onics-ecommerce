@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   applyExpiredCheckoutCancellation,
   applyStripeRefundSnapshot,
@@ -17,6 +19,27 @@ import {
 import { classifyPaymentAdminActionPrecondition } from "@/lib/paymentAdminActions"
 import { buildAdminOrderStateToken } from "@/lib/orderAdminState"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+function assertCurrentAdminAccess(
+  users: StoredActor[],
+  actor: { id?: string; email?: string | null }
+) {
+  const currentActor = findStoredUserBySession(users, actor)
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
 
 const CancelOrderSchema = z.object({
   id: z.string().min(1),
@@ -188,6 +211,7 @@ export async function POST(req: Request) {
       }
 
       const staged = await mutateMockData((db) => {
+        assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
         const fresh = (db.orders as StripeCancelableOrder[]).find(
           (candidate) => candidate.id === order.id
         )
@@ -328,6 +352,44 @@ export async function POST(req: Request) {
       )
     }
 
+    const cancelPreflight = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
+      const fresh = (db.orders as StripeCancelableOrder[]).find(
+        (candidate) => candidate.id === order.id
+      )
+      if (!fresh) throw new Error("ORDER_NOT_FOUND")
+      if (fresh.stripeCheckoutSessionId !== session.id) {
+        throw new Error("STRIPE_ORDER_CHANGED")
+      }
+
+      const freshPrecondition = classifyPaymentAdminActionPrecondition(
+        fresh,
+        "CANCEL",
+        expectedStateToken
+      )
+      if (freshPrecondition === "conflict") {
+        throw new Error("PAYMENT_ADMIN_STATE_CONFLICT")
+      }
+
+      return {
+        order: fresh,
+        replayed: freshPrecondition === "replay",
+      }
+    })
+
+    if (cancelPreflight.replayed) {
+      return NextResponse.json(
+        {
+          success: true,
+          replayed: true,
+          status: cancelPreflight.order.status,
+          paymentStatus: cancelPreflight.order.paymentStatus,
+          refundStatus: cancelPreflight.order.refundStatus ?? null,
+        },
+        { headers: { "Idempotency-Replayed": "true" } }
+      )
+    }
+
     if (session.status === "open") {
       try {
         await stripe.checkout.sessions.expire(session.id)
@@ -378,6 +440,12 @@ export async function POST(req: Request) {
     console.error("Stripe order cancellation error:", error)
 
     const code = error instanceof Error ? error.message : ""
+    if (code === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed anulowaniem płatności." },
+        { status: 403 }
+      )
+    }
     if (code === "ORDER_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono zamówienia." },
