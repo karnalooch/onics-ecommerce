@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   nextUserRevision,
   toSafeUserResponse,
@@ -119,6 +121,14 @@ export async function PUT(req: Request) {
   try {
     const submission = await mutateMockData((db) => {
       const userStore = db.users as UserRecord[]
+      const currentActor = findStoredUserBySession(userStore, authCheck.user)
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("ADMIN_ACCESS_REVOKED")
+      }
+
       const index = userStore.findIndex((user) => user.id === parsed.data.id)
 
       if (index === -1) throw new Error("USER_NOT_FOUND")
@@ -191,6 +201,12 @@ export async function PUT(req: Request) {
     })
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
+    if (code === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed zapisem konta." },
+        { status: 403 }
+      )
+    }
     if (code === "USER_NOT_FOUND") {
       return NextResponse.json({ error: "Nie znaleziono użytkownika." }, { status: 404 })
     }
@@ -259,6 +275,14 @@ export async function DELETE(req: Request) {
   try {
     const result = await mutateMockData((db) => {
       const userStore = db.users as UserRecord[]
+      const currentActor = findStoredUserBySession(userStore, authCheck.user)
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("ADMIN_ACCESS_REVOKED")
+      }
+
       const index = userStore.findIndex((user) => user.id === id)
 
       if (index === -1) return { replayed: true }
@@ -286,6 +310,12 @@ export async function DELETE(req: Request) {
     )
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
+    if (code === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed usunięciem konta." },
+        { status: 403 }
+      )
+    }
     if (code === "USER_REVISION_CONFLICT") {
       return NextResponse.json(
         {

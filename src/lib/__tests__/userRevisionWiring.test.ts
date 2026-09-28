@@ -29,12 +29,26 @@ describe("user revision fencing", () => {
     expect(put).toContain('"Idempotency-Replayed": "true"')
     expect(put.indexOf("expectedRevision !== currentRevision"))
       .toBeLessThan(put.indexOf("userStore[index] = nextUser"))
+    const putAdminFence = put.indexOf(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])'
+    )
+    expect(putAdminFence).toBeGreaterThan(put.indexOf("mutateMockData((db) =>"))
+    expect(putAdminFence).toBeLessThan(put.indexOf("userStore[index] = nextUser"))
 
     expect(remove).toContain('url.searchParams.get("expectedRevision")')
     expect(remove).toContain(
       "userRevision(current.revision) !== parsedRevision.data"
     )
     expect(remove).toContain('throw new Error("USER_REVISION_CONFLICT")')
+    const deleteAdminFence = remove.indexOf(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])'
+    )
+    expect(deleteAdminFence).toBeGreaterThan(
+      remove.indexOf("mutateMockData((db) =>")
+    )
+    expect(deleteAdminFence).toBeLessThan(remove.indexOf("userStore.splice(index, 1)"))
+    expect(put).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
+    expect(remove).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
   })
 
   it("binds B2B profile writes to the revision observed by the client", () => {
