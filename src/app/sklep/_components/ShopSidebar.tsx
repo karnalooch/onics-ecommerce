@@ -1,79 +1,87 @@
-// src/app/sklep/_components/ShopSidebar.tsx
-"use client";
+"use client"
 
-import { Layers, Tag, ChevronRight, Search, SlidersHorizontal } from "lucide-react";
+import { Search } from "lucide-react"
 
-interface IShopSidebarProps {
-  categories: any[];
-  selectedCatId: string | null;
-  onSelect: (id: string | null) => void;
-  search: string;
-  onSearchChange: (s: string) => void;
+export type ShopCategory = {
+  id: string
+  name: string
 }
 
-export function ShopSidebar({ categories, selectedCatId, onSelect, search, onSearchChange }: IShopSidebarProps) {
+interface ShopSidebarProps {
+  categories: ShopCategory[]
+  selectedCatId: string | null
+  onSelect: (id: string | null) => void
+  search: string
+  onSearchChange: (value: string) => void
+}
+
+export function ShopSidebar({
+  categories,
+  selectedCatId,
+  onSelect,
+  search,
+  onSearchChange,
+}: ShopSidebarProps) {
   return (
-    <aside className="space-y-10 sticky top-28">
-       {/* Search Box - Premium Style */}
-       <div className="space-y-4">
-          <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-2">Wyszukaj w katalogu</label>
-          <div className="relative group">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 transition-colors group-focus-within:text-primary" />
-             <input 
-               type="text" 
-               value={search}
-               onChange={e => onSearchChange(e.target.value)}
-               placeholder="🔍 Nazwa, model, indeks..."
-               className="w-full h-14 pl-12 pr-6 bg-white rounded-3xl border border-slate-200 outline-none focus:ring-4 focus:ring-primary/10 font-bold transition-all text-sm placeholder:text-slate-300"
-             />
-          </div>
-       </div>
+    <aside className="sticky top-24 space-y-4">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-[#0f1216]">
+        <h2 className="text-sm font-semibold">Znajdź urządzenie</h2>
+        <label className="relative mt-3 block">
+          <span className="sr-only">Szukaj produktu</span>
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Model, SKU, producent…"
+            className="h-11 w-full rounded-lg border border-slate-300 bg-transparent pl-9 pr-3 text-sm outline-none focus:border-slate-950 dark:border-slate-700 dark:focus:border-white"
+          />
+        </label>
+      </section>
 
-       {/* Category List */}
-       <div className="space-y-6">
-          <div className="flex items-center justify-between px-2">
-             <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Kategorie</label>
-             <SlidersHorizontal className="w-3.5 h-3.5 text-slate-300" />
-          </div>
-          
-          <div className="flex flex-col gap-2">
-             <button 
-               onClick={() => onSelect(null)}
-               className={`group flex items-center justify-between px-6 py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all ${
-                 !selectedCatId 
-                   ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/20' 
-                   : 'bg-white border border-slate-100 text-slate-600 hover:border-primary/30 hover:bg-primary/5'
-               }`}
-             >
-               <span className="flex items-center gap-3"><Layers className="w-4 h-4" /> Wszystkie</span>
-               {!selectedCatId && <ChevronRight className="w-4 h-4 text-primary animate-pulse" />}
-             </button>
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
+        <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold dark:border-slate-800">
+          Kategorie
+        </div>
+        <div className="p-2">
+          <button
+            type="button"
+            onClick={() => onSelect(null)}
+            className={
+              "w-full rounded-lg px-3 py-2 text-left text-sm " +
+              (!selectedCatId
+                ? "bg-slate-950 font-semibold text-white dark:bg-white dark:text-slate-950"
+                : "hover:bg-slate-50 dark:hover:bg-white/[0.04]")
+            }
+          >
+            Wszystkie produkty
+          </button>
 
-             {categories.map((cat: any) => (
-                <button 
-                  key={cat.id}
-                  onClick={() => onSelect(cat.id)}
-                  className={`group flex items-center justify-between px-6 py-4 rounded-[1.5rem] text-[11px] font-bold uppercase transition-all ${
-                    selectedCatId === cat.id 
-                      ? 'bg-primary/10 text-primary border-2 border-primary/20' 
-                      : 'bg-white border border-slate-100 text-slate-500 hover:border-primary/20 hover:text-slate-900 shadow-sm'
-                  }`}
-                >
-                  <span className="flex items-center gap-3"><Tag className="w-3.5 h-3.5 opacity-40" /> {cat.name}</span>
-                  {selectedCatId === cat.id && <ChevronRight className="w-4 h-4" />}
-                </button>
-             ))}
-          </div>
-       </div>
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onSelect(category.id)}
+              className={
+                "mt-1 w-full rounded-lg px-3 py-2 text-left text-sm " +
+                (selectedCatId === category.id
+                  ? "bg-slate-100 font-semibold dark:bg-white/[0.06]"
+                  : "text-slate-500 hover:bg-slate-50 hover:text-foreground dark:hover:bg-white/[0.04]")
+              }
+            >
+              {category.name}
+            </button>
+          ))}
+        </div>
+      </section>
 
-       {/* Promotional Banner Placeholder */}
-       <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-primary/10 to-blue-500/10 border-2 border-dashed border-primary/20 relative overflow-hidden group cursor-pointer">
-          <div className="relative z-10">
-             <h4 className="text-xs font-black uppercase tracking-tighter text-primary mb-2 italic">Celtronics Pro</h4>
-             <p className="text-[10px] font-bold text-blue-900/60 uppercase leading-relaxed">Instalujesz? <br/>Zaloguj się po rabat B2B.</p>
-          </div>
-          <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-primary/20 rounded-full blur-2xl group-hover:scale-150 transition-transform" />
-       </div>
+      <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-white/[0.03] dark:text-slate-300">
+        <div className="font-semibold text-foreground">CEL-TRONICS</div>
+        <p className="mt-1">
+          Potrzebujesz doboru urządzeń albo wyceny projektu? Skontaktuj się z
+          naszym zespołem technicznym.
+        </p>
+      </section>
     </aside>
-  );
+  )
 }

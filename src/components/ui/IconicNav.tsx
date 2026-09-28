@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
@@ -9,19 +10,13 @@ import {
   BookOpen,
   Boxes,
   Contact,
-  FileText,
   Home,
-  LayoutDashboard,
   LogIn,
   LogOut,
   Menu,
   Moon,
-  Package,
-  Settings,
   ShieldCheck,
   Sun,
-  Users,
-  Wrench,
   X,
   type LucideIcon,
 } from "lucide-react"
@@ -43,22 +38,15 @@ export function IconicNav() {
   const mobileOpen = mobileOpenPath === pathname
 
   const isAuthenticated = status === "authenticated"
-  const isAdmin = isAuthenticated && (session?.user as { role?: string } | undefined)?.role === "ADMIN"
+  const isAdmin =
+    isAuthenticated &&
+    (session?.user as { role?: string } | undefined)?.role === "ADMIN"
 
   const publicItems = [
     { name: "Start", path: "/", icon: Home },
     { name: "Usługi", path: "/#uslugi", icon: ShieldCheck },
     { name: "Katalog", path: "/produkty", icon: BookOpen },
     { name: "Kontakt", path: "/kontakt", icon: Contact },
-  ]
-
-  const adminItems = [
-    { name: "Pulpit", path: "/admin", icon: LayoutDashboard },
-    { name: "Produkty", path: "/admin/products", icon: Package },
-    { name: "Klienci", path: "/admin/clients", icon: Users },
-    { name: "Oferty", path: "/admin/quotes", icon: FileText },
-    { name: "Serwis", path: "/admin/repairs", icon: Wrench },
-    { name: "System", path: "/admin/categories", icon: Settings },
   ]
 
   const activePath = (path: string) => {
@@ -77,13 +65,13 @@ export function IconicNav() {
     <Link
       href={item.path}
       onClick={() => setMobileOpenPath(null)}
-      className={`flex items-center gap-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition ${
-        compact ? "px-3 py-3" : "px-3 py-2"
-      } ${
-        activePath(item.path)
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
-      }`}
+      className={
+        "flex items-center gap-2 rounded-lg text-sm font-semibold transition " +
+        (compact ? "px-3 py-3 " : "px-3 py-2 ") +
+        (activePath(item.path)
+          ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
+          : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white")
+      }
     >
       <item.icon className="h-4 w-4" />
       <span>{item.name}</span>
@@ -91,69 +79,74 @@ export function IconicNav() {
   )
 
   return (
-    <nav className="sticky top-0 z-[100] w-full border-b border-black/5 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#161616]/90">
-      <div className="mx-auto flex h-[72px] w-full max-w-[1920px] items-center gap-4 px-4 sm:px-5 lg:gap-6 lg:px-8">
-        <Link href="/" className="flex shrink-0 items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white shadow-lg shadow-primary/20">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <div className="hidden leading-none sm:block">
-            <span className="block text-sm font-extrabold tracking-tight text-foreground">
-              CEL-TRONICS
-            </span>
-            <span className="mt-1 block text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-              Systemy zabezpieczeń
-            </span>
-          </div>
+    <nav className="sticky top-0 z-[100] w-full border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-[#0b0d10]/95">
+      <div className="mx-auto flex h-[72px] w-full max-w-[1440px] items-center gap-5 px-4 sm:px-6">
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-3"
+          aria-label="CEL-TRONICS — strona główna"
+        >
+          <span className="flex h-11 items-center rounded-md bg-white px-2.5">
+            <Image
+              src="/assets/logo.svg"
+              alt="CEL-TRONICS"
+              width={178}
+              height={34}
+              priority
+              className="h-auto w-[150px] sm:w-[178px]"
+            />
+          </span>
+          <span className="hidden border-l border-slate-200 pl-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 xl:block dark:border-slate-700">
+            Systemy zabezpieczeń
+            <br />
+            Siedlce
+          </span>
         </Link>
 
         <div className="hidden min-w-0 flex-1 items-center gap-1 lg:flex">
           {publicItems.map((item) => (
             <NavLink key={item.path} item={item} />
           ))}
-
-          {isAdmin &&
-            adminItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-bold uppercase tracking-wider transition ${
-                  activePath(item.path)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
-                }`}
-              >
-                <item.icon className="h-4 w-4" />
-                <span className="hidden 2xl:inline">{item.name}</span>
-              </Link>
-            ))}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {mounted && (
+          {mounted ? (
             <button
+              type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-white/[0.06] dark:hover:text-white"
               aria-label="Przełącz motyw"
             >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
             </button>
-          )}
+          ) : null}
 
           {isAuthenticated ? (
             <>
-              {isAdmin && (
+              {isAdmin ? (
                 <Link
                   href="/admin"
-                  className="hidden h-10 items-center gap-2 rounded-lg border border-black/10 px-4 text-[11px] font-extrabold uppercase tracking-wider text-foreground sm:flex dark:border-white/10"
+                  className="hidden min-h-10 items-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold sm:flex dark:border-slate-700"
                 >
-                  <Boxes className="h-4 w-4 text-primary" />
-                  Panel
+                  <Boxes className="h-4 w-4" />
+                  Operacje
+                </Link>
+              ) : (
+                <Link
+                  href="/dashboard"
+                  className="hidden min-h-10 items-center rounded-lg border border-slate-300 px-4 text-sm font-semibold sm:flex dark:border-slate-700"
+                >
+                  Strefa partnera
                 </Link>
               )}
               <button
+                type="button"
                 onClick={() => signOut({ callbackUrl: "/" })}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10 text-red-500 transition hover:bg-red-500 hover:text-white"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 text-slate-500 hover:border-red-300 hover:text-red-700 dark:border-slate-700"
                 aria-label="Wyloguj"
               >
                 <LogOut className="h-4 w-4" />
@@ -162,42 +155,42 @@ export function IconicNav() {
           ) : (
             <Link
               href="/logowanie"
-              className="flex h-10 items-center gap-2 rounded-lg bg-primary px-3 sm:px-4 text-[11px] font-extrabold uppercase tracking-wider text-white shadow-lg shadow-primary/20 transition hover:brightness-110"
+              className="flex min-h-10 items-center gap-2 rounded-lg bg-slate-950 px-3 text-sm font-semibold text-white dark:bg-white dark:text-slate-950 sm:px-4"
             >
               <LogIn className="h-4 w-4" />
-              <span className="hidden sm:inline">Logowanie B2B</span>
+              <span className="hidden sm:inline">Strefa partnera</span>
             </Link>
           )}
 
           <button
             type="button"
-            onClick={() => setMobileOpenPath((openPath) => openPath === pathname ? null : pathname)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-black/10 text-foreground lg:hidden dark:border-white/10"
+            onClick={() =>
+              setMobileOpenPath((openPath) =>
+                openPath === pathname ? null : pathname
+              )
+            }
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-300 text-foreground lg:hidden dark:border-slate-700"
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Zamknij menu" : "Otwórz menu"}
           >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>
 
-      {mobileOpen && (
-        <div className="border-t border-black/5 bg-white px-4 py-3 lg:hidden dark:border-white/10 dark:bg-[#161616]">
-          <div className="mx-auto grid max-w-[1920px] gap-1">
+      {mobileOpen ? (
+        <div className="border-t border-slate-200 bg-white px-4 py-3 lg:hidden dark:border-slate-800 dark:bg-[#0b0d10]">
+          <div className="mx-auto grid max-w-[1440px] gap-1">
             {publicItems.map((item) => (
               <NavLink key={item.path} item={item} compact />
             ))}
-            {isAdmin && (
-              <>
-                <div className="my-2 border-t border-black/5 dark:border-white/10" />
-                {adminItems.map((item) => (
-                  <NavLink key={item.path} item={item} compact />
-                ))}
-              </>
-            )}
           </div>
         </div>
-      )}
+      ) : null}
     </nav>
   )
 }

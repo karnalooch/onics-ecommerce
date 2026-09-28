@@ -46,7 +46,14 @@ jobs:
           src/app/logowanie/page.tsx
           src/app/produkty/page.tsx
           src/app/rejestracja/page.tsx
-          src/app/rejestracja/_components/OnboardingMissionControl.tsx
+          src/app/rejestracja/_components/PartnerRegistrationForm.tsx
+          src/app/sklep/page.tsx
+          src/app/sklep/ShopDashboardClient.tsx
+          src/app/sklep/_components/ShopSidebar.tsx
+          src/app/sklep/_components/ProductGrid.tsx
+          src/app/sklep/_components/ProductCard.tsx
+          src/app/sklep/_components/MiniCart.tsx
+          src/app/uslugi/page.tsx
           src/components/ui/IconicNav.tsx
 
       - name: Run tests
