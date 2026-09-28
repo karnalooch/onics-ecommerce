@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  COMMERCE_TRANSACTION_ROLES,
+  isCommerceTransactionRole,
+} from "@/lib/commerceAccess"
 import { resolveCartItems } from "@/lib/commerce"
 import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
 import {
@@ -149,7 +153,7 @@ function withPaymentLifecycle(
 }
 
 export async function GET() {
-  const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
+  const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
   const sessionUser = authCheck.user as SessionUser
@@ -194,6 +198,9 @@ export async function POST(req: Request) {
       )
 
       if (!storedUser) throw new Error("Konto nie istnieje.")
+      if (!isCommerceTransactionRole(storedUser.roleType)) {
+        throw new Error("ORDER_ROLE_NOT_ALLOWED")
+      }
       if (storedUser.isBlocked) throw new Error("Konto jest zablokowane.")
       if (storedUser.roleType === "BIZ" && !storedUser.isApproved) {
         throw new Error("Konto B2B oczekuje na zatwierdzenie.")
@@ -306,15 +313,18 @@ export async function POST(req: Request) {
       message === "INVENTORY_PRODUCT_NOT_FOUND"
     const idempotencyConflict =
       message === "ORDER_IDEMPOTENCY_KEY_REUSED"
-    const publicMessage = inventoryConflict
-      ? "Stan magazynowy zmienił się podczas składania zamówienia. Odśwież koszyk i spróbuj ponownie."
+    const publicMessage = message === "ORDER_ROLE_NOT_ALLOWED"
+      ? "Konto nie ma uprawnień do składania zamówień."
+      : inventoryConflict
+        ? "Stan magazynowy zmienił się podczas składania zamówienia. Odśwież koszyk i spróbuj ponownie."
       : idempotencyConflict
         ? "Identyfikator żądania został już użyty dla innego zamówienia. Odśwież koszyk i spróbuj ponownie."
         : message
     const status =
       message === "Konto nie istnieje."
         ? 401
-        : /zablokowane|oczekuje na zatwierdzenie/.test(message)
+        : message === "ORDER_ROLE_NOT_ALLOWED" ||
+            /zablokowane|oczekuje na zatwierdzenie/.test(message)
           ? 403
           : inventoryConflict ||
               idempotencyConflict ||
