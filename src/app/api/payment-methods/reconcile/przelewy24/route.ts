@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
+import {
   applyReconciledPrzelewy24Payment,
   applyReconciledPrzelewy24Refund,
   applyReturnedPrzelewy24Payment,
@@ -28,9 +33,10 @@ import { moneyToMinorUnits } from "@/lib/payments"
 import type { InventoryProduct } from "@/lib/inventoryReservations"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 
-const ReconcileSchema = z.object({
-  orderId: z.string().min(1).optional(),
-})
+const ReconcileSchema = z.union([
+  z.object({ orderId: z.string().min(1) }).strict(),
+  z.object({ scope: z.literal("bulk") }).strict(),
+])
 
 const MAX_BULK_RECONCILIATION = 50
 
@@ -47,15 +53,33 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = ReconcileSchema.safeParse(
-    await req.json().catch(() => ({}))
-  )
+  let parsed: ReturnType<typeof ReconcileSchema.safeParse>
+  try {
+    parsed = ReconcileSchema.safeParse(await readCommerceJson(req))
+  } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie synchronizacji Przelewy24 jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie synchronizacji Przelewy24." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
+
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Nieprawidłowe żądanie synchronizacji Przelewy24." },
       { status: 400 }
     )
   }
+
+  const orderId = "orderId" in parsed.data ? orderId : undefined
 
   if (!supportsPaymentProviderCapability("PRZELEWY24", "reconcile")) {
     return NextResponse.json(
@@ -78,9 +102,9 @@ export async function POST(req: Request) {
   const allOrders = snapshot.orders as Przelewy24StoredOrder[]
 
   let selected: Przelewy24StoredOrder[]
-  if (parsed.data.orderId) {
+  if (orderId) {
     const order = allOrders.find(
-      (candidate) => candidate.id === parsed.data.orderId
+      (candidate) => candidate.id === orderId
     )
     if (!order) {
       return NextResponse.json(
@@ -390,7 +414,7 @@ export async function POST(req: Request) {
     } satisfies Record<ReconcileResult["outcome"], number>
   )
 
-  const totalCandidates = parsed.data.orderId
+  const totalCandidates = orderId
     ? selected.length
     : allOrders.filter(
         (order) =>
@@ -434,7 +458,7 @@ export async function POST(req: Request) {
       scanned: selected.length,
       totalCandidates,
       truncated:
-        !parsed.data.orderId &&
+        !orderId &&
         totalCandidates > MAX_BULK_RECONCILIATION,
       summary,
       results,
