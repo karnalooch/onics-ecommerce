@@ -1,132 +1,150 @@
-// src/app/admin/products/_components/StructureApprovalModal.tsx
-"use client";
+"use client"
 
-import { memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { GitBranch, Layers, Check, X, AlertCircle } from "lucide-react";
+import { memo } from "react"
+import { AlertTriangle, Check, X } from "lucide-react"
 
 interface StructureApprovalModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onApprove: () => void;
-  newCategories: string[];
-  newSubcategories: { parent: string, name: string }[];
-  newManufacturers: string[];
+  isOpen: boolean
+  onClose: () => void
+  onApprove: () => void
+  newCategories: string[]
+  newSubcategories: { parent: string; name: string }[]
+  newManufacturers: string[]
 }
 
 export const StructureApprovalModal = memo(function StructureApprovalModal({
-  isOpen, onClose, onApprove, newCategories, newSubcategories, newManufacturers
+  isOpen,
+  onClose,
+  onApprove,
+  newCategories,
+  newSubcategories,
+  newManufacturers,
 }: StructureApprovalModalProps) {
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
-  const total = newCategories.length + newSubcategories.length + newManufacturers.length;
+  const total =
+    newCategories.length +
+    newSubcategories.length +
+    newManufacturers.length
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 lg:p-12">
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
-      />
-      
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-white dark:border-slate-800 rounded-[3rem] shadow-2xl overflow-hidden"
-      >
-        <div className="p-8 space-y-8">
-          <div className="flex items-center gap-6">
-            <div className="p-4 bg-emerald-500 text-white rounded-[20px] shadow-lg shadow-emerald-500/20">
-              <GitBranch className="w-8 h-8" />
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-4 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="structure-approval-title"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target) onClose()
+      }}
+    >
+      <div className="w-full max-w-2xl overflow-hidden rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)]">
+        <header className="flex items-start justify-between gap-4 border-b border-[var(--ops-border)] p-5">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ops-muted)]">
+              Import katalogu
             </div>
-            <div>
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic">Universal <span className="text-emerald-500 underline decoration-emerald-200">Structure</span> Hub</h2>
-              <p className="text-slate-500 text-sm font-bold opacity-70 italic">Wykryto {total} nowych, poprawnych elementów struktury w raporcie.</p>
-            </div>
+            <h2
+              id="structure-approval-title"
+              className="mt-1 text-xl font-semibold"
+            >
+              Nowe elementy struktury
+            </h2>
+            <p className="mt-2 text-sm text-[var(--ops-muted)]">
+              Wykryto {total} pozycji wymagających potwierdzenia przed dalszą weryfikacją.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ops-border)]"
+            aria-label="Zamknij"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </header>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             {/* CATEGORIES */}
-             {newCategories.length > 0 && (
-                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-                   <div className="flex items-center gap-2 mb-4">
-                      <Layers className="w-4 h-4 text-emerald-500" />
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Kategorie</h3>
-                   </div>
-                   <div className="flex flex-wrap gap-2">
-                      {newCategories.map(cat => (
-                         <Badge key={cat} variant="secondary" className="bg-white dark:bg-slate-700 text-emerald-600 font-bold border-emerald-100 text-[10px] py-1 px-3">
-                            {cat}
-                         </Badge>
-                      ))}
-                   </div>
-                </div>
-             )}
+        <div className="max-h-[65vh] space-y-5 overflow-y-auto p-5">
+          {newCategories.length > 0 ? (
+            <section>
+              <h3 className="text-sm font-semibold">Kategorie</h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {newCategories.map((category) => (
+                  <span
+                    key={category}
+                    className="rounded-md border border-[var(--ops-border)] px-2.5 py-1.5 text-sm"
+                  >
+                    {category}
+                  </span>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-             {/* SUBCATEGORIES */}
-             {newSubcategories.length > 0 && (
-                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-                   <div className="flex items-center gap-2 mb-4">
-                      <Layers className="w-4 h-4 text-blue-500" />
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Podkategorie</h3>
-                   </div>
-                   <div className="space-y-2">
-                      {newSubcategories.map((sub, i) => (
-                         <div key={i} className="flex flex-col gap-0.5">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Rodzic: {sub.parent}</span>
-                            <span className="text-xs font-black text-blue-600 dark:text-blue-400">{sub.name}</span>
-                         </div>
-                      ))}
-                   </div>
-                </div>
-             )}
+          {newSubcategories.length > 0 ? (
+            <section>
+              <h3 className="text-sm font-semibold">Podkategorie</h3>
+              <div className="mt-2 divide-y divide-[var(--ops-border)] overflow-hidden rounded-lg border border-[var(--ops-border)]">
+                {newSubcategories.map((subcategory) => (
+                  <div
+                    key={subcategory.parent + "::" + subcategory.name}
+                    className="grid gap-1 px-3 py-2 sm:grid-cols-[160px_minmax(0,1fr)]"
+                  >
+                    <span className="text-xs text-[var(--ops-muted)]">
+                      {subcategory.parent}
+                    </span>
+                    <span className="text-sm font-medium">
+                      {subcategory.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-             {/* MANUFACTURERS */}
-             {newManufacturers.length > 0 && (
-                <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-[2rem] border border-slate-100 dark:border-slate-800 md:col-span-2">
-                   <div className="flex items-center gap-2 mb-4">
-                      <Check className="w-4 h-4 text-primary" />
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nowi Producenci</h3>
-                   </div>
-                   <div className="flex flex-wrap gap-2">
-                      {newManufacturers.map(m => (
-                         <Badge key={m} className="bg-primary/10 text-primary font-bold border-primary/20 text-[10px] py-1 px-3">
-                            {m}
-                         </Badge>
-                      ))}
-                   </div>
-                </div>
-             )}
-          </div>
+          {newManufacturers.length > 0 ? (
+            <section>
+              <h3 className="text-sm font-semibold">Producenci</h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {newManufacturers.map((manufacturer) => (
+                  <span
+                    key={manufacturer}
+                    className="rounded-md border border-[var(--ops-border)] px-2.5 py-1.5 text-sm"
+                  >
+                    {manufacturer}
+                  </span>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-          <div className="bg-amber-50 dark:bg-amber-900/20 p-5 rounded-[1.5rem] border border-amber-100 dark:border-amber-900/30 flex items-start gap-4">
-             <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-1" />
-             <p className="text-[10px] font-bold text-amber-700 dark:text-amber-500 leading-relaxed uppercase tracking-tighter">
-                Uwaga: Ta akceptacja potwierdza proponowane mapowanie w Buforze. Zapis kategorii, podkategorii i producentów do Centralnego Rejestru nastąpi dopiero przy jawnej autoryzacji transferu produktów.
-             </p>
-          </div>
-
-          <div className="flex gap-4 pt-4">
-             <Button 
-                onClick={onClose}
-                variant="ghost" 
-                className="flex-1 h-14 rounded-2xl font-black uppercase italic tracking-tighter text-slate-400"
-             >
-                <X className="w-5 h-5 mr-2" /> Pomiń & Koryguj w Buforze
-             </Button>
-             <Button 
-                onClick={onApprove}
-                className="flex-1 h-14 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase italic tracking-tighter shadow-xl shadow-emerald-500/20"
-             >
-                <Check className="w-5 h-5 mr-2" /> Przejdź do Weryfikacji
-             </Button>
+          <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Potwierdzenie akceptuje proponowane mapowanie w buforze.
+              Zapis nowych kategorii, podkategorii i producentów nastąpi dopiero
+              przy jawnej operacji zapisu produktów.
+            </p>
           </div>
         </div>
-      </motion.div>
+
+        <footer className="flex flex-col-reverse gap-2 border-t border-[var(--ops-border)] p-4 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-11 rounded-lg border border-[var(--ops-border)] px-4 text-sm font-semibold"
+          >
+            Wróć do korekty
+          </button>
+          <button
+            type="button"
+            onClick={onApprove}
+            className="min-h-11 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white dark:bg-white dark:text-slate-950"
+          >
+            <Check className="mr-2 inline h-4 w-4" />
+            Potwierdź mapowanie
+          </button>
+        </footer>
+      </div>
     </div>
-  );
-});
+  )
+})
