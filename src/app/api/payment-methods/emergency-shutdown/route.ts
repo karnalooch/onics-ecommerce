@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { appendPaymentAudit } from "@/lib/paymentAudit"
@@ -43,7 +48,24 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = EmergencyShutdownSchema.safeParse(await req.json())
+  let parsed: ReturnType<typeof EmergencyShutdownSchema.safeParse>
+  try {
+    parsed = EmergencyShutdownSchema.safeParse(await readCommerceJson(req))
+  } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie awaryjnego wyłączenia płatności jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie awaryjnego wyłączenia płatności." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Brak wymaganego potwierdzenia awaryjnego wyłączenia." },
