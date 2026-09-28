@@ -1,4 +1,5 @@
 import { auth } from "@/auth"
+import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { KnowledgeProvider } from "@/lib/knowledge/KnowledgeContext"
@@ -42,25 +43,32 @@ export default async function AdminLayout({
 
   return (
     <KnowledgeProvider>
-      <div className="operations-admin lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
-        <aside className="hidden min-h-screen border-r border-[var(--ops-border)] bg-[var(--ops-panel)] lg:flex lg:flex-col">
+      <div className="operations-admin lg:grid lg:grid-cols-[276px_minmax(0,1fr)]">
+        <aside className="hidden min-h-screen border-r border-[var(--ops-border)] bg-white lg:flex lg:flex-col">
           <div className="border-b border-[var(--ops-border)] px-5 py-5">
             <Link href="/admin" className="block">
-              <div className="text-sm font-extrabold tracking-[0.18em]">ONICS</div>
-              <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ops-muted)]">
-                Operations console
+              <Image
+                src="/assets/logo.svg"
+                alt="CEL-TRONICS"
+                width={168}
+                height={34}
+                className="h-auto w-[156px]"
+                priority
+              />
+              <div className="mt-3 text-sm font-medium text-slate-600">
+                Panel operacyjny
               </div>
             </Link>
           </div>
 
-          <div className="flex-1 px-3 py-4">
+          <div className="flex-1 overflow-y-auto px-3 py-5">
             <AdminNavigation />
           </div>
 
           <div className="border-t border-[var(--ops-border)] p-4">
-            <div className="truncate text-sm font-semibold">{identity}</div>
-            <div className="mt-1 text-xs text-[var(--ops-muted)]">
-              ADMIN · dostęp operacyjny
+            <div className="truncate text-[15px] font-semibold text-slate-950">{identity}</div>
+            <div className="mt-1 text-sm text-slate-600">
+              Administrator
             </div>
             <div className="mt-4">
               <AdminLogoutButton />
@@ -69,37 +77,42 @@ export default async function AdminLayout({
         </aside>
 
         <div className="min-w-0">
-          <div className="border-b border-[var(--ops-border)] bg-[var(--ops-panel)] lg:hidden">
+          <div className="border-b border-[var(--ops-border)] bg-white lg:hidden">
             <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <div className="text-sm font-extrabold tracking-[0.18em]">ONICS</div>
-                <div className="text-[10px] uppercase tracking-wider text-[var(--ops-muted)]">
-                  Operations
-                </div>
-              </div>
+              <Image
+                src="/assets/logo.svg"
+                alt="CEL-TRONICS"
+                width={142}
+                height={29}
+                className="h-auto w-[142px]"
+                priority
+              />
               <Link
                 href="/field"
-                className="rounded-lg border border-[var(--ops-border)] px-3 py-2 text-sm font-semibold"
+                className="rounded-lg border border-[var(--ops-border)] px-3 py-2 text-sm font-medium text-slate-700"
               >
-                Field
+                Tryb instalatora
               </Link>
             </div>
             <AdminNavigation mobile />
           </div>
 
-          <header className="hidden min-h-16 items-center justify-between border-b border-[var(--ops-border)] bg-[var(--ops-panel)] px-8 lg:flex">
-            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ops-muted)]">
-              System techniczno-operacyjny
+          <header className="hidden min-h-16 items-center justify-between border-b border-[var(--ops-border)] bg-white px-8 lg:flex">
+            <div>
+              <div className="text-sm font-semibold text-slate-950">Panel operacyjny</div>
+              <div className="mt-0.5 text-sm text-slate-500">
+                Kolejki, katalog, partnerzy, płatności i serwis
+              </div>
             </div>
             <Link
               href="/field"
-              className="rounded-lg border border-[var(--ops-border)] px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/5"
+              className="rounded-lg border border-[var(--ops-border)] px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-slate-400"
             >
               Otwórz tryb instalatora
             </Link>
           </header>
 
-          <main className="min-w-0 p-4 sm:p-6 lg:p-8">{children}</main>
+          <main className="min-w-0 p-4 sm:p-6 lg:p-8 xl:p-10">{children}</main>
         </div>
       </div>
     </KnowledgeProvider>
