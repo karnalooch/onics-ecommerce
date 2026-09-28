@@ -79,6 +79,10 @@ describe("payment admin action order fencing wiring", () => {
   it("checks the manual bank-transfer fence inside the atomic mutation", () => {
     const route = read("src/app/api/orders/bank-transfer/route.ts")
     const mutationStart = route.indexOf("mutateMockData((db) =>")
+    const adminFence = route.indexOf(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])',
+      mutationStart
+    )
     const classifier = route.indexOf(
       "classifyPaymentAdminActionPrecondition(",
       mutationStart
@@ -89,7 +93,8 @@ describe("payment admin action order fencing wiring", () => {
     )
 
     expect(mutationStart).toBeGreaterThan(-1)
-    expect(classifier).toBeGreaterThan(mutationStart)
+    expect(adminFence).toBeGreaterThan(mutationStart)
+    expect(classifier).toBeGreaterThan(adminFence)
     expect(classifier).toBeLessThan(firstAction)
   })
 
