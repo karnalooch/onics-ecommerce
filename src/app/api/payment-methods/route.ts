@@ -95,6 +95,23 @@ function paymentSettingsConflict() {
   )
 }
 
+function paymentSettingsRequestAborted() {
+  return NextResponse.json(
+    { error: "Zmiana ustawień płatności została przerwana." },
+    { status: 499 }
+  )
+}
+
+function paymentSettingsAccessRevoked() {
+  return NextResponse.json(
+    {
+      error:
+        "Uprawnienia administratora zmieniły się podczas weryfikacji operatora. Zapis został anulowany.",
+    },
+    { status: 403 }
+  )
+}
+
 function paymentSettingsMutationErrorResponse(
   error: unknown,
   requestSignal: AbortSignal
@@ -102,20 +119,11 @@ function paymentSettingsMutationErrorResponse(
   const code = error instanceof Error ? error.message : ""
 
   if (requestSignal.aborted || code === "REQUEST_ABORTED") {
-    return NextResponse.json(
-      { error: "Zmiana ustawień płatności została przerwana." },
-      { status: 499 }
-    )
+    return paymentSettingsRequestAborted()
   }
 
   if (code === "ADMIN_ACCESS_REVOKED") {
-    return NextResponse.json(
-      {
-        error:
-          "Uprawnienia administratora zmieniły się podczas weryfikacji operatora. Zapis został anulowany.",
-      },
-      { status: 403 }
-    )
+    return paymentSettingsAccessRevoked()
   }
 
   return null
@@ -290,16 +298,13 @@ export async function PUT(req: Request) {
           req.signal
         )
         if (req.signal.aborted) {
-          return paymentSettingsMutationErrorResponse(
-            new Error("REQUEST_ABORTED"),
-            req.signal
-          )
+          return paymentSettingsRequestAborted()
         }
         if (activationError) return activationError
       }
     }
 
-    let result
+    let result: { conflict: boolean; replayed: boolean }
     try {
       result = await mutateMockData((db) => {
       assertCurrentPaymentAdmin(
@@ -397,15 +402,12 @@ export async function PUT(req: Request) {
       req.signal
     )
     if (req.signal.aborted) {
-      return paymentSettingsMutationErrorResponse(
-        new Error("REQUEST_ABORTED"),
-        req.signal
-      )
+      return paymentSettingsRequestAborted()
     }
     if (activationError) return activationError
   }
 
-  let result
+  let result: { conflict: boolean; replayed: boolean }
   try {
     result = await mutateMockData((db) => {
     assertCurrentPaymentAdmin(
