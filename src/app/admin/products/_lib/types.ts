@@ -51,4 +51,7 @@ export interface IStagingItem {
   knowledgeMatched: boolean;
   specs: string;
   isValid: boolean;
+  catalogPrice?: number;
+  catalogSpecs?: string;
+  priceMismatch?: boolean;
 }
