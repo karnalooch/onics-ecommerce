@@ -307,7 +307,7 @@ export default function QuotesGenerator() {
                              <TableCell colSpan={4} className="h-96 text-center">
                                 <div className="flex flex-col items-center justify-center opacity-10">
                                    <Box className="w-16 h-16 mb-4" />
-                                   <span className="text-[13px] font-black uppercase tracking-[0.6em] italic">NO_DATA_POINTS_COLLECTED</span>
+                                   <span className="text-[13px] font-black uppercase tracking-[0.6em] italic">Brak pozycji w ofercie</span>
                                 </div>
                              </TableCell>
                           </TableRow>
@@ -321,20 +321,20 @@ export default function QuotesGenerator() {
                  <div className="flex justify-end">
                     <div className="w-[380px] space-y-4">
                        <div className="flex justify-between items-baseline py-3 border-b border-slate-50">
-                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">SUM_NET_TOTAL:</span>
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">Netto:</span>
                           <span className="text-[18px] font-black text-slate-950 tabular-nums italic">{calculateTotal().toFixed(2)} PLN</span>
                        </div>
                        <div className="flex justify-between items-baseline py-3 border-b border-slate-50">
-                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">VAT_TAX_PROJECTION (23%):</span>
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">VAT 23%:</span>
                           <span className="text-[18px] font-black text-slate-950 tabular-nums italic">{(calculateTotal() * 0.23).toFixed(2)} PLN</span>
                        </div>
                        <div className="flex justify-between items-baseline pt-6 border-t border-slate-950 h-20">
-                          <span className="text-[16px] font-black text-primary uppercase italic tracking-[0.3em]">TOTAL_GROSS_VAL:</span>
+                          <span className="text-[16px] font-black text-primary uppercase italic tracking-[0.3em]">Brutto:</span>
                           <div className="flex flex-col items-end leading-none">
                              <span className="text-[38px] font-black text-primary tabular-nums tracking-tighter italic leading-none">
                                 {(calculateTotal() * 1.23).toFixed(2)}
                              </span>
-                             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-1">Currency: PLN_OFFICIAL</span>
+                             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-1">PLN</span>
                           </div>
                        </div>
                     </div>
@@ -344,12 +344,12 @@ export default function QuotesGenerator() {
               {/* AUTH_SIGNATURES */}
               <div className="mt-auto pt-32 grid grid-cols-2 gap-32 relative z-10">
                  <div className="border-t-[3px] border-slate-200 pt-8 flex flex-col gap-3 items-center">
-                    <span className="text-[11px] font-bold uppercase text-slate-300 tracking-[0.4em]">Sporządził Agent</span>
-                    <span className="text-[14px] font-bold text-slate-900 tracking-tight uppercase">PLATFORMA CPQ CORE</span>
+                    <span className="text-[11px] font-bold uppercase text-slate-300 tracking-[0.4em]">Sporządził</span>
+                    <span className="text-[14px] font-bold text-slate-900 tracking-tight uppercase">CEL-TRONICS</span>
                  </div>
                  <div className="border-t-[3px] border-slate-200 pt-8 flex flex-col gap-3 items-center">
                     <span className="text-[11px] font-bold uppercase text-slate-300 tracking-[0.4em]">Pieczęć Partnera</span>
-                    <span className="text-[14px] font-bold text-slate-300 tracking-widest uppercase">STAMP_ID_VERIFIED</span>
+                    <span className="text-[14px] font-bold text-slate-300 tracking-widest uppercase">Miejsce na pieczęć</span>
                  </div>
               </div>
 
@@ -363,7 +363,7 @@ export default function QuotesGenerator() {
               <div className="p-8 bg-primary/5 dark:bg-white/5 border-b border-black/5 dark:border-white/10 flex flex-col gap-8">
                  <div className="flex items-center gap-4">
                     <Search className="w-5 h-5 text-primary" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Skaner Rejestru PIM</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Katalog produktów</span>
                  </div>
                  <div className="relative group">
                     <Terminal className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
