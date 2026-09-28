@@ -19,6 +19,7 @@ services:
       PORT: "3001"
       HOSTNAME: "0.0.0.0"
       AUTH_URL: "http://localhost:${CELTRONICS_PORT:-3100}"
+      AUTH_TRUST_HOST: "true"
       NEXTAUTH_URL: "http://localhost:${CELTRONICS_PORT:-3100}"
       NEXT_PUBLIC_APP_URL: "http://localhost:${CELTRONICS_PORT:-3100}"
       CELTRONICS_DB_PATH: /app/var/celtronics/db.json
