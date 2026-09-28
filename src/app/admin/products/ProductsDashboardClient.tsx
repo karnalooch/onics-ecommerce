@@ -230,14 +230,34 @@ export function ProductsDashboardClient({
     field: string,
     value: unknown
   ) => {
+    const editableFields = new Set<keyof IStagingItem>([
+      "name",
+      "price",
+      "stock",
+      "manufacturer",
+      "categoryId",
+      "subcategoryId",
+      "xlsCategoryName",
+      "xlsSubcategoryName",
+      "specs",
+      "isValid",
+    ]);
+    if (!editableFields.has(field as keyof IStagingItem)) return;
+
+    const typedField = field as keyof IStagingItem;
     const selected = new Set(ids);
     setStagingPayload(
       stagingPayload.map((item) => {
         if (!selected.has(item.tempId)) return item;
-        if (field === "categoryId" && item.categoryId !== value) {
-          return { ...item, categoryId: value, subcategoryId: null };
+        if (typedField === "categoryId" && item.categoryId !== value) {
+          return {
+            ...item,
+            categoryId:
+              typeof value === "string" || value === null ? value : null,
+            subcategoryId: null,
+          };
         }
-        return { ...item, [field]: value } as IStagingItem;
+        return { ...item, [typedField]: value } as IStagingItem;
       })
     );
   };
