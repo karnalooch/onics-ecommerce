@@ -1,21 +1,13 @@
 .operations-admin {
-  --ops-bg: #f6f7f8;
+  --ops-bg: #f4f4f1;
   --ops-panel: #ffffff;
-  --ops-muted: #667085;
-  --ops-border: #dfe3e8;
-  --ops-strong: #111827;
+  --ops-muted: #62676e;
+  --ops-border: #d9dbdc;
+  --ops-strong: #191919;
   min-height: 100vh;
   background: var(--ops-bg);
   color: var(--ops-strong);
   font-family: var(--font-inter), Inter, system-ui, sans-serif;
-}
-
-.dark .operations-admin {
-  --ops-bg: #0b0d10;
-  --ops-panel: #111419;
-  --ops-muted: #98a2b3;
-  --ops-border: #242a31;
-  --ops-strong: #f3f4f6;
 }
 
 .operations-admin .fluent-card,
@@ -23,7 +15,7 @@
 .operations-admin .satel-card {
   background: var(--ops-panel) !important;
   border: 1px solid var(--ops-border) !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   transform: none !important;
@@ -44,15 +36,13 @@
 .operations-admin select,
 .operations-admin textarea {
   backdrop-filter: none;
+  background: #ffffff;
 }
 
 .operations-admin table {
   font-variant-numeric: tabular-nums;
 }
 
-
-/* T218: legacy-screen normalization.
-   Old admin screens can keep their business logic while presentation is migrated. */
 .operations-admin .font-black {
   font-weight: 650 !important;
 }
@@ -63,12 +53,12 @@
 
 .operations-admin [class*="tracking-[0."],
 .operations-admin .tracking-widest {
-  letter-spacing: 0.04em !important;
+  letter-spacing: 0.02em !important;
 }
 
 .operations-admin [class*="rounded-[2"],
 .operations-admin [class*="rounded-[3"] {
-  border-radius: 12px !important;
+  border-radius: 10px !important;
 }
 
 .operations-admin .animate-pulse:not(.skeleton-allow-pulse) {
