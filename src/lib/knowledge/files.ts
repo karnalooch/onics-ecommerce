@@ -94,6 +94,11 @@ export function knowledgeStoreReferencesUpload(
   const target = filename.trim()
   if (!target) return false
 
+  // Legacy filenames containing the provenance delimiter cannot be
+  // distinguished safely from a serialized multi-source value. Treat them
+  // as referenced so quota cleanup never guesses and deletes them.
+  if (hasAmbiguousKnowledgeSourceFilename(target)) return true
+
   if (
     store.sources.includes(target) ||
     store.processedSources.includes(target)
