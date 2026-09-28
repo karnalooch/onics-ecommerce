@@ -6,6 +6,8 @@ const COMMERCE_JSON_ROUTES = [
   "src/app/api/checkout/route.ts",
   "src/app/api/cart/preview/route.ts",
   "src/app/api/cart/offer-preview/route.ts",
+  "src/app/api/categories/route.ts",
+  "src/app/api/products/route.ts",
 ] as const
 
 describe("commerce JSON ingress wiring", () => {
@@ -14,7 +16,7 @@ describe("commerce JSON ingress wiring", () => {
     (relativePath) => {
       const source = fs.readFileSync(path.join(process.cwd(), relativePath), "utf8")
       const authorizationIndex = source.indexOf("authorizeAPI(")
-      const boundedReadIndex = source.indexOf("readCommerceJson(req)")
+      const boundedReadIndex = source.indexOf("readCommerceJson(req")
 
       expect(source).toContain('from "@/lib/commerceIngress"')
       expect(source).not.toContain("req.json()")

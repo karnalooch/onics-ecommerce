@@ -3,6 +3,11 @@ import { z } from "zod"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   catalogCategoryRevision,
@@ -50,6 +55,22 @@ function assertCurrentAdminAccess(users: StoredActor[], actor: SessionActor) {
   ) {
     throw new Error("ADMIN_ACCESS_REVOKED")
   }
+}
+
+function catalogJsonIngressErrorResponse(error: unknown) {
+  if (error instanceof CommerceBodyTooLargeError) {
+    return NextResponse.json(
+      { error: "Żądanie katalogowe jest zbyt duże." },
+      { status: 413 }
+    )
+  }
+  if (error instanceof CommerceBodyInvalidError) {
+    return NextResponse.json(
+      { error: "Nieprawidłowe body żądania katalogowego." },
+      { status: 400 }
+    )
+  }
+  return null
 }
 
 function catalogAdminAccessErrorResponse(error: unknown) {
@@ -163,15 +184,15 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CategoryInput.safeParse(await req.json())
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message || "Nieprawidłowa kategoria." },
-      { status: 400 }
-    )
-  }
-
   try {
+    const parsed = CategoryInput.safeParse(await readCommerceJson(req))
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Nieprawidłowa kategoria." },
+        { status: 400 }
+      )
+    }
+
     const submission = await mutateMockData((db) => {
       assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const categoryStore = db.categories as Category[]
@@ -225,6 +246,9 @@ export async function POST(req: Request) {
         : undefined,
     })
   } catch (error) {
+    const ingressResponse = catalogJsonIngressErrorResponse(error)
+    if (ingressResponse) return ingressResponse
+
     const adminAccessResponse = catalogAdminAccessErrorResponse(error)
     if (adminAccessResponse) return adminAccessResponse
     if (
@@ -272,26 +296,26 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CategoryUpdateInput.safeParse(await req.json())
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message || "Nieprawidłowa kategoria." },
-      { status: 400 }
-    )
-  }
-
-  if (parsed.data.expectedRevision === undefined) {
-    return NextResponse.json(
-      {
-        error:
-          "Aktualizacja kategorii wymaga expectedRevision z ostatniego odczytu.",
-      },
-      { status: 428 }
-    )
-  }
-
   try {
+    const parsed = CategoryUpdateInput.safeParse(await readCommerceJson(req))
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Nieprawidłowa kategoria." },
+        { status: 400 }
+      )
+    }
+
+    if (parsed.data.expectedRevision === undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Aktualizacja kategorii wymaga expectedRevision z ostatniego odczytu.",
+        },
+        { status: 428 }
+      )
+    }
+
     const submission = await mutateMockData((db) => {
       assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const categoryStore = db.categories as Category[]
@@ -370,6 +394,9 @@ export async function PUT(req: Request) {
         : undefined,
     })
   } catch (error) {
+    const ingressResponse = catalogJsonIngressErrorResponse(error)
+    if (ingressResponse) return ingressResponse
+
     const adminAccessResponse = catalogAdminAccessErrorResponse(error)
     if (adminAccessResponse) return adminAccessResponse
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
