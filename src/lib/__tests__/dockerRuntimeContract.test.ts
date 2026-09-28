@@ -1,9 +1,40 @@
 import fs from "fs"
+import os from "os"
 import path from "path"
+import { spawnSync } from "child_process"
 import { describe, expect, it } from "vitest"
 
 function read(relativePath: string) {
   return fs.readFileSync(path.join(process.cwd(), relativePath), "utf8")
+}
+
+function dockerBootstrapState(users: unknown[]) {
+  const tempDir = fs.mkdtempSync(
+    path.join(os.tmpdir(), "celtronics-docker-bootstrap-")
+  )
+  const dbPath = path.join(tempDir, "db.json")
+
+  try {
+    fs.writeFileSync(dbPath, JSON.stringify({ users }))
+    const result = spawnSync(
+      process.execPath,
+      ["scripts/docker/bootstrap-state.cjs"],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          CELTRONICS_DB_PATH: dbPath,
+        },
+        encoding: "utf8",
+      }
+    )
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toBe("")
+    return result.stdout.trim()
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true })
+  }
 }
 
 describe("local Docker runtime contract", () => {
@@ -54,6 +85,39 @@ describe("local Docker runtime contract", () => {
     expect(entrypoint).toContain("db.paymentControl = {")
     expect(entrypoint).toContain("enabled: false")
     expect(entrypoint).not.toContain("rm -f \"$DB_PATH\"")
+  })
+
+  it("uses the same non-empty password-hash semantics for Docker bootstrap", () => {
+    const dockerfile = read("Dockerfile")
+    const entrypoint = read("scripts/docker/entrypoint.sh")
+
+    expect(dockerfile).toContain("bootstrap-state.cjs")
+    expect(entrypoint).toContain("node /app/bootstrap-state.cjs")
+
+    expect(
+      dockerBootstrapState([
+        { roleType: "ADMIN", isBlocked: false },
+      ])
+    ).toBe("yes")
+    expect(
+      dockerBootstrapState([
+        { roleType: "ADMIN", isBlocked: false, passwordHash: "" },
+      ])
+    ).toBe("yes")
+    expect(
+      dockerBootstrapState([
+        {
+          roleType: "ADMIN",
+          isBlocked: false,
+          passwordHash: "$2b$12$sealed",
+        },
+      ])
+    ).toBe("no")
+    expect(
+      dockerBootstrapState([
+        { roleType: "ADMIN", isBlocked: true },
+      ])
+    ).toBe("no")
   })
 
   it("generates local runtime secrets instead of committing them", () => {
