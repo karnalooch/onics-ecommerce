@@ -185,7 +185,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const orderId = "orderId" in parsed.data ? orderId : undefined
+  const orderId = "orderId" in parsed.data ? parsed.data.orderId : undefined
 
   let stripeConfig: ReturnType<typeof resolveStripeCheckoutConfig>
   try {
