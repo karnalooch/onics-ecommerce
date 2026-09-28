@@ -76,7 +76,10 @@ export class FixedWindowRateLimiter {
     policy: RateLimitPolicy,
     now: number
   ): RateLimitResult {
-    this.ensureCapacity()
+    if (this.buckets.size >= this.maxBuckets) {
+      return this.capacityBlockedResult(now)
+    }
+
     const bucket = { count: 1, resetAt: now + policy.windowMs }
     this.buckets.set(id, bucket)
     return this.allowedResult(bucket, policy, now)
@@ -113,11 +116,19 @@ export class FixedWindowRateLimiter {
     }
   }
 
-  private ensureCapacity() {
-    while (this.buckets.size >= this.maxBuckets) {
-      const oldest = this.buckets.keys().next().value as string | undefined
-      if (!oldest) return
-      this.buckets.delete(oldest)
+  private capacityBlockedResult(now: number): RateLimitResult {
+    let nextResetAt = Number.POSITIVE_INFINITY
+    for (const bucket of this.buckets.values()) {
+      nextResetAt = Math.min(nextResetAt, bucket.resetAt)
+    }
+
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: retryAfterSeconds(
+        Number.isFinite(nextResetAt) ? nextResetAt : now + 1_000,
+        now
+      ),
     }
   }
 }

@@ -30,6 +30,23 @@ describe("fixed-window rate limiter", () => {
     expect(limiter.check("register", "same-key", policy, 0).allowed).toBe(true)
     expect(limiter.check("login", "same-key", policy, 1_000).allowed).toBe(false)
   })
+
+  it("fails closed at capacity without evicting active buckets", () => {
+    const limiter = new FixedWindowRateLimiter(2)
+    const policy = { limit: 1, windowMs: 60_000 }
+
+    expect(limiter.check("login", "client-a", policy, 0).allowed).toBe(true)
+    expect(limiter.check("login", "client-b", policy, 0).allowed).toBe(true)
+
+    expect(limiter.check("login", "client-c", policy, 1_000)).toMatchObject({
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: 59,
+    })
+
+    expect(limiter.check("login", "client-a", policy, 2_000).allowed).toBe(false)
+    expect(limiter.check("login", "client-c", policy, 60_000).allowed).toBe(true)
+  })
 })
 
 describe("client rate-limit identity", () => {

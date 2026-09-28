@@ -106,7 +106,7 @@ Public credential work is protected by an in-process fixed-window limiter before
 
 Client identity is taken from `CF-Connecting-IP`, then `X-Real-IP`, then the first `X-Forwarded-For` value. The production reverse proxy **must strip and overwrite** these incoming headers so clients cannot spoof them. If none is available, the limiter intentionally falls back to one shared `unknown` bucket.
 
-The limiter is bounded in memory and is appropriate for the current single-instance file-backed deployment. It is not a replacement for edge/shared rate limiting when the application moves to multiple processes or instances.
+The limiter is bounded in memory and fails closed when its active bucket capacity is exhausted: new identities are rejected until an existing window expires instead of evicting active buckets and silently resetting their attempt history. It is appropriate for the current single-instance file-backed deployment, but it is not a replacement for edge/shared rate limiting when the application moves to multiple processes or instances.
 
 ## HTTP security hardening
 
