@@ -210,18 +210,6 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
       const idx = categories.findIndex((category) => category.id === validated.data.id)
       if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
 
-      indexCatalogCategoriesByName(categories)
-      if (
-        validated.data.name &&
-        hasCatalogCategoryNameConflict(
-          categories,
-          validated.data.name,
-          validated.data.id
-        )
-      ) {
-        throw new Error("CATEGORY_NAME_EXISTS")
-      }
-
       const current = categories[idx]
       const currentRevision = catalogCategoryRevision(current.revision)
       const nextName = validated.data.name
@@ -236,14 +224,26 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
         throw new Error("CATEGORY_REVISION_CONFLICT")
       }
 
+      indexCatalogCategoriesByName(categories)
+      if (
+        validated.data.name &&
+        hasCatalogCategoryNameConflict(
+          categories,
+          validated.data.name,
+          validated.data.id
+        )
+      ) {
+        throw new Error("CATEGORY_NAME_EXISTS")
+      }
+
       if (isReplay) {
         return { replayed: true }
       }
 
       categories[idx] = {
         ...current,
-        ...validated.data,
         name: nextName,
+        iconName: nextIcon,
         revision: nextCatalogCategoryRevision(currentRevision),
       }
       return { replayed: false }
