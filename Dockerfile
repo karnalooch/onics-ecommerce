@@ -10,11 +10,12 @@ RUN npm ci
 FROM node:24-bookworm-slim AS builder
 
 WORKDIR /app
+ARG CELTRONICS_PUBLIC_URL=http://localhost:3100
 ENV NEXT_TELEMETRY_DISABLED=1 \
     AUTH_SECRET=docker-build-only-auth-secret \
     NEXTAUTH_SECRET=docker-build-only-nextauth-secret \
-    NEXTAUTH_URL=http://localhost:3001 \
-    NEXT_PUBLIC_APP_URL=http://localhost:3001 \
+    NEXTAUTH_URL=${CELTRONICS_PUBLIC_URL} \
+    NEXT_PUBLIC_APP_URL=${CELTRONICS_PUBLIC_URL} \
     ADMIN_BOOTSTRAP_PASSWORD=docker-build-only-bootstrap-password \
     CELTRONICS_DB_PATH=/app/src/data/db.json \
     CELTRONICS_UPLOAD_ROOT=/tmp/celtronics-uploads
