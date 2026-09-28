@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   assertPaymentProviderCapability,
   describeOrderPaymentLifecycle,
@@ -22,6 +24,27 @@ import {
   type Przelewy24StoredOrder,
 } from "@/lib/przelewy24"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+function assertCurrentAdminAccess(
+  users: StoredActor[],
+  actor: { id?: string; email?: string | null }
+) {
+  const currentActor = findStoredUserBySession(users, actor)
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
 
 const ActionSchema = z.object({
   id: z.string().min(1),
@@ -56,6 +79,7 @@ export async function POST(req: Request) {
   if (parsed.data.action === "REQUEST") {
     try {
       const result = await mutateMockData((db) => {
+        assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
         const order = (db.orders as Przelewy24StoredOrder[]).find(
           (candidate) => candidate.id === parsed.data.id
         )
@@ -149,6 +173,7 @@ export async function POST(req: Request) {
 
   try {
     const intent = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const order = (db.orders as Przelewy24StoredOrder[]).find(
         (candidate) => candidate.id === parsed.data.id
       )
@@ -240,6 +265,13 @@ export async function POST(req: Request) {
 
 function paymentError(error: unknown, external = false) {
   const code = error instanceof Error ? error.message : ""
+
+  if (code === "ADMIN_ACCESS_REVOKED") {
+    return NextResponse.json(
+      { error: "Uprawnienia administratora zmieniły się przed operacją RMA Przelewy24." },
+      { status: 403 }
+    )
+  }
 
   if (code === "ORDER_NOT_FOUND") {
     return NextResponse.json(
