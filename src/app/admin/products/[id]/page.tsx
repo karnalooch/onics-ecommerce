@@ -189,110 +189,192 @@ export default async function EditProductPage({ params }: { params: any }) {
   const selectedSubcategoryId = product?.subcategoryId || "";
 
   return (
-    <div className="admin-layout" style={{ display: "flex", minHeight: "100vh" }}>
-      <div className="admin-sidebar" style={{ width: "260px", background: "#0f172a", color: "#fff", padding: "2rem 1rem" }}>
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <img src="/assets/logo.png" alt="CEL-TRONICS" style={{ height: "36px", filter: "brightness(0) invert(1)" }} />
+    <div className="mx-auto max-w-[1100px] space-y-6">
+      <header className="border-b border-[var(--ops-border)] pb-6">
+        <Link
+          href="/admin/products"
+          className="text-sm font-semibold text-[var(--ops-muted)] hover:text-foreground"
+        >
+          ← Wróć do katalogu
+        </Link>
+        <div className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ops-muted)]">
+          Katalog techniczny
         </div>
-        <div className="admin-sidebar-title" style={{ fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#64748b", fontWeight: 700, marginBottom: "1rem", paddingLeft: "1rem" }}>System Zarządzania</div>
-        <nav className="admin-nav" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <Link href="/admin/products" style={{ padding: "0.8rem 1rem", borderRadius: "6px", color: "#fff", background: "#1e293b", textDecoration: "none" }}>📦 Baza Produktów</Link>
-          <Link href="/admin/catalog?tab=import" style={{ padding: "0.8rem 1rem", borderRadius: "6px", color: "#94a3b8", textDecoration: "none" }}>📥 Import WF-Mag</Link>
-        </nav>
-      </div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          {product ? "Edycja produktu" : "Nowy produkt"}
+        </h1>
+        {product ? (
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--ops-muted)]">
+            <span className="font-mono">{String(product.sku || "")}</span>
+            <span>{String(product.name || "")}</span>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-[var(--ops-muted)]">
+            Dodaj nowy indeks do katalogu.
+          </p>
+        )}
+      </header>
 
-      <div className="admin-content" style={{ flex: 1, padding: "2rem 3rem", background: "#f8fafc" }}>
-        <div className="admin-header" style={{ marginBottom: "2rem" }}>
-          <Link href="/admin/products" style={{ color: "#3b82f6", fontSize: "0.85rem", fontWeight: 600, display: "inline-block", marginBottom: "0.5rem", textDecoration: "none" }}>
-            ← Powrót do listy
-          </Link>
-          <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#1e293b" }}>{product ? `Edycja: ${product.name}` : "Nowy produkt"}</h1>
-          <p style={{ color: "#64748b" }}>Zmiany są walidowane po stronie serwera i respektują lifecycle magazynowy.</p>
-        </div>
+      <form
+        action={saveProduct}
+        className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)]"
+      >
+        {product ? (
+          <input
+            type="hidden"
+            name="expectedRevision"
+            value={catalogProductRevision(product.revision)}
+          />
+        ) : null}
 
-        <div className="admin-section" style={{ background: "#fff", padding: "2rem", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
-          <form action={saveProduct} style={{ maxWidth: "800px", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            {product ? (
+        <section className="border-b border-[var(--ops-border)] p-5">
+          <h2 className="text-sm font-semibold">Identyfikacja</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                Nazwa produktu
+              </span>
               <input
-                type="hidden"
-                name="expectedRevision"
-                value={catalogProductRevision(product.revision)}
+                type="text"
+                name="name"
+                defaultValue={product?.name || ""}
+                required
+                minLength={2}
+                className="h-11 w-full rounded-lg border border-[var(--ops-border)] bg-transparent px-3"
               />
-            ) : null}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Nazwa Produktu</label>
-                <input type="text" name="name" defaultValue={product?.name || ""} required minLength={2} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Kod SKU / Indeks</label>
-                <input type="text" name="sku" defaultValue={product?.sku || ""} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.5rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Cena Netto (PLN)</label>
-                <input type="number" step="0.01" min="0" name="price" defaultValue={product?.price ?? 0} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Stan Magazynowy</label>
-                <input type="number" min="0" name="stock" defaultValue={product?.stock ?? 0} required style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px" }} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Producent</label>
-                <select name="manufacturer" defaultValue={product?.manufacturer || ""} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff" }}>
-                  <option value="">-- Wybierz --</option>
-                  {manufacturers.map((manufacturer: any) => (
-                    <option key={manufacturer.id} value={manufacturer.name}>{manufacturer.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Kategoria</label>
-                <select name="categoryId" defaultValue={selectedCategoryId} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff" }}>
-                  <option value="">-- Brak --</option>
-                  {categories.map((category: any) => (
-                    <option key={category.id} value={category.id}>{category.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Podkategoria</label>
-                <select name="subcategoryId" defaultValue={selectedSubcategoryId} style={{ width: "100%", padding: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "6px", background: "#fff" }}>
-                  <option value="">-- Brak --</option>
-                  {categories.flatMap((category: any) =>
-                    (category.subcategories || []).map((subcategory: any) => (
-                      <option key={subcategory.id} value={subcategory.id}>
-                        {category.name} — {subcategory.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "#475569", marginBottom: "0.5rem" }}>Opis Techniczny</label>
-              <textarea
-                name="description"
-                defaultValue={product?.description || product?.seoDescription || ""}
-                rows={10}
-                style={{ width: "100%", padding: "1rem", border: "1px solid #cbd5e1", borderRadius: "6px", fontFamily: "monospace", fontSize: "0.9rem" }}
+            </label>
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                SKU / indeks
+              </span>
+              <input
+                type="text"
+                name="sku"
+                defaultValue={product?.sku || ""}
+                required
+                className="h-11 w-full rounded-lg border border-[var(--ops-border)] bg-transparent px-3 font-mono"
               />
-            </div>
+            </label>
+          </div>
+        </section>
 
-            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: "1.5rem", display: "flex", justifyContent: "flex-end" }}>
-              <button type="submit" style={{ padding: "0.75rem 2rem", background: "#3b82f6", color: "#fff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer" }}>
-                Zapisz produkt
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+        <section className="border-b border-[var(--ops-border)] p-5">
+          <h2 className="text-sm font-semibold">Cena i magazyn</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                Cena netto (PLN)
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="price"
+                defaultValue={product?.price ?? 0}
+                required
+                className="h-11 w-full rounded-lg border border-[var(--ops-border)] bg-transparent px-3 font-mono"
+              />
+            </label>
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                Stan magazynowy
+              </span>
+              <input
+                type="number"
+                min="0"
+                name="stock"
+                defaultValue={product?.stock ?? 0}
+                required
+                className="h-11 w-full rounded-lg border border-[var(--ops-border)] bg-transparent px-3 font-mono"
+              />
+            </label>
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                Producent
+              </span>
+              <select
+                name="manufacturer"
+                defaultValue={product?.manufacturer || ""}
+                className="h-11 w-full rounded-lg border border-[var(--ops-border)] bg-transparent px-3"
+              >
+                <option value="">Brak producenta</option>
+                {manufacturers.map((manufacturer: any) => (
+                  <option key={manufacturer.id} value={manufacturer.name}>
+                    {manufacturer.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section className="border-b border-[var(--ops-border)] p-5">
+          <h2 className="text-sm font-semibold">Klasyfikacja</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                Kategoria
+              </span>
+              <select
+                name="categoryId"
+                defaultValue={selectedCategoryId}
+                className="h-11 w-full rounded-lg border border-[var(--ops-border)] bg-transparent px-3"
+              >
+                <option value="">Brak kategorii</option>
+                {categories.map((category: any) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="mb-2 block text-sm font-semibold">
+                Podkategoria
+              </span>
+              <select
+                name="subcategoryId"
+                defaultValue={selectedSubcategoryId}
+                className="h-11 w-full rounded-lg border border-[var(--ops-border)] bg-transparent px-3"
+              >
+                <option value="">Brak podkategorii</option>
+                {categories.flatMap((category: any) =>
+                  (category.subcategories || []).map((subcategory: any) => (
+                    <option key={subcategory.id} value={subcategory.id}>
+                      {category.name} — {subcategory.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section className="p-5">
+          <label>
+            <span className="mb-2 block text-sm font-semibold">
+              Opis techniczny
+            </span>
+            <textarea
+              name="description"
+              defaultValue={
+                product?.description || product?.seoDescription || ""
+              }
+              rows={12}
+              className="w-full rounded-lg border border-[var(--ops-border)] bg-transparent p-3 font-mono text-sm leading-6"
+            />
+          </label>
+        </section>
+
+        <footer className="flex justify-end border-t border-[var(--ops-border)] p-4">
+          <button
+            type="submit"
+            className="min-h-11 rounded-lg bg-slate-950 px-5 text-sm font-semibold text-white dark:bg-white dark:text-slate-950"
+          >
+            Zapisz produkt
+          </button>
+        </footer>
+      </form>
     </div>
-  );
+  )
 }

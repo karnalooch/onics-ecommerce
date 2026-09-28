@@ -16,6 +16,16 @@ const migratedScreens = [
   "src/app/admin/repairs/RepairsDashboardClient.tsx",
   "src/app/admin/products/_components/AICommandCenter.tsx",
   "src/app/admin/products/_components/StagingDashboard.tsx",
+  "src/app/admin/products/_components/ProductHeader.tsx",
+  "src/app/admin/products/_components/ProductSidebar.tsx",
+  "src/app/admin/products/_components/StructureApprovalModal.tsx",
+  "src/app/admin/products/_components/StagingBatchActions.tsx",
+  "src/components/ui/B2BDashboardGrid.tsx",
+  "src/components/ui/QuoteRequestModal.tsx",
+  "src/app/(b2b)/oferty/page.tsx",
+  "src/app/(b2b)/oferty/zamowienia/page.tsx",
+  "src/app/(b2b)/oferty/naprawy/page.tsx",
+  "src/app/(b2b)/ustawienia/page.tsx",
 ]
 
 const forbiddenPresentationTokens = [
@@ -28,6 +38,15 @@ const forbiddenPresentationTokens = [
   "NODE_SELECTED",
   "REJESTR_WĘZŁÓW_GŁÓWNYCH",
   "Diagnostic_v9",
+  "CRT v4.6_PRO",
+  "Systemowy Węzeł Ewidencji",
+  "Filtrowanie IQ",
+  "Wątki Katalogowe",
+  "Universal Structure Hub",
+  "MASOWA_AUTORYZACJA",
+  "Masowy katalog sprzętowy V2",
+  "bazy hybrydowej",
+  "Centrum RMA",
 ]
 
 describe("admin UI language contract", () => {
@@ -51,6 +70,14 @@ describe("admin UI language contract", () => {
     )
     expect(row).toContain("Edytuj")
     expect(row).toContain("Usuń produkt")
+  })
+
+  it("keeps product detail inside the shared admin shell", () => {
+    const detail = read("src/app/admin/products/[id]/page.tsx")
+
+    expect(detail).not.toContain("admin-sidebar")
+    expect(detail).not.toContain("System Zarządzania")
+    expect(detail).not.toContain('src="/assets/logo.png"')
   })
 
   it("keeps admin loading states task-shaped instead of dashboard-shaped", () => {

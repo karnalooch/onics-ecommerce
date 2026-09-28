@@ -1,245 +1,316 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, Package, Clock, Truck, ShieldCheck, Landmark, XCircle, RotateCcw, MessageSquare } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import {
+  Clock,
+  Landmark,
+  Loader2,
+  MessageSquare,
+  Package,
+  RotateCcw,
+  ShieldCheck,
+  Truck,
+  XCircle,
+} from "lucide-react"
+
+type OrderItem = {
+  id?: string
+  sku?: string
+  name?: string
+  quantity: number
+  price: number
+}
+
+type PartnerOrder = {
+  id: string
+  createdAt: string
+  orderType?: string
+  status: string
+  paymentProvider?: string | null
+  paymentStatus?: string | null
+  bankTransferIban?: string | null
+  bankTransferRecipient?: string | null
+  bankTransferReference?: string | null
+  bankTransferAmount?: number | null
+  bankTransferCurrency?: string | null
+  estimatedDeliveryDays?: number | null
+  totalPriceOrig?: number | null
+  totalPriceFinal?: number | null
+  items?: OrderItem[]
+}
+
+function formatMoney(value: number | null | undefined) {
+  return Number(value || 0).toLocaleString("pl-PL", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }) + " zł"
+}
+
+function statusMeta(order: PartnerOrder) {
+  if (order.status === "PENDING_VERIFICATION") {
+    return {
+      label: "Oczekuje na weryfikację",
+      detail:
+        order.paymentProvider === "BANK_TRANSFER" &&
+        order.paymentStatus !== "PAID"
+          ? "Najpierw oczekujemy na potwierdzenie wpływu przelewu."
+          : "Warunki i termin dostawy wymagają potwierdzenia.",
+      icon: Clock,
+      className:
+        "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
+    }
+  }
+
+  if (order.status === "CANCELLED") {
+    return {
+      label: "Anulowane",
+      detail:
+        order.paymentStatus === "REFUNDED"
+          ? "Zwrot środków został potwierdzony."
+          : "Zamówienie nie będzie realizowane.",
+      icon: XCircle,
+      className:
+        "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100",
+    }
+  }
+
+  if (order.status === "RETURNED") {
+    return {
+      label: "Zwrócone",
+      detail: "Proces zwrotu został zakończony.",
+      icon: RotateCcw,
+      className:
+        "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
+    }
+  }
+
+  if (order.status === "INQUIRY") {
+    return {
+      label: "Zapytanie handlowe",
+      detail: "Oczekuje na odpowiedź zespołu handlowego.",
+      icon: MessageSquare,
+      className:
+        "border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-white/[0.03] dark:text-slate-200",
+    }
+  }
+
+  if (order.status === "SHIPPED") {
+    return {
+      label: "Wysłane",
+      detail: "Przesyłka została przekazana do realizacji.",
+      icon: Truck,
+      className:
+        "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100",
+    }
+  }
+
+  return {
+    label: "Potwierdzone",
+    detail: "Zamówienie zostało zaakceptowane do realizacji.",
+    icon: ShieldCheck,
+    className:
+      "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100",
+  }
+}
 
 export default function B2BClientOrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<PartnerOrder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  const loadOrders = useCallback(async () => {
+    setError("")
+    try {
+      const response = await fetch("/api/orders", { cache: "no-store" })
+      const payload: unknown = await response.json().catch(() => [])
+
+      if (!response.ok || !Array.isArray(payload)) {
+        throw new Error("Nie udało się pobrać zamówień.")
+      }
+
+      setOrders(payload as PartnerOrder[])
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Nie udało się pobrać zamówień."
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const res = await fetch("/api/orders", { cache: "no-store" });
-        const data = await res.json();
-        setOrders(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchOrders();
-  }, []);
+    const timer = window.setTimeout(() => {
+      void loadOrders()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [loadOrders])
 
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex flex-col gap-2 mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Twoje Zamówienia</h1>
-        <p className="text-muted-foreground">Śledź weryfikację logistyczną i oczekuj potwierdzeń czasów dostaw od dystrybutora.</p>
-      </div>
+    <div className="mx-auto max-w-[1200px] space-y-6">
+      <header className="border-b border-slate-200 pb-6 dark:border-slate-800">
+        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+          Realizacja
+        </div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          Zamówienia
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Status realizacji, płatności, terminy i pozycje zamówień.
+        </p>
+      </header>
+
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100">
+          {error}
+        </div>
+      ) : null}
 
       {loading ? (
-        <div className="py-20 flex justify-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>
+        <div className="flex min-h-48 items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+        </div>
       ) : orders.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-            <Package className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
-            <h3 className="text-xl font-bold text-gray-700">Brakuje zamówień</h3>
-            <p className="text-muted-foreground mt-2 max-w-md">Nie utworzyłeś jeszcze twardego zapytania lub zamówienia e-commerce. Przejdź do cennika i dodaj urządzenia do koszyka.</p>
-          </CardContent>
-        </Card>
+        <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-[#0f1216]">
+          <Package className="h-6 w-6 text-slate-400" />
+          <div className="mt-3 font-semibold">Brak zamówień</div>
+          <p className="mt-1 max-w-md text-sm text-slate-500">
+            Zamówienia i zapytania utworzone z katalogu pojawią się tutaj.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-6">
-          {orders.map((order) => (
-            <Card key={order.id} className="overflow-hidden">
-              <div className="bg-muted px-6 py-4 border-b flex flex-wrap justify-between items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="font-bold text-lg">Zamówienie #{order.id}</div>
-                  <Badge variant={order.orderType === "ORDER" ? "default" : "secondary"}>
-                    {order.orderType === "ORDER" ? "Zakup twardy" : "Zapytanie Luźne"}
-                  </Badge>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Zgłoszono: {new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString()}
-                </div>
-              </div>
+        <div className="space-y-4">
+          {orders.map((order) => {
+            const status = statusMeta(order)
+            const StatusIcon = status.icon
 
-              <CardContent className="p-6">
-                {order.paymentProvider === "BANK_TRANSFER" &&
-                 order.bankTransferIban && (
-                  <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5">
-                    <div className="flex items-start gap-3">
-                      <Landmark className="w-5 h-5 text-blue-700 mt-0.5 shrink-0" />
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <strong className="text-blue-950">
-                            Przelew bankowy
-                          </strong>
-                          <Badge
-                            variant={
-                              order.paymentStatus === "PAID"
-                                ? "default"
-                                : order.paymentStatus === "REFUNDED"
-                                  ? "secondary"
-                                  : "outline"
-                            }
-                          >
-                            {order.paymentStatus === "PAID"
-                              ? "ZAKSIĘGOWANY"
-                              : order.paymentStatus === "REFUNDED"
-                                ? "ZWRÓCONY"
-                                : "OCZEKUJE NA WPŁYW"}
-                          </Badge>
-                        </div>
-                        <div className="grid gap-2 mt-3 text-sm text-blue-950">
-                          <div>
-                            Odbiorca:{" "}
-                            <span className="font-semibold">
-                              {order.bankTransferRecipient}
-                            </span>
-                          </div>
-                          <div className="break-all">
-                            IBAN:{" "}
-                            <span className="font-mono font-semibold">
-                              {order.bankTransferIban}
-                            </span>
-                          </div>
-                          <div>
-                            Tytuł:{" "}
-                            <span className="font-mono font-semibold">
-                              {order.bankTransferReference}
-                            </span>
-                          </div>
-                          <div>
-                            Kwota:{" "}
-                            <span className="font-semibold">
-                              {Number(
-                                order.bankTransferAmount ??
-                                  order.totalPriceFinal
-                              ).toFixed(2)}{" "}
-                              {order.bankTransferCurrency || "PLN"}
-                            </span>
-                          </div>
-                        </div>
-                        {order.paymentStatus === "PENDING" && (
-                          <p className="text-xs text-blue-800 mt-3">
-                            Użyj dokładnie podanego tytułu przelewu. Status
-                            zmieni się po ręcznym potwierdzeniu wpływu przez
-                            administratora.
-                          </p>
-                        )}
-                      </div>
+            return (
+              <article
+                key={order.id}
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]"
+              >
+                <header className="grid gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                  <div>
+                    <div className="font-mono text-sm font-semibold">
+                      #{order.id}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {order.orderType === "ORDER" ? "Zamówienie" : "Zapytanie"} ·{" "}
+                      {new Date(order.createdAt).toLocaleString("pl-PL")}
                     </div>
                   </div>
-                )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                  <div className="md:col-span-2">
-                    <h4 className="font-semibold mb-4 border-b pb-2">Zawartość pakietu</h4>
-                    <div className="space-y-3">
-                      {order.items?.map((item: any) => (
-                        <div key={item.id} className="flex justify-between items-center text-sm">
-                          <div>
-                            <span className="font-medium text-gray-800 dark:text-gray-200">{item.name}</span>
-                            <span className="text-muted-foreground ml-2">x{item.quantity}</span>
-                            <div className="text-xs text-muted-foreground">SKU: {item.sku}</div>
+                  <div
+                    className={
+                      "inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold " +
+                      status.className
+                    }
+                  >
+                    <StatusIcon className="h-4 w-4" />
+                    {status.label}
+                  </div>
+                </header>
+
+                <div className="grid gap-6 p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,.6fr)]">
+                  <section>
+                    <h2 className="text-sm font-semibold">Pozycje</h2>
+                    <div className="mt-3 divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                      {(order.items || []).map((item, index) => (
+                        <div
+                          key={item.id || item.sku || String(index)}
+                          className="grid gap-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_100px_120px] sm:items-center"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium">
+                              {item.name || item.sku || "Produkt"}
+                            </div>
+                            <div className="mt-1 font-mono text-xs text-slate-500">
+                              {item.sku || "brak SKU"}
+                            </div>
                           </div>
-                          <div className="font-bold text-gray-600">
-                             {item.price.toFixed(2)} zł / szt.
+                          <div className="font-mono text-sm">
+                            × {item.quantity}
+                          </div>
+                          <div className="text-right font-mono text-sm font-semibold">
+                            {formatMoney(item.price)}
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </section>
 
-                  <div className="bg-gray-50 dark:bg-gray-900 border rounded-xl p-5 flex flex-col justify-between">
-                    <div>
-                      <h4 className="font-semibold mb-4 text-center">Status Operacyjny</h4>
-
-                      {order.status === "PENDING_VERIFICATION" ? (
-                        <div className="bg-orange-100 border-orange-200 text-orange-800 p-3 rounded-lg flex gap-3 text-sm">
-                          <Clock className="w-5 h-5 shrink-0" />
-                          <div>
-                            <strong>Oczekuje na Weryfikację</strong>
-                            <p className="opacity-80 text-xs mt-1">
-                              {order.paymentProvider === "BANK_TRANSFER" &&
-                               order.paymentStatus !== "PAID"
-                                ? "Najpierw oczekujemy na potwierdzenie wpływu przelewu."
-                                : "Administrator musi potwierdzić ostateczne warunki i termin dostawy."}
-                            </p>
-                          </div>
+                  <aside className="space-y-4">
+                    <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+                      <div className="text-sm font-semibold">{status.label}</div>
+                      <p className="mt-2 text-sm leading-6 text-slate-500">
+                        {status.detail}
+                      </p>
+                      {order.estimatedDeliveryDays ? (
+                        <div className="mt-3 flex items-center gap-2 text-sm">
+                          <Truck className="h-4 w-4 text-slate-500" />
+                          Termin: około {order.estimatedDeliveryDays} dni roboczych
                         </div>
-                      ) : order.status === "CANCELLED" ? (
-                        <div className="bg-red-100 border-red-200 text-red-800 p-3 rounded-lg flex gap-3 text-sm">
-                          <XCircle className="w-5 h-5 shrink-0" />
-                          <div>
-                            <strong>Zamówienie Anulowane</strong>
-                            {order.paymentStatus === "REFUNDED" && (
-                              <p className="opacity-80 text-xs mt-1">
-                                Zwrot środków został potwierdzony.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ) : order.status === "RETURNED" ? (
-                        <div className="bg-amber-100 border-amber-200 text-amber-900 p-3 rounded-lg flex gap-3 text-sm">
-                          <RotateCcw className="w-5 h-5 shrink-0" />
-                          <div>
-                            <strong>Zamówienie Zwrócone</strong>
-                            <p className="opacity-80 text-xs mt-1">
-                              Proces zwrotu został zakończony.
-                            </p>
-                          </div>
-                        </div>
-                      ) : order.status === "INQUIRY" ? (
-                        <div className="bg-slate-100 border-slate-200 text-slate-700 p-3 rounded-lg flex gap-3 text-sm">
-                          <MessageSquare className="w-5 h-5 shrink-0" />
-                          <div>
-                            <strong>Zapytanie Handlowe</strong>
-                            <p className="opacity-80 text-xs mt-1">
-                              Oczekuje na odpowiedź zespołu handlowego.
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="bg-green-100 border-green-200 text-green-800 p-3 rounded-lg flex items-center gap-3 text-sm">
-                            {order.status === "SHIPPED" ? (
-                              <Truck className="w-5 h-5" />
-                            ) : (
-                              <ShieldCheck className="w-5 h-5" />
-                            )}
-                            <strong>
-                              {order.status === "SHIPPED"
-                                ? "Zamówienie Wysłane"
-                                : "Zamówienie Potwierdzone"}
-                            </strong>
-                          </div>
-                          {order.estimatedDeliveryDays && (
-                            <div className="bg-white dark:bg-gray-950 border p-3 rounded-lg flex items-center gap-3 text-sm shadow-sm">
-                              <Truck className="w-5 h-5 text-blue-500" />
-                              <div>
-                                <div className="text-muted-foreground text-xs">
-                                  Ustalony czas dostawy:
-                                </div>
-                                <strong className="text-base text-gray-800 dark:text-white">
-                                  ~ {order.estimatedDeliveryDays} dni roboczych
-                                </strong>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      ) : null}
                     </div>
 
-                    <div className="mt-8 pt-4 border-t">
-                      <div className="flex justify-between text-sm text-muted-foreground mb-1">
-                        <span>Wartość pierwotna:</span>
-                        <span className="line-through">{Number(order.totalPriceOrig).toFixed(2)} zł</span>
+                    {order.paymentProvider === "BANK_TRANSFER" &&
+                    order.bankTransferIban ? (
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
+                        <div className="flex items-center gap-2 font-semibold">
+                          <Landmark className="h-4 w-4" />
+                          Przelew bankowy
+                        </div>
+                        <dl className="mt-3 space-y-2">
+                          <div>
+                            <dt className="text-xs opacity-70">Odbiorca</dt>
+                            <dd>{order.bankTransferRecipient || "—"}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs opacity-70">IBAN</dt>
+                            <dd className="break-all font-mono">
+                              {order.bankTransferIban}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs opacity-70">Tytuł</dt>
+                            <dd className="font-mono">
+                              {order.bankTransferReference || "—"}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-xs opacity-70">Kwota</dt>
+                            <dd className="font-semibold">
+                              {formatMoney(
+                                order.bankTransferAmount ??
+                                  order.totalPriceFinal
+                              )}{" "}
+                              {order.bankTransferCurrency || "PLN"}
+                            </dd>
+                          </div>
+                        </dl>
                       </div>
-                      <div className="flex justify-between text-xl font-bold text-primary">
-                        <span>Ostateczne zapytanie (Netto):</span>
-                        <span>{Number(order.totalPriceFinal).toFixed(2)} zł</span>
+                    ) : null}
+
+                    <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+                      <div className="flex justify-between gap-3 text-sm text-slate-500">
+                        <span>Wartość bazowa</span>
+                        <span className="font-mono line-through">
+                          {formatMoney(order.totalPriceOrig)}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex justify-between gap-3 font-semibold">
+                        <span>Wartość netto</span>
+                        <span className="font-mono">
+                          {formatMoney(order.totalPriceFinal)}
+                        </span>
                       </div>
                     </div>
-                  </div>
+                  </aside>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </article>
+            )
+          })}
         </div>
       )}
     </div>

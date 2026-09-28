@@ -203,3 +203,30 @@ A regression test protects the migrated surfaces from these terms.
 Presentation work must not rename backend enum values, loosen authorization, bypass current-admin fences, change idempotency tokens, alter payment/RMA transitions, or silently change destructive-action behavior.
 
 Display labels may be humanized. Machine state remains unchanged.
+
+
+## 9. T220 product workspace and partner surfaces
+
+T220 finishes the visual migration of the catalog workspace and partner-facing operational surfaces.
+
+Completed rules:
+
+- Product administration uses one shared Operations shell. Product detail pages must not render a nested sidebar, logo shell or independent admin navigation.
+- Product filters are literal catalog controls: search, stock, category, subcategory and manufacturer.
+- Import structure approval is a bounded confirmation dialog, not a command-center workflow.
+- Batch staging actions remain explicit and visible, with ordinary labels for category/manufacturer updates and commit.
+- Partner catalog uses a technical register with SKU, product, manufacturer, stock, account price and one explicit action.
+- Partner orders expose lifecycle status, payment instructions, items, delivery timing and values without ecommerce card styling.
+- Partner RMA and settings use the same restrained field visual language as `/field`.
+
+Additional prohibited presentation language includes:
+
+- `CRT v4.6_PRO`
+- `Systemowy Węzeł Ewidencji`
+- `Filtrowanie IQ`
+- `Universal Structure Hub`
+- `MASOWA_AUTORYZACJA`
+- `Masowy katalog sprzętowy V2`
+- `Centrum RMA`
+
+The partner surface may support cart/quote actions as business capabilities, but its primary presentation remains technical and task-oriented rather than storefront-oriented.

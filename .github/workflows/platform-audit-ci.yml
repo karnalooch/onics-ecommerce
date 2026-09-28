@@ -96,6 +96,12 @@ jobs:
           src/app/admin/products/_components/StagingItem.tsx
           src/app/admin/products/_components/ProductTable.tsx
           src/app/admin/products/_components/ProductTableRow.tsx
+          src/app/admin/products/_components/ProductHeader.tsx
+          src/app/admin/products/_components/ProductSidebar.tsx
+          src/app/admin/products/_components/StructureApprovalModal.tsx
+          src/app/admin/products/_components/StagingBatchActions.tsx
+          src/components/ui/B2BDashboardGrid.tsx
+          src/components/ui/QuoteRequestModal.tsx
           src/app/admin/_components/AdminNavigation.tsx
           src/app/admin/knowledge/page.tsx
           src/app/admin/knowledge/KnowledgeMaintenanceActions.tsx
@@ -103,6 +109,11 @@ jobs:
           src/app/field/FieldWorkbench.tsx
           src/app/\(b2b\)/layout.tsx
           src/app/\(b2b\)/dashboard/page.tsx
+          'src/app/(b2b)/loading.tsx'
+          'src/app/(b2b)/oferty/page.tsx'
+          'src/app/(b2b)/oferty/zamowienia/page.tsx'
+          'src/app/(b2b)/oferty/naprawy/page.tsx'
+          'src/app/(b2b)/ustawienia/page.tsx'
           src/app/api/health/live/route.ts
           src/app/api/health/ready/route.ts
           src/app/admin/price-lists/_lib/priceLogic.ts

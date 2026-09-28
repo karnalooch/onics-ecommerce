@@ -81,18 +81,18 @@ export function QuoteRequestModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/60 p-4">
-      <div className="w-full max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b p-6">
+    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+      <div className="w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
+        <div className="flex items-start justify-between border-b border-slate-200 p-5 dark:border-slate-800">
           <div>
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
               Zapytanie B2B
             </span>
-            <h3 className="mt-1 text-xl font-extrabold">Indywidualna wycena</h3>
+            <h3 className="mt-1 text-xl font-semibold">Indywidualna wycena</h3>
           </div>
           <button
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-xl hover:bg-muted"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800"
             aria-label="Zamknij"
           >
             <X className="h-5 w-5" />
@@ -100,26 +100,26 @@ export function QuoteRequestModal({
         </div>
 
         {success ? (
-          <div className="p-10 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <div className="p-6 text-center">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700">
               <Send className="h-6 w-6" />
             </div>
-            <h4 className="mt-5 text-2xl font-extrabold">Zapytanie zapisane</h4>
+            <h4 className="mt-4 text-xl font-semibold">Zapytanie zapisane</h4>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Zapytanie zostało przypisane do konta {clientEmail}. Zespół CEL-TRONICS
               może teraz przygotować warunki handlowe.
             </p>
             <button
               onClick={onClose}
-              className="mt-7 h-11 rounded-xl bg-primary px-6 text-sm font-extrabold text-white"
+              className="mt-6 min-h-11 rounded-lg bg-slate-950 px-5 text-sm font-semibold text-white dark:bg-white dark:text-slate-950"
             >
               Zamknij
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6 p-7">
-            <div className="rounded-2xl bg-muted/40 p-5">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <form onSubmit={handleSubmit} className="space-y-5 p-5">
+            <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Produkt
               </span>
               <strong className="mt-2 block">{productName}</strong>
@@ -129,7 +129,7 @@ export function QuoteRequestModal({
             </div>
 
             <label className="block">
-              <span className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+              <span className="mb-2 block text-sm font-semibold">
                 Oczekiwana ilość
               </span>
               <input
@@ -143,12 +143,12 @@ export function QuoteRequestModal({
                     Math.max(1, Math.min(100000, Number(event.target.value) || 1))
                   )
                 }
-                className="h-12 w-full rounded-xl border border-border px-4 font-semibold"
+                className="h-12 w-full rounded-lg border border-slate-300 dark:border-slate-700 px-4 font-semibold"
               />
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+              <span className="mb-2 block text-sm font-semibold">
                 Informacje dodatkowe
               </span>
               <textarea
@@ -157,7 +157,7 @@ export function QuoteRequestModal({
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder="Termin projektu, wymagania techniczne, dodatkowe informacje…"
-                className="w-full resize-none rounded-xl border border-border p-4 text-sm"
+                className="w-full resize-none rounded-lg border border-slate-300 dark:border-slate-700 p-4 text-sm"
               />
             </label>
 
@@ -167,18 +167,18 @@ export function QuoteRequestModal({
               </div>
             )}
 
-            <div className="flex justify-end gap-3 border-t pt-5">
+            <div className="flex justify-end gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
               <button
                 type="button"
                 onClick={onClose}
-                className="h-11 rounded-xl px-5 text-sm font-bold text-muted-foreground"
+                className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold dark:border-slate-700"
               >
                 Anuluj
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex h-11 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-extrabold text-white disabled:opacity-50"
+                className="flex min-h-11 items-center gap-2 rounded-lg bg-slate-950 px-5 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-slate-950"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Wyślij zapytanie

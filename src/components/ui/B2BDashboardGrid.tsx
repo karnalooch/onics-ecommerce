@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Database, Loader2, PackageSearch, Search, ShoppingCart } from "lucide-react"
+import { Loader2, PackageSearch, Search, ShoppingCart } from "lucide-react"
 import { useCartStore } from "@/store/cartStore"
 import { useRouter } from "next/navigation"
 import { QuoteRequestModal } from "@/components/ui/QuoteRequestModal"
@@ -25,6 +25,19 @@ interface B2BDashboardGridProps {
   ownerKey: string
 }
 
+function formatPrice(product: Product) {
+  if (product.priceHidden || product.price == null || Number(product.price) <= 0) {
+    return "Na zapytanie"
+  }
+
+  return (
+    Number(product.price).toLocaleString("pl-PL", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }) + " zł netto"
+  )
+}
+
 export function B2BDashboardGrid({
   nip,
   email,
@@ -44,7 +57,7 @@ export function B2BDashboardGrid({
   useEffect(() => {
     let active = true
 
-    fetch("/api/products", { cache: "no-store" })
+    void fetch("/api/products", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) throw new Error("Nie udało się pobrać katalogu.")
         return response.json()
@@ -68,16 +81,24 @@ export function B2BDashboardGrid({
     const normalized = query.trim().toLowerCase()
     if (!normalized) return products
 
-    return products.filter((product) =>
-      [product.name, product.sku, product.manufacturer]
+    const tokens = normalized.split(/\s+/).filter(Boolean)
+    return products.filter((product) => {
+      const haystack = [
+        product.name,
+        product.sku,
+        product.manufacturer,
+      ]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(normalized))
-    )
+        .join(" ")
+        .toLowerCase()
+
+      return tokens.every((token) => haystack.includes(token))
+    })
   }, [products, query])
 
   const handleAddToCart = (product: Product) => {
     const price = Number(product.price ?? 0)
-    if (price <= 0) {
+    if (product.priceHidden || price <= 0) {
       setQuoteProduct(product)
       return
     }
@@ -93,7 +114,9 @@ export function B2BDashboardGrid({
     })
     if (!added) {
       toast.error(
-        `Maksymalna ilość jednego produktu w koszyku to ${CART_ITEM_QUANTITY_MAX} szt.`
+        "Maksymalna ilość jednego produktu w koszyku to " +
+          String(CART_ITEM_QUANTITY_MAX) +
+          " szt."
       )
       return
     }
@@ -103,92 +126,112 @@ export function B2BDashboardGrid({
 
   if (loading) {
     return (
-      <div className="flex min-h-[360px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex min-h-[280px] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
       </div>
     )
   }
 
   return (
     <>
-      <div className="mb-8">
-        <label className="relative block">
-          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Szukaj po nazwie, SKU lub producencie"
-            className="h-12 w-full rounded-xl border border-border bg-background pl-11 pr-4 text-sm font-semibold outline-none focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
-          />
-        </label>
-      </div>
+      <label className="relative block">
+        <span className="sr-only">Szukaj w katalogu</span>
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Model, SKU lub producent…"
+          className="h-12 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm font-medium outline-none focus:border-slate-950 dark:border-slate-700 dark:bg-[#0f1216] dark:focus:border-white"
+        />
+      </label>
 
       {visibleProducts.length === 0 ? (
-        <div className="flex min-h-[360px] flex-col items-center justify-center rounded-3xl border border-dashed border-border text-center">
-          <PackageSearch className="h-12 w-12 text-muted-foreground/30" />
-          <h3 className="mt-5 text-lg font-extrabold">Brak produktów</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Zmień wyszukiwaną frazę albo sprawdź dane katalogowe w panelu admina.
+        <div className="mt-4 flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-[#0f1216]">
+          <PackageSearch className="h-6 w-6 text-slate-400" />
+          <h3 className="mt-3 font-semibold">Brak produktów</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Zmień frazę wyszukiwania.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {visibleProducts.map((product) => {
-            const price = Number(product.price ?? 0)
-            const available = Number(product.stock ?? 0) > 0
+        <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
+          <div className="hidden min-h-11 grid-cols-[130px_minmax(0,1fr)_160px_110px_150px_170px] items-center gap-4 border-b border-slate-200 px-4 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-800 lg:grid">
+            <span>SKU</span>
+            <span>Produkt</span>
+            <span>Producent</span>
+            <span>Stan</span>
+            <span>Cena</span>
+            <span className="text-right">Akcja</span>
+          </div>
 
-            return (
-              <article
-                key={product.id}
-                className="flex h-full flex-col rounded-3xl border border-border bg-card p-6 shadow-sm"
-              >
-                <div className="flex h-28 items-center justify-center rounded-2xl bg-muted/40">
-                  <Database className="h-10 w-10 text-muted-foreground/25" />
-                </div>
+          <div className="divide-y divide-slate-200 dark:divide-slate-800">
+            {visibleProducts.map((product) => {
+              const price = Number(product.price ?? 0)
+              const available = Number(product.stock ?? 0) > 0
+              const needsQuote = product.priceHidden || price <= 0
 
-                <div className="mt-6 flex-1">
-                  <div className="text-[10px] font-extrabold uppercase tracking-widest text-primary">
-                    {product.manufacturer || "Producent"}
+              return (
+                <article
+                  key={product.id}
+                  className="grid gap-3 px-4 py-4 lg:grid-cols-[130px_minmax(0,1fr)_160px_110px_150px_170px] lg:items-center"
+                >
+                  <div className="font-mono text-sm font-semibold">
+                    {product.sku}
                   </div>
-                  <h3 className="mt-2 text-lg font-extrabold leading-tight">
-                    {product.name}
-                  </h3>
-                  <div className="mt-2 text-xs font-bold text-muted-foreground">
-                    SKU: {product.sku}
-                  </div>
-                </div>
 
-                <div className="mt-6 border-t border-border pt-5">
-                  <div className="flex items-end justify-between gap-4">
-                    <div>
-                      <span className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Cena B2B netto
-                      </span>
-                      <strong className="mt-1 block text-2xl">
-                        {price > 0 ? `${price.toFixed(2)} PLN` : "Na zapytanie"}
-                      </strong>
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold">
+                      {product.name}
                     </div>
-                    <span className={`text-xs font-bold ${available ? "text-emerald-600" : "text-muted-foreground"}`}>
-                      {available ? "Dostępny" : "Brak stanu"}
+                    <div className="mt-1 text-xs text-slate-500 lg:hidden">
+                      {product.manufacturer || "Brak producenta"}
+                    </div>
+                  </div>
+
+                  <div className="hidden truncate text-sm text-slate-500 lg:block">
+                    {product.manufacturer || "—"}
+                  </div>
+
+                  <div className="text-sm">
+                    <span
+                      className={
+                        "inline-flex rounded-md border px-2 py-1 text-xs font-semibold " +
+                        (available
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
+                          : "border-slate-200 text-slate-500 dark:border-slate-800")
+                      }
+                    >
+                      {available
+                        ? String(Number(product.stock ?? 0)) + " szt."
+                        : "Brak"}
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => handleAddToCart(product)}
-                    disabled={price > 0 && (!available || !cartOwnerReady)}
-                    className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <ShoppingCart className="h-4 w-4" />
-                    {price > 0 ? "Dodaj do koszyka" : "Zapytaj o wycenę"}
-                  </button>
-                </div>
-              </article>
-            )
-          })}
-        </div>
+                  <div className="font-mono text-sm font-semibold">
+                    {formatPrice(product)}
+                  </div>
+
+                  <div className="lg:text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleAddToCart(product)}
+                      disabled={
+                        !needsQuote && (!available || !cartOwnerReady)
+                      }
+                      className="min-h-10 rounded-lg bg-slate-950 px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-950"
+                    >
+                      <ShoppingCart className="mr-2 inline h-4 w-4" />
+                      {needsQuote ? "Zapytaj" : "Dodaj"}
+                    </button>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
       )}
 
-      {quoteProduct && (
+      {quoteProduct ? (
         <QuoteRequestModal
           productId={quoteProduct.id}
           productName={quoteProduct.name}
@@ -196,7 +239,7 @@ export function B2BDashboardGrid({
           clientEmail={email}
           onClose={() => setQuoteProduct(null)}
         />
-      )}
+      ) : null}
     </>
   )
 }
