@@ -8,8 +8,35 @@ import {
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { buildRepairSubmissionFingerprint } from "@/lib/repairSubmissionIdempotency"
+import {
+  RepairBodyInvalidError,
+  RepairBodyTooLargeError,
+  readRepairJson,
+} from "@/lib/repairIngress"
+import {
+  applicationRateLimiter,
+  type RateLimitResult,
+} from "@/lib/rateLimit"
 
 export const dynamic = "force-dynamic"
+
+const REPAIR_SUBMISSION_RATE_LIMIT = {
+  limit: 20,
+  windowMs: 60 * 60 * 1000,
+} as const
+
+function repairRateLimited(result: RateLimitResult) {
+  return NextResponse.json(
+    { error: "Zbyt wiele zgłoszeń serwisowych. Spróbuj ponownie później." },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(result.retryAfterSeconds),
+        "Cache-Control": "no-store",
+      },
+    }
+  )
+}
 
 const CreateRepairSchema = z.object({
   requestId: z.string().uuid(),
@@ -89,8 +116,18 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
+  const accountRateLimitKey = String(
+    authCheck.currentUser.id ?? authCheck.currentUser.email ?? "unknown"
+  )
+  const accountLimit = applicationRateLimiter.check(
+    "repair-submit-account",
+    accountRateLimitKey,
+    REPAIR_SUBMISSION_RATE_LIMIT
+  )
+  if (!accountLimit.allowed) return repairRateLimited(accountLimit)
+
   try {
-    const parsed = CreateRepairSchema.safeParse(await req.json())
+    const parsed = CreateRepairSchema.safeParse(await readRepairJson(req))
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowe zgłoszenie." },
@@ -179,6 +216,19 @@ export async function POST(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof RepairBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Zgłoszenie serwisowe jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof RepairBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body zgłoszenia serwisowego." },
+        { status: 400 }
+      )
+    }
+
     const code = error instanceof Error ? error.message : ""
     if (code === "ACCOUNT_UNAVAILABLE") {
       return NextResponse.json(
