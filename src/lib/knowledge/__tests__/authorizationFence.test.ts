@@ -40,8 +40,7 @@ describe("knowledge training authorization fence wiring", () => {
 
     expect(upload).toContain("bindKnowledgeTrainingRequestAbort(")
     expect(upload).toContain("req.signal")
-    expect(upload).toContain("detachRequestAbort()")
+    expect(upload).toContain("detachRequestAbort?.()")
     expect(upload).toContain('message === "PROCES_PRZERWANY"')
   })
-
 })
