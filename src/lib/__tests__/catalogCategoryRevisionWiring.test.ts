@@ -7,6 +7,21 @@ function read(relativePath: string) {
 }
 
 describe("catalog category revision fencing", () => {
+  it("rechecks current admin access in every catalog category mutation", () => {
+    const route = read("src/app/api/categories/route.ts")
+    const mutationCount = (route.match(/mutateMockData\(\(db\) =>/g) || []).length
+    const fenceCount = (
+      route.match(
+        /assertCurrentAdminAccess\(db\.users as StoredActor\[\], authCheck\.user\)/g
+      ) || []
+    ).length
+
+    expect(mutationCount).toBe(3)
+    expect(fenceCount).toBe(mutationCount)
+    expect(route).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
+    expect(route).toContain("catalogAdminAccessErrorResponse(error)")
+  })
+
   it("publishes normalized revisions and requires a PUT precondition", () => {
     const route = read("src/app/api/categories/route.ts")
 
