@@ -1,17 +1,27 @@
-"use client";
+"use client"
 
-import { useState, useTransition } from "react";
-import { Badge } from "@/components/ui/badge";
-import { 
-  FolderTree, Plus, Tv, Smartphone, Video, Network, Shield, Cpu, Zap, 
-  Activity, Wrench, Home, Speaker, Mic, Folder, Terminal, Database,
-  Settings, Layers, ChevronRight, Save, Trash2, Box, ShieldCheck,
-  Globe
-} from "lucide-react";
-import { CategoryList } from "./_components/CategoryList";
-import { IconPicker } from "./_components/IconPicker";
-import { SubcategoryGrid } from "./_components/SubcategoryGrid";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import {
+  Activity,
+  Cpu,
+  Folder,
+  Home,
+  Mic,
+  Network,
+  Plus,
+  Save,
+  Shield,
+  Smartphone,
+  Speaker,
+  Trash2,
+  Tv,
+  Video,
+  Wrench,
+  Zap,
+  type LucideIcon,
+} from "lucide-react"
+import { toast } from "sonner"
 import {
   addCategoryAction,
   addSubcategoryAction,
@@ -19,268 +29,452 @@ import {
   deleteSubcategoryAction,
   renameSubcategoryAction,
   updateCategoryAction,
-} from "./_actions";
-import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+} from "./_actions"
 
-const ICON_MAP: Record<string, any> = { Tv, Smartphone, Video, Network, Shield, Cpu, Zap, Activity, Wrench, Home, Speaker, Mic, Folder };
-
-export function CategoriesDashboardClient({ initialCategories }: { initialCategories: any[] }) {
-  const [activeCatId, setActiveCatId] = useState<string | null>(initialCategories[0]?.id || null);
-  const [showIconPicker, setShowIconPicker] = useState(false);
-  const [newCatName, setNewCatName] = useState("");
-  const [newSubcatName, setNewSubcatName] = useState("");
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [isPending, startTransition] = useTransition();
-
-  const activeCat = initialCategories.find(c => c.id === activeCatId);
-
-  const handleAddCategory = () => {
-    if (!newCatName.trim()) return;
-    startTransition(async () => {
-      const res = await addCategoryAction(newCatName);
-      if (res.success) {
-        setNewCatName("");
-        toast.success("LOG: Nowa kategoria dodana do rejestru.");
-        if (res.data) setActiveCatId(res.data.id);
-      } else toast.error("FAULT: Błąd zapisu kategorii.");
-    });
-  };
-
-  const handleUpdateIcon = (iconName: string) => {
-    if (!activeCatId) return;
-    startTransition(async () => {
-      const res = await updateCategoryAction({ id: activeCatId, iconName });
-      if (res.success) {
-        setShowIconPicker(false);
-        toast.success("LOG: Identyfikator wizualny zaktualizowany.");
-      } else toast.error("FAULT: Błąd synchronizacji ikony.");
-    });
-  };
-
-  const handleAddSubcategory = () => {
-    if (!activeCat || !newSubcatName.trim()) return;
-    startTransition(async () => {
-      const res = await addSubcategoryAction(activeCat.id, newSubcatName);
-      if (res.success) {
-        setNewSubcatName("");
-        toast.success("LOG: Nowa gałąź zdefiniowana pod klastrem.");
-      } else {
-        toast.error(res.error);
-      }
-    });
-  };
-
-  const handleConfirmRename = (id: string, name: string) => {
-    if (!name.trim()) return setRenamingId(null);
-    startTransition(async () => {
-      const res = activeCat?.id === id
-        ? await updateCategoryAction({ id, name })
-        : activeCat
-          ? await renameSubcategoryAction(activeCat.id, id, name)
-          : null;
-
-      if (res?.success) toast.success("LOG: Nazwa została zaktualizowana.");
-      else if (res) toast.error(res.error);
-      setRenamingId(null);
-    });
-  };
-
-  const handleDeleteCategory = (id: string) => {
-    if (!confirm("Usunąć kategorię?")) return;
-    const category = initialCategories.find((candidate) => candidate.id === id);
-    const expectedRevision =
-      Number.isSafeInteger(category?.revision) && category.revision >= 0
-        ? category.revision
-        : 0;
-    startTransition(async () => {
-      const res = await deleteCategoryAction(id, expectedRevision);
-      if (res.success) {
-        if (activeCatId === id) setActiveCatId(null);
-        toast.success("LOG: Kategoria została usunięta.");
-      } else {
-        toast.error(res.error);
-      }
-    });
-  };
-
-  const handleDeleteSubcategory = (subId: string) => {
-    if (!activeCat || !confirm("Usunąć gałąź?")) return;
-
-    startTransition(async () => {
-      const res = await deleteSubcategoryAction(activeCat.id, subId);
-      if (res.success) {
-        toast.success("LOG: Gałąź została usunięta.");
-      } else {
-        toast.error(res.error);
-      }
-    });
-  };
-
-  return (
-    <div className="flex flex-col gap-12 animate-in fade-in duration-700 pb-20 max-w-[1920px] mx-auto select-none">
-       
-       {/* 1. CLASSIFICATION HEADER (FLUENT) */}
-       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
-        <div className="flex items-center gap-6">
-           <div className="w-16 h-16 bg-primary text-white flex items-center justify-center rounded-xl shadow-2xl shadow-primary/30">
-              <FolderTree className="w-8 h-8" />
-           </div>
-           <div className="flex flex-col">
-              <div className="flex items-center gap-3">
-                 <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Architektura Systemu</span>
-                 <span className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
-                 <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Category_Manager_v4</span>
-              </div>
-              <h1 className="text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mt-1">Struktura Katalogu</h1>
-           </div>
-        </div>
-        
-        <div className="flex items-center gap-10">
-           <div className="flex flex-col items-end">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Aktywne Sekcje</span>
-              <div className="flex items-center gap-2 mt-1">
-                 <span className="text-2xl font-extrabold text-foreground tabular-nums tracking-tight">{initialCategories.length}</span>
-                 <div className="w-2 h-2 bg-green-500 rounded-full shadow-lg shadow-green-500/40 animate-pulse" />
-              </div>
-           </div>
-        </div>
-      </div>
-
-       <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
-         
-         {/* SECTOR_NAVIGATOR (LEFT) */}
-         <aside className="xl:col-span-4">
-            <CategoryList 
-              categories={initialCategories} 
-              activeCatId={activeCatId} 
-              onSelect={setActiveCatId} 
-              onAdd={handleAddCategory}
-              onDelete={handleDeleteCategory}
-              newCatName={newCatName} 
-              onNewCatNameChange={setNewCatName} 
-              renamingId={renamingId} 
-              renameValue={renameValue}
-              onSetRenameValue={setRenameValue} 
-              onStartRename={(id: string, name: string) => { setRenamingId(id); setRenameValue(name); }}
-              onConfirmRename={handleConfirmRename} 
-              onCancelRename={() => setRenamingId(null)}
-            />
-         </aside>
-
-         {/* DETAIL_TERMINAL (CENTER/RIGHT) */}
-         <main className="xl:col-span-8">
-            <AnimatePresence mode="wait">
-              {activeCat ? (
-                <motion.div 
-                  key={activeCat.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="fluent-card p-0 border-white/10 overflow-hidden shadow-2xl flex flex-col min-h-[700px]"
-                >
-                  <div className="p-10 bg-primary/5 dark:bg-white/5 border-b border-black/5 dark:border-white/10 flex flex-col md:flex-row items-center gap-10">
-                    <button 
-                       onClick={() => setShowIconPicker(!showIconPicker)} 
-                       className="w-28 h-28 bg-white dark:bg-black/20 border border-black/5 dark:border-white/10 rounded-2xl flex items-center justify-center hover:bg-slate-50 dark:hover:bg-white/5 transition-all active-press relative group shadow-xl"
-                    >
-                       <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
-                       <span className="text-primary relative z-10 transition-transform group-hover:scale-110">
-                          {(() => { const Icon = ICON_MAP[activeCat.iconName] || Folder; return <Icon size={48} />; })()}
-                       </span>
-                       <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/30">
-                          <Settings className="w-4 h-4 animate-spin-slow" />
-                       </div>
-                    </button>
-                    
-                    <div className="flex-1 flex flex-col">
-                       <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold uppercase tracking-widest text-[9px] px-3 py-1">NODE_ID: {activeCat.id.substring(0,8).toUpperCase()}</Badge>
-                       </div>
-                       <h3 className="text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mt-3">Dział: {activeCat.name}</h3>
-                       <p className="text-sm font-medium text-muted-foreground mt-2 opacity-70">Zdefiniuj parametry wizualne oraz strukturę klastrów dla tego wydziału.</p>
-                    </div>
-                  </div>
-
-                  <div className="p-12 flex-1 space-y-16">
-                    {showIconPicker && (
-                       <motion.div 
-                         initial={{ height: 0, opacity: 0 }}
-                         animate={{ height: "auto", opacity: 1 }}
-                         className="border-b border-black/5 dark:border-white/5 pb-12 overflow-hidden"
-                       >
-                          <IconPicker currentIcon={activeCat.iconName} onSelect={handleUpdateIcon} onClose={() => setShowIconPicker(false)} />
-                       </motion.div>
-                    )}
-                    
-                    <div className="space-y-8">
-                       <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-primary/10 text-primary flex items-center justify-center rounded-lg">
-                             <Layers className="w-5 h-5" />
-                          </div>
-                          <h4 className="text-sm font-bold text-foreground uppercase tracking-widest">Gałęzie Podrzędne (Clusters)</h4>
-                       </div>
-                       
-                       <SubcategoryGrid 
-                         subcategories={activeCat.subcategories} 
-                         renamingId={renamingId} 
-                         renameValue={renameValue} 
-                         onStartRename={(id, name) => { setRenamingId(id); setRenameValue(name); }} 
-                         onSetRenameValue={setRenameValue} 
-                         onConfirmRename={handleConfirmRename} 
-                         onCancelRename={() => setRenamingId(null)} 
-                         onDelete={handleDeleteSubcategory} 
-                       />
-
-                       <div className="pt-10 mt-16 border-t border-black/5 dark:border-white/5 flex flex-col md:flex-row gap-6 items-end">
-                          <div className="flex-1 space-y-3 w-full">
-                             <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1 opacity-60">Zdefiniuj Nowy Cluster</label>
-                             <div className="relative group">
-                                <Plus className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
-                                <input 
-                                   type="text" 
-                                   value={newSubcatName} 
-                                   onChange={e => setNewSubcatName(e.target.value)} 
-                                   placeholder="Np. Kamery_IP_Pro..." 
-                                   className="w-full h-14 pl-12 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl text-[14px] font-medium outline-none focus:bg-white dark:focus:bg-white/10 focus:border-primary/20 transition-all shadow-inner" 
-                                />
-                             </div>
-                          </div>
-                          <button 
-                             onClick={handleAddSubcategory} 
-                             className="h-14 px-10 bg-primary text-white font-bold uppercase text-[11px] tracking-widest flex items-center gap-3 transition-all hover:brightness-110 active:scale-95 shadow-xl shadow-primary/20 rounded-xl whitespace-nowrap"
-                          >
-                             <Save className="w-4 h-4" /> DODAJ DO STRUKTURY
-                          </button>
-                       </div>
-                    </div>
-                  </div>
-
-                  <div className="p-6 bg-black/5 dark:bg-white/5 border-t border-black/5 dark:border-white/10 flex items-center justify-between">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Spójność Struktury: VERIFIED</span>
-                     </div>
-                     <Activity className="w-4 h-4 text-muted-foreground/20" />
-                  </div>
-                </motion.div>
-              ) : (
-                <DetailEmptyState />
-              )}
-            </AnimatePresence>
-         </main>
-       </div>
-    </div>
-  );
+type Subcategory = {
+  id: string
+  name: string
 }
 
-function DetailEmptyState() {
+type Category = {
+  id: string
+  name: string
+  iconName?: string
+  revision?: number
+  subcategories?: Subcategory[]
+}
+
+const ICONS: Record<string, LucideIcon> = {
+  Tv,
+  Smartphone,
+  Video,
+  Network,
+  Shield,
+  Cpu,
+  Zap,
+  Activity,
+  Wrench,
+  Home,
+  Speaker,
+  Mic,
+  Folder,
+}
+
+export function CategoriesDashboardClient({
+  initialCategories,
+}: {
+  initialCategories: Category[]
+}) {
+  const router = useRouter()
+  const [activeCatId, setActiveCatId] = useState<string | null>(
+    initialCategories[0]?.id || null
+  )
+  const [newCatName, setNewCatName] = useState("")
+  const [newSubcatName, setNewSubcatName] = useState("")
+  const [renamingCategory, setRenamingCategory] = useState<string | null>(null)
+  const [renamingSubcategory, setRenamingSubcategory] = useState<string | null>(
+    null
+  )
+  const [renameValue, setRenameValue] = useState("")
+  const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    if (
+      activeCatId &&
+      !initialCategories.some((category) => category.id === activeCatId)
+    ) {
+      setActiveCatId(initialCategories[0]?.id || null)
+    }
+  }, [activeCatId, initialCategories])
+
+  const activeCategory =
+    initialCategories.find((category) => category.id === activeCatId) || null
+  const ActiveIcon = activeCategory
+    ? ICONS[activeCategory.iconName || "Folder"] || Folder
+    : Folder
+
+  const run = (
+    operation: () => Promise<{ success: boolean; message?: string; error?: string }>,
+    successFallback: string
+  ) => {
+    startTransition(async () => {
+      const result = await operation()
+      if (!result.success) {
+        toast.error(result.error || "Operacja nie powiodła się.")
+        return
+      }
+      toast.success(result.message || successFallback)
+      router.refresh()
+    })
+  }
+
+  const addCategory = () => {
+    const name = newCatName.trim()
+    if (!name) return
+
+    startTransition(async () => {
+      const result = await addCategoryAction(name)
+      if (!result.success) {
+        toast.error(result.error)
+        return
+      }
+
+      setNewCatName("")
+      if (result.data?.id) setActiveCatId(String(result.data.id))
+      toast.success(result.message || "Kategoria dodana.")
+      router.refresh()
+    })
+  }
+
+  const addSubcategory = () => {
+    const name = newSubcatName.trim()
+    if (!activeCategory || !name) return
+
+    run(async () => {
+      const result = await addSubcategoryAction(activeCategory.id, name)
+      if (result.success) setNewSubcatName("")
+      return result
+    }, "Podkategoria dodana.")
+  }
+
+  const saveCategoryName = (category: Category) => {
+    const name = renameValue.trim()
+    if (!name) {
+      setRenamingCategory(null)
+      return
+    }
+
+    run(
+      () => updateCategoryAction({ id: category.id, name }),
+      "Nazwa kategorii zapisana."
+    )
+    setRenamingCategory(null)
+  }
+
+  const saveSubcategoryName = (subcategory: Subcategory) => {
+    const name = renameValue.trim()
+    if (!activeCategory || !name) {
+      setRenamingSubcategory(null)
+      return
+    }
+
+    run(
+      () =>
+        renameSubcategoryAction(activeCategory.id, subcategory.id, name),
+      "Nazwa podkategorii zapisana."
+    )
+    setRenamingSubcategory(null)
+  }
+
+  const deleteCategory = (category: Category) => {
+    if (
+      !window.confirm(
+        "Usunąć kategorię " +
+          category.name +
+          "? Operacja zostanie zablokowana, jeśli katalog nadal jej używa."
+      )
+    ) {
+      return
+    }
+
+    const revision =
+      Number.isSafeInteger(category.revision) && Number(category.revision) >= 0
+        ? Number(category.revision)
+        : 0
+
+    run(
+      () => deleteCategoryAction(category.id, revision),
+      "Kategoria usunięta."
+    )
+  }
+
+  const deleteSubcategory = (subcategory: Subcategory) => {
+    if (
+      !activeCategory ||
+      !window.confirm(
+        "Usunąć podkategorię " +
+          subcategory.name +
+          "? Operacja zostanie zablokowana, jeśli katalog nadal jej używa."
+      )
+    ) {
+      return
+    }
+
+    run(
+      () => deleteSubcategoryAction(activeCategory.id, subcategory.id),
+      "Podkategoria usunięta."
+    )
+  }
+
   return (
-    <div className="h-[700px] bg-primary/5 dark:bg-white/5 rounded-3xl border-2 border-dashed border-primary/20 flex flex-col items-center justify-center p-20 text-center">
-      <Box className="w-24 h-24 mb-8 text-primary/10 opacity-30" />
-      <h3 className="text-3xl font-extrabold text-foreground tracking-tight">Wybierz wydział z listy</h3>
-      <p className="max-w-[320px] font-medium text-sm text-muted-foreground mt-4 leading-relaxed opacity-60">Aby edytować parametry techniczne i mapę klastrów, selektuj kategorię z panelu bocznego.</p>
+    <div className="mx-auto max-w-[1500px] space-y-6">
+      <header className="flex flex-col justify-between gap-4 border-b border-[var(--ops-border)] pb-6 lg:flex-row lg:items-end">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ops-muted)]">
+            Taksonomia katalogu
+          </div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            Struktura katalogu
+          </h1>
+          <p className="mt-2 text-sm text-[var(--ops-muted)]">
+            Kategorie i podkategorie używane przez produkty, import i wyszukiwanie.
+          </p>
+        </div>
+        <div className="rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] px-3 py-2 text-sm">
+          Kategorie
+          <strong className="ml-2 font-mono">{initialCategories.length}</strong>
+        </div>
+      </header>
+
+      <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <aside className="overflow-hidden rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)]">
+          <div className="border-b border-[var(--ops-border)] p-4">
+            <div className="text-sm font-semibold">Kategorie</div>
+            <div className="mt-3 flex gap-2">
+              <input
+                value={newCatName}
+                onChange={(event) => setNewCatName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") addCategory()
+                }}
+                placeholder="Nowa kategoria"
+                className="h-10 min-w-0 flex-1 rounded-lg border border-[var(--ops-border)] bg-transparent px-3 text-sm"
+              />
+              <button
+                type="button"
+                onClick={addCategory}
+                disabled={isPending || !newCatName.trim()}
+                className="h-10 rounded-lg bg-slate-950 px-3 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-slate-950"
+                aria-label="Dodaj kategorię"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="divide-y divide-[var(--ops-border)]">
+            {initialCategories.map((category) => {
+              const Icon = ICONS[category.iconName || "Folder"] || Folder
+              const active = category.id === activeCatId
+              const renaming = renamingCategory === category.id
+
+              return (
+                <div
+                  key={category.id}
+                  className={
+                    "grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 " +
+                    (active ? "bg-slate-50 dark:bg-white/[0.04]" : "")
+                  }
+                >
+                  <button
+                    type="button"
+                    onClick={() => setActiveCatId(category.id)}
+                    className="flex min-w-0 items-center gap-3 text-left"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-[var(--ops-muted)]" />
+                    {renaming ? (
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={(event) => setRenameValue(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") saveCategoryName(category)
+                          if (event.key === "Escape") {
+                            setRenamingCategory(null)
+                          }
+                        }}
+                        onBlur={() => saveCategoryName(category)}
+                        className="h-9 min-w-0 flex-1 rounded-md border border-[var(--ops-border)] bg-[var(--ops-panel)] px-2 text-sm"
+                      />
+                    ) : (
+                      <span className="truncate text-sm font-semibold">
+                        {category.name}
+                      </span>
+                    )}
+                  </button>
+
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRenamingCategory(category.id)
+                        setRenameValue(category.name)
+                      }}
+                      className="min-h-9 rounded-md border border-[var(--ops-border)] px-2 text-xs"
+                    >
+                      Nazwa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteCategory(category)}
+                      className="min-h-9 rounded-md border border-red-200 px-2 text-red-700 dark:border-red-900 dark:text-red-300"
+                      aria-label={"Usuń kategorię " + category.name}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </aside>
+
+        <main className="min-w-0">
+          {!activeCategory ? (
+            <div className="flex min-h-72 items-center justify-center rounded-xl border border-dashed border-[var(--ops-border)] bg-[var(--ops-panel)] p-6 text-sm text-[var(--ops-muted)]">
+              Wybierz kategorię.
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <section className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] p-5">
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ops-border)]">
+                      <ActiveIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold">
+                        {activeCategory.name}
+                      </h2>
+                      <div className="mt-1 font-mono text-xs text-[var(--ops-muted)]">
+                        {activeCategory.id}
+                      </div>
+                    </div>
+                  </div>
+
+                  <label className="text-sm">
+                    <span className="mr-2 text-[var(--ops-muted)]">Ikona</span>
+                    <select
+                      value={activeCategory.iconName || "Folder"}
+                      disabled={isPending}
+                      onChange={(event) =>
+                        run(
+                          () =>
+                            updateCategoryAction({
+                              id: activeCategory.id,
+                              iconName: event.target.value,
+                            }),
+                          "Ikona kategorii zapisana."
+                        )
+                      }
+                      className="h-10 rounded-lg border border-[var(--ops-border)] bg-transparent px-3"
+                    >
+                      {Object.keys(ICONS).map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)]">
+                <div className="flex flex-col justify-between gap-3 border-b border-[var(--ops-border)] p-4 sm:flex-row sm:items-center">
+                  <div>
+                    <h3 className="text-sm font-semibold">Podkategorie</h3>
+                    <p className="mt-1 text-xs text-[var(--ops-muted)]">
+                      {activeCategory.subcategories?.length || 0} pozycji
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={newSubcatName}
+                      onChange={(event) => setNewSubcatName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") addSubcategory()
+                      }}
+                      placeholder="Nowa podkategoria"
+                      className="h-10 min-w-0 rounded-lg border border-[var(--ops-border)] bg-transparent px-3 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={addSubcategory}
+                      disabled={isPending || !newSubcatName.trim()}
+                      className="h-10 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:opacity-40 dark:bg-white dark:text-slate-950"
+                    >
+                      Dodaj
+                    </button>
+                  </div>
+                </div>
+
+                {!activeCategory.subcategories?.length ? (
+                  <div className="p-6 text-sm text-[var(--ops-muted)]">
+                    Brak podkategorii.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[var(--ops-border)]">
+                    {activeCategory.subcategories.map((subcategory) => {
+                      const renaming =
+                        renamingSubcategory === subcategory.id
+
+                      return (
+                        <div
+                          key={subcategory.id}
+                          className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-2"
+                        >
+                          {renaming ? (
+                            <input
+                              autoFocus
+                              value={renameValue}
+                              onChange={(event) =>
+                                setRenameValue(event.target.value)
+                              }
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  saveSubcategoryName(subcategory)
+                                }
+                                if (event.key === "Escape") {
+                                  setRenamingSubcategory(null)
+                                }
+                              }}
+                              onBlur={() =>
+                                saveSubcategoryName(subcategory)
+                              }
+                              className="h-9 min-w-0 rounded-md border border-[var(--ops-border)] bg-transparent px-2 text-sm"
+                            />
+                          ) : (
+                            <span className="text-sm font-medium">
+                              {subcategory.name}
+                            </span>
+                          )}
+
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRenamingSubcategory(subcategory.id)
+                                setRenameValue(subcategory.name)
+                              }}
+                              className="min-h-9 rounded-md border border-[var(--ops-border)] px-3 text-xs font-semibold"
+                            >
+                              Zmień nazwę
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteSubcategory(subcategory)}
+                              className="min-h-9 rounded-md border border-red-200 px-3 text-xs font-semibold text-red-700 dark:border-red-900 dark:text-red-300"
+                            >
+                              Usuń
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {isPending ? (
+        <div className="text-xs text-[var(--ops-muted)]" aria-live="polite">
+          Zapisywanie zmian…
+        </div>
+      ) : null}
     </div>
-  );
+  )
 }
