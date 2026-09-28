@@ -18,14 +18,16 @@ export type PaymentProviderActivationPreflightResult =
       reason: PaymentProviderActivationFailure
     }
 
-type PaymentProviderActivationProbe = () => Promise<void>
+type PaymentProviderActivationProbe = (
+  requestSignal?: AbortSignal
+) => Promise<void>
 
 const activationProbes: Partial<
   Record<PaymentProviderId, PaymentProviderActivationProbe>
 > = {
-  PRZELEWY24: async () => {
+  PRZELEWY24: async (requestSignal) => {
     const config = resolvePrzelewy24Config()
-    await testPrzelewy24Access(config)
+    await testPrzelewy24Access(config, requestSignal)
   },
 }
 
@@ -42,7 +44,8 @@ function activationFailure(error: unknown): PaymentProviderActivationFailure {
 }
 
 export async function runPaymentProviderActivationPreflight(
-  provider: PaymentProviderId
+  provider: PaymentProviderId,
+  requestSignal?: AbortSignal
 ): Promise<PaymentProviderActivationPreflightResult> {
   const probe = activationProbes[provider]
   if (!probe) {
@@ -50,7 +53,7 @@ export async function runPaymentProviderActivationPreflight(
   }
 
   try {
-    await probe()
+    await probe(requestSignal)
     return { checked: true, ok: true }
   } catch (error) {
     return {
