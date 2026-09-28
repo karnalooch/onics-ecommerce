@@ -18,6 +18,14 @@ interface AIItem {
   price?: number | null;
 }
 
+export const MAX_KNOWLEDGE_EXCEL_SHEETS = 50;
+export const MAX_KNOWLEDGE_EXCEL_ROWS_PER_SHEET = 50_000;
+export const MAX_KNOWLEDGE_PDF_PAGES = 250;
+export const AI_PDF_CHUNK_SIZE = 4_000;
+export const MAX_AI_PDF_CHUNKS = 20;
+export const MAX_AI_PDF_TEXT_CHARS =
+  AI_PDF_CHUNK_SIZE * MAX_AI_PDF_CHUNKS;
+
 import { initializeMockData, mutateMockData } from '@/store/serverStore';
 
 type KnowledgeWriteActor = {
@@ -498,7 +506,15 @@ export async function parseExcel(
 ): Promise<{ count: number, stats: any, sessionKnowledge: Record<string, KnowledgeEntry> }> {
   try {
     const { apiKey, modelId = 'gemini-1.5-flash' } = options || {};
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const workbook = XLSX.read(buffer, {
+      type: 'buffer',
+      sheetRows: MAX_KNOWLEDGE_EXCEL_ROWS_PER_SHEET,
+    });
+    if (workbook.SheetNames.length > MAX_KNOWLEDGE_EXCEL_SHEETS) {
+      throw new Error(
+        `Arkusz zawiera zbyt wiele zakładek (maks. ${MAX_KNOWLEDGE_EXCEL_SHEETS}).`
+      );
+    }
     const currentStore = await getKnowledge();
     if (options?.signal?.knowledgeRevision !== undefined) {
       currentStore.revision = options.signal.knowledgeRevision;
@@ -859,8 +875,7 @@ export async function parsePDFHeuristic(
     const pdf = require('pdf-parse/lib/pdf-parse.js');
     const pdfParse = typeof pdf === 'function' ? pdf : (pdf.default || pdf.PDFParse);
     
-    // Zwiększamy limit stron dla heurystyki, bo liczymy na dane tekstowe
-    const data = await pdfParse(buffer, { max: 1000 });
+    const data = await pdfParse(buffer, { max: MAX_KNOWLEDGE_PDF_PAGES });
     throwIfKnowledgeTrainingAborted(signal);
     const fullText = data.text || "";
     const lines = fullText.split('\n');
@@ -1115,8 +1130,7 @@ export async function parsePDFWithAI(
     const pdf = require('pdf-parse/lib/pdf-parse.js');
     const pdfParse = typeof pdf === 'function' ? pdf : (pdf.default || pdf.PDFParse);
     
-    // Limit to 100 pages for AI to avoid massive costs/timeouts
-    const data = await pdfParse(buffer, { max: 100 });
+    const data = await pdfParse(buffer, { max: MAX_KNOWLEDGE_PDF_PAGES });
     throwIfKnowledgeTrainingAborted(signal);
     const fullText = data.text || "";
 
@@ -1124,13 +1138,17 @@ export async function parsePDFWithAI(
       // Fallback if no text layer
       throw new Error("Dokument PDF nie zawiera warstwy tekstowej (skan). Proszę dostarczyć cennik w formacie Excel (XLSX).");
     }
+    if (fullText.length > MAX_AI_PDF_TEXT_CHARS) {
+      throw new Error(
+        `Dokument PDF ma zbyt dużo tekstu do bezpiecznej analizy AI. Limit: ${MAX_AI_PDF_TEXT_CHARS} znaków. Podziel plik na mniejsze części.`
+      );
+    }
 
     onProgress?.({ type: 'log', message: `Skonwertowano: ${Math.round(fullText.length/1000)}kb tekstu. Dzielenie na batche...` });
 
-    const CHUNK_SIZE = 4000;
     const chunks = [];
-    for(let i=0; i<fullText.length; i+=CHUNK_SIZE) {
-        chunks.push(fullText.substring(i, i+CHUNK_SIZE));
+    for(let i=0; i<fullText.length; i+=AI_PDF_CHUNK_SIZE) {
+        chunks.push(fullText.substring(i, i+AI_PDF_CHUNK_SIZE));
     }
 
     for (let i = 0; i < chunks.length; i++) {

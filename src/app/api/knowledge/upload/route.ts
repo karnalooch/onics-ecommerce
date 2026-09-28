@@ -8,6 +8,7 @@ import {
   saveKnowledge,
 } from "@/lib/knowledge/parser"
 import { authorizeAPI } from "@/lib/authUtils"
+import { checkAdminCostLimit } from "@/lib/adminCostRateLimit"
 import {
   KNOWLEDGE_UPLOAD_ROOT,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
@@ -25,6 +26,17 @@ export const runtime = "nodejs"
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
+
+  const costLimit = checkAdminCostLimit("knowledge-training", authCheck.user)
+  if (!costLimit.allowed) {
+    return NextResponse.json(
+      { error: "Limit analiz został wyczerpany. Spróbuj ponownie później." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(costLimit.retryAfterSeconds) },
+      }
+    )
+  }
 
   let detachRequestAbort: (() => void) | undefined
 

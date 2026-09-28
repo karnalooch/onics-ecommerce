@@ -14,6 +14,11 @@ interface GeminiContentPart {
   };
 }
 
+export const MAX_TOOLKIT_MODELS = 5;
+export const MAX_TOOLKIT_ATTEMPTS = 3;
+export const TOOLKIT_REQUEST_TIMEOUT_MS = 15_000;
+export const TOOLKIT_MAX_RETRY_DELAY_MS = 5_000;
+
 interface GeminiRequest {
   contents: {
     parts: GeminiContentPart[];
@@ -21,6 +26,7 @@ interface GeminiRequest {
   generationConfig: {
     response_mime_type: string;
     response_schema?: any;
+    max_output_tokens?: number;
   };
 }
 
@@ -31,13 +37,21 @@ export class ToolkitParser {
 
   constructor(config: ToolkitConfig) {
     // Toolkit Pattern: resilient-input-validation
-    const initialModels = (config.availableModels && config.availableModels.length > 0) 
-      ? config.availableModels 
+    const requestedModels = (config.availableModels && config.availableModels.length > 0)
+      ? config.availableModels
       : (config.modelId ? [config.modelId] : this.fallbackModels);
+    const initialModels = Array.from(
+      new Set(
+        requestedModels
+          .map((model) => String(model || "").trim())
+          .filter((model) => /^[A-Za-z0-9._-]{1,120}$/.test(model))
+      )
+    ).slice(0, MAX_TOOLKIT_MODELS);
 
     this.config = {
       ...config,
-      availableModels: initialModels
+      availableModels:
+        initialModels.length > 0 ? initialModels : [this.fallbackModels[0]]
     };
     
     this.currentModelIndex = this.config.availableModels!.indexOf(this.config.modelId);
@@ -65,19 +79,24 @@ export class ToolkitParser {
   ): Promise<ExtractionResult[]> {
     const models = this.config.availableModels || this.fallbackModels;
     let retries = 0;
-    const maxRetries = models.length + 1; // Próbujemy wszystkich dostępnych modeli + 1 retry
+    const maxRetries = Math.min(
+      MAX_TOOLKIT_ATTEMPTS,
+      Math.max(1, models.length + 1)
+    );
 
     while (retries < maxRetries) {
       const selectedModel = models[this.currentModelIndex] || this.fallbackModels[0];
       
       try {
         // Toolkit Pattern: api-version-routing
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${this.config.apiKey}`;
+        const url =
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(selectedModel)}:generateContent`;
 
         const requestBody: GeminiRequest = {
           contents: [{ parts: [] }],
-          generationConfig: { 
-            response_mime_type: "application/json"
+          generationConfig: {
+            response_mime_type: "application/json",
+            max_output_tokens: 4096
           }
         };
 
@@ -92,8 +111,12 @@ export class ToolkitParser {
 
         const response = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.config.apiKey
+          },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(TOOLKIT_REQUEST_TIMEOUT_MS)
         });
 
         if (!response.ok) {
@@ -108,7 +131,10 @@ export class ToolkitParser {
           if (response.status === 429) {
             onProgress?.({ type: 'log', message: `Limit Rate-Limit (429) dla ${selectedModel}. Czekam i przełączam...` });
             this.switchToNextModel(models);
-            const waitTime = 2000 * (retries + 1);
+            const waitTime = Math.min(
+              TOOLKIT_MAX_RETRY_DELAY_MS,
+              1000 * (retries + 1)
+            );
             await new Promise(r => setTimeout(r, waitTime));
             retries++;
             continue;
@@ -116,7 +142,10 @@ export class ToolkitParser {
 
           // NOWY: Obsługa 503 i innych błędów serwerowych (Exponential Backoff)
           if (response.status >= 500 && response.status <= 504) {
-            const waitTime = Math.pow(2, retries + 1) * 1000;
+            const waitTime = Math.min(
+              TOOLKIT_MAX_RETRY_DELAY_MS,
+              Math.pow(2, retries + 1) * 1000
+            );
             onProgress?.({ type: 'log', message: `Serwer AI przeciążony (${response.status}). Ponawiam próbę za ${waitTime/1000}s... (Próba ${retries + 1}/${maxRetries})` });
             await new Promise(r => setTimeout(r, waitTime));
             retries++;
