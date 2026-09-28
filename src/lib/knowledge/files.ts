@@ -2,10 +2,11 @@ import fs from "fs"
 import path from "path"
 import { resolvePersistentPath } from "@/lib/storageConfig"
 import type { KnowledgeStore } from "@/lib/knowledge/types"
+import { hasAmbiguousKnowledgeSourceFilename } from "@/lib/knowledge/provenance"
 import {
-  hasAmbiguousKnowledgeSourceFilename,
-  knowledgeSourceProvenanceIncludes,
-} from "@/lib/knowledge/provenance"
+  knowledgeStoreReferencesSource,
+  type KnowledgeUploadFileSnapshot,
+} from "@/lib/knowledge/invariants"
 
 type KnowledgeUploadRootOptions = {
   configuredPath?: string | null
@@ -87,6 +88,33 @@ function assertPositiveSafeInteger(value: number, code: string) {
   }
 }
 
+export function isSupportedKnowledgeUploadFilename(input: string) {
+  const filename = path.basename(String(input || "").trim())
+  if (!filename || filename !== input || filename.includes("\0")) return false
+
+  return ALLOWED_KNOWLEDGE_EXTENSIONS.has(
+    path.extname(filename).toLowerCase()
+  )
+}
+
+export function listKnowledgeUploadFiles(
+  uploadRoot = KNOWLEDGE_UPLOAD_ROOT
+): KnowledgeUploadFileSnapshot[] {
+  fs.mkdirSync(uploadRoot, { recursive: true })
+
+  return fs
+    .readdirSync(uploadRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => {
+      const stat = fs.statSync(path.join(uploadRoot, entry.name))
+      return {
+        filename: entry.name,
+        size: stat.size,
+        mtimeMs: stat.mtimeMs,
+      }
+    })
+}
+
 export function knowledgeStoreReferencesUpload(
   store: Pick<KnowledgeStore, "sources" | "processedSources" | "knowledge">,
   filename: string
@@ -99,16 +127,7 @@ export function knowledgeStoreReferencesUpload(
   // as referenced so quota cleanup never guesses and deletes them.
   if (hasAmbiguousKnowledgeSourceFilename(target)) return true
 
-  if (
-    store.sources.includes(target) ||
-    store.processedSources.includes(target)
-  ) {
-    return true
-  }
-
-  return Object.values(store.knowledge).some((entry) =>
-    knowledgeSourceProvenanceIncludes(entry.source, target)
-  )
+  return knowledgeStoreReferencesSource(store, target)
 }
 
 export function prepareKnowledgeUploadStorage({
@@ -135,22 +154,11 @@ export function prepareKnowledgeUploadStorage({
     throw new Error("Nieprawidłowa nazwa pliku.")
   }
 
-  fs.mkdirSync(uploadRoot, { recursive: true })
-
-  const files = fs
-    .readdirSync(uploadRoot, { withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => {
-      const absolutePath = path.join(uploadRoot, entry.name)
-      const stat = fs.statSync(absolutePath)
-      return {
-        filename: entry.name,
-        absolutePath,
-        size: stat.size,
-        mtimeMs: stat.mtimeMs,
-        referenced: knowledgeStoreReferencesUpload(store, entry.name),
-      }
-    })
+  const files = listKnowledgeUploadFiles(uploadRoot).map((file) => ({
+    ...file,
+    absolutePath: path.join(uploadRoot, file.filename),
+    referenced: knowledgeStoreReferencesUpload(store, file.filename),
+  }))
 
   let totalBytes = files.reduce((sum, file) => sum + file.size, 0)
   let fileCount = files.length
