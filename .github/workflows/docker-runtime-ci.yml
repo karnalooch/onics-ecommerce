@@ -107,7 +107,7 @@ jobs:
             exit 1
           fi
 
-          grep -q "Operations console" admin.html
+          grep -q "Panel operacyjny" admin.html
 
       - name: Verify non-root runtime and durable volume
         shell: bash
