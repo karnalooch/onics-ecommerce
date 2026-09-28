@@ -83,15 +83,74 @@ describe("catalog category revision fencing", () => {
     )
   })
 
+  it("fences admin category server actions by the revision shown in the UI", () => {
+    const actions = read("src/app/admin/categories/_actions.ts")
+    const client = read(
+      "src/app/admin/categories/CategoriesDashboardClient.tsx"
+    )
+
+    expect(actions).toContain(
+      "expectedRevision: z.number().int().nonnegative()"
+    )
+    expect(actions).toContain(
+      "validated.data.expectedRevision !== currentRevision"
+    )
+    expect(actions).toContain(
+      'throw new Error("CATEGORY_REVISION_CONFLICT")'
+    )
+    expect(actions).toContain(
+      "categoryRevisionActionError(error)"
+    )
+
+    expect(client).toContain(
+      "expectedRevision: categoryRevision(category)"
+    )
+    expect(client).toContain(
+      "expectedRevision: categoryRevision(activeCategory)"
+    )
+    expect(client).toContain(
+      "categoryRevision(activeCat)"
+    )
+  })
+
+  it("preserves exact replay before rejecting stale subcategory writes", () => {
+    const actions = read("src/app/admin/categories/_actions.ts")
+
+    const addStart = actions.indexOf("export async function addSubcategoryAction")
+    const renameStart = actions.indexOf(
+      "export async function renameSubcategoryAction",
+      addStart
+    )
+    const deleteStart = actions.indexOf(
+      "export async function deleteSubcategoryAction",
+      renameStart
+    )
+    const categoryDeleteStart = actions.indexOf(
+      "export async function deleteCategoryAction",
+      deleteStart
+    )
+
+    const add = actions.slice(addStart, renameStart)
+    const rename = actions.slice(renameStart, deleteStart)
+    const remove = actions.slice(deleteStart, categoryDeleteStart)
+
+    expect(add.indexOf("if (existing)"))
+      .toBeLessThan(add.indexOf("validated.data.expectedRevision !== currentRevision"))
+    expect(rename.indexOf("normalizeCatalogSubcategoryName(subcategory.name)"))
+      .toBeLessThan(rename.indexOf("validated.data.expectedRevision !== currentRevision"))
+    expect(remove.indexOf("if (index === -1)"))
+      .toBeLessThan(remove.indexOf("validated.data.expectedRevision !== currentRevision"))
+  })
+
   it("advances revisions for non-API structural writers", () => {
     const actions = read("src/app/admin/categories/_actions.ts")
     const products = read("src/app/api/products/route.ts")
 
     expect(actions).toContain(
-      "revision: nextCatalogCategoryRevision(current.revision)"
+      "revision: nextCatalogCategoryRevision(currentRevision)"
     )
     expect(actions).toContain(
-      "category.revision = nextCatalogCategoryRevision(category.revision)"
+      "category.revision = nextCatalogCategoryRevision(currentRevision)"
     )
     expect(products).toContain("revision: 0")
     expect(products).toContain(

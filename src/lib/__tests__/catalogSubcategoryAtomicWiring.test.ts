@@ -59,9 +59,10 @@ describe("catalog subcategory atomic wiring", () => {
       "src/app/admin/categories/CategoriesDashboardClient.tsx"
     )
 
-    expect(client).toContain("addSubcategoryAction(activeCat.id, newSubcatName)")
-    expect(client).toContain("renameSubcategoryAction(activeCat.id, id, name)")
-    expect(client).toContain("deleteSubcategoryAction(activeCat.id, subId)")
+    expect(client).toContain("addSubcategoryAction(")
+    expect(client).toContain("renameSubcategoryAction(")
+    expect(client).toContain("deleteSubcategoryAction(")
+    expect(client).toContain("categoryRevision(activeCat)")
     expect(client).not.toContain("id: `s${Date.now()}`")
     expect(client).not.toContain(
       "subcategories: activeCat.subcategories.map"
