@@ -105,9 +105,9 @@ export default function PricelistGenerator() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Cennik_Eksport");
         XLSX.writeFile(wb, `Celtronics_Matrix_${selectedTier}_${new Date().toISOString().split('T')[0]}.xlsx`);
-        toast.success("LOG: Eksport XLSX zakończony pomyślnie.");
+        toast.success("Eksport XLSX zakończony.");
       } catch (e) {
-        toast.error("FAULT: Błąd generowania pliku XLSX.");
+        toast.error("Nie udało się wygenerować pliku XLSX.");
       } finally {
         setExporting(false);
       }
@@ -117,11 +117,11 @@ export default function PricelistGenerator() {
   const PricelistTable = ({ products }: { products: any[] }) => (
     <div className="flex flex-col bg-white border border-slate-100 mt-2">
       <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-500 tabular-nums italic">
-        <div className="col-span-2">SYMBOL_ID</div>
-        <div className="col-span-4">SPECYFIKACJA_URZĄDZENIA</div>
+        <div className="col-span-2">SKU</div>
+        <div className="col-span-4">Produkt</div>
         <div className="col-span-2">PRODUCENT</div>
-        <div className="col-span-2 text-right">VAL_NET</div>
-        <div className="col-span-2 text-right">VAL_GROSS</div>
+        <div className="col-span-2 text-right">Netto</div>
+        <div className="col-span-2 text-right">Brutto</div>
       </div>
       <div className="divide-y divide-slate-50">
         {products.map((p) => {
@@ -168,13 +168,13 @@ export default function PricelistGenerator() {
              className="h-12 px-6 bg-white border border-slate-100 text-slate-400 hover:text-slate-950 font-black uppercase text-[10px] tracking-widest flex items-center gap-3 transition-all active-press italic"
            >
               {exporting ? <RefreshCw className="w-4 h-4 animate-spin text-primary" /> : <FileSpreadsheet className="w-4 h-4" />}
-              EKSPORT_XLSX
+              Eksport XLSX
            </button>
            <button 
              onClick={handlePrint} 
              className="h-12 px-8 bg-slate-950 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-4 active-press transition-all hover:bg-primary  shadow-primary/10 italic rounded-none"
            >
-              <Printer className="w-4 h-4 text-primary" /> DRUKUJ_BLUEPRINT_PDF
+              <Printer className="w-4 h-4 text-primary" /> Drukuj PDF
            </button>
         </div>
       </div>
@@ -188,7 +188,7 @@ export default function PricelistGenerator() {
             <div className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] p-0 bg-white border-none shadow-sm overflow-hidden rounded-none">
                <div className="p-4 bg-slate-950 flex items-center gap-3 text-white italic">
                   <Percent className="w-4 h-4 text-primary" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Preset_Rabatu</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">Poziom cenowy</span>
                </div>
                
                <div className="p-8 space-y-8">
@@ -283,10 +283,10 @@ export default function PricelistGenerator() {
                
                {/* OPERATIONAL WATERMARK */}
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 pointer-events-none opacity-[0.02]">
-                  <span className="text-[120px] font-black text-slate-950 uppercase tracking-[0.2em] whitespace-nowrap italic">PRICING_ENGINE_BLUEPRINT</span>
+                  <span className="text-[120px] font-black text-slate-950 uppercase tracking-[0.2em] whitespace-nowrap italic">CENNIK</span>
                </div>
 
-               {/* DOCUMENT_BLUEPRINT_HEADER */}
+               {/* Nagłówek dokumentu */}
                <div className="p-12 border-b-[5px] border-slate-950 relative z-10">
                   <div className="flex justify-between items-start">
                      <div className="space-y-6">
@@ -328,7 +328,7 @@ export default function PricelistGenerator() {
                   </div>
                </div>
 
-               {/* DOCUMENT_BLUEPRINT_CONTENT */}
+               {/* Treść dokumentu */}
                <div className="p-12 flex-1 space-y-16 relative z-10">
                   {categories
                      .filter(cat => selectedCategoryIds.includes(cat.id))
@@ -338,13 +338,13 @@ export default function PricelistGenerator() {
 
                         return (
                            <div key={cat.id} className="space-y-8">
-                              {/* SECTOR_LEVEL_HEADER */}
+                              {/* Kategoria */}
                               <div className="flex items-center justify-between border-b-2 border-slate-950 pb-4">
                                  <div className="flex items-center gap-4">
                                     <h2 className="text-3xl font-black uppercase tracking-tighter italic text-slate-950">{cat.name}</h2>
                                     <div className="px-3 py-1 bg-slate-950 text-white text-[9px] font-black uppercase tracking-widest">SEC_ID_{cat.id.substring(0,4).toUpperCase()}</div>
                                  </div>
-                                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">{productsInMainCat.length} POSITION_LOGS</span>
+                                 <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">{productsInMainCat.length} Pozycje</span>
                               </div>
 
                               {/* SUBCATS / CLUSTERS */}
@@ -380,17 +380,17 @@ export default function PricelistGenerator() {
                   {filteredProducts.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-40 opacity-10">
                        <Box className="w-20 h-20 mb-6" />
-                       <span className="text-[16px] font-black uppercase tracking-[0.6em] italic">NO_REGISTRY_RESULTS_FOUND</span>
+                       <span className="text-[16px] font-black uppercase tracking-[0.6em] italic">Brak produktów</span>
                     </div>
                   )}
                </div>
 
-               {/* DOCUMENT_EXPORT_FOOTER */}
+               {/* Stopka dokumentu */}
                <footer className="p-12 bg-slate-50 border-t-2 border-slate-950 relative z-10">
                   <div className="grid grid-cols-2 gap-16">
                      <div className="space-y-4">
                         <span className="text-[10px] font-black uppercase text-slate-950 border-b border-slate-200 pb-2 flex items-center gap-3 italic">
-                           <Activity className="w-4 h-4 text-primary" /> NOTY_EKSPLOATACYJNE
+                           <Activity className="w-4 h-4 text-primary" /> Informacja
                         </span>
                         <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed tracking-wider italic">
                            Dokument wygenerowany w trybie <span className="text-slate-950">generatorze cennika</span>. Ceny przeliczone dla grupy {selectedTier}. Narzut operacyjny: {customMarkup}%. Indeksy zsynchronizowane z bazą PIM. Dokument nie stanowi oferty handlowej.
