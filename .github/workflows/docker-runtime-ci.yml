@@ -72,14 +72,17 @@ jobs:
             }
           '
 
-          docker compose exec -T celtronics sh -c             'printf persisted > /app/var/celtronics/.docker-ci-volume-marker'
+          docker compose exec -T celtronics sh -c \
+            'printf persisted > /app/var/celtronics/.docker-ci-volume-marker'
 
           docker compose restart celtronics
 
           container_id="$(docker compose ps -q celtronics)"
+          restarted_healthy="no"
           for attempt in {1..60}; do
             status="$(docker inspect --format '{{.State.Health.Status}}' "$container_id")"
             if [[ "$status" == "healthy" ]]; then
+              restarted_healthy="yes"
               break
             fi
             if [[ "$status" == "unhealthy" ]]; then
@@ -89,7 +92,14 @@ jobs:
             sleep 2
           done
 
-          docker compose exec -T celtronics test             -f /app/var/celtronics/.docker-ci-volume-marker
+          if [[ "$restarted_healthy" != "yes" ]]; then
+            echo "Timed out waiting for healthy container after restart."
+            docker compose logs --no-color celtronics
+            exit 1
+          fi
+
+          docker compose exec -T celtronics test \
+            -f /app/var/celtronics/.docker-ci-volume-marker
 
       - name: Show logs on failure
         if: failure()
