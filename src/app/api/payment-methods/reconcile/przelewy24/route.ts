@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   CommerceBodyInvalidError,
   CommerceBodyTooLargeError,
@@ -39,6 +41,25 @@ const ReconcileSchema = z.union([
 ])
 
 const MAX_BULK_RECONCILIATION = 50
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+function assertFreshAdminAccess(actor: { id?: string; email?: string | null }) {
+  const fresh = initializeMockData()
+  const currentActor = findStoredUserBySession(
+    fresh.users as StoredActor[],
+    actor
+  )
+  if (!currentActor || !hasAccountRoleAccess(currentActor, ["ADMIN"])) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
 
 type ReconcileResult = {
   orderId: string
@@ -192,6 +213,7 @@ export async function POST(req: Request) {
             paymentAction = "PAID"
             updated = true
           } else {
+            assertFreshAdminAccess(authCheck.user)
             await verifyPrzelewy24Transaction(config, staged)
 
             await mutateMockData((db) => {
@@ -271,6 +293,7 @@ export async function POST(req: Request) {
               paymentAction = "PAID"
               updated = true
             } else if (recovery === "verify-required") {
+              assertFreshAdminAccess(authCheck.user)
               await verifyPrzelewy24TransactionIdentity(config, transaction)
 
               await mutateMockData((db) => {
@@ -346,6 +369,7 @@ export async function POST(req: Request) {
             latestOrder.p24RefundRequestId &&
             latestOrder.p24RefundsUuid
           ) {
+            assertFreshAdminAccess(authCheck.user)
             await requestPrzelewy24Refund(config, {
               orderId: latestOrder.p24OrderId,
               sessionId: latestOrder.p24SessionId,
