@@ -20,7 +20,7 @@ export function ProductTableRow({ p, onDelete, categories }: IProductTableRowPro
       {/* 1. IDENTITY BLOCK (FLUENT) */}
       <TableCell className="py-5 pl-8">
         <div className="flex items-center gap-5">
-           <div className="w-12 h-12 bg-white dark:bg-white/10 border border-black/5 dark:border-white/10 flex items-center justify-center shrink-0 rounded-lg group-hover/row:scale-105 transition-all shadow-sm">
+           <div className="w-12 h-12 bg-white dark:bg-white/10 border border-black/5 dark:border-white/10 flex items-center justify-center shrink-0 rounded-lg  transition-all shadow-sm">
               {p.imageUrl ? (
                  <img src={p.imageUrl} alt={p.sku} className="w-10 h-10 object-contain p-1" />
               ) : (
@@ -30,7 +30,7 @@ export function ProductTableRow({ p, onDelete, categories }: IProductTableRowPro
            <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">
                  <h3 className="text-[14px] font-bold text-foreground truncate tracking-tight group-hover/row:text-primary transition-colors">{p.name}</h3>
-                 {p.isVirtual && <span className="text-[9px] font-bold px-2 py-0.5 bg-black/5 dark:bg-white/10 text-muted-foreground rounded uppercase italic">Virtual</span>}
+                 {p.isBaza wiedzy && <span className="text-[9px] font-bold px-2 py-0.5 bg-black/5 dark:bg-white/10 text-muted-foreground rounded uppercase ">Virtual</span>}
               </div>
               <div className="flex items-center gap-3 mt-1">
                  <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase opacity-60">{p.sku || "N/A"}</span>
@@ -60,7 +60,7 @@ export function ProductTableRow({ p, onDelete, categories }: IProductTableRowPro
       <TableCell className="hidden md:table-cell py-5 px-4 text-right">
          <div className="flex flex-col items-end gap-1">
             <div className={`flex items-center gap-2 px-3 py-1 rounded-pill border ${isOutofStock ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}>
-               <div className={`w-1.5 h-1.5 rounded-full ${isOutofStock ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
+               <div className={`w-1.5 h-1.5 rounded-full ${isOutofStock ? 'bg-red-500' : 'bg-green-500 '}`} />
                <span className="text-[11px] font-bold tabular-nums">{p.stock || 0} SZT</span>
             </div>
          </div>
@@ -68,7 +68,7 @@ export function ProductTableRow({ p, onDelete, categories }: IProductTableRowPro
 
       {/* 5. INTERACTION HUB (FLUENT GHOST ACTIONS) */}
       <TableCell className="py-5 pr-8 text-right w-[160px]">
-         <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-opacity duration-200">
+         <div className="flex items-center justify-end gap-2">
             {!p.isVirtual ? (
               <>
                 <Link
