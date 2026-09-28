@@ -59,6 +59,8 @@ jobs:
           src/lib/knowledge/provenance.ts
           src/lib/knowledge/uploadIngress.ts
           src/lib/knowledge/KnowledgeContext.tsx
+          src/lib/fieldProduct.ts
+          src/components/shell/AppChrome.tsx
           src/app/api/register/route.ts
           src/app/api/orders/route.ts
           src/app/api/checkout/route.ts
@@ -78,6 +80,16 @@ jobs:
           src/app/api/knowledge/train/route.ts
           src/app/api/knowledge/train/stream/route.ts
           src/app/api/knowledge/validate-key/route.ts
+          src/app/api/field/search/route.ts
+          src/app/admin/layout.tsx
+          src/app/admin/page.tsx
+          src/app/admin/_components/AdminNavigation.tsx
+          src/app/admin/knowledge/page.tsx
+          src/app/admin/knowledge/KnowledgeMaintenanceActions.tsx
+          src/app/field/page.tsx
+          src/app/field/FieldWorkbench.tsx
+          src/app/(b2b)/layout.tsx
+          src/app/(b2b)/dashboard/page.tsx
           src/app/api/health/live/route.ts
           src/app/api/health/ready/route.ts
           src/app/admin/price-lists/_lib/priceLogic.ts
