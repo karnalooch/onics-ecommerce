@@ -11,6 +11,27 @@ import { initializeMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { isRepairTerminalStatus } from "@/lib/repairLifecycle"
 
+type DashboardUser = {
+  id?: string
+  email?: string | null
+  username?: string
+  companyName?: string
+  nip?: string | null
+  tierName?: string
+  discount?: number
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+type OwnedRecord = {
+  user?: {
+    id?: string | null
+    email?: string | null
+  }
+  status?: unknown
+}
+
 export default async function DashboardPage() {
   const session = await auth()
   const sessionUser = session?.user as
@@ -20,7 +41,10 @@ export default async function DashboardPage() {
   if (!sessionUser) redirect("/logowanie")
 
   const { users, orders, repairs } = initializeMockData()
-  const storedUser = findStoredUserBySession(users as any[], sessionUser)
+  const storedUser = findStoredUserBySession(
+    users as DashboardUser[],
+    sessionUser
+  )
 
   if (
     !storedUser ||
@@ -31,7 +55,7 @@ export default async function DashboardPage() {
     redirect("/logowanie")
   }
 
-  const belongsToCurrentUser = (record: any) =>
+  const belongsToCurrentUser = (record: OwnedRecord) =>
     Boolean(
       record?.user &&
         findStoredUserBySession([record.user], {
@@ -40,9 +64,9 @@ export default async function DashboardPage() {
         })
     )
 
-  const ownOrders = orders.filter(belongsToCurrentUser)
-  const activeRepairs = repairs.filter(
-    (repair: any) =>
+  const ownOrders = (orders as OwnedRecord[]).filter(belongsToCurrentUser)
+  const activeRepairs = (repairs as OwnedRecord[]).filter(
+    (repair) =>
       belongsToCurrentUser(repair) && !isRepairTerminalStatus(repair.status)
   )
 
