@@ -1,12 +1,23 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback } from "react"
-import { 
-  Printer, Filter, Tag, Search, 
-  CheckCircle2, FileSpreadsheet, Download, RefreshCw,
-  ChevronRight, Info, Database, Eye, EyeOff, LayoutDashboard,
-  Percent, ArrowDownNarrowWide, Smartphone, Monitor, HardDrive, Bell,
-  Terminal, ShieldCheck, Activity, Zap, Box, LayoutGrid
+import {
+  Printer,
+  CheckCircle2,
+  FileSpreadsheet,
+  RefreshCw,
+  Database,
+  Eye,
+  EyeOff,
+  Percent,
+  ArrowDownNarrowWide,
+  Smartphone,
+  Monitor,
+  HardDrive,
+  ShieldCheck,
+  Activity,
+  Box,
+  LayoutGrid,
 } from "lucide-react"
 import * as Icons from "lucide-react"
 import * as XLSX from "xlsx"
