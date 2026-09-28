@@ -2,6 +2,10 @@ import fs from "fs"
 import path from "path"
 import { resolvePersistentPath } from "@/lib/storageConfig"
 import type { KnowledgeStore } from "@/lib/knowledge/types"
+import {
+  hasAmbiguousKnowledgeSourceFilename,
+  knowledgeSourceProvenanceIncludes,
+} from "@/lib/knowledge/provenance"
 
 type KnowledgeUploadRootOptions = {
   configuredPath?: string | null
@@ -83,16 +87,17 @@ function assertPositiveSafeInteger(value: number, code: string) {
   }
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-}
-
 export function knowledgeStoreReferencesUpload(
   store: Pick<KnowledgeStore, "sources" | "processedSources" | "knowledge">,
   filename: string
 ) {
   const target = filename.trim()
   if (!target) return false
+
+  // Legacy filenames containing the provenance delimiter cannot be
+  // distinguished safely from a serialized multi-source value. Treat them
+  // as referenced so quota cleanup never guesses and deletes them.
+  if (hasAmbiguousKnowledgeSourceFilename(target)) return true
 
   if (
     store.sources.includes(target) ||
@@ -101,13 +106,8 @@ export function knowledgeStoreReferencesUpload(
     return true
   }
 
-  const sourceBoundary = new RegExp(
-    `(?:^|, )${escapeRegExp(target)}(?:$|, )`
-  )
-
-  return Object.values(store.knowledge).some(
-    (entry) =>
-      typeof entry.source === "string" && sourceBoundary.test(entry.source)
+  return Object.values(store.knowledge).some((entry) =>
+    knowledgeSourceProvenanceIncludes(entry.source, target)
   )
 }
 
@@ -224,7 +224,12 @@ export async function canSafelyRemoveFailedKnowledgeUpload(
 export function validateKnowledgeFilename(input: string) {
   const filename = path.basename(String(input || "").trim())
 
-  if (!filename || filename !== input || filename.includes("\0")) {
+  if (
+    !filename ||
+    filename !== input ||
+    filename.includes("\0") ||
+    hasAmbiguousKnowledgeSourceFilename(filename)
+  ) {
     throw new Error("Nieprawidłowa nazwa pliku.")
   }
 
