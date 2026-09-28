@@ -48,6 +48,37 @@ describe("payment emergency shutdown", () => {
     expect(post).toContain('error.message === "ADMIN_ACCESS_REVOKED"')
   })
 
+  it("rechecks current admin immediately before Stripe session expiry", () => {
+    const route = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/app/api/payment-methods/emergency-shutdown/route.ts"
+      ),
+      "utf8"
+    )
+    const providerFlag = route.indexOf("let providerWritesAllowed = true")
+    const freshFence = route.indexOf("!hasFreshAdminAccess(authCheck.user)")
+    const stopWrites = route.indexOf("providerWritesAllowed = false", freshFence)
+    const expireCall = route.indexOf(
+      "stripe.checkout.sessions.expire(session.id)",
+      freshFence
+    )
+    const localReconcile = route.indexOf("await mutateMockData((db) =>", expireCall)
+
+    expect(providerFlag).toBeGreaterThan(-1)
+    expect(freshFence).toBeGreaterThan(providerFlag)
+    expect(stopWrites).toBeGreaterThan(freshFence)
+    expect(expireCall).toBeGreaterThan(freshFence)
+    expect(localReconcile).toBeGreaterThan(expireCall)
+
+    const providerWriteGuard = route.slice(freshFence, expireCall)
+    expect(providerWriteGuard).toContain("providerWritesAllowed = false")
+
+    const postExpireReconcile = route.slice(expireCall, localReconcile + 200)
+    expect(postExpireReconcile).not.toContain("hasFreshAdminAccess(")
+    expect(route).toContain("providerWritesStopped: !providerWritesAllowed")
+  })
+
   it("selects only open non-final Stripe orders", () => {
     expect(isEmergencyShutdownCandidate(order())).toBe(true)
     expect(
