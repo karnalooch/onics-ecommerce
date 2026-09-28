@@ -187,28 +187,31 @@ export async function deleteRepairAction(id: string): Promise<ActionState> {
   if (!adminAuth.authorized) return adminAuth.response;
 
   try {
-    await mutateMockData((db) => {
+    const result = await mutateMockData((db) => {
       assertCurrentAdminActionAccess(
         db.users as StoredActor[],
         adminAuth.actor
       );
       const repairs = db.repairs as RepairRecord[]
       const index = repairs.findIndex((repair) => repair.id === id)
-      if (index === -1) throw new Error("REPAIR_NOT_FOUND")
+      if (index === -1) return { replayed: true }
       if (!canDeleteRepair(repairs[index].status)) {
         throw new Error("REPAIR_HISTORY_PROTECTED")
       }
       repairs.splice(index, 1)
+      return { replayed: false }
     })
 
     revalidatePath("/admin/repairs");
-    return { success: true, message: "Zgłoszenie usunięte." };
+    return {
+      success: true,
+      message: result.replayed
+        ? "Zgłoszenie było już usunięte."
+        : "Zgłoszenie usunięte.",
+    };
   } catch (error) {
     const adminError = currentAdminActionError(error);
     if (adminError) return adminError;
-    if (error instanceof Error && error.message === "REPAIR_NOT_FOUND") {
-      return { success: false, error: "Nie znaleziono zgłoszenia." };
-    }
     if (error instanceof Error && error.message === "REPAIR_HISTORY_PROTECTED") {
       return {
         success: false,
