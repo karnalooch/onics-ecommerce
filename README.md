@@ -113,6 +113,32 @@ docker compose down
 
 The named `celtronics-data` volume survives `docker compose down`, container recreation and image rebuilds.
 
+### Windows CRLF recovery
+
+Shell entrypoints are forced to LF through `.gitattributes`, and the Docker image also normalizes line endings defensively during build.
+
+If an older local image is already crash-looping with a message like:
+
+```text
+[FATAL tini] exec /app/docker-entrypoint.sh failed: No such file or directory
+```
+
+pull the latest `main` and force one clean rebuild:
+
+```powershell
+git pull
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+```
+
+Then verify:
+
+```powershell
+docker compose ps
+```
+
+
 > **Destructive reset:** `docker compose down --volumes` deletes the local Docker volume, including the JSON database, uploads, generated local secrets and backups. Use it only when you intentionally want a completely fresh local instance.
 
 For an exposed/production deployment, do not reuse this local Compose preset unchanged. Supply real secrets, TLS/reverse-proxy handling, trusted forwarded-header rewriting, durable backup policy and the production payment configuration described in `PAYMENTS_PRODUCTION_RUNBOOK.md`.

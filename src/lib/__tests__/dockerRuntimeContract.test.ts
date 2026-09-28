@@ -31,6 +31,14 @@ describe("local Docker runtime contract", () => {
     expect(compose).toContain("cap_drop:")
   })
 
+  it("defends the Docker entrypoint against Windows CRLF checkout", () => {
+    const attributes = read(".gitattributes")
+    const dockerfile = read("Dockerfile")
+
+    expect(attributes).toContain("*.sh text eol=lf")
+    expect(dockerfile).toContain("sed -i 's/\\r$//' /app/docker-entrypoint.sh")
+  })
+
   it("runs the application as a non-root user", () => {
     const dockerfile = read("Dockerfile")
 
