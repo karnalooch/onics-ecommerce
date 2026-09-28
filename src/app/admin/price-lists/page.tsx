@@ -39,7 +39,7 @@ export default function PricelistGenerator() {
       setProducts(prods);
       setSelectedCategoryIds(cats.map((c: any) => c.id));
     } catch (e) {
-      toast.error("FAULT: Błąd synchronizacji matrycy cenowej.");
+      toast.error("Nie udało się pobrać danych cennika.");
     } finally {
       setLoading(false);
     }
@@ -148,7 +148,7 @@ export default function PricelistGenerator() {
       {/* 1. OPERATIONAL PRICING HEADER */}
       <div className="flex flex-col xl:flex-row justify-between items-end xl:items-center gap-8 border-b-2 border-slate-950 pb-8 print:hidden">
         <div className="flex items-center gap-6">
-           <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center shadow-xl">
+           <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center ">
               <Database className="w-7 h-7 text-primary" />
            </div>
            <div className="flex flex-col">
@@ -172,7 +172,7 @@ export default function PricelistGenerator() {
            </button>
            <button 
              onClick={handlePrint} 
-             className="h-12 px-8 bg-slate-950 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-4 active-press transition-all hover:bg-primary shadow-xl shadow-primary/10 italic rounded-none"
+             className="h-12 px-8 bg-slate-950 text-white font-black uppercase text-[10px] tracking-widest flex items-center gap-4 active-press transition-all hover:bg-primary  shadow-primary/10 italic rounded-none"
            >
               <Printer className="w-4 h-4 text-primary" /> DRUKUJ_BLUEPRINT_PDF
            </button>
@@ -185,7 +185,7 @@ export default function PricelistGenerator() {
          <aside className="xl:col-span-3 space-y-8 print:hidden">
             
             {/* PRICING MATRIX SELECTOR */}
-            <div className="satel-card p-0 bg-white border-none shadow-sm overflow-hidden rounded-none">
+            <div className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] p-0 bg-white border-none shadow-sm overflow-hidden rounded-none">
                <div className="p-4 bg-slate-950 flex items-center gap-3 text-white italic">
                   <Percent className="w-4 h-4 text-primary" />
                   <span className="text-[10px] font-black uppercase tracking-[0.2em]">Preset_Rabatu</span>
@@ -208,7 +208,7 @@ export default function PricelistGenerator() {
                   </div>
 
                   <div className="space-y-2">
-                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Narzut_Własny (%)</label>
+                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Narzut (%)</label>
                      <div className="relative group">
                         <input 
                            type="number"
@@ -226,7 +226,7 @@ export default function PricelistGenerator() {
                    >
                      <div className="flex items-center gap-3">
                         {isWhiteLabel ? <EyeOff className="w-4 h-4 text-primary" /> : <Eye className="w-4 h-4" />}
-                        <span className="text-[10px] font-black uppercase tracking-widest">White-Label_Mode</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Tryb bez marki</span>
                      </div>
                      <div className={`w-3 h-3 border-2 ${isWhiteLabel ? 'bg-primary border-primary' : 'bg-white border-slate-100'}`} />
                   </button>
@@ -234,17 +234,17 @@ export default function PricelistGenerator() {
             </div>
 
             {/* SECTOR FILTER BOX */}
-            <div className="satel-card p-0 bg-white border-none shadow-sm overflow-hidden rounded-none">
+            <div className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] p-0 bg-white border-none shadow-sm overflow-hidden rounded-none">
                <div className="p-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                      <LayoutGrid className="w-4 h-4 text-slate-400" />
-                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-950 italic">Sektory_Techniczne</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-950 italic">Kategorie</span>
                   </div>
                   <button 
                      onClick={() => setSelectedCategoryIds(categories.map(c => c.id))}
                      className="text-[9px] font-black text-primary underline uppercase italic"
                   >
-                     RESET
+                     Wszystkie
                   </button>
                </div>
                
@@ -279,7 +279,7 @@ export default function PricelistGenerator() {
 
          {/* 3. DOCUMENT BLUEPRINT VIEW (RIGHT) */}
          <main className="xl:col-span-9 print:block print:w-full">
-            <div className="technical-panel p-0 bg-white shadow-2xl print:border-none print:shadow-none min-h-[1200px] flex flex-col relative overflow-hidden border border-slate-50">
+            <div className="technical-panel p-0 bg-white  print:border-none print:shadow-none min-h-[1200px] flex flex-col relative overflow-hidden border border-slate-50">
                
                {/* OPERATIONAL WATERMARK */}
                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 pointer-events-none opacity-[0.02]">
@@ -393,7 +393,7 @@ export default function PricelistGenerator() {
                            <Activity className="w-4 h-4 text-primary" /> NOTY_EKSPLOATACYJNE
                         </span>
                         <p className="text-[10px] font-bold text-slate-400 uppercase leading-relaxed tracking-wider italic">
-                           Dokument wygenerowany w trybie <span className="text-slate-950">MISSION_CONTROL_MATRIX</span>. Ceny przeliczone dla grupy {selectedTier}. Narzut operacyjny: {customMarkup}%. Indeksy zsynchronizowane z bazą PIM. Dokument nie stanowi oferty handlowej.
+                           Dokument wygenerowany w trybie <span className="text-slate-950">generatorze cennika</span>. Ceny przeliczone dla grupy {selectedTier}. Narzut operacyjny: {customMarkup}%. Indeksy zsynchronizowane z bazą PIM. Dokument nie stanowi oferty handlowej.
                         </p>
                      </div>
                      <div className="flex flex-col items-end justify-between">
@@ -403,8 +403,8 @@ export default function PricelistGenerator() {
                            <HardDrive className="w-5 h-5 text-slate-200" />
                         </div>
                         <div className="text-right">
-                           <span className="text-[11px] font-black text-slate-950 italic uppercase tracking-tighter">System_Celtronics_B2B | 2026</span>
-                           <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em] mt-1 italic">Identity_Verified_v9.2</p>
+                           <span className="text-[11px] font-black text-slate-950 italic uppercase tracking-tighter">CEL-TRONICS B2B</span>
+                           <p className="text-[8px] font-black text-slate-300 uppercase tracking-[0.4em] mt-1 italic">Cennik wygenerowany z aktualnego katalogu</p>
                         </div>
                      </div>
                   </div>
