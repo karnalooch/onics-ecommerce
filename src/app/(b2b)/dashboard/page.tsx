@@ -9,6 +9,25 @@ import {
 } from "lucide-react"
 import { initializeMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
+
+type BusinessUser = {
+  id?: string | null
+  email?: string | null
+  name?: string | null
+  username?: string | null
+  companyName?: string | null
+  nip?: string | null
+  tierName?: string | null
+  discount?: number | string | null
+  roleType?: string | null
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+type BusinessOwnedRecord = {
+  user?: BusinessUser | null
+  status?: unknown
+}
 import { isRepairTerminalStatus } from "@/lib/repairLifecycle"
 
 type DashboardUser = {
