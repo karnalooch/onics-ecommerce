@@ -4,6 +4,11 @@ import { authorizeAPI } from "@/lib/authUtils"
 import { COMMERCE_TRANSACTION_ROLES } from "@/lib/commerceAccess"
 import { buildAuthoritativeCartSnapshot } from "@/lib/cartSnapshot"
 import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import type { CommerceProduct, CommerceUser } from "@/lib/commerce"
 import { initializeMockData } from "@/store/serverStore"
 
@@ -23,7 +28,26 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CartPreviewSchema.safeParse(await req.json())
+  let body: unknown
+  try {
+    body = await readCommerceJson(req)
+  } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Podgląd koszyka jest zbyt duży." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body podglądu koszyka." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
+
+  const parsed = CartPreviewSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       {

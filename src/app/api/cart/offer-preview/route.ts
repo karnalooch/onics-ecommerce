@@ -8,6 +8,11 @@ import {
 } from "@/lib/cartOffer"
 import type { CommerceProduct } from "@/lib/commerce"
 import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { initializeMockData } from "@/store/serverStore"
 
@@ -39,7 +44,8 @@ export async function POST(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = OfferPreviewSchema.safeParse(await req.json())
+    const body = await readCommerceJson(req)
+    const parsed = OfferPreviewSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
         {
@@ -114,6 +120,19 @@ export async function POST(req: Request) {
       },
     })
   } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Podgląd oferty jest zbyt duży." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body podglądu oferty." },
+        { status: 400 }
+      )
+    }
+
     const message =
       error instanceof Error
         ? error.message
