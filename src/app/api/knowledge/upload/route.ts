@@ -10,9 +10,10 @@ import {
 import { authorizeAPI } from "@/lib/authUtils"
 import { checkAdminCostLimit } from "@/lib/adminCostRateLimit"
 import {
-  KNOWLEDGE_UPLOAD_ROOT,
   MAX_KNOWLEDGE_UPLOAD_BYTES,
+  KnowledgeUploadStorageQuotaError,
   canSafelyRemoveFailedKnowledgeUpload,
+  prepareKnowledgeUploadStorage,
   validateKnowledgeFilename,
 } from "@/lib/knowledge/files"
 import {
@@ -58,7 +59,8 @@ export async function POST(req: Request) {
 
     const { filename, extension, absolutePath } = validateKnowledgeFilename(file.name)
     const buffer = Buffer.from(await file.arrayBuffer())
-    const knowledgeRevision = (await getKnowledge()).revision ?? 0
+    const currentKnowledge = await getKnowledge()
+    const knowledgeRevision = currentKnowledge.revision ?? 0
     const knowledgeSignal = {
       aborted: false,
       knowledgeRevision,
@@ -69,7 +71,11 @@ export async function POST(req: Request) {
       req.signal
     )
 
-    fs.mkdirSync(KNOWLEDGE_UPLOAD_ROOT, { recursive: true })
+    prepareKnowledgeUploadStorage({
+      incomingFilename: filename,
+      incomingBytes: buffer.byteLength,
+      store: currentKnowledge,
+    })
     fs.writeFileSync(absolutePath, buffer, { flag: "wx" })
 
     let addedCount = 0
@@ -136,6 +142,16 @@ export async function POST(req: Request) {
       { status: 201 }
     )
   } catch (error) {
+    if (error instanceof KnowledgeUploadStorageQuotaError) {
+      return NextResponse.json(
+        {
+          error:
+            "Brak miejsca w bezpiecznym limicie magazynu plików wiedzy. Usuń nieużywane źródła lub zwiększ limit.",
+        },
+        { status: 507 }
+      )
+    }
+
     if (error instanceof KnowledgeUploadBodyTooLargeError) {
       return NextResponse.json(
         { error: "Żądanie przesyłania pliku przekracza dozwolony limit." },
