@@ -7,12 +7,34 @@ import { calculateCustomerUnitPrice, roundMoney } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { buildQuoteSubmissionFingerprint } from "@/lib/quoteSubmissionIdempotency"
 import {
+  applicationRateLimiter,
+  type RateLimitResult,
+} from "@/lib/rateLimit"
+import {
   AdminQuoteUpdateSchema,
   assertQuoteAdminTransition,
   isQuoteAdminUpdateReplay,
   requirePositiveQuoteTotal,
   requireQuoteBasePrice,
 } from "@/lib/quoteAdmin"
+
+const QUOTE_SUBMISSION_RATE_LIMIT = {
+  limit: 20,
+  windowMs: 60 * 60 * 1000,
+} as const
+
+function quoteRateLimited(result: RateLimitResult) {
+  return NextResponse.json(
+    { error: "Zbyt wiele zapytań ofertowych. Spróbuj ponownie później." },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(result.retryAfterSeconds),
+        "Cache-Control": "no-store",
+      },
+    }
+  )
+}
 
 const QuoteSchema = z.object({
   requestId: z.string().uuid(),
@@ -67,6 +89,16 @@ type StoredQuote = {
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
   if (!authCheck.authorized) return authCheck.response
+
+  const accountRateLimitKey = String(
+    authCheck.currentUser.id ?? authCheck.currentUser.email ?? "unknown"
+  )
+  const accountLimit = applicationRateLimiter.check(
+    "quote-submit-account",
+    accountRateLimitKey,
+    QUOTE_SUBMISSION_RATE_LIMIT
+  )
+  if (!accountLimit.allowed) return quoteRateLimited(accountLimit)
 
   try {
     const parsed = QuoteSchema.safeParse(await req.json())
@@ -156,6 +188,9 @@ export async function POST(req: Request) {
             user: smtpUser,
             pass: smtpPass,
           },
+          connectionTimeout: 5_000,
+          greetingTimeout: 5_000,
+          socketTimeout: 10_000,
         })
 
         await transporter.sendMail({
