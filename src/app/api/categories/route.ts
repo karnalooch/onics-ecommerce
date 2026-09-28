@@ -57,6 +57,22 @@ function assertCurrentAdminAccess(users: StoredActor[], actor: SessionActor) {
   }
 }
 
+function catalogJsonIngressErrorResponse(error: unknown) {
+  if (error instanceof CommerceBodyTooLargeError) {
+    return NextResponse.json(
+      { error: "Żądanie katalogowe jest zbyt duże." },
+      { status: 413 }
+    )
+  }
+  if (error instanceof CommerceBodyInvalidError) {
+    return NextResponse.json(
+      { error: "Nieprawidłowe body żądania katalogowego." },
+      { status: 400 }
+    )
+  }
+  return null
+}
+
 function catalogAdminAccessErrorResponse(error: unknown) {
   return error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED"
     ? NextResponse.json(
@@ -230,18 +246,8 @@ export async function POST(req: Request) {
         : undefined,
     })
   } catch (error) {
-    if (error instanceof CommerceBodyTooLargeError) {
-      return NextResponse.json(
-        { error: "Żądanie katalogowe jest zbyt duże." },
-        { status: 413 }
-      )
-    }
-    if (error instanceof CommerceBodyInvalidError) {
-      return NextResponse.json(
-        { error: "Nieprawidłowe body żądania katalogowego." },
-        { status: 400 }
-      )
-    }
+    const ingressResponse = catalogJsonIngressErrorResponse(error)
+    if (ingressResponse) return ingressResponse
 
     const adminAccessResponse = catalogAdminAccessErrorResponse(error)
     if (adminAccessResponse) return adminAccessResponse
@@ -388,6 +394,9 @@ export async function PUT(req: Request) {
         : undefined,
     })
   } catch (error) {
+    const ingressResponse = catalogJsonIngressErrorResponse(error)
+    if (ingressResponse) return ingressResponse
+
     const adminAccessResponse = catalogAdminAccessErrorResponse(error)
     if (adminAccessResponse) return adminAccessResponse
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
