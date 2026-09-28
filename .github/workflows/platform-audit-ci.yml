@@ -142,6 +142,18 @@ jobs:
             exit 1
           fi
 
+      - name: Reject public debug artifacts
+        run: |
+          tracked_debug="$(
+            git ls-files public |
+            grep -Ei '(^|/)(debug[^/]*|[^/]+\.(log|dump|tmp))$' || true
+          )"
+          if [ -n "$tracked_debug" ]; then
+            echo "Debug artifacts must not be committed under public/."
+            printf '%s\n' "$tracked_debug"
+            exit 1
+          fi
+
       - name: Reject tracked supplier catalog fixtures
         run: |
           tracked_fixtures="$(git ls-files 'fixtures/catalogs/**')"
