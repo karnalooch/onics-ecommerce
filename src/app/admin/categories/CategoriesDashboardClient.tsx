@@ -82,7 +82,11 @@ export function CategoriesDashboardClient({
       activeCatId &&
       !initialCategories.some((category) => category.id === activeCatId)
     ) {
-      setActiveCatId(initialCategories[0]?.id || null)
+      const timer = window.setTimeout(
+        () => setActiveCatId(initialCategories[0]?.id || null),
+        0
+      )
+      return () => window.clearTimeout(timer)
     }
   }, [activeCatId, initialCategories])
 
