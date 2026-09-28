@@ -2,6 +2,7 @@
 
 import { FileSpreadsheet, FileText, RefreshCcw, Trash2, Upload } from "lucide-react"
 import { WfMagUploadButton } from "./WfMagUploadButton"
+import type { ICategory, IManufacturer } from "../_lib/types"
 
 interface IAICommandCenterProps {
   isOpen: boolean
@@ -15,9 +16,9 @@ interface IAICommandCenterProps {
   onTrainSource: (filename: string) => void
   onClearAll: () => void
   knowledgeCount: number
-  onExcelParsed: (data: any[]) => void
-  categories: any[]
-  manufacturers: any[]
+  onExcelParsed: (data: Array<Record<string, unknown>>) => void
+  categories: ICategory[]
+  manufacturers: IManufacturer[]
   onRefreshStructure: () => void
 }
 
