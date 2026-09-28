@@ -13,13 +13,45 @@ import {
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 
+type OrderItem = {
+  id?: string
+  sku?: string
+  name?: string
+  price: number
+  quantity: number
+}
+
+type AdminOrder = {
+  id: string
+  status: string
+  orderType?: string
+  checkoutRegistrationStatus?: string
+  estimatedDeliveryDays?: number
+  items?: OrderItem[]
+  user?: {
+    companyName?: string
+    email?: string
+  }
+  totalPriceOrig?: number
+  totalPriceFinal?: number
+  paymentLifecycle?: {
+    provider?: string | null
+    kind?: string | null
+  } | null
+  paymentAdminActions?: string[]
+  paymentStatus?: string | null
+  refundStatus?: string | null
+  returnStatus?: string | null
+  adminStateToken?: string
+}
+
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [validatingOrder, setValidatingOrder] = useState<any | null>(null);
+  const [validatingOrder, setValidatingOrder] = useState<AdminOrder | null>(null);
 
   const [deliveryDays, setDeliveryDays] = useState<string>("5");
-  const [editableItems, setEditableItems] = useState<any[]>([]);
+  const [editableItems, setEditableItems] = useState<OrderItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [returning, setReturning] = useState(false);
@@ -54,7 +86,7 @@ export default function AdminOrdersPage() {
       const res = await fetch("/api/orders");
       const data = await res.json();
       setOrders(data);
-    } catch (err) {
+    } catch {
       toast.error("FAULT: Błąd synchronizacji potoku zamówień.");
     } finally {
       setLoading(false);
@@ -62,13 +94,16 @@ export default function AdminOrdersPage() {
   }, []);
 
   useEffect(() => {
-    fetchOrders();
+    const timer = window.setTimeout(() => {
+      void fetchOrders()
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [fetchOrders]);
 
-  const openVerificationModal = (order: any) => {
+  const openVerificationModal = (order: AdminOrder) => {
     setValidatingOrder(order);
     setDeliveryDays(order.estimatedDeliveryDays?.toString() || "3");
-    setEditableItems((order.items ?? []).map((item: any) => ({ ...item })));
+    setEditableItems((order.items ?? []).map((item) => ({ ...item })));
   }
 
   const updateItemPrice = (index: number, newPrice: string) => {
@@ -379,7 +414,7 @@ export default function AdminOrdersPage() {
 
       setValidatingOrder(
         data?.order ??
-          ((current: any) => ({
+          ((current: AdminOrder | null) => ({
             ...current,
             ...(data ?? {}),
           }))
