@@ -49,6 +49,16 @@ describe("user revision fencing", () => {
     expect(route).toContain(
       "user.revision = nextUserRevision(currentRevision)"
     )
+    const mutation = route.indexOf("mutateMockData((db) =>")
+    const currentAccessFence = route.indexOf(
+      'hasAccountRoleAccess(user, ["BIZ"])',
+      mutation
+    )
+    const write = route.indexOf("user.phone = parsed.data.phone", currentAccessFence)
+    expect(mutation).toBeGreaterThan(-1)
+    expect(currentAccessFence).toBeGreaterThan(mutation)
+    expect(write).toBeGreaterThan(currentAccessFence)
+    expect(route).toContain('throw new Error("PROFILE_ACCESS_REVOKED")')
     expect(page).toContain("expectedRevision: profile?.revision ?? 0")
     expect(page).toContain(
       "revision: Number(data.revision ?? current.revision)"
