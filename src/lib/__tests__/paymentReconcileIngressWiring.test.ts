@@ -17,6 +17,9 @@ describe("payment reconciliation ingress contract", () => {
       expect(route).toContain('z.object({ scope: z.literal("bulk") }).strict()')
       expect(route).not.toContain("catch(() => ({}))")
       expect(route).not.toContain("req.json()")
+      expect(route).toContain(
+        'const orderId = "orderId" in parsed.data ? parsed.data.orderId : undefined'
+      )
     }
   })
 
