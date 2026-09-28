@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   applyStripeRefundSnapshot,
   stageStripeRefundIntent,
@@ -20,6 +22,27 @@ import {
 import { classifyPaymentAdminActionPrecondition } from "@/lib/paymentAdminActions"
 import { buildAdminOrderStateToken } from "@/lib/orderAdminState"
 import { mutateMockData } from "@/store/serverStore"
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+function assertCurrentAdminAccess(
+  users: StoredActor[],
+  actor: { id?: string; email?: string | null }
+) {
+  const currentActor = findStoredUserBySession(users, actor)
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
 
 const ReturnOrderSchema = z.object({
   id: z.string().min(1),
@@ -83,6 +106,7 @@ export async function POST(req: Request) {
   try {
     if (parsed.data.action === "REQUEST") {
       const updated = await mutateMockData((db) => {
+        assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
         const order = (db.orders as StripeReturnOrder[]).find(
           (candidate) => candidate.id === parsed.data.id
         )
@@ -123,6 +147,7 @@ export async function POST(req: Request) {
     }
 
     const received = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], authCheck.user)
       const order = (db.orders as StripeReturnOrder[]).find(
         (candidate) => candidate.id === parsed.data.id
       )
@@ -321,6 +346,13 @@ export async function POST(req: Request) {
     console.error("RMA order return error:", error)
 
     const code = error instanceof Error ? error.message : ""
+    if (code === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed operacją RMA." },
+        { status: 403 }
+      )
+    }
+
     if (code === "ORDER_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono zamówienia." },
