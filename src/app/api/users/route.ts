@@ -3,6 +3,11 @@ import { z } from "zod"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { authorizeAPI } from "@/lib/authUtils"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   nextUserRevision,
@@ -100,7 +105,26 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = UpdateUserSchema.safeParse(await req.json())
+  let body: unknown
+  try {
+    body = await readCommerceJson(req)
+  } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie administracji kontem jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body administracji kontem." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
+
+  const parsed = UpdateUserSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane." },

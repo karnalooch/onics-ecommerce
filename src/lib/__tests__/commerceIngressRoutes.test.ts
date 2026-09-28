@@ -8,6 +8,9 @@ const COMMERCE_JSON_ROUTES = [
   "src/app/api/cart/offer-preview/route.ts",
   "src/app/api/categories/route.ts",
   "src/app/api/products/route.ts",
+  "src/app/api/profile/route.ts",
+  "src/app/api/users/route.ts",
+  "src/app/api/users/discount/route.ts",
 ] as const
 
 describe("commerce JSON ingress wiring", () => {

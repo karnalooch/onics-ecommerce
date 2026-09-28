@@ -2,6 +2,11 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   nextUserRevision,
@@ -34,7 +39,7 @@ export async function PUT(req: Request) {
   if (!authCheck.authorized) return authCheck.response
 
   try {
-    const parsed = DiscountSchema.safeParse(await req.json())
+    const parsed = DiscountSchema.safeParse(await readCommerceJson(req))
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0]?.message || "Nieprawidłowy rabat." },
@@ -116,6 +121,19 @@ export async function PUT(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie warunków handlowych jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe body warunków handlowych." },
+        { status: 400 }
+      )
+    }
+
     if (error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED") {
       return NextResponse.json(
         { error: "Uprawnienia administratora zmieniły się przed zmianą warunków handlowych." },
