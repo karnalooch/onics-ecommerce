@@ -18,22 +18,22 @@ import {
   Activity,
   Box,
   LayoutGrid,
+  type LucideIcon,
 } from "lucide-react"
 import * as Icons from "lucide-react"
 import * as XLSX from "xlsx"
 import { applyMarkup, calculateB2BPrice, PRICING_MATRIX } from "./_lib/priceLogic"
 import { COMPANY_PUBLIC } from "@/lib/company"
 import { toast } from "sonner"
+import type { ICategory, IProduct } from "../products/_lib/types"
 
 const VAT_RATE = 0.23;
 
 export default function PricelistGenerator() {
-  const [categories, setCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<ICategory[]>([]);
+  const [products, setProducts] = useState<IProduct[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [sortByManufacturer, setSortByManufacturer] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [selectedTier, setSelectedTier] = useState("PARTNER");
   const [isWhiteLabel, setIsWhiteLabel] = useState(false);
@@ -45,14 +45,18 @@ export default function PricelistGenerator() {
         fetch("/api/categories"),
         fetch("/api/products")
       ]);
-      const [cats, prods] = await Promise.all([cRes.json(), pRes.json()]);
-      setCategories(cats);
-      setProducts(prods);
-      setSelectedCategoryIds(cats.map((c: any) => c.id));
-    } catch (e) {
+      const [categoryPayload, productPayload]: [unknown, unknown] =
+        await Promise.all([cRes.json(), pRes.json()])
+      if (!Array.isArray(categoryPayload) || !Array.isArray(productPayload)) {
+        throw new Error("Nieprawidłowe dane cennika.")
+      }
+      const cats = categoryPayload as ICategory[]
+      const prods = productPayload as IProduct[]
+      setCategories(cats)
+      setProducts(prods)
+      setSelectedCategoryIds(cats.map((category) => category.id))
+    } catch {
       toast.error("Nie udało się pobrać danych cennika.");
-    } finally {
-      setLoading(false);
     }
   }, []);
 
@@ -72,9 +76,10 @@ export default function PricelistGenerator() {
   }
 
   const filteredProducts = useMemo(() => {
-    let result = products.filter(p => 
-      selectedCategoryIds.includes(p.categoryId) &&
-      (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.sku.toLowerCase().includes(searchQuery.toLowerCase()))
+    const result = products.filter(
+      (product) =>
+        Boolean(product.categoryId) &&
+        selectedCategoryIds.includes(String(product.categoryId))
     );
 
     if (sortByManufacturer) {
@@ -84,14 +89,14 @@ export default function PricelistGenerator() {
     }
 
     return result;
-  }, [products, selectedCategoryIds, sortByManufacturer, searchQuery]);
+  }, [products, selectedCategoryIds, sortByManufacturer]);
 
   const handlePrint = () => {
     window.print();
   }
 
   const getIcon = (name: string, className = "h-4 w-4") => {
-    const IconComp = (Icons as any)[name] || Icons.Folder;
+    const IconComp = (Icons as unknown as Record<string, LucideIcon>)[name] || Icons.Folder;
     return <IconComp className={className} />;
   };
 
@@ -120,7 +125,7 @@ export default function PricelistGenerator() {
         XLSX.utils.book_append_sheet(wb, ws, "Cennik_Eksport");
         XLSX.writeFile(wb, `Celtronics_Matrix_${selectedTier}_${new Date().toISOString().split('T')[0]}.xlsx`);
         toast.success("Eksport XLSX zakończony.");
-      } catch (e) {
+      } catch {
         toast.error("Nie udało się wygenerować pliku XLSX.");
       } finally {
         setExporting(false);
@@ -128,7 +133,7 @@ export default function PricelistGenerator() {
     }, 800);
   }
 
-  const PricelistTable = ({ products }: { products: any[] }) => (
+  const PricelistTable = ({ products }: { products: IProduct[] }) => (
     <div className="flex flex-col bg-white border border-slate-100 mt-2">
       <div className="grid grid-cols-12 gap-4 px-5 py-3 bg-slate-50 border-b border-slate-100 text-[9px] font-black uppercase tracking-widest text-slate-500 tabular-nums italic">
         <div className="col-span-2">SKU</div>
@@ -362,7 +367,7 @@ export default function PricelistGenerator() {
                               </div>
 
                               {/* SUBCATS / CLUSTERS */}
-                              {(cat.subcategories || []).map((sub: any) => {
+                              {(cat.subcategories || []).map((sub) => {
                                  const productsInSub = productsInMainCat.filter(p => p.subcategoryId === sub.id);
                                  if (productsInSub.length === 0) return null;
 
