@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import Stripe from "stripe"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { appendPaymentAudit } from "@/lib/paymentAudit"
 import {
   isEmergencyShutdownCandidate,
@@ -29,6 +31,14 @@ type ShutdownOrderResult = {
   outcome: EmergencyShutdownResult
 }
 
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
 export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
@@ -45,32 +55,59 @@ export async function POST(req: Request) {
     parsed.data.maintenanceMessage?.trim() ||
     "Płatności online zostały tymczasowo wyłączone przez administratora."
 
-  await mutateMockData((db) => {
-    const paymentControl = db.paymentControl as PaymentControlSettings
-    const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
-    const previousEnabled = paymentControl.enabled
-    const previousMaintenanceMessage =
-      paymentControl.maintenanceMessage
-
-    paymentControl.enabled = false
-    paymentControl.maintenanceMessage = maintenanceMessage
-
-    const auditEntry = appendPaymentAudit(
-      paymentAudit,
-      authCheck.user,
-      {
-        target: "GLOBAL",
-        operation: "EMERGENCY_SHUTDOWN",
-        previousEnabled,
-        nextEnabled: false,
-        previousMaintenanceMessage,
-        nextMaintenanceMessage: maintenanceMessage,
+  try {
+    await mutateMockData((db) => {
+      const currentActor = findStoredUserBySession(
+        db.users as StoredActor[],
+        authCheck.user
+      )
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("ADMIN_ACCESS_REVOKED")
       }
-    )
 
-    paymentControl.updatedAt =
-      auditEntry?.createdAt ?? paymentControl.updatedAt
-  })
+      const paymentControl = db.paymentControl as PaymentControlSettings
+      const paymentAudit = db.paymentAudit as PaymentAuditEntry[]
+      const previousEnabled = paymentControl.enabled
+      const previousMaintenanceMessage =
+        paymentControl.maintenanceMessage
+
+      paymentControl.enabled = false
+      paymentControl.maintenanceMessage = maintenanceMessage
+
+      const auditEntry = appendPaymentAudit(
+        paymentAudit,
+        authCheck.user,
+        {
+          target: "GLOBAL",
+          operation: "EMERGENCY_SHUTDOWN",
+          previousEnabled,
+          nextEnabled: false,
+          previousMaintenanceMessage,
+          nextMaintenanceMessage: maintenanceMessage,
+        }
+      )
+
+      paymentControl.updatedAt =
+        auditEntry?.createdAt ?? paymentControl.updatedAt
+    })
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "ADMIN_ACCESS_REVOKED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Uprawnienia administratora zmieniły się przed awaryjnym wyłączeniem płatności.",
+        },
+        { status: 403 }
+      )
+    }
+    throw error
+  }
 
   const snapshot = initializeMockData()
   const candidates = (

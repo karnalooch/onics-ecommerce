@@ -1,3 +1,5 @@
+import fs from "fs"
+import path from "path"
 import { describe, expect, it } from "vitest"
 import { isEmergencyShutdownCandidate } from "@/lib/paymentShutdown"
 import type { StripeCancelableOrder } from "@/lib/refunds"
@@ -18,6 +20,34 @@ function order(
 }
 
 describe("payment emergency shutdown", () => {
+  it("rechecks current admin access before disabling payments", () => {
+    const route = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "src/app/api/payment-methods/emergency-shutdown/route.ts"
+      ),
+      "utf8"
+    )
+    const postStart = route.indexOf("export async function POST")
+    const post = route.slice(postStart)
+    const firstMutation = post.indexOf("mutateMockData((db) =>")
+    const adminFence = post.indexOf(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])',
+      firstMutation
+    )
+    const disableWrite = post.indexOf(
+      "paymentControl.enabled = false",
+      adminFence
+    )
+
+    expect(postStart).toBeGreaterThan(-1)
+    expect(firstMutation).toBeGreaterThan(-1)
+    expect(adminFence).toBeGreaterThan(firstMutation)
+    expect(disableWrite).toBeGreaterThan(adminFence)
+    expect(post).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
+    expect(post).toContain('error.message === "ADMIN_ACCESS_REVOKED"')
+  })
+
   it("selects only open non-final Stripe orders", () => {
     expect(isEmergencyShutdownCandidate(order())).toBe(true)
     expect(
