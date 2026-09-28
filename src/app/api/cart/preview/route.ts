@@ -6,6 +6,14 @@ import { buildAuthoritativeCartSnapshot } from "@/lib/cartSnapshot"
 import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
 import type { CommerceProduct, CommerceUser } from "@/lib/commerce"
 import { initializeMockData } from "@/store/serverStore"
+import {
+  BoundedJsonBodyInvalidError,
+  BoundedJsonBodyTooLargeError,
+  readBoundedJson,
+} from "@/lib/boundedJsonIngress"
+
+
+const COMMERCE_JSON_MAX_BODY_BYTES = 128 * 1024
 
 const CartPreviewSchema = z.object({
   items: z
@@ -23,7 +31,26 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CartPreviewSchema.safeParse(await req.json())
+  let requestBody: unknown
+  try {
+    requestBody = await readBoundedJson(req, COMMERCE_JSON_MAX_BODY_BYTES)
+  } catch (error) {
+    if (error instanceof BoundedJsonBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie podglądu koszyka jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof BoundedJsonBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe dane podglądu koszyka." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
+
+  const parsed = CartPreviewSchema.safeParse(requestBody)
   if (!parsed.success) {
     return NextResponse.json(
       {
