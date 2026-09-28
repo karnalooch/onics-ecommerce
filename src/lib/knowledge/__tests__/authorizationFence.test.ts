@@ -74,6 +74,25 @@ describe("knowledge training authorization fence wiring", () => {
     expect(remove).toContain('throw new Error("KNOWLEDGE_ADMIN_ACCESS_REVOKED")')
   })
 
+  it("treats an already-absent extracted snippet as a safe delete replay", () => {
+    const route = read("src/app/api/knowledge/snippets/[model]/route.ts")
+    const parser = read("src/lib/knowledge/parser.ts")
+    const deleteStart = parser.indexOf(
+      "export function deleteKnowledgeEntryFromDb("
+    )
+    const deleteFlow = parser.slice(
+      deleteStart,
+      parser.indexOf("export async function deleteKnowledgeEntry(", deleteStart)
+    )
+
+    expect(route).toContain("if (!deleted)")
+    expect(route).toContain('"Idempotency-Replayed": "true"')
+    expect(route).not.toContain('{ status: 404 }')
+    expect(deleteFlow).toContain("if (!persistedKey) return false")
+    expect(deleteFlow.indexOf("if (!persistedKey) return false"))
+      .toBeLessThan(deleteFlow.indexOf("db.knowledgeEntries = nextEntries"))
+  })
+
   it("binds upload parsing to the HTTP request lifetime and always detaches", () => {
     const upload = read("src/app/api/knowledge/upload/route.ts")
 
