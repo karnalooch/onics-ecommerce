@@ -2,6 +2,10 @@ import { NextResponse } from "next/server"
 import nodemailer from "nodemailer"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  COMMERCE_TRANSACTION_ROLES,
+  isCommerceTransactionRole,
+} from "@/lib/commerceAccess"
 import { mutateMockData } from "@/store/serverStore"
 import { calculateCustomerUnitPrice, roundMoney } from "@/lib/commerce"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
@@ -92,7 +96,7 @@ type StoredQuote = {
 }
 
 export async function POST(req: Request) {
-  const authCheck = await authorizeAPI(["ADMIN", "BIZ"])
+  const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
   const accountRateLimitKey = String(
@@ -123,6 +127,10 @@ export async function POST(req: Request) {
 
       if (!storedUser || storedUser.isBlocked) {
         throw new Error("ACCOUNT_UNAVAILABLE")
+      }
+
+      if (!isCommerceTransactionRole(storedUser.roleType)) {
+        throw new Error("QUOTE_ROLE_NOT_ALLOWED")
       }
 
       if (storedUser.roleType === "BIZ" && !storedUser.isApproved) {
@@ -251,6 +259,12 @@ export async function POST(req: Request) {
     const code = error instanceof Error ? error.message : ""
     if (code === "ACCOUNT_UNAVAILABLE") {
       return NextResponse.json({ error: "Konto jest niedostępne." }, { status: 403 })
+    }
+    if (code === "QUOTE_ROLE_NOT_ALLOWED") {
+      return NextResponse.json(
+        { error: "Konto nie ma uprawnień do składania zapytań ofertowych." },
+        { status: 403 }
+      )
     }
     if (code === "BIZ_NOT_APPROVED") {
       return NextResponse.json(
