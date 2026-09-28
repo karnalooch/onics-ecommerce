@@ -117,3 +117,13 @@ export function auditKnowledgeSourceInvariants({
     unsupportedFiles,
   }
 }
+
+
+export function auditCurrentKnowledgeSourceInvariants(
+  options: Omit<KnowledgeSourceInvariantAuditOptions, "now">
+) {
+  return auditKnowledgeSourceInvariants({
+    ...options,
+    now: Date.now(),
+  })
+}

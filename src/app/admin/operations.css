@@ -1,0 +1,51 @@
+.operations-admin {
+  --ops-bg: #f6f7f8;
+  --ops-panel: #ffffff;
+  --ops-muted: #667085;
+  --ops-border: #dfe3e8;
+  --ops-strong: #111827;
+  min-height: 100vh;
+  background: var(--ops-bg);
+  color: var(--ops-strong);
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+}
+
+.dark .operations-admin {
+  --ops-bg: #0b0d10;
+  --ops-panel: #111419;
+  --ops-muted: #98a2b3;
+  --ops-border: #242a31;
+  --ops-strong: #f3f4f6;
+}
+
+.operations-admin .fluent-card,
+.operations-admin .glass-mica,
+.operations-admin .satel-card {
+  background: var(--ops-panel) !important;
+  border: 1px solid var(--ops-border) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transform: none !important;
+}
+
+.operations-admin [class*="shadow-"],
+.operations-admin [class*="backdrop-blur"] {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.operations-admin .active-press:active,
+.operations-admin .fluent-card:hover {
+  transform: none !important;
+}
+
+.operations-admin input,
+.operations-admin select,
+.operations-admin textarea {
+  backdrop-filter: none;
+}
+
+.operations-admin table {
+  font-variant-numeric: tabular-nums;
+}
