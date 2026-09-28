@@ -4,6 +4,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
+import { hasAccountRoleAccess } from "@/lib/accountAccess";
+import { findStoredUserBySession } from "@/lib/sessionIdentity";
 import { mutateMockData } from "@/store/serverStore";
 import {
   catalogCategoryRevision,
@@ -42,6 +44,32 @@ const DeleteSubcategorySchema = z.object({
   subcategoryId: z.string().min(1),
 });
 
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
+
+type SessionActor = {
+  id?: string
+  email?: string | null
+}
+
+function assertCurrentAdminAccess(
+  users: StoredActor[],
+  actor: SessionActor
+) {
+  const currentActor = findStoredUserBySession(users, actor)
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error("ADMIN_ACCESS_REVOKED")
+  }
+}
+
 type CategoryRecord = {
   id: string
   name: string
@@ -58,18 +86,33 @@ export type ActionState =
 async function requireAdminAction() {
   const authCheck = await authorizeAPI(["ADMIN"]);
   if (!authCheck.authorized) {
-    return { success: false as const, error: "Brak uprawnień administratora." };
+    return {
+      authorized: false as const,
+      error: "Brak uprawnień administratora."
+    };
   }
-  return null;
+  return {
+    authorized: true as const,
+    actor: authCheck.user,
+  };
+}
+
+function currentAdminActionError(error: unknown): ActionState | null {
+  return error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED"
+    ? { success: false, error: "Uprawnienia administratora zmieniły się przed zapisem." }
+    : null;
 }
 
 export async function addCategoryAction(name: string): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const access = await requireAdminAction();
+  if (!access.authorized) {
+    return { success: false, error: access.error };
+  }
   if (!name.trim()) return { success: false, error: "Nazwa kategorii nie może być pusta" };
 
   try {
     const submission = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], access.actor)
       const categories = db.categories as CategoryRecord[]
       const byName = indexCatalogCategoriesByName(categories)
       const existing = byName.get(normalizeCatalogCategoryName(name))
@@ -106,6 +149,8 @@ export async function addCategoryAction(name: string): Promise<ActionState> {
       data: submission.category
     };
   } catch (error) {
+    const adminAccessError = currentAdminActionError(error);
+    if (adminAccessError) return adminAccessError;
     if (
       error instanceof Error &&
       error.message === "CATEGORY_NAME_EXISTS"
@@ -130,13 +175,16 @@ export async function addCategoryAction(name: string): Promise<ActionState> {
 }
 
 export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSchema>): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const access = await requireAdminAction();
+  if (!access.authorized) {
+    return { success: false, error: access.error };
+  }
   const validated = CategoryUpdateSchema.safeParse(data);
   if (!validated.success) return { success: false, error: "Nieprawidłowe dane" };
 
   try {
     const result = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], access.actor)
       const categories = db.categories as CategoryRecord[]
       const idx = categories.findIndex((category) => category.id === validated.data.id)
       if (idx === -1) throw new Error("CATEGORY_NOT_FOUND")
@@ -180,6 +228,8 @@ export async function updateCategoryAction(data: z.infer<typeof CategoryUpdateSc
         : "Zmiany zostały zapisane"
     };
   } catch (error) {
+    const adminAccessError = currentAdminActionError(error);
+    if (adminAccessError) return adminAccessError;
     if (error instanceof Error && error.message === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
     }
@@ -210,8 +260,10 @@ export async function addSubcategoryAction(
   categoryId: string,
   name: string
 ): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const access = await requireAdminAction();
+  if (!access.authorized) {
+    return { success: false, error: access.error };
+  }
 
   const validated = AddSubcategorySchema.safeParse({ categoryId, name });
   if (!validated.success) {
@@ -220,6 +272,7 @@ export async function addSubcategoryAction(
 
   try {
     const submission = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], access.actor)
       const categories = db.categories as CategoryRecord[]
       const category = categories.find(
         (candidate) => candidate.id === validated.data.categoryId
@@ -254,6 +307,8 @@ export async function addSubcategoryAction(
       data: submission.subcategory,
     };
   } catch (error) {
+    const adminAccessError = currentAdminActionError(error);
+    if (adminAccessError) return adminAccessError;
     const code = error instanceof Error ? error.message : "";
     if (code === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
@@ -274,8 +329,10 @@ export async function renameSubcategoryAction(
   subcategoryId: string,
   name: string
 ): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const access = await requireAdminAction();
+  if (!access.authorized) {
+    return { success: false, error: access.error };
+  }
 
   const validated = RenameSubcategorySchema.safeParse({
     categoryId,
@@ -288,6 +345,7 @@ export async function renameSubcategoryAction(
 
   try {
     const updated = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], access.actor)
       const categories = db.categories as CategoryRecord[]
       const category = categories.find(
         (candidate) => candidate.id === validated.data.categoryId
@@ -330,6 +388,8 @@ export async function renameSubcategoryAction(
       data: updated,
     };
   } catch (error) {
+    const adminAccessError = currentAdminActionError(error);
+    if (adminAccessError) return adminAccessError;
     const code = error instanceof Error ? error.message : "";
     if (code === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
@@ -358,8 +418,10 @@ export async function deleteSubcategoryAction(
   categoryId: string,
   subcategoryId: string
 ): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const access = await requireAdminAction();
+  if (!access.authorized) {
+    return { success: false, error: access.error };
+  }
 
   const validated = DeleteSubcategorySchema.safeParse({
     categoryId,
@@ -371,6 +433,7 @@ export async function deleteSubcategoryAction(
 
   try {
     const result = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], access.actor)
       const categories = db.categories as CategoryRecord[]
       const category = categories.find(
         (candidate) => candidate.id === validated.data.categoryId
@@ -409,6 +472,8 @@ export async function deleteSubcategoryAction(
         : "Podkategoria została usunięta",
     };
   } catch (error) {
+    const adminAccessError = currentAdminActionError(error);
+    if (adminAccessError) return adminAccessError;
     const code = error instanceof Error ? error.message : "";
     if (code === "CATEGORY_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono kategorii" };
@@ -428,8 +493,10 @@ export async function deleteCategoryAction(
   id: string,
   expectedRevision: number
 ): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const access = await requireAdminAction();
+  if (!access.authorized) {
+    return { success: false, error: access.error };
+  }
 
   const validated = z.object({
     id: z.string().min(1),
@@ -441,6 +508,7 @@ export async function deleteCategoryAction(
 
   try {
     const result = await mutateMockData((db) => {
+      assertCurrentAdminAccess(db.users as StoredActor[], access.actor)
       const categories = db.categories as CategoryRecord[]
       const idx = categories.findIndex(
         (category) => category.id === validated.data.id
@@ -475,6 +543,8 @@ export async function deleteCategoryAction(
         : "Kategoria została usunięta"
     };
   } catch (error) {
+    const adminAccessError = currentAdminActionError(error);
+    if (adminAccessError) return adminAccessError;
     if (
       error instanceof Error &&
       error.message === "CATEGORY_REVISION_CONFLICT"
