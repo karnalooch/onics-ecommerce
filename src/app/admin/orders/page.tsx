@@ -1,11 +1,14 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { 
-  ShoppingBag, CalendarClock, Loader2, CheckCircle2, 
-  Terminal, Activity, Package, Truck, Search, 
-  ChevronRight, MoreHorizontal, FileText, Database,
-  ArrowRight, ShieldCheck, RefreshCcw, Box, AlertTriangle
+import {
+  ShoppingBag,
+  Package,
+  FileText,
+  ArrowRight,
+  ShieldCheck,
+  RefreshCcw,
+  AlertTriangle,
 } from "lucide-react"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
