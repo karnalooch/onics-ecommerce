@@ -26,7 +26,10 @@ export function RepairsDashboardClient({
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [search, setSearch] = useState("")
 
-  useEffect(() => setRmas(initialData), [initialData])
+  useEffect(() => {
+    const timer = window.setTimeout(() => setRmas(initialData), 0)
+    return () => window.clearTimeout(timer)
+  }, [initialData])
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase()
