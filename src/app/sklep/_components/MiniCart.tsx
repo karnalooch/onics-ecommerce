@@ -148,7 +148,7 @@ export function MiniCart({
               {refreshingCart
                 ? "Aktualizacja danych…"
                 : hasStockConflict
-                  ? "Sprawdź dostępność"
+                  ? "Popraw dostępność"
                   : requiresPricing
                     ? "Przejdź do zapytania"
                     : "Przejdź do zamówienia"}
