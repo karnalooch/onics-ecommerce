@@ -407,7 +407,7 @@ export default function AdminPaymentsPage() {
             <CreditCard className="w-7 h-7 text-primary" />
           </div>
           <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ops-muted)]">
               Płatności
             </span>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">
@@ -419,7 +419,7 @@ export default function AdminPaymentsPage() {
         <button
           onClick={loadMethods}
           disabled={loading}
-          className="h-11 px-5 border border-slate-200 bg-white text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:border-slate-950 disabled:opacity-50"
+          className="min-h-11 rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] px-4 text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
         >
           <RefreshCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           Odśwież status
@@ -430,7 +430,7 @@ export default function AdminPaymentsPage() {
         <div className="flex items-start gap-4">
           <ShieldCheck className="w-5 h-5 text-primary mt-0.5" />
           <div>
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-950">
+            <p className="text-sm font-semibold text-foreground">
               Przełączniki dotyczą tworzenia nowych płatności
             </p>
             <p className="text-sm text-slate-600 mt-2 leading-relaxed">
@@ -505,7 +505,7 @@ export default function AdminPaymentsPage() {
                 )}
                 {control.enabled
                   ? "WYŁĄCZ WSZYSTKIE PŁATNOŚCI"
-                  : "WŁĄCZ PŁATNOŚCI Aktywne"}
+                  : "WŁĄCZ PŁATNOŚCI ONLINE"}
               </button>
 
               <button
@@ -541,7 +541,7 @@ export default function AdminPaymentsPage() {
             <button
               onClick={runEmergencyShutdown}
               disabled={saving !== null || emergencyRunning}
-              className="min-w-[300px] h-14 px-6 bg-red-700 text-foreground text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="min-h-12 px-5 rounded-lg bg-red-700 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {emergencyRunning ? (
                 <RefreshCcw className="w-4 h-4 animate-spin" />
