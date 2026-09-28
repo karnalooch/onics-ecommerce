@@ -6,6 +6,12 @@ import {
   sortModelsByRecommendation,
 } from "@/lib/knowledge/aiPricing"
 import { authorizeAPI } from "@/lib/authUtils"
+import { checkAdminCostLimit } from "@/lib/adminCostRateLimit"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 
 type GoogleModel = {
   name?: string
@@ -17,6 +23,8 @@ type GoogleModelsResponse = {
   error?: { message?: string }
 }
 
+const VALIDATE_KEY_MAX_BODY_BYTES = 8 * 1024
+
 const RequestSchema = z.object({
   apiKey: z.string().trim().min(10).max(512),
   isPDF: z.boolean().optional().default(false),
@@ -26,8 +34,21 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
+  const costLimit = checkAdminCostLimit("knowledge-validate-key", authCheck.user)
+  if (!costLimit.allowed) {
+    return NextResponse.json(
+      { error: "Zbyt wiele walidacji klucza. Spróbuj ponownie później." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(costLimit.retryAfterSeconds) },
+      }
+    )
+  }
+
   try {
-    const parsed = RequestSchema.safeParse(await req.json())
+    const parsed = RequestSchema.safeParse(
+      await readCommerceJson(req, VALIDATE_KEY_MAX_BODY_BYTES)
+    )
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Nieprawidłowy klucz API." },
@@ -113,6 +134,19 @@ export async function POST(req: Request) {
       message: `Klucz zweryfikowany. Wykryto ${modelNames.length} obsługiwanych modeli.`,
     })
   } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie walidacji klucza jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie walidacji klucza." },
+        { status: 400 }
+      )
+    }
+
     if (req.signal.aborted) {
       return NextResponse.json(
         { error: "Walidacja klucza API została przerwana." },
