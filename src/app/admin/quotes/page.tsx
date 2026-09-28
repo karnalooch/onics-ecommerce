@@ -1,11 +1,19 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { 
-  FileText, Printer, Plus, Trash2, Search, 
-  ChevronRight, LayoutGrid, Package, UserCircle, Settings, Layers, Briefcase,
-  Terminal, ShieldCheck, Activity, Download, RefreshCcw, Box, Zap, Globe
+import {
+  Printer,
+  Plus,
+  Trash2,
+  Search,
+  Briefcase,
+  Terminal,
+  ShieldCheck,
+  RefreshCcw,
+  Box,
+  Zap,
+  Globe,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
