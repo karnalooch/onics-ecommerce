@@ -1,9 +1,7 @@
 // src/app/admin/products/_components/StagingItem.tsx
 "use client";
 
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { X, Check, AlertTriangle, RefreshCw, FileText, Brain, ArrowDownRight, Zap, Database, ExternalLink, Trash2 } from "lucide-react";
+import { Check, AlertTriangle, RefreshCw, FileText, Brain, Database, Trash2 } from "lucide-react";
 import { memo } from "react";
 
 interface IStagingItemProps {
