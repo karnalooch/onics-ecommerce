@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const orderId = "orderId" in parsed.data ? orderId : undefined
+  const orderId = "orderId" in parsed.data ? parsed.data.orderId : undefined
 
   if (!supportsPaymentProviderCapability("PRZELEWY24", "reconcile")) {
     return NextResponse.json(
