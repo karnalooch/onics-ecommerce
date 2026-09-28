@@ -3,6 +3,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { KnowledgeStore, KnowledgeEntry, KnowledgeEntrySchema, ProgressCallback, ParserOptions, KnowledgeTrainingActor } from './types';
+import {
+  knowledgeSourceProvenanceIncludes,
+  mergeKnowledgeSourceProvenance,
+} from './provenance';
 import { hasAccountRoleAccess } from '@/lib/accountAccess';
 import { findStoredUserBySession } from '@/lib/sessionIdentity';
 
@@ -177,6 +181,97 @@ export async function deleteKnowledgeEntry(
       { aborted: false, actor }
     )
     return deleteKnowledgeEntryFromDb(db, model)
+  })
+}
+
+export type KnowledgeSourceDeletionResult = {
+  removedEntries: number
+  removedMetadataReferences: number
+  revision: number
+}
+
+export function deleteKnowledgeSourceFromDb(
+  db: KnowledgeDbSnapshot,
+  filename: string,
+  now = new Date().toISOString()
+): KnowledgeSourceDeletionResult {
+  const target = filename.trim()
+  if (!target) {
+    throw new Error("KNOWLEDGE_SOURCE_FILENAME_INVALID")
+  }
+
+  const currentEntries = db.knowledgeEntries || {}
+  const nextEntries: Record<string, unknown> = {}
+  let removedEntries = 0
+
+  for (const [sku, rawEntry] of Object.entries(currentEntries)) {
+    const source =
+      rawEntry &&
+      typeof rawEntry === "object" &&
+      typeof (rawEntry as { source?: unknown }).source === "string"
+        ? (rawEntry as { source: string }).source
+        : undefined
+
+    if (knowledgeSourceProvenanceIncludes(source, target)) {
+      removedEntries += 1
+      continue
+    }
+
+    nextEntries[sku] = rawEntry
+  }
+
+  const meta = db.knowledgeMeta || {}
+  const sources = Array.isArray(meta.sources)
+    ? meta.sources.filter((entry): entry is string => typeof entry === "string")
+    : []
+  const processedSources = Array.isArray(meta.processedSources)
+    ? meta.processedSources.filter(
+        (entry): entry is string => typeof entry === "string"
+      )
+    : []
+
+  const nextSources = sources.filter((entry) => entry !== target)
+  const nextProcessedSources = processedSources.filter(
+    (entry) => entry !== target
+  )
+  const removedMetadataReferences =
+    sources.length -
+    nextSources.length +
+    processedSources.length -
+    nextProcessedSources.length
+
+  const currentRevision =
+    typeof meta.revision === "number" &&
+    Number.isSafeInteger(meta.revision) &&
+    meta.revision >= 0
+      ? meta.revision
+      : 0
+
+  db.knowledgeEntries = nextEntries
+  db.knowledgeMeta = {
+    revision: currentRevision + 1,
+    sources: nextSources,
+    processedSources: nextProcessedSources,
+    lastUpdated: now,
+  }
+
+  return {
+    removedEntries,
+    removedMetadataReferences,
+    revision: currentRevision + 1,
+  }
+}
+
+export async function deleteKnowledgeSource(
+  filename: string,
+  actor: KnowledgeTrainingActor
+) {
+  return mutateMockData((db) => {
+    assertKnowledgeTrainingAdminAccess(
+      db.users as KnowledgeWriteActor[],
+      { aborted: false, actor }
+    )
+    return deleteKnowledgeSourceFromDb(db, filename)
   })
 }
 
@@ -407,8 +502,11 @@ function mergeKnowledgeEntry(current: KnowledgeStore, symbol: string, entry: Kno
     existing.specs = entry.specs;
   }
 
-  if (entry.source !== existing.source && !existing.source?.includes(entry.source || '')) {
-    existing.source = existing.source ? `${existing.source}, ${entry.source}` : entry.source;
+  if (entry.source) {
+    existing.source = mergeKnowledgeSourceProvenance(
+      existing.source,
+      entry.source
+    );
   }
 
   return false;
