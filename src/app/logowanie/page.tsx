@@ -33,7 +33,7 @@ export default function LoginPage() {
       const session = await sessionResponse.json()
 
       window.location.href =
-        session?.user?.role === "ADMIN" ? "/admin" : "/dashboard"
+        session?.user?.role === "ADMIN" ? "/admin" : "/"
     } catch {
       setError(
         "Logowanie jest chwilowo niedostępne. Spróbuj ponownie za moment."
