@@ -58,8 +58,11 @@ export default function QuotesGenerator() {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const timer = window.setTimeout(() => {
+      void loadData()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [loadData])
 
   const addLineItem = (productId: string) => {
     setItems([...items, { productId, qty: 1, discount: 0 }]);
