@@ -14,6 +14,9 @@ const COMMERCE_JSON_ROUTES = [
   "src/app/api/payment-methods/reconcile/route.ts",
   "src/app/api/payment-methods/reconcile/stripe/route.ts",
   "src/app/api/payment-methods/reconcile/przelewy24/route.ts",
+  "src/app/api/payment-methods/route.ts",
+  "src/app/api/payment-methods/emergency-shutdown/route.ts",
+  "src/app/api/orders/bank-transfer/route.ts",
 ] as const
 
 describe("commerce JSON ingress wiring", () => {
