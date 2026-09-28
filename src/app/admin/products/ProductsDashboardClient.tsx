@@ -8,7 +8,7 @@ import { AICommandCenter } from "./_components/AICommandCenter";
 import { StructureApprovalModal } from "./_components/StructureApprovalModal";
 import { toast } from "sonner";
 import { useCatalogStore } from "@/store/catalogStore";
-import { ShieldCheck, Activity, Package, HardDrive } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { useKnowledge } from "@/lib/knowledge/KnowledgeContext";
 import { useRouter } from "next/navigation";
 import { IProduct, ICategory, IManufacturer } from "./_lib/types";
@@ -295,28 +295,20 @@ export function ProductsDashboardClient({
 
     return [
       {
-        label: "Indeksy katalogowe",
+        label: "Indeksy",
         value: products.length.toLocaleString("pl-PL"),
-        icon: <Package className="w-5 h-5 text-primary" />,
-        sector: "Katalog",
       },
       {
         label: "Sztuki na stanie",
         value: stockTotal.toLocaleString("pl-PL"),
-        icon: <HardDrive className="w-5 h-5 text-primary" />,
-        sector: "Magazyn",
       },
       {
-        label: "Pozycje bez ceny",
+        label: "Bez ceny",
         value: unpricedCount.toLocaleString("pl-PL"),
-        icon: <Activity className="w-5 h-5 text-primary" />,
-        sector: "Cennik",
       },
       {
         label: "Do uzupełnienia",
         value: incompleteCount.toLocaleString("pl-PL"),
-        icon: <ShieldCheck className="w-5 h-5 text-primary" />,
-        sector: "Jakość danych",
       },
     ];
   }, [products]);
@@ -365,10 +357,12 @@ export function ProductsDashboardClient({
             isItemConfirmed={isStagingItemConfirmed}
           />
         ) : (
-          <div className="py-32 text-center fluent-card border-white/10 group cursor-pointer active-press">
-            <ShieldCheck className="w-16 h-16 text-primary/20 mx-auto mb-6 group-hover:scale-110 transition-transform" />
-            <h3 className="text-xl font-bold text-foreground">Gotowy do importu</h3>
-            <p className="text-sm text-muted-foreground mt-2">Wybierz plik Excel lub PDF, aby rozpocząć proces.</p>
+          <div className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] px-6 py-16 text-center">
+            <ShieldCheck className="mx-auto h-7 w-7 text-[var(--ops-muted)]" />
+            <h3 className="mt-4 text-base font-semibold">Gotowy do importu</h3>
+            <p className="mt-2 text-sm text-[var(--ops-muted)]">
+              Wybierz plik Excel lub PDF, aby rozpocząć proces.
+            </p>
           </div>
         )}
       </div>
@@ -376,68 +370,52 @@ export function ProductsDashboardClient({
   }
 
   return (
-    <div className="flex flex-col gap-12 animate-in fade-in duration-500 pb-20">
-        
-        {/* FLUENT MODULE HEADER */}
-        <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
-           <div className="flex items-center gap-6">
-              <div className="w-16 h-16 bg-primary text-white flex items-center justify-center rounded-xl shadow-2xl shadow-primary/30">
-                 <Package className="w-8 h-8" />
-              </div>
-              <div className="flex flex-col">
-                 <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Zarządzanie Produktami</span>
-                    <span className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Rejestr PIM</span>
-                 </div>
-                 <h1 className="text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mt-1">Katalog Produktów</h1>
-              </div>
-           </div>
-
-           <div className="flex items-center gap-12">
-              <div className="flex flex-col items-end">
-                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Indeksów Razem</span>
-                 <span className="text-3xl font-extrabold text-foreground tabular-nums">{products.length}</span>
-              </div>
-              <div className="flex flex-col items-end pl-12 border-l border-black/5 dark:border-white/10">
-                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Stan widoku</span>
-                 <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2.5 h-2.5 bg-green-500 rounded-full shadow-lg shadow-green-500/40" />
-                    <span className="text-[12px] font-bold text-foreground uppercase tracking-tight">Dane załadowane</span>
-                 </div>
-              </div>
-           </div>
+    <div className="space-y-6 pb-12">
+      <header className="flex flex-col justify-between gap-4 border-b border-[var(--ops-border)] pb-5 md:flex-row md:items-end">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ops-muted)]">
+            Rejestr techniczny
+          </div>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+            Katalog
+          </h1>
+          <p className="mt-2 text-sm text-[var(--ops-muted)]">
+            Produkty, klasyfikacja, ceny i stan magazynowy.
+          </p>
         </div>
-
-        {/* STATS STRIP (FLUENT CARDS) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           {catalogStats.map((stat, i) => (
-              <div key={i} className="fluent-card p-8 flex items-center justify-between group active-press border-white/5 shadow-xl">
-                 <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">{stat.sector}</span>
-                    <span className="text-3xl font-extrabold text-foreground leading-none">{stat.value}</span>
-                    <span className="text-[11px] font-bold text-muted-foreground mt-3 uppercase tracking-tight">{stat.label}</span>
-                 </div>
-                 <div className="w-12 h-12 rounded-xl bg-primary/5 dark:bg-white/5 flex items-center justify-center transition-all group-hover:bg-primary group-hover:text-white group-hover:scale-110">
-                    {stat.icon}
-                 </div>
-              </div>
-           ))}
+        <div className="font-mono text-sm text-[var(--ops-muted)]">
+          {products.length.toLocaleString("pl-PL")} indeksów
         </div>
-        
-        {/* MAIN DATA VIEWPORT */}
-        <main className="w-full">
-           <ProductTable 
-             products={paginated} 
-             onDelete={handleDeleteProduct}
-             currentPage={currentPage} 
-             totalPages={Math.ceil(filtered.length / pageSize)} 
-             onPageChange={setCurrentPage} 
-             pageSize={pageSize} 
-             onPageSizeChange={setPageSize} 
-             categories={localCategories} 
-           />
-        </main>
+      </header>
+
+      <dl className="grid overflow-hidden rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] sm:grid-cols-2 xl:grid-cols-4">
+        {catalogStats.map((stat) => (
+          <div
+            key={stat.label}
+            className="border-b border-[var(--ops-border)] px-4 py-4 last:border-b-0 sm:border-r sm:[&:nth-child(2)]:border-r-0 xl:border-b-0 xl:[&:nth-child(2)]:border-r xl:last:border-r-0"
+          >
+            <dt className="text-xs font-semibold uppercase tracking-wider text-[var(--ops-muted)]">
+              {stat.label}
+            </dt>
+            <dd className="mt-2 font-mono text-2xl font-semibold">
+              {stat.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <main className="w-full min-w-0">
+        <ProductTable
+          products={paginated}
+          onDelete={handleDeleteProduct}
+          currentPage={currentPage}
+          totalPages={Math.ceil(filtered.length / pageSize)}
+          onPageChange={setCurrentPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
+          categories={localCategories}
+        />
+      </main>
     </div>
   );
 }
