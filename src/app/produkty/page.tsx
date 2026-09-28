@@ -56,7 +56,8 @@ export default async function ConsumerCatalogPage({
   const cartOwnerKey = buildCartOwnerKey(sessionUser)
   const params = (await searchParams) ?? {}
   const query = typeof params.q === "string" ? params.q.trim() : ""
-  const activeCategory = typeof params.category === "string" ? params.category.trim() : ""
+  const activeCategory =
+    typeof params.category === "string" ? params.category.trim() : ""
 
   let products: CatalogProduct[] = []
 
@@ -77,7 +78,6 @@ export default async function ConsumerCatalogPage({
   }
 
   const categories = buildCatalogCategoryOptions(products)
-
   const visibleProducts = products.filter(
     (product) =>
       matchesProductCatalogQuery(product, query) &&
@@ -93,175 +93,192 @@ export default async function ConsumerCatalogPage({
   }
 
   return (
-    <div className="px-4 py-12 sm:px-6 lg:py-16">
-      <div className="mx-auto max-w-[1440px]">
-        <header className="flex flex-col justify-between gap-7 lg:flex-row lg:items-end">
+    <div className="bg-[#f6f6f3]">
+      <div className="mx-auto max-w-[1320px] px-5 py-12 sm:px-7 lg:py-16">
+        <header className="grid gap-6 border-b border-[#d9dbdc] pb-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-primary">
-              Katalog produktowy
-            </span>
-            <h1 className="mt-3 max-w-4xl text-4xl font-extrabold tracking-[-0.04em] sm:text-5xl">
-              Znajdź sprzęt do swojego projektu.
+            <p className="text-base font-semibold text-primary">Katalog urządzeń</p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-5xl">
+              Sprzęt do instalacji i serwisu.
             </h1>
-            <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-muted-foreground">
-              Przeszukuj katalog po nazwie, symbolu lub producencie. Ceny i warunki B2B
-              są widoczne zgodnie z uprawnieniami konta.
+            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
+              Szukaj po nazwie, SKU, producencie albo kategorii. Ceny konta i funkcje
+              zakupowe są udostępniane zgodnie z rolą i zatwierdzeniem partnera.
             </p>
           </div>
 
-          {!session && (
+          {!session ? (
             <Link
               href="/logowanie"
-              className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-primary/10 px-5 text-sm font-extrabold text-primary"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#d5d7d8] bg-white px-4 text-[15px] font-semibold text-slate-800"
             >
-              <LockKeyhole className="h-4 w-4" />
-              Ceny partnerskie po zalogowaniu
+              <LockKeyhole className="h-4 w-4 text-primary" />
+              Zaloguj się po ceny partnera
             </Link>
-          )}
+          ) : null}
         </header>
 
-        <form
-          method="get"
-          className="mt-8 flex flex-col gap-3 rounded-2xl border border-black/5 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:flex-row"
-        >
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/60" />
+        <form method="get" className="mt-7 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
             <input
               type="search"
               name="q"
               defaultValue={query}
-              placeholder="Szukaj po nazwie, SKU lub producencie…"
-              className="h-12 w-full rounded-xl border border-black/10 bg-black/[0.02] pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-primary/40 focus:ring-4 focus:ring-primary/10 dark:border-white/10 dark:bg-white/[0.04]"
+              placeholder="Nazwa, SKU, producent, parametr techniczny…"
+              className="h-13 w-full rounded-lg border border-[#cfd2d4] bg-white pl-12 pr-4 text-base text-slate-950 outline-none focus:border-primary"
             />
-            {activeCategory && <input type="hidden" name="category" value={activeCategory} />}
+            {activeCategory ? <input type="hidden" name="category" value={activeCategory} /> : null}
           </div>
           <button
             type="submit"
-            className="h-12 rounded-xl bg-primary px-6 text-sm font-extrabold text-white shadow-lg shadow-primary/15"
+            className="min-h-13 rounded-lg bg-primary px-6 text-base font-semibold text-white hover:bg-[#a9161c]"
           >
             Szukaj
           </button>
         </form>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <nav className="mt-5 flex gap-1 overflow-x-auto border-b border-[#d9dbdc]" aria-label="Kategorie katalogu">
           <Link
             href={categoryHref()}
-            className={`rounded-full border px-4 py-2 text-xs font-extrabold transition ${
-              !activeCategory
-                ? "border-[#102033] bg-[#102033] text-white"
-                : "border-black/10 bg-white text-muted-foreground hover:text-foreground dark:border-white/10 dark:bg-white/[0.04]"
-            }`}
+            className={
+              "shrink-0 border-b-2 px-3 py-3 text-sm font-semibold " +
+              (!activeCategory
+                ? "border-primary text-slate-950"
+                : "border-transparent text-slate-600 hover:text-slate-950")
+            }
           >
             Wszystkie
           </Link>
-          {categories.map((category) => (
-            <Link
-              key={category.id}
-              href={categoryHref(category.id)}
-              className={`rounded-full border px-4 py-2 text-xs font-extrabold transition ${
-                normalize(activeCategory) === normalize(category.id) ||
-                normalize(activeCategory) === normalize(category.name)
-                  ? "border-[#102033] bg-[#102033] text-white"
-                  : "border-black/10 bg-white text-muted-foreground hover:text-foreground dark:border-white/10 dark:bg-white/[0.04]"
-              }`}
-            >
-              {category.name}
-            </Link>
-          ))}
-        </div>
+          {categories.map((category) => {
+            const active =
+              normalize(activeCategory) === normalize(category.id) ||
+              normalize(activeCategory) === normalize(category.name)
+            return (
+              <Link
+                key={category.id}
+                href={categoryHref(category.id)}
+                className={
+                  "shrink-0 border-b-2 px-3 py-3 text-sm font-semibold " +
+                  (active
+                    ? "border-primary text-slate-950"
+                    : "border-transparent text-slate-600 hover:text-slate-950")
+                }
+              >
+                {category.name}
+              </Link>
+            )
+          })}
+        </nav>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-5 border border-[#d9dbdc] bg-white">
+          <div className="hidden grid-cols-[96px_minmax(0,1fr)_190px_150px_190px] gap-4 border-b border-[#d9dbdc] bg-[#f1f1ee] px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-slate-500 lg:grid">
+            <span>Produkt</span>
+            <span>Identyfikacja</span>
+            <span>Klasyfikacja</span>
+            <span>Dostępność</span>
+            <span className="text-right">Cena / akcja</span>
+          </div>
+
           {visibleProducts.length > 0 ? (
-            visibleProducts.map((product: CatalogProduct) => {
-              const price = Number(product.price ?? 0)
-              const canShowPrice = !product.priceHidden && Number.isFinite(price) && price > 0
-              const cartProduct: CartItem = {
-                id: String(product.id ?? product.sku ?? product.name ?? "product"),
-                sku: String(product.sku ?? ""),
-                name: String(product.name ?? "Produkt"),
-                price: Number.isFinite(price) ? price : 0,
-                quantity: 1,
-              }
+            <div className="divide-y divide-[#e0e1e1]">
+              {visibleProducts.map((product: CatalogProduct) => {
+                const price = Number(product.price ?? 0)
+                const stock = Number(product.stock ?? 0)
+                const canShowPrice =
+                  !product.priceHidden && Number.isFinite(price) && price > 0
+                const cartProduct: CartItem = {
+                  id: String(product.id ?? product.sku ?? product.name ?? "product"),
+                  sku: String(product.sku ?? ""),
+                  name: String(product.name ?? "Produkt"),
+                  price: Number.isFinite(price) ? price : 0,
+                  quantity: 1,
+                }
 
-              return (
-                <article
-                  key={product.id ?? product.sku}
-                  className="grid gap-4 rounded-2xl border border-black/5 bg-white p-4 shadow-sm transition hover:shadow-lg dark:border-white/10 dark:bg-white/[0.04] sm:grid-cols-[84px_1fr] lg:grid-cols-[84px_1fr_180px_210px] lg:items-center"
-                >
-                  <div className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-xl bg-black/[0.035] dark:bg-white/[0.05]">
-                    {product.imageUrl ? (
-                      <img
-                        src={product.imageUrl}
-                        alt=""
-                        className="h-full w-full object-contain p-2"
-                      />
-                    ) : (
-                      <Package className="h-6 w-6 text-muted-foreground/45" />
-                    )}
-                  </div>
+                return (
+                  <article
+                    key={product.id ?? product.sku}
+                    className="grid gap-4 p-4 lg:grid-cols-[96px_minmax(0,1fr)_190px_150px_190px] lg:items-center"
+                  >
+                    <div className="flex h-20 w-20 items-center justify-center overflow-hidden border border-[#e0e1e1] bg-[#fafaf8]">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt=""
+                          className="h-full w-full object-contain p-2"
+                        />
+                      ) : (
+                        <Package className="h-6 w-6 text-slate-400" />
+                      )}
+                    </div>
 
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-primary">
-                      {product.sku || "Bez SKU"}
-                    </span>
-                    <h2 className="mt-1 truncate text-lg font-extrabold tracking-tight">
-                      {product.name || "Produkt bez nazwy"}
-                    </h2>
-                    <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 text-muted-foreground">
-                      {getProductCatalogDescription(product) || getCategoryLabel(product)}
-                    </p>
-                  </div>
+                    <div className="min-w-0">
+                      <div className="font-mono text-xs font-semibold text-primary">
+                        {product.sku || "Bez SKU"}
+                      </div>
+                      <h2 className="mt-1 text-lg font-semibold leading-6 text-slate-950">
+                        {product.name || "Produkt bez nazwy"}
+                      </h2>
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
+                        {getProductCatalogDescription(product) || getCategoryLabel(product)}
+                      </p>
+                    </div>
 
-                  <div className="sm:col-start-2 lg:col-auto">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground">
-                      Producent
-                    </span>
-                    <strong className="mt-1 block text-sm">
-                      {product.manufacturer || "—"}
-                    </strong>
-                    <span className="mt-2 inline-flex items-center gap-2 text-xs font-bold text-emerald-600">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      w katalogu
-                    </span>
-                  </div>
+                    <div className="text-sm leading-6">
+                      <div className="font-semibold text-slate-900">
+                        {product.manufacturer || "Producent nieokreślony"}
+                      </div>
+                      <div className="text-slate-600">{getCategoryLabel(product)}</div>
+                    </div>
 
-                  <div className="sm:col-start-2 lg:col-auto lg:text-right">
-                    {canShowPrice ? (
-                      <>
-                        <strong className="block text-xl">
-                          {price.toFixed(2)} PLN
-                        </strong>
-                        <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          cena netto
-                        </span>
-                        <div className="mt-3 flex lg:justify-end">
-                          <AddToCartButton product={cartProduct} ownerKey={cartOwnerKey} />
-                        </div>
-                      </>
-                    ) : (
-                      <Link
-                        href="/logowanie"
-                        className="inline-flex items-center gap-2 rounded-xl bg-black/[0.035] px-4 py-3 text-xs font-extrabold text-muted-foreground transition hover:text-primary dark:bg-white/[0.05]"
-                      >
-                        <LockKeyhole className="h-4 w-4" />
-                        Zaloguj, aby zobaczyć cenę
-                      </Link>
-                    )}
-                  </div>
-                </article>
-              )
-            })
+                    <div className="text-sm">
+                      {canShowPrice ? (
+                        <>
+                          <div className="font-semibold text-slate-950">
+                            {Number.isFinite(stock) ? `${stock} szt.` : "—"}
+                          </div>
+                          <div className="mt-1 text-slate-500">stan katalogowy</div>
+                        </>
+                      ) : (
+                        <div className="text-slate-600">Po zalogowaniu</div>
+                      )}
+                    </div>
+
+                    <div className="lg:text-right">
+                      {canShowPrice ? (
+                        <>
+                          <strong className="block text-lg font-semibold text-slate-950">
+                            {price.toFixed(2)} PLN
+                          </strong>
+                          <span className="mt-1 block text-xs text-slate-500">netto</span>
+                          <div className="mt-3 flex lg:justify-end">
+                            <AddToCartButton product={cartProduct} ownerKey={cartOwnerKey} />
+                          </div>
+                        </>
+                      ) : (
+                        <Link
+                          href="/logowanie"
+                          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#d7d9da] px-3 text-sm font-semibold text-slate-700 hover:border-slate-400"
+                        >
+                          <LockKeyhole className="h-4 w-4 text-primary" />
+                          Pokaż cenę
+                        </Link>
+                      )}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-black/10 bg-white p-10 text-center dark:border-white/10 dark:bg-white/[0.04]">
-              <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <h2 className="mt-4 text-xl font-extrabold">Brak produktów dla wybranych filtrów</h2>
-              <p className="mt-2 text-sm font-medium text-muted-foreground">
+            <div className="p-10 text-center">
+              <Package className="mx-auto h-8 w-8 text-slate-400" />
+              <h2 className="mt-4 text-xl font-semibold text-slate-950">
+                Brak produktów dla wybranych filtrów
+              </h2>
+              <p className="mt-2 text-base text-slate-600">
                 Zmień wyszukiwaną frazę albo wróć do całego katalogu.
               </p>
-              <Link
-                href="/produkty"
-                className="mt-5 inline-flex items-center gap-2 text-sm font-extrabold text-primary"
-              >
+              <Link href="/produkty" className="mt-5 inline-flex items-center gap-2 font-semibold text-primary">
                 Wyczyść filtry
                 <ArrowRight className="h-4 w-4" />
               </Link>
@@ -269,11 +286,9 @@ export default async function ConsumerCatalogPage({
           )}
         </div>
 
-        <footer className="mt-6 flex flex-col justify-between gap-3 text-xs font-bold text-muted-foreground sm:flex-row sm:items-center">
-          <span>
-            Wyświetlono {visibleProducts.length} z {products.length} produktów
-          </span>
-          <Link href="/kontakt" className="inline-flex items-center gap-2 text-primary">
+        <footer className="mt-5 flex flex-col justify-between gap-3 text-sm text-slate-600 sm:flex-row sm:items-center">
+          <span>Wyświetlono {visibleProducts.length} z {products.length} produktów</span>
+          <Link href="/kontakt" className="inline-flex items-center gap-2 font-semibold text-primary">
             Potrzebujesz pomocy w doborze?
             <ShieldCheck className="h-4 w-4" />
           </Link>
