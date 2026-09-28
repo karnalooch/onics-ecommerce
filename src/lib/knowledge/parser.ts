@@ -7,6 +7,7 @@ import {
   knowledgeSourceProvenanceIncludes,
   mergeKnowledgeSourceProvenance,
 } from './provenance';
+import { knowledgeStoreReferencesSource } from './invariants';
 import { hasAccountRoleAccess } from '@/lib/accountAccess';
 import { findStoredUserBySession } from '@/lib/sessionIdentity';
 
@@ -272,6 +273,64 @@ export async function deleteKnowledgeSource(
       { aborted: false, actor }
     )
     return deleteKnowledgeSourceFromDb(db, filename)
+  })
+}
+
+export type KnowledgeOrphanDeletionFenceResult = {
+  allowed: boolean
+  revision: number
+}
+
+export function fenceKnowledgeOrphanDeletionFromDb(
+  db: KnowledgeDbSnapshot,
+  filename: string,
+  now = new Date().toISOString()
+): KnowledgeOrphanDeletionFenceResult {
+  const target = filename.trim()
+  if (!target) {
+    throw new Error("KNOWLEDGE_SOURCE_FILENAME_INVALID")
+  }
+
+  const currentStore = buildKnowledgeFromDb(db)
+  const currentRevision = currentStore.revision ?? 0
+
+  if (knowledgeStoreReferencesSource(currentStore, target)) {
+    return {
+      allowed: false,
+      revision: currentRevision,
+    }
+  }
+
+  const meta = db.knowledgeMeta || {}
+  db.knowledgeMeta = {
+    revision: currentRevision + 1,
+    sources: Array.isArray(meta.sources)
+      ? meta.sources.filter((entry): entry is string => typeof entry === "string")
+      : [],
+    processedSources: Array.isArray(meta.processedSources)
+      ? meta.processedSources.filter(
+          (entry): entry is string => typeof entry === "string"
+        )
+      : [],
+    lastUpdated: now,
+  }
+
+  return {
+    allowed: true,
+    revision: currentRevision + 1,
+  }
+}
+
+export async function fenceKnowledgeOrphanDeletion(
+  filename: string,
+  actor: KnowledgeTrainingActor
+) {
+  return mutateMockData((db) => {
+    assertKnowledgeTrainingAdminAccess(
+      db.users as KnowledgeWriteActor[],
+      { aborted: false, actor }
+    )
+    return fenceKnowledgeOrphanDeletionFromDb(db, filename)
   })
 }
 
