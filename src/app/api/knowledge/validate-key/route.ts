@@ -42,7 +42,10 @@ export async function POST(req: Request) {
           "x-goog-api-key": parsed.data.apiKey,
         },
         cache: "no-store",
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.any([
+          req.signal,
+          AbortSignal.timeout(10000),
+        ]),
       }
     )
     const data = (await response.json()) as GoogleModelsResponse
@@ -110,6 +113,13 @@ export async function POST(req: Request) {
       message: `Klucz zweryfikowany. Wykryto ${modelNames.length} obsługiwanych modeli.`,
     })
   } catch (error) {
+    if (req.signal.aborted) {
+      return NextResponse.json(
+        { error: "Walidacja klucza API została przerwana." },
+        { status: 499 }
+      )
+    }
+
     console.error("Key validation error:", error)
     return NextResponse.json(
       { error: "Błąd podczas walidacji klucza API." },
