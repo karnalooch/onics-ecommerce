@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
+import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import {
   confirmBankTransferPayment,
   confirmBankTransferRefund,
@@ -38,6 +40,14 @@ const BankTransferActionSchema = z.object({
 })
 
 type BankTransferAction = z.infer<typeof BankTransferActionSchema>["action"]
+
+type StoredActor = {
+  id?: string
+  email?: string
+  roleType?: string
+  isApproved?: boolean
+  isBlocked?: boolean
+}
 
 function requiredCapabilities(
   action: BankTransferAction
@@ -81,6 +91,17 @@ export async function POST(req: Request) {
 
   try {
     const result = await mutateMockData((db) => {
+      const currentActor = findStoredUserBySession(
+        db.users as StoredActor[],
+        authCheck.user
+      )
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("ADMIN_ACCESS_REVOKED")
+      }
+
       const order = (db.orders as BankTransferOrder[]).find(
         (candidate) => candidate.id === parsed.data.id
       )
@@ -166,6 +187,13 @@ export async function POST(req: Request) {
     )
   } catch (error) {
     const code = error instanceof Error ? error.message : ""
+
+    if (code === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed rozliczeniem przelewu." },
+        { status: 403 }
+      )
+    }
 
     if (code === "ORDER_NOT_FOUND") {
       return NextResponse.json(
