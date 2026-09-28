@@ -1,22 +1,58 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { 
-  ShoppingBag, CalendarClock, Loader2, CheckCircle2, 
-  Terminal, Activity, Package, Truck, Search, 
-  ChevronRight, MoreHorizontal, FileText, Database,
-  ArrowRight, ShieldCheck, RefreshCcw, Box, AlertTriangle
+import {
+  ShoppingBag,
+  Package,
+  FileText,
+  ArrowRight,
+  ShieldCheck,
+  RefreshCcw,
+  AlertTriangle,
 } from "lucide-react"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 
+type OrderItem = {
+  id?: string
+  sku?: string
+  name?: string
+  price: number
+  quantity: number
+}
+
+type AdminOrder = {
+  id: string
+  status: string
+  orderType?: string
+  checkoutRegistrationStatus?: string
+  estimatedDeliveryDays?: number
+  items?: OrderItem[]
+  user?: {
+    companyName?: string
+    email?: string
+  }
+  totalPriceOrig?: number
+  totalPriceFinal?: number
+  paymentLifecycle?: {
+    provider?: string | null
+    kind?: string | null
+  } | null
+  paymentAdminActions?: string[]
+  paymentStatus?: string | null
+  refundStatus?: string | null
+  returnStatus?: string | null
+  adminStateToken?: string
+}
+
+// PAYMENT_REGISTRATION_UNCERTAIN is retained as the backend/audit token; the visible label is humanized.
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [validatingOrder, setValidatingOrder] = useState<any | null>(null);
+  const [validatingOrder, setValidatingOrder] = useState<AdminOrder | null>(null);
 
   const [deliveryDays, setDeliveryDays] = useState<string>("5");
-  const [editableItems, setEditableItems] = useState<any[]>([]);
+  const [editableItems, setEditableItems] = useState<OrderItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [returning, setReturning] = useState(false);
@@ -51,7 +87,7 @@ export default function AdminOrdersPage() {
       const res = await fetch("/api/orders");
       const data = await res.json();
       setOrders(data);
-    } catch (err) {
+    } catch {
       toast.error("FAULT: Błąd synchronizacji potoku zamówień.");
     } finally {
       setLoading(false);
@@ -59,13 +95,16 @@ export default function AdminOrdersPage() {
   }, []);
 
   useEffect(() => {
-    fetchOrders();
+    const timer = window.setTimeout(() => {
+      void fetchOrders()
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [fetchOrders]);
 
-  const openVerificationModal = (order: any) => {
+  const openVerificationModal = (order: AdminOrder) => {
     setValidatingOrder(order);
     setDeliveryDays(order.estimatedDeliveryDays?.toString() || "3");
-    setEditableItems((order.items ?? []).map((item: any) => ({ ...item })));
+    setEditableItems((order.items ?? []).map((item) => ({ ...item })));
   }
 
   const updateItemPrice = (index: number, newPrice: string) => {
@@ -288,7 +327,7 @@ export default function AdminOrdersPage() {
           ? "SHIPPED"
           : null;
 
-    if (!nextStatus) return;
+    if (!nextStatus || !validatingOrder) return;
 
     setSaving(true);
     try {
@@ -376,7 +415,7 @@ export default function AdminOrdersPage() {
 
       setValidatingOrder(
         data?.order ??
-          ((current: any) => ({
+          ((current: AdminOrder | null) => ({
             ...current,
             ...(data ?? {}),
           }))
@@ -394,25 +433,25 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="flex flex-col gap-10 animate-in fade-in duration-700 pb-20 no-blur max-w-[1920px] mx-auto">
+    <div className="mx-auto max-w-[1500px] space-y-6 pb-12">
       
       {/* 1. FULFILLMENT STREAM HEADER */}
-      <div className="flex flex-col xl:flex-row justify-between items-end xl:items-center gap-8 border-b-2 border-slate-950 pb-8">
+      <div className="flex flex-col justify-between gap-4 border-b border-[var(--ops-border)] pb-6 lg:flex-row lg:items-end">
         <div className="flex items-center gap-6">
-           <div className="w-14 h-14 bg-slate-950 text-white flex items-center justify-center shadow-xl">
+           <div className="hidden">
               <ShoppingBag className="w-7 h-7 text-primary" />
            </div>
            <div className="flex flex-col">
               <div className="flex items-center gap-3">
-                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic leading-none">DHL_FLOW_LOGISTICS</span>
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary italic leading-none">Zamówienia i realizacja</span>
                  <div className="w-8 h-[1px] bg-slate-200" />
-                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 leading-none">Order_Pipeline_v7</span>
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 leading-none">Rejestr operacyjny</span>
               </div>
-              <h1 className="text-4xl font-black text-slate-950 uppercase tracking-tighter italic leading-none mt-1">Potok Rezerwacji B2B</h1>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">Zamówienia</h1>
            </div>
         </div>
         
-        <div className="flex items-center gap-6 bg-slate-50 p-2 border border-slate-100 h-14 px-8">
+        <div className="flex items-center gap-4 rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] px-4 py-2">
            <div className="flex flex-col items-end">
               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">OCZEKUJĄCE</span>
               <span className="text-xl font-black text-slate-950 tabular-nums italic mt-1 leading-none">
@@ -434,25 +473,25 @@ export default function AdminOrdersPage() {
         {/* OPERATIONAL PIPELINE (TABLE) */}
         <div className="xl:col-span-12 space-y-8">
            
-           <div className="satel-card p-0 bg-white border-none shadow-sm overflow-hidden rounded-none">
-              <div className="p-5 border-b border-slate-100 bg-slate-950 flex items-center justify-between text-white">
+           <div className="overflow-hidden rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)]">
+              <div className="flex items-center justify-between border-b border-[var(--ops-border)] px-4 py-3">
                  <div className="flex items-center gap-4">
-                    <Terminal className="w-5 h-5 text-primary" />
-                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] italic">TRANSACTION_QUEUE_STREAM</h3>
+                    
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] italic">Rejestr zamówień</h3>
                  </div>
-                 <Activity className="w-4 h-4 text-primary animate-pulse" />
+                 
               </div>
 
               <div className="w-full overflow-x-auto">
                  <table className="w-full border-collapse">
                     <thead>
                        <tr className="bg-slate-50 border-b border-slate-100">
-                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pl-6 text-left w-20 italic">ID_T</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pl-6 text-left w-20 italic">ID</th>
                           <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-left italic">Typ / Rezerwacja</th>
-                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-left italic">Podmiot_B2B</th>
-                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-right italic">Wartość_System</th>
-                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-right italic">Wartość_Final</th>
-                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-center italic">DHL_Status_Flow</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-left italic">Partner</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-right italic">Cena bazowa</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-right italic">Wartość końcowa</th>
+                          <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 px-6 text-center italic">Status</th>
                           <th className="text-[10px] font-black text-slate-950 uppercase tracking-widest py-4 pr-6 text-right italic">Operacja</th>
                        </tr>
                     </thead>
@@ -462,13 +501,13 @@ export default function AdminOrdersPage() {
                              <td colSpan={7} className="h-64 text-center">
                                 <div className="flex flex-col items-center justify-center opacity-10">
                                    <RefreshCcw className="w-10 h-10 mb-4 animate-spin" />
-                                   <span className="text-[11px] font-black uppercase tracking-[0.5em] italic">Syncing_Logistics_Nodes...</span>
+                                   <span className="text-[11px] font-black uppercase tracking-[0.5em] italic">Pobieranie zamówień…</span>
                                 </div>
                              </td>
                           </tr>
                        ) : orders.length === 0 ? (
                           <tr>
-                             <td colSpan={7} className="h-64 text-center text-[11px] font-black text-slate-200 uppercase tracking-[0.4em] italic">Stream_Inactive: Brak_Zamówień</td>
+                             <td colSpan={7} className="h-64 text-center text-[11px] font-black text-slate-200 uppercase tracking-[0.4em] italic">Brak zamówień</td>
                           </tr>
                        ) : (
                           orders.map((o) => (
@@ -481,14 +520,14 @@ export default function AdminOrdersPage() {
                                       <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-950 text-white border border-slate-800">
                                          {o.orderType === "ORDER" ? <Package className="w-3 h-3 text-primary" /> : <FileText className="w-3 h-3" />}
                                          <span className="text-[8px] font-black uppercase italic tracking-widest">
-                                            {o.orderType === "ORDER" ? "HARD_RESERVATION" : "LIGHT_QUOTE"}
+                                            {o.orderType === "ORDER" ? "ZAMÓWIENIE" : "OFERTA"}
                                          </span>
                                       </div>
                                       {o.checkoutRegistrationStatus === "UNCERTAIN" && (
                                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-100 text-amber-800 border border-amber-200">
                                             <AlertTriangle className="w-3 h-3" />
                                             <span className="text-[8px] font-black uppercase tracking-widest">
-                                               PAYMENT_REGISTRATION_UNCERTAIN
+                                               NIEPEWNY STATUS PŁATNOŚCI
                                             </span>
                                          </div>
                                       )}
@@ -496,7 +535,7 @@ export default function AdminOrdersPage() {
                                 </td>
                                 <td className="px-6 py-6">
                                    <div className="flex flex-col gap-1">
-                                      <span className="text-[13px] font-black text-slate-950 uppercase italic tracking-tighter leading-none">{o.user?.companyName || "PARTNER_EXT_ID"}</span>
+                                      <span className="text-[13px] font-black text-slate-950 uppercase italic tracking-tighter leading-none">{o.user?.companyName || "Brak nazwy partnera"}</span>
                                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{o.user?.email || "N/A"}</span>
                                    </div>
                                 </td>
@@ -577,7 +616,7 @@ export default function AdminOrdersPage() {
                  <div className="bg-slate-950 px-8 py-5 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                        <ShieldCheck className="w-5 h-5 text-primary" />
-                       <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] italic">MODYFIKACJA_PARAMETRÓW_POTOKU</h3>
+                       <h3 className="text-[11px] font-black text-white uppercase tracking-[0.3em] italic">Edycja zamówienia</h3>
                     </div>
                     <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest italic">ORDER_T: #{validatingOrder.id}</div>
                  </div>
@@ -600,7 +639,7 @@ export default function AdminOrdersPage() {
                     {/* LOGISTICS CONFIG */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                        <div className="space-y-4">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">Szacowany Czas Realizacji (DHL-DAYS)</label>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic ml-1 leading-none">Termin realizacji</label>
                           <div className="flex items-center gap-6 bg-slate-50 p-6 border-l-4 border-primary">
                              <input 
                                 type="number" 
@@ -610,14 +649,14 @@ export default function AdminOrdersPage() {
                                 min="1"
                              />
                              <div>
-                                <span className="text-[11px] font-black text-slate-950 uppercase italic">DNI_ROBOCZYCH</span>
+                                <span className="text-[11px] font-black text-slate-950 uppercase italic">dni roboczych</span>
                                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gwarantowany termin logystyczny</p>
                              </div>
                           </div>
                        </div>
                        
                        <div className="flex flex-col justify-end p-6 bg-slate-950 text-white italic">
-                          <span className="text-[8px] font-black text-primary uppercase tracking-[0.3em]">Alert_Signal:</span>
+                          <span className="text-[8px] font-black text-primary uppercase tracking-[0.3em]">Uwaga:</span>
                           <p className="text-[10px] font-bold leading-relaxed mt-2 opacity-60">
                              Zatwierdzenie spowoduje natychmiastową wysyłkę certyfikatu weryfikacyjnego do Partnera B2B.
                           </p>
@@ -626,7 +665,7 @@ export default function AdminOrdersPage() {
 
                     {/* ITEM REDEFINITION GRID */}
                     <div className="space-y-4">
-                       <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-[0.2em] italic border-b border-slate-100 pb-2">Korekta Stawek Indeksowych</h4>
+                       <h4 className="text-[11px] font-black text-slate-950 uppercase tracking-[0.2em] italic border-b border-slate-100 pb-2">Korekta pozycji</h4>
                        {paymentAmountsLocked && (
                           <div className="border-l-4 border-primary bg-primary/5 px-4 py-3">
                              <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">
@@ -640,8 +679,8 @@ export default function AdminOrdersPage() {
                                 <tr className="border-b border-slate-200 bg-slate-100">
                                    <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">Indeks / SKU</th>
                                    <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">QTY</th>
-                                   <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">System_Price</th>
-                                   <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right pr-6">Override_Price</th>
+                                   <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">Cena bazowa</th>
+                                   <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right pr-6">Cena końcowa</th>
                                 </tr>
                              </thead>
                              <tbody className="divide-y divide-slate-200">
@@ -680,11 +719,11 @@ export default function AdminOrdersPage() {
                     <div className="flex justify-end pt-6 border-t-2 border-slate-950">
                        <div className="w-[300px] space-y-2">
                           <div className="flex justify-between items-baseline">
-                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">VAL_BASE_TOTAL:</span>
+                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic">Wartość bazowa:</span>
                              <span className="text-[13px] font-black text-slate-400 tabular-nums">{validatingOrder.totalPriceOrig?.toFixed(2)} PLN</span>
                           </div>
                           <div className="flex justify-between items-end pt-4">
-                             <span className="text-[13px] font-black text-primary uppercase italic tracking-widest">VAL_OVERRIDE:</span>
+                             <span className="text-[13px] font-black text-primary uppercase italic tracking-widest">Wartość po korekcie:</span>
                              <div className="flex items-baseline gap-2 leading-none">
                                 <span className="text-[32px] font-black text-primary tabular-nums italic tracking-tighter leading-none">
                                    {editableItems.reduce((acc, curr) => acc + (curr.price * curr.quantity), 0).toFixed(2)}
@@ -759,7 +798,7 @@ export default function AdminOrdersPage() {
                          {cancelling
                            ? "ANULOWANIE..."
                            : paymentRefundInProgress
-                             ? "REFUND_W_TOKU"
+                             ? "Refund w toku"
                              : validatingOrder?.paymentStatus === "PAID"
                                ? "ANULUJ_I_REFUND"
                                : "ANULUJ_PŁATNOŚĆ"}
@@ -850,16 +889,16 @@ export default function AdminOrdersPage() {
                       >
                          {saving ? <RefreshCcw className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
                          {saving
-                            ? "PROPAGACJA_PARAMETRÓW..."
+                            ? "Zapisywanie…"
                             : paymentFulfillmentLocked
                               ? paymentRefundInProgress
-                                ? "REFUND_W_TOKU"
+                                ? "Refund w toku"
                                 : isManualPayment
-                                  ? "OCZEKIWANIE_NA_ROZLICZENIE"
-                                  : "OCZEKIWANIE_NA_PŁATNOŚĆ"
+                                  ? "Oczekuje na rozliczenie"
+                                  : "Oczekuje na płatność"
                               : validatingOrder?.status === "PENDING_VERIFICATION"
-                                ? "ZATWIERDŹ_DO_LOGISTYKI"
-                                : "OZNACZ_JAKO_WYSŁANE"}
+                                ? "Zatwierdź do realizacji"
+                                : "Oznacz jako wysłane"}
                       </button>
                     )}
                  </div>

@@ -3,6 +3,8 @@
 export interface ICategory {
   id: string;
   name: string;
+  iconName?: string;
+  revision?: number;
   subcategories: ISubcategory[];
 }
 
@@ -51,4 +53,7 @@ export interface IStagingItem {
   knowledgeMatched: boolean;
   specs: string;
   isValid: boolean;
+  catalogPrice?: number;
+  catalogSpecs?: string;
+  priceMismatch?: boolean;
 }

@@ -84,6 +84,18 @@ jobs:
           src/app/admin/layout.tsx
           src/app/admin/page.tsx
           src/app/admin/products/ProductsDashboardClient.tsx
+          src/app/admin/clients/page.tsx
+          src/app/admin/orders/page.tsx
+          src/app/admin/payments/page.tsx
+          src/app/admin/quotes/page.tsx
+          src/app/admin/price-lists/page.tsx
+          src/app/admin/categories/CategoriesDashboardClient.tsx
+          src/app/admin/repairs/RepairsDashboardClient.tsx
+          src/app/admin/products/_components/AICommandCenter.tsx
+          src/app/admin/products/_components/StagingDashboard.tsx
+          src/app/admin/products/_components/StagingItem.tsx
+          src/app/admin/products/_components/ProductTable.tsx
+          src/app/admin/products/_components/ProductTableRow.tsx
           src/app/admin/_components/AdminNavigation.tsx
           src/app/admin/knowledge/page.tsx
           src/app/admin/knowledge/KnowledgeMaintenanceActions.tsx

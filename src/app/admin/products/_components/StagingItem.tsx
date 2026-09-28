@@ -1,19 +1,18 @@
 // src/app/admin/products/_components/StagingItem.tsx
 "use client";
 
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { X, Check, AlertTriangle, RefreshCw, FileText, Brain, ArrowDownRight, Zap, Database, ExternalLink, Trash2 } from "lucide-react";
+import { Check, AlertTriangle, RefreshCw, FileText, Brain, Database, Trash2 } from "lucide-react";
 import { memo } from "react";
+import type { ICategory, IStagingItem } from "../_lib/types";
 
 interface IStagingItemProps {
-  item: any;
-  categories: any[];
+  item: IStagingItem;
+  categories: ICategory[];
   manufacturers: string[];
-  onUpdate: (tempId: string, field: string, value: any) => void;
+  onUpdate: (tempId: string, field: string, value: unknown) => void;
   onCommit: (tempId: string) => void;
   onRemove: (id: string, sku: string) => void;
-  isItemConfirmed: (item: any) => boolean;
+  isItemConfirmed: (item: IStagingItem) => boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
 }
@@ -56,26 +55,26 @@ export const StagingItem = memo(function StagingItem({
             <input 
                value={item.name} 
                onChange={(e) => onUpdate(item.tempId, 'name', e.target.value)}
-               className="flex-1 bg-transparent text-[13px] font-black uppercase tracking-tight text-slate-950 outline-none border-b border-transparent focus:border-primary transition-all pr-4"
+               className="flex-1 bg-transparent text-[13px] font-semibold uppercase tracking-tight text-slate-950 outline-none border-b border-transparent focus:border-primary transition-all pr-4"
                placeholder="NAZWA_PRODUKTU"
             />
-            <span className="shrink-0 h-6 px-3 bg-slate-100 flex items-center text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.sku}</span>
+            <span className="shrink-0 h-6 px-3 bg-slate-100 flex items-center text-[9px] font-semibold text-slate-400 ">{item.sku}</span>
          </div>
          
          <div className="flex flex-wrap gap-2 mt-1">
             {item.qualityReason && (
-               <div className="h-5 px-2 bg-slate-950 text-primary text-[8px] font-black uppercase tracking-widest flex items-center gap-2 italic">
+               <div className="h-5 px-2 bg-slate-950 text-primary text-[8px] font-semibold  flex items-center gap-2 ">
                   <Brain className="w-3 h-3" /> IQ: {item.qualityReason}
                </div>
             )}
             {item.priceMismatch && (
-               <div className="h-5 px-2 bg-red-600 text-white text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
-                  <AlertTriangle className="w-3 h-3" /> PRICE_DELTA_DETECTED
+               <div className="h-5 px-2 bg-red-600 text-white text-[8px] font-semibold  flex items-center gap-2">
+                  <AlertTriangle className="w-3 h-3" /> Różnica ceny
                </div>
             )}
             {item.catalogSpecs && (
-               <div className="h-5 px-2 bg-slate-50 border border-slate-100 text-slate-400 text-[8px] font-black uppercase tracking-widest flex items-center gap-2">
-                  <FileText className="w-3 h-3" /> SPEC_V9_ATTACHED
+               <div className="h-5 px-2 bg-slate-50 border border-slate-100 text-slate-400 text-[8px] font-semibold  flex items-center gap-2">
+                  <FileText className="w-3 h-3" /> Specyfikacja dostępna
                </div>
             )}
          </div>
@@ -84,36 +83,36 @@ export const StagingItem = memo(function StagingItem({
       {/* 3. CLASSIFICATION GRID */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full xl:w-[350px]">
          <div className="flex flex-col gap-1">
-            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">Kategoria</span>
+            <span className="text-[8px] font-semibold text-slate-300  leading-none">Kategoria</span>
             <select 
                value={item.categoryId || ""} 
                onChange={(e) => onUpdate(item.tempId, 'categoryId', e.target.value)}
-               className="h-9 px-3 bg-white border border-slate-100 text-[9px] font-black uppercase outline-none focus:border-primary transition-all text-slate-950"
+               className="h-9 px-3 bg-white border border-slate-100 text-[9px] font-semibold uppercase outline-none focus:border-primary transition-all text-slate-950"
             >
-               <option value="">-- BRAK --</option>
+               <option value="">— brak —</option>
                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
          </div>
          <div className="flex flex-col gap-1">
-            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">Podkategoria</span>
+            <span className="text-[8px] font-semibold text-slate-300  leading-none">Podkategoria</span>
             <select 
                value={item.subcategoryId || ""} 
                onChange={(e) => onUpdate(item.tempId, 'subcategoryId', e.target.value)}
                disabled={!item.categoryId}
-               className="h-9 px-3 bg-white border border-slate-100 text-[9px] font-black uppercase outline-none focus:border-primary transition-all text-slate-950 disabled:opacity-20"
+               className="h-9 px-3 bg-white border border-slate-100 text-[9px] font-semibold uppercase outline-none focus:border-primary transition-all text-slate-950 disabled:opacity-20"
             >
-               <option value="">-- BRAK --</option>
-               {selectedCat?.subcategories?.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+               <option value="">— brak —</option>
+               {selectedCat?.subcategories?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
          </div>
          <div className="flex flex-col gap-1">
-            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest leading-none">Producent</span>
+            <span className="text-[8px] font-semibold text-slate-300  leading-none">Producent</span>
             <select 
                value={item.manufacturer || ""} 
                onChange={(e) => onUpdate(item.tempId, 'manufacturer', e.target.value)}
-               className="h-9 px-3 bg-white border border-slate-100 text-[9px] font-black uppercase outline-none focus:border-primary transition-all text-slate-950"
+               className="h-9 px-3 bg-white border border-slate-100 text-[9px] font-semibold uppercase outline-none focus:border-primary transition-all text-slate-950"
             >
-               <option value="">-- AUTO --</option>
+               <option value="">— auto —</option>
                {manufacturers.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
          </div>
@@ -126,8 +125,8 @@ export const StagingItem = memo(function StagingItem({
                {item.priceMismatch && (
                   <button 
                     onClick={() => onUpdate(item.tempId, 'price', item.catalogPrice)}
-                    className="h-10 px-3 bg-red-600 text-white font-black hover:brightness-110 transition-all active-press"
-                    title={`SYNK: ${item.catalogPrice} PLN`}
+                    className="h-10 px-3 bg-red-600 text-white font-semibold hover:brightness-110 transition-all active-press"
+                    title={`Ustaw cenę katalogową: ${item.catalogPrice} PLN`}
                   >
                     <RefreshCw className="w-4 h-4" />
                   </button>
@@ -137,14 +136,14 @@ export const StagingItem = memo(function StagingItem({
                     type="number"
                     value={item.price}
                     onChange={(e) => onUpdate(item.tempId, 'price', parseFloat(e.target.value))}
-                    className={`h-11 w-[120px] text-right pr-3 font-black text-[15px] bg-slate-50 border transition-all tabular-nums outline-none ${
+                    className={`h-11 w-[120px] text-right pr-3 font-semibold text-[15px] bg-slate-50 border transition-all tabular-nums outline-none ${
                         item.priceMismatch ? 'border-red-600 text-red-600' : 'border-transparent text-slate-950'
                     }`}
                   />
                </div>
             </div>
             {item.priceMismatch && (
-               <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">Katalog: {item.catalogPrice} PLN</span>
+               <span className="text-[8px] font-semibold text-slate-400  leading-none">Katalog: {item.catalogPrice} PLN</span>
             )}
          </div>
 
@@ -153,7 +152,7 @@ export const StagingItem = memo(function StagingItem({
             {isConfirmed && (
                <button 
                   onClick={() => onCommit(item.tempId)}
-                  className="h-11 px-5 bg-primary text-white font-black text-[9px] uppercase tracking-widest hover:brightness-110 transition-all active-press"
+                  className="h-11 px-5 bg-primary text-white font-semibold text-[9px]  hover:brightness-110 transition-all active-press"
                >
                   DODAJ
                </button>

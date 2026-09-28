@@ -167,3 +167,39 @@ Legacy admin subpages remain functional inside the new shell. They should be mig
 6. add visual regression/contract tests when practical.
 
 Public storefront redesign is a separate project and must not be bundled into the operational UI work.
+
+
+## 8. T218 legacy-screen migration
+
+The following operational surfaces have completed the second-wave presentation reset:
+
+- Clients: dense partner registry with explicit status, pricing conditions, block/delete actions and CSV export.
+- Catalog taxonomy: category/subcategory editor with plain hierarchy and visible destructive actions.
+- Repairs: service register with compact lifecycle counts and a plain add-RMA dialog.
+- Orders: lifecycle wording is preserved, but presentation uses ordinary order/fulfillment language rather than command-stream metaphors.
+- Payments: provider state, reconciliation and emergency shutdown remain explicit, with danger actions retaining semantic contrast.
+- Quotes: CPQ workspace uses customer/line-item/offer language; Blueprint/Mission Control naming is forbidden.
+- Price lists: export/print capability remains, but operational UI uses catalog/tier/markup language.
+- Product import: WF-Mag, knowledge sources and staging are presented as data-source/import workflows rather than an AI command center.
+
+### Anti-slop rule
+
+Operational UI must describe the task or state literally.
+
+Forbidden patterns include invented system-version labels, military/command-center metaphors, fake telemetry labels, decorative all-caps identifiers, and hover-only primary actions.
+
+Examples of prohibited copy:
+
+- `MISSION_CONTROL_MATRIX`
+- `Blueprint_Gen_v9`
+- `TRANSACTION_QUEUE_STREAM`
+- `STAGING_TERMINAL`
+- `NODE_SELECTED`
+
+A regression test protects the migrated surfaces from these terms.
+
+### Lifecycle safety during visual migration
+
+Presentation work must not rename backend enum values, loosen authorization, bypass current-admin fences, change idempotency tokens, alter payment/RMA transitions, or silently change destructive-action behavior.
+
+Display labels may be humanized. Machine state remains unchanged.

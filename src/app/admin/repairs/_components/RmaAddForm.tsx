@@ -62,14 +62,14 @@ export function RmaAddForm({
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/60 p-4">
       <form
         onSubmit={submit}
-        className="w-full max-w-xl space-y-5 rounded-3xl bg-white p-7 shadow-2xl dark:bg-[#161616]"
+        className="w-full max-w-xl space-y-5 rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] p-5 dark:bg-[#161616]"
       >
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ops-muted)]">
               Serwis
             </span>
-            <h2 className="mt-1 text-xl font-extrabold">Nowe zgłoszenie RMA</h2>
+            <h2 className="mt-1 text-xl font-semibold">Nowe zgłoszenie RMA</h2>
           </div>
           <button type="button" onClick={onClose} className="p-2">
             <X className="h-5 w-5" />
@@ -89,7 +89,7 @@ export function RmaAddForm({
               required
               value={String(value)}
               onChange={(event) => (setter as (value: string) => void)(event.target.value)}
-              className="h-11 w-full rounded-xl border border-border bg-background px-4"
+              className="h-11 w-full rounded-lg border border-border bg-background px-4"
             />
           </label>
         ))}
@@ -101,7 +101,7 @@ export function RmaAddForm({
             maxLength={3000}
             value={description}
             onChange={(event) => setDescription(event.target.value)}
-            className="w-full rounded-xl border border-border bg-background p-4"
+            className="w-full rounded-lg border border-border bg-background p-4"
           />
         </label>
 
@@ -114,7 +114,7 @@ export function RmaAddForm({
           <button
             type="submit"
             disabled={saving}
-            className="flex h-11 items-center gap-2 rounded-xl bg-primary px-6 text-sm font-extrabold text-white disabled:opacity-50"
+            className="flex h-11 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-extrabold text-white disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Zapisz RMA

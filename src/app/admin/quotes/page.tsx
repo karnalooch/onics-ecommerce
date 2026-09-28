@@ -1,20 +1,33 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { 
-  FileText, Printer, Plus, Trash2, Search, 
-  ChevronRight, LayoutGrid, Package, UserCircle, Settings, Layers, Briefcase,
-  Terminal, ShieldCheck, Activity, Download, RefreshCcw, Box, Zap, Globe
+import {
+  Printer,
+  Plus,
+  Trash2,
+  Search,
+  Briefcase,
+  Terminal,
+  ShieldCheck,
+  RefreshCcw,
+  Box,
+  Zap,
+  Globe,
 } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { COMPANY_PUBLIC } from "@/lib/company"
 
+type QuoteProduct = {
+  id: string
+  name: string
+  sku: string
+  price: number
+}
+
 export default function QuotesGenerator() {
-  const [categories, setCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [products, setProducts] = useState<QuoteProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [items, setItems] = useState<{productId: string, qty: number, discount: number}[]>([]);
@@ -25,37 +38,38 @@ export default function QuotesGenerator() {
 
   const loadData = useCallback(async () => {
     try {
-      const [cRes, pRes, uRes] = await Promise.all([
-        fetch("/api/categories"),
-        fetch("/api/products"),
-        fetch("/api/users")
-      ]);
+      const response = await fetch("/api/products")
+      const data: unknown = await response.json().catch(() => [])
 
-      const [cats, prods, users] = await Promise.all([
-        cRes.json().catch(() => []),
-        pRes.json().catch(() => []), 
-        uRes.json().catch(() => [])
-      ]);
-      setCategories(cats);
-      setProducts(prods);
-      setClients(users.filter((u: any) => u.roleType === "BIZ"));
+      if (!response.ok || !Array.isArray(data)) {
+        throw new Error("Nie udało się pobrać produktów do oferty.")
+      }
 
-      setRefNumber(`CPQ/ENGINE/${new Date().getFullYear()}/${Math.floor(Math.random() * 9000) + 1000}`);
-      setQuoteDate(new Date().toLocaleDateString("pl-PL"));
-    } catch (e) {
-      toast.error("FAULT: Błąd synchronizacji baz danych.");
+      setProducts(data as QuoteProduct[])
+      setRefNumber(
+        "OFERTA/" +
+          new Date().getFullYear() +
+          "/" +
+          String(Math.floor(Math.random() * 9000) + 1000)
+      )
+      setQuoteDate(new Date().toLocaleDateString("pl-PL"))
+    } catch {
+      toast.error("Nie udało się pobrać danych do oferty.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const timer = window.setTimeout(() => {
+      void loadData()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [loadData])
 
   const addLineItem = (productId: string) => {
     setItems([...items, { productId, qty: 1, discount: 0 }]);
-    toast.success("LOG: Dodano indeks do kolejki wyceny.");
+    toast.success("Dodano produkt do oferty.");
   }
 
   const removeLineItem = (index: number) => {
@@ -72,7 +86,7 @@ export default function QuotesGenerator() {
     setItems(newItems);
   }
 
-  const getProduct = (id: string) => products.find(p => p.id === id) || { name: "MODUŁ_NIEZNANY", price: 0, sku: "ERROR_404" };
+  const getProduct = (id: string): QuoteProduct => products.find((product) => product.id === id) || { id: "", name: "Nieznany produkt", price: 0, sku: "BRAK SKU" };
 
   const calculateTotal = () => {
     return items.reduce((sum, item) => {
@@ -82,21 +96,21 @@ export default function QuotesGenerator() {
   }
 
   return (
-    <div className="flex flex-col gap-12 animate-in fade-in duration-700 select-none pb-20 max-w-[1920px] mx-auto print:m-0">
+    <div className="mx-auto max-w-[1600px] space-y-6 pb-12 print:m-0">
       
       {/* 1. OPERATIONAL CPQ HEADER (FLUENT) */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 print:hidden">
+      <div className="flex flex-col justify-between gap-4 border-b border-[var(--ops-border)] pb-6 lg:flex-row lg:items-end print:hidden">
         <div className="flex items-center gap-6">
-           <div className="w-16 h-16 bg-primary text-white flex items-center justify-center rounded-xl shadow-2xl shadow-primary/30">
+           <div className="hidden">
               <Terminal className="w-8 h-8" />
            </div>
            <div className="flex flex-col">
               <div className="flex items-center gap-3">
-                 <span className="text-[11px] font-bold uppercase tracking-widest text-primary">System CPQ (Pricing)</span>
+                 <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Oferty i wyceny</span>
                  <span className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
-                 <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Blueprint_Gen_v9</span>
+                 <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Generator oferty</span>
               </div>
-              <h1 className="text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mt-1">Konfigurator Ofert</h1>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">Nowa oferta</h1>
            </div>
         </div>
         
@@ -105,13 +119,13 @@ export default function QuotesGenerator() {
              onClick={() => setItems([])} 
              className="h-14 px-8 bg-black/5 dark:bg-white/5 border border-transparent rounded-xl text-muted-foreground hover:text-foreground font-bold uppercase text-[11px] tracking-widest flex items-center gap-3 transition-all active:scale-95 shadow-sm"
            >
-              Wyczyść Bufor
+              Wyczyść pozycje
            </button>
            <button 
              onClick={() => window.print()} 
              className="h-14 px-10 bg-primary text-white font-bold uppercase text-[11px] tracking-widest flex items-center gap-4 active:scale-95 transition-all hover:brightness-110 shadow-xl shadow-primary/20 rounded-xl"
            >
-              <Printer className="w-4 h-4" /> EKSPORTUJ BLUEPRINT
+              <Printer className="w-4 h-4" /> Drukuj / eksportuj
            </button>
         </div>
       </div>
@@ -122,13 +136,13 @@ export default function QuotesGenerator() {
         <aside className="xl:col-span-3 space-y-8 print:hidden">
            
            {/* PARTNER CONTEXT CARD */}
-           <div className="fluent-card p-0 border-white/10 overflow-hidden shadow-2xl">
+           <div className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] p-0 border-white/10 overflow-hidden ">
               <div className="bg-primary/5 px-8 py-5 border-b border-black/5 dark:border-white/10">
-                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Identyfikacja Partnera</h3>
+                 <h3 className="text-[11px] font-bold uppercase tracking-widest text-foreground">Dane klienta</h3>
               </div>
               <div className="p-8 space-y-6">
                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none ml-1">Nazwa Podmiotu B2B</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none ml-1">Nazwa firmy</label>
                     <input 
                        type="text" 
                        value={clientInfo.name}
@@ -137,7 +151,7 @@ export default function QuotesGenerator() {
                     />
                  </div>
                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none ml-1">Identyfikator NIP</label>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none ml-1">NIP</label>
                     <input 
                        type="text" 
                        value={clientInfo.nip}
@@ -149,11 +163,11 @@ export default function QuotesGenerator() {
            </div>
 
            {/* OPERATIONAL QUEUE (BASKET) */}
-           <div className="fluent-card p-0 border-white/10 overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
+           <div className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] p-0 border-white/10 overflow-hidden  flex flex-col min-h-[500px]">
               <div className="p-5 bg-primary px-8 lg:px-5 flex justify-between items-center text-white">
                  <div className="flex items-center gap-3">
                     <Zap className="w-5 h-5 text-white animate-pulse" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest">Bufor Roboczy</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest">Pozycje oferty</span>
                  </div>
                  <Badge variant="outline" className="bg-white/20 text-white border-transparent font-black tracking-widest">{items.length} ELT</Badge>
               </div>
@@ -162,7 +176,7 @@ export default function QuotesGenerator() {
                  {items.length === 0 ? (
                     <div className="p-20 text-center flex flex-col items-center justify-center opacity-20">
                        <Briefcase className="w-12 h-12 mb-4 text-primary" />
-                       <span className="text-[11px] font-bold uppercase tracking-widest">Kolejka Pusta</span>
+                       <span className="text-[11px] font-bold uppercase tracking-widest">Brak pozycji</span>
                     </div>
                  ) : (
                     items.map((item, idx) => {
@@ -206,7 +220,7 @@ export default function QuotesGenerator() {
 
               <div className="p-10 bg-primary/5 dark:bg-white/5 border-t border-black/5 dark:border-white/10 mt-auto">
                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Wartość Netto</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Wartość netto</span>
                     <div className="flex items-baseline gap-2">
                        <span className="text-4xl font-extrabold text-foreground tabular-nums tracking-tighter leading-none">
                           {calculateTotal().toFixed(2)}
@@ -215,7 +229,7 @@ export default function QuotesGenerator() {
                     </div>
                  </div>
                  <div className="flex items-center gap-3 mt-6 text-[10px] font-bold text-green-500 uppercase tracking-widest opacity-80">
-                    <ShieldCheck className="w-4 h-4 shadow-lg shadow-green-500/20" /> Kalkulacja Zweryfikowana
+                    <ShieldCheck className="w-4 h-4 shadow-lg shadow-green-500/20" /> Podsumowanie wyliczone
                  </div>
               </div>
            </div>
@@ -224,11 +238,11 @@ export default function QuotesGenerator() {
 
         {/* CENTER_NODE: VISUAL BLUEPRINT (MODERNIZED VIEW) */}
         <main className="xl:col-span-6 print:w-full">
-           <div className="bg-white min-h-[1100px] shadow-3xl flex flex-col p-16 print:p-0 print:border-none print:shadow-none relative rounded-[32px] border border-black/5 dark:border-white/10 print:rounded-none overflow-hidden text-slate-900">
+           <div className="bg-white min-h-[1100px]  flex flex-col p-16 print:p-0 print:border-none print:shadow-none relative rounded-xl border border-black/5 dark:border-white/10 print:rounded-none overflow-hidden text-slate-900">
               
               {/* OPERATIONAL WATERMARK */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 pointer-events-none opacity-[0.03]">
-                 <span className="text-[140px] font-black text-slate-950 uppercase tracking-[0.1em] whitespace-nowrap italic">DOKUMENT_PROCEDURALNY</span>
+                 <span className="text-[140px] font-black text-slate-950 uppercase tracking-[0.1em] whitespace-nowrap italic">OFERTA</span>
               </div>
 
               {/* PDF_BLUEPRINT_HEADER */}
@@ -239,7 +253,7 @@ export default function QuotesGenerator() {
                        <span className="text-3xl font-black tracking-tighter italic uppercase text-slate-950">CEL-TRONICS</span>
                     </div>
                     <div className="flex flex-col mt-4">
-                       <h1 className="text-5xl font-extrabold tracking-tighter leading-none uppercase italic">Blueprint Offer</h1>
+                       <h1 className="text-5xl font-extrabold tracking-tighter leading-none uppercase italic">Oferta</h1>
                        <div className="flex items-center gap-4 mt-6">
                           <Badge className="bg-primary/10 text-primary border-transparent font-bold tracking-widest px-4 py-1.5 uppercase text-[12px]">{refNumber}</Badge>
                           <div className="w-2 h-2 bg-slate-200 rounded-full" />
@@ -279,7 +293,7 @@ export default function QuotesGenerator() {
                           <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 pl-8 w-24">Nr_Indeks</TableHead>
                           <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 px-6">Specyfikacja Techniczna / Urządzenie</TableHead>
                           <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 text-center w-24">Ilość</TableHead>
-                          <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 text-right pr-8 w-44">Wartość Netto</TableHead>
+                          <TableHead className="text-[11px] font-bold text-slate-900 uppercase tracking-widest py-6 text-right pr-8 w-44">Wartość netto</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -307,7 +321,7 @@ export default function QuotesGenerator() {
                              <TableCell colSpan={4} className="h-96 text-center">
                                 <div className="flex flex-col items-center justify-center opacity-10">
                                    <Box className="w-16 h-16 mb-4" />
-                                   <span className="text-[13px] font-black uppercase tracking-[0.6em] italic">NO_DATA_POINTS_COLLECTED</span>
+                                   <span className="text-[13px] font-black uppercase tracking-[0.6em] italic">Brak pozycji w ofercie</span>
                                 </div>
                              </TableCell>
                           </TableRow>
@@ -321,20 +335,20 @@ export default function QuotesGenerator() {
                  <div className="flex justify-end">
                     <div className="w-[380px] space-y-4">
                        <div className="flex justify-between items-baseline py-3 border-b border-slate-50">
-                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">SUM_NET_TOTAL:</span>
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">Netto:</span>
                           <span className="text-[18px] font-black text-slate-950 tabular-nums italic">{calculateTotal().toFixed(2)} PLN</span>
                        </div>
                        <div className="flex justify-between items-baseline py-3 border-b border-slate-50">
-                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">VAT_TAX_PROJECTION (23%):</span>
+                          <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest italic">VAT 23%:</span>
                           <span className="text-[18px] font-black text-slate-950 tabular-nums italic">{(calculateTotal() * 0.23).toFixed(2)} PLN</span>
                        </div>
                        <div className="flex justify-between items-baseline pt-6 border-t border-slate-950 h-20">
-                          <span className="text-[16px] font-black text-primary uppercase italic tracking-[0.3em]">TOTAL_GROSS_VAL:</span>
+                          <span className="text-[16px] font-black text-primary uppercase italic tracking-[0.3em]">Brutto:</span>
                           <div className="flex flex-col items-end leading-none">
                              <span className="text-[38px] font-black text-primary tabular-nums tracking-tighter italic leading-none">
                                 {(calculateTotal() * 1.23).toFixed(2)}
                              </span>
-                             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-1">Currency: PLN_OFFICIAL</span>
+                             <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-1">PLN</span>
                           </div>
                        </div>
                     </div>
@@ -344,12 +358,12 @@ export default function QuotesGenerator() {
               {/* AUTH_SIGNATURES */}
               <div className="mt-auto pt-32 grid grid-cols-2 gap-32 relative z-10">
                  <div className="border-t-[3px] border-slate-200 pt-8 flex flex-col gap-3 items-center">
-                    <span className="text-[11px] font-bold uppercase text-slate-300 tracking-[0.4em]">Sporządził Agent</span>
-                    <span className="text-[14px] font-bold text-slate-900 tracking-tight uppercase">PLATFORMA CPQ CORE</span>
+                    <span className="text-[11px] font-bold uppercase text-slate-300 tracking-[0.4em]">Sporządził</span>
+                    <span className="text-[14px] font-bold text-slate-900 tracking-tight uppercase">CEL-TRONICS</span>
                  </div>
                  <div className="border-t-[3px] border-slate-200 pt-8 flex flex-col gap-3 items-center">
                     <span className="text-[11px] font-bold uppercase text-slate-300 tracking-[0.4em]">Pieczęć Partnera</span>
-                    <span className="text-[14px] font-bold text-slate-300 tracking-widest uppercase">STAMP_ID_VERIFIED</span>
+                    <span className="text-[14px] font-bold text-slate-300 tracking-widest uppercase">Miejsce na pieczęć</span>
                  </div>
               </div>
 
@@ -359,11 +373,11 @@ export default function QuotesGenerator() {
         {/* RIGHT_NODE: PIM INDICES SCANNER (FLUENT) */}
         <aside className="xl:col-span-3 space-y-8 print:hidden">
            
-           <div className="fluent-card p-0 border-white/10 overflow-hidden shadow-2xl flex flex-col h-[1000px]">
+           <div className="rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] p-0 border-white/10 overflow-hidden  flex flex-col h-[1000px]">
               <div className="p-8 bg-primary/5 dark:bg-white/5 border-b border-black/5 dark:border-white/10 flex flex-col gap-8">
                  <div className="flex items-center gap-4">
                     <Search className="w-5 h-5 text-primary" />
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Skaner Rejestru PIM</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">Katalog produktów</span>
                  </div>
                  <div className="relative group">
                     <Terminal className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/30 group-focus-within:text-primary transition-colors" />
@@ -411,10 +425,10 @@ export default function QuotesGenerator() {
                  )}
               </div>
               
-              <div className="p-6 bg-primary text-white flex items-center justify-between shadow-2xl">
+              <div className="p-6 bg-primary text-white flex items-center justify-between ">
                  <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-glow" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Database: Online</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Katalog dostępny</span>
                  </div>
                  <Globe className="w-5 h-5 opacity-60" />
               </div>
@@ -428,7 +442,7 @@ export default function QuotesGenerator() {
           @page { size: A4; margin: 0; }
           body { background: white !important; color: black !important; }
           header, nav, .print\\:hidden, aside { display: none !important; }
-          .fluent-card { border: none !important; box-shadow: none !important; background: transparent !important; }
+          .rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)] { border: none !important; box-shadow: none !important; background: transparent !important; }
           main { width: 100% !important; margin: 0 !important; border: none !important; }
           main > div { shadow: none !important; border: none !important; padding: 0 !important; }
           .mx-auto { margin: 0 !important; }
