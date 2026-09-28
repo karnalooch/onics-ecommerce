@@ -8,7 +8,7 @@ import {
   getClientRateLimitKey,
   type RateLimitResult,
 } from "@/lib/rateLimit"
-import { initializeMockData, mutateMockData } from "@/store/serverStore"
+import { mutateMockData } from "@/store/serverStore"
 import {
   RegistrationBodyInvalidError,
   RegistrationBodyTooLargeError,
@@ -73,19 +73,6 @@ export async function POST(req: Request) {
     )
     if (!emailLimit.allowed) return rateLimited(emailLimit)
 
-    const snapshot = initializeMockData()
-    if (
-      (snapshot.users as Array<{ email?: string }>).some(
-        (user) =>
-          String(user.email ?? "").trim().toLowerCase() === data.email
-      )
-    ) {
-      return NextResponse.json(
-        { error: "Użytkownik o tym adresie e-mail już istnieje." },
-        { status: 409 }
-      )
-    }
-
     const passwordHash = await bcrypt.hash(data.password, 12)
     const newUser = {
       id: `u_${crypto.randomUUID()}`,
@@ -108,29 +95,19 @@ export async function POST(req: Request) {
 
     await mutateMockData((db) => {
       const users = db.users as Array<{ email?: string }>
-      if (
-        users.some(
-          (user) =>
-            String(user.email ?? "").trim().toLowerCase() === data.email
-        )
-      ) {
-        throw new Error("EMAIL_EXISTS")
-      }
+      const alreadyExists = users.some(
+        (user) =>
+          String(user.email ?? "").trim().toLowerCase() === data.email
+      )
 
-      users.push(newUser)
+      if (!alreadyExists) {
+        users.push(newUser)
+      }
     })
 
     return NextResponse.json(
-      {
-        success: true,
-        user: {
-          id: newUser.id,
-          email: newUser.email,
-          companyName: newUser.companyName,
-          isApproved: newUser.isApproved,
-        },
-      },
-      { status: 201 }
+      { success: true },
+      { status: 202 }
     )
   } catch (error) {
     if (error instanceof RegistrationBodyTooLargeError) {
@@ -147,12 +124,6 @@ export async function POST(req: Request) {
       )
     }
 
-    if (error instanceof Error && error.message === "EMAIL_EXISTS") {
-      return NextResponse.json(
-        { error: "Użytkownik o tym adresie e-mail już istnieje." },
-        { status: 409 }
-      )
-    }
 
     console.error("Błąd rejestracji:", error)
     return NextResponse.json(
