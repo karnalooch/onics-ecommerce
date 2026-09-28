@@ -32,6 +32,21 @@ describe("repair status precondition wiring", () => {
       .toBeLessThan(flow.indexOf("repair.status = status as RepairStatus"))
   })
 
+  it("treats a repeated admin delete as replay without weakening history protection", () => {
+    const actions = read("src/app/admin/repairs/_actions.ts")
+    const start = actions.indexOf("export async function deleteRepairAction")
+    const end = actions.indexOf("export async function updateStatusAction", start)
+    const flow = actions.slice(start, end)
+
+    expect(flow).toContain("if (index === -1) return { replayed: true }")
+    expect(flow).toContain("if (!canDeleteRepair(repairs[index].status))")
+    expect(flow).toContain('throw new Error("REPAIR_HISTORY_PROTECTED")')
+    expect(flow.indexOf("if (index === -1)"))
+      .toBeLessThan(flow.indexOf("canDeleteRepair("))
+    expect(flow).toContain("result.replayed")
+    expect(flow).not.toContain("REPAIR_NOT_FOUND")
+  })
+
   it("returns an actionable stale-write conflict instead of overwriting newer state", () => {
     const actions = read("src/app/admin/repairs/_actions.ts")
 
