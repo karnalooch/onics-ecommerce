@@ -60,13 +60,14 @@ jobs:
         run: |
           curl --fail --silent --show-error http://127.0.0.1:3100/api/health/live
           curl --fail --silent --show-error http://127.0.0.1:3100/api/health/ready
+          docker compose exec -T celtronics sh -c 'test "$AUTH_TRUST_HOST" = "true"'
 
       - name: Verify bootstrap login and admin navigation
         shell: bash
         run: |
           set -euo pipefail
 
-          base_url="http://127.0.0.1:3100"
+          base_url="http://localhost:3100"
           cookie_jar="$(mktemp)"
           trap 'rm -f "$cookie_jar" csrf.json login.json session.json root.html admin.html root.headers admin.headers' EXIT
 
