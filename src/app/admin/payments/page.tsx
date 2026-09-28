@@ -132,7 +132,10 @@ export default function AdminPaymentsPage() {
   }, [])
 
   useEffect(() => {
-    loadMethods()
+    const timer = window.setTimeout(() => {
+      void loadMethods()
+    }, 0)
+    return () => window.clearTimeout(timer)
   }, [loadMethods])
 
   const saveGlobalControl = async (nextEnabled: boolean) => {
