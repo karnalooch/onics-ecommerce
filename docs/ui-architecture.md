@@ -230,3 +230,34 @@ Additional prohibited presentation language includes:
 - `Centrum RMA`
 
 The partner surface may support cart/quote actions as business capabilities, but its primary presentation remains technical and task-oriented rather than storefront-oriented.
+
+
+## 10. T222 CEL-TRONICS-first public surface
+
+The public product hierarchy is explicit:
+
+- **CEL-TRONICS** is the user-facing company, brand and service relationship.
+- **ONICS** is an internal implementation/platform name and must not lead public navigation, authentication, registration, catalog or service presentation.
+- Partner capabilities belong to the **CEL-TRONICS partner area**, not to a generic SaaS or marketplace identity.
+
+Public presentation rules:
+
+- use the real CEL-TRONICS logo/wordmark where brand identification is primary;
+- describe services, catalog, pricing, orders and support in literal CEL-TRONICS language;
+- keep ecommerce mechanics subordinate to technical catalog and customer-service tasks;
+- avoid invented tiers, premium-shop language, mission-control metaphors, fake product previews and gamified/cart-themed wording;
+- authenticated catalog surfaces should prioritize SKU, product identity, availability, account price and the next explicit action.
+
+Registration is a company-access request to CEL-TRONICS. Login is entry to the CEL-TRONICS partner area. The services page is a company capability map, not a template marketing grid.
+
+Forbidden public presentation patterns include:
+
+- `OnboardingMissionControl`
+- `Celtronics Pro`
+- `Preview Model`
+- `Pusty Magazynek`
+- `Modern Retail & B2B Shop`
+- `Premium Styling`
+- `Finalizuj Wybór`
+
+Business behavior remains unchanged during brand migration: authentication, registration payloads, account approval, pricing, cart quantity limits, quote semantics and checkout rules stay authoritative in their existing backend/domain modules.
