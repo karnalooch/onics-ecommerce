@@ -98,7 +98,7 @@ export function ProductTable({
                      <TableCell colSpan={5} className="py-32">
                         <div className="flex flex-col items-center justify-center text-center opacity-40">
                            <PackageSearch className="w-12 h-12 text-muted-foreground mb-4" />
-                           <h4 className="text-[14px] font-bold text-foreground uppercase italic mb-1">
+                           <h4 className="text-[14px] font-bold text-foreground uppercase  mb-1">
                               Brak wyników
                            </h4>
                            <p className="text-[11px] font-medium text-muted-foreground">Spróbuj zmienić parametry wyszukiwania</p>
@@ -112,8 +112,8 @@ export function ProductTable({
 
        {/* 3. STATUS BAR */}
        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-2">
-          <div className="flex items-center gap-3 text-[11px] font-bold text-muted-foreground uppercase italic underline-offset-4">
-             <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/30" />
+          <div className="flex items-center gap-2 text-sm text-[var(--ops-muted)]">
+             <div className="w-2.5 h-2.5 bg-green-500 rounded-full  shadow-lg shadow-green-500/30" />
              Widoczne na stronie: <span className="text-foreground tracking-widest">{products.length}</span>
           </div>
           <PaginationControls current={currentPage} total={totalPages} onChange={onPageChange} />
@@ -125,7 +125,7 @@ export function ProductTable({
 function PaginationControls({ current, total, onChange }: { current: number, total: number, onChange: (p: number) => void }) {
   if (total <= 1) return null;
   return (
-    <div className="flex items-center gap-1 bg-card border border-black/5 dark:border-white/10 p-1 rounded-xl shadow-lg">
+    <div className="flex items-center gap-1 rounded-lg border border-[var(--ops-border)] bg-[var(--ops-panel)] p-1">
        <button 
          disabled={current === 1} 
          onClick={() => onChange(current - 1)} 
