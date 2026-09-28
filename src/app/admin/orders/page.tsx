@@ -327,7 +327,7 @@ export default function AdminOrdersPage() {
           ? "SHIPPED"
           : null;
 
-    if (!nextStatus) return;
+    if (!nextStatus || !validatingOrder) return;
 
     setSaving(true);
     try {
