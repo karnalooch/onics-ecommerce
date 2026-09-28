@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { readBoundedJson } from "@/lib/boundedJsonIngress"
 import { COMMERCE_TRANSACTION_ROLES } from "@/lib/commerceAccess"
 import { buildAuthoritativeCartSnapshot } from "@/lib/cartSnapshot"
 import { CART_ITEM_QUANTITY_MAX } from "@/lib/cartQuantity"
@@ -23,7 +24,20 @@ export async function POST(req: Request) {
   const authCheck = await authorizeAPI([...COMMERCE_TRANSACTION_ROLES])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = CartPreviewSchema.safeParse(await req.json())
+  const body = await readBoundedJson(req)
+  if (!body.ok) {
+    return NextResponse.json(
+      {
+        error:
+          body.error === "too-large"
+            ? "Żądanie podglądu koszyka jest zbyt duże."
+            : "Nieprawidłowe dane podglądu koszyka.",
+      },
+      { status: body.error === "too-large" ? 413 : 400 }
+    )
+  }
+
+  const parsed = CartPreviewSchema.safeParse(body.value)
   if (!parsed.success) {
     return NextResponse.json(
       {
