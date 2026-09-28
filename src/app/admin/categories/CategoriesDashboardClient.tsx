@@ -10,7 +10,6 @@ import {
   Mic,
   Network,
   Plus,
-  Save,
   Shield,
   Smartphone,
   Speaker,
