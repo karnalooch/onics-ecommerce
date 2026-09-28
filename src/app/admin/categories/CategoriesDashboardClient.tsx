@@ -59,6 +59,11 @@ const ICONS: Record<string, LucideIcon> = {
   Folder,
 }
 
+function categoryRevision(category: Category) {
+  const revision = Number(category.revision ?? 0)
+  return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0
+}
+
 export function CategoriesDashboardClient({
   initialCategories,
 }: {
@@ -94,16 +99,30 @@ export function CategoriesDashboardClient({
     initialCategories.find((category) => category.id === activeCatId) || null
 
   const addSubcategoryAtomic = (activeCat: Category, newSubcatName: string) =>
-    addSubcategoryAction(activeCat.id, newSubcatName)
+    addSubcategoryAction(
+      activeCat.id,
+      newSubcatName,
+      categoryRevision(activeCat)
+    )
 
   const renameSubcategoryAtomic = (
     activeCat: Category,
     id: string,
     name: string
-  ) => renameSubcategoryAction(activeCat.id, id, name)
+  ) =>
+    renameSubcategoryAction(
+      activeCat.id,
+      id,
+      name,
+      categoryRevision(activeCat)
+    )
 
   const deleteSubcategoryAtomic = (activeCat: Category, subId: string) =>
-    deleteSubcategoryAction(activeCat.id, subId)
+    deleteSubcategoryAction(
+      activeCat.id,
+      subId,
+      categoryRevision(activeCat)
+    )
 
   const deleteCategoryByRevision = (id: string, expectedRevision: number) =>
     deleteCategoryAction(id, expectedRevision)
@@ -163,7 +182,12 @@ export function CategoriesDashboardClient({
     }
 
     run(
-      () => updateCategoryAction({ id: category.id, name }),
+      () =>
+        updateCategoryAction({
+          id: category.id,
+          name,
+          expectedRevision: categoryRevision(category),
+        }),
       "Nazwa kategorii zapisana."
     )
     setRenamingCategory(null)
@@ -195,13 +219,12 @@ export function CategoriesDashboardClient({
       return
     }
 
-    const revision =
-      Number.isSafeInteger(category.revision) && Number(category.revision) >= 0
-        ? Number(category.revision)
-        : 0
-
     run(
-      () => deleteCategoryByRevision(category.id, revision),
+      () =>
+        deleteCategoryByRevision(
+          category.id,
+          categoryRevision(category)
+        ),
       "Kategoria usunięta."
     )
   }
@@ -372,6 +395,7 @@ export function CategoriesDashboardClient({
                             updateCategoryAction({
                               id: activeCategory.id,
                               iconName: event.target.value,
+                              expectedRevision: categoryRevision(activeCategory),
                             }),
                           "Ikona kategorii zapisana."
                         )
