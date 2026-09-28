@@ -61,6 +61,53 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:3100/api/health/live
           curl --fail --silent --show-error http://127.0.0.1:3100/api/health/ready
 
+      - name: Verify bootstrap login and admin navigation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base_url="http://127.0.0.1:3100"
+          cookie_jar="$(mktemp)"
+          trap 'rm -f "$cookie_jar" csrf.json login.json session.json root.html admin.html root.headers admin.headers' EXIT
+
+          bootstrap_password="$(
+            docker compose logs --no-color celtronics |
+              sed -n 's/^.*local bootstrap password: //p' |
+              tail -n 1
+          )"
+          if [[ -z "$bootstrap_password" ]]; then
+            echo "Bootstrap password was not found in container logs."
+            docker compose logs --no-color celtronics
+            exit 1
+          fi
+
+          curl --fail --silent --show-error             -c "$cookie_jar"             "$base_url/api/auth/csrf" > csrf.json
+
+          csrf_token="$(jq -r '.csrfToken // empty' csrf.json)"
+          if [[ -z "$csrf_token" ]]; then
+            echo "Auth.js CSRF token was not returned."
+            cat csrf.json
+            exit 1
+          fi
+
+          curl --fail --silent --show-error             -b "$cookie_jar"             -c "$cookie_jar"             -H 'Content-Type: application/x-www-form-urlencoded'             -H 'X-Auth-Return-Redirect: 1'             --data-urlencode "email=admin@celtronics.pl"             --data-urlencode "password=$bootstrap_password"             --data-urlencode "csrfToken=$csrf_token"             --data-urlencode "callbackUrl=http://localhost:3100/admin"             "$base_url/api/auth/callback/credentials" > login.json
+
+          curl --fail --silent --show-error             -b "$cookie_jar"             "$base_url/api/auth/session" > session.json
+
+          jq -e '.user.email == "admin@celtronics.pl" and .user.role == "ADMIN"'             session.json >/dev/null
+
+          curl --fail --silent --show-error             --location             --max-redirs 8             -b "$cookie_jar"             -D root.headers             -o root.html             "$base_url/"
+
+          if ! curl --fail --silent --show-error             --location             --max-redirs 8             -b "$cookie_jar"             -D admin.headers             -o admin.html             "$base_url/admin"; then
+            echo "Admin navigation failed. Redirect headers:"
+            cat admin.headers || true
+            echo "Auth session:"
+            cat session.json || true
+            exit 1
+          fi
+
+          grep -q "Operations console" admin.html
+
       - name: Verify non-root runtime and durable volume
         shell: bash
         run: |
