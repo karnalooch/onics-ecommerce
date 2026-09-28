@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import {
+  CommerceBodyInvalidError,
+  CommerceBodyTooLargeError,
+  readCommerceJson,
+} from "@/lib/commerceIngress"
 import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { COMMERCE_TRANSACTION_ROLES } from "@/lib/commerceAccess"
@@ -247,7 +252,24 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["ADMIN"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = UpdatePaymentSettingsSchema.safeParse(await req.json())
+  let parsed: ReturnType<typeof UpdatePaymentSettingsSchema.safeParse>
+  try {
+    parsed = UpdatePaymentSettingsSchema.safeParse(await readCommerceJson(req))
+  } catch (error) {
+    if (error instanceof CommerceBodyTooLargeError) {
+      return NextResponse.json(
+        { error: "Żądanie ustawień płatności jest zbyt duże." },
+        { status: 413 }
+      )
+    }
+    if (error instanceof CommerceBodyInvalidError) {
+      return NextResponse.json(
+        { error: "Nieprawidłowe żądanie ustawień płatności." },
+        { status: 400 }
+      )
+    }
+    throw error
+  }
   if (!parsed.success) {
     return NextResponse.json(
       {
