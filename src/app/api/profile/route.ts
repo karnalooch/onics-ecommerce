@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { readBoundedJson } from "@/lib/boundedJsonIngress"
 import { initializeMockData, mutateMockData } from "@/store/serverStore"
 import { findStoredUserBySession } from "@/lib/sessionIdentity"
 import { nextUserRevision, userRevision } from "@/lib/userResponse"
@@ -56,7 +57,20 @@ export async function PUT(req: Request) {
   const authCheck = await authorizeAPI(["BIZ"])
   if (!authCheck.authorized) return authCheck.response
 
-  const parsed = UpdateProfileSchema.safeParse(await req.json())
+  const body = await readBoundedJson(req)
+  if (!body.ok) {
+    return NextResponse.json(
+      {
+        error:
+          body.error === "too-large"
+            ? "Żądanie aktualizacji profilu jest zbyt duże."
+            : "Nieprawidłowy JSON profilu.",
+      },
+      { status: body.error === "too-large" ? 413 : 400 }
+    )
+  }
+
+  const parsed = UpdateProfileSchema.safeParse(body.value)
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Nieprawidłowe dane." },
