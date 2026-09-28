@@ -19,10 +19,15 @@ import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { COMPANY_PUBLIC } from "@/lib/company"
 
+type QuoteProduct = {
+  id: string
+  name: string
+  sku: string
+  price: number
+}
+
 export default function QuotesGenerator() {
-  const [categories, setCategories] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [products, setProducts] = useState<QuoteProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [items, setItems] = useState<{productId: string, qty: number, discount: number}[]>([]);
@@ -33,29 +38,27 @@ export default function QuotesGenerator() {
 
   const loadData = useCallback(async () => {
     try {
-      const [cRes, pRes, uRes] = await Promise.all([
-        fetch("/api/categories"),
-        fetch("/api/products"),
-        fetch("/api/users")
-      ]);
+      const response = await fetch("/api/products")
+      const data: unknown = await response.json().catch(() => [])
 
-      const [cats, prods, users] = await Promise.all([
-        cRes.json().catch(() => []),
-        pRes.json().catch(() => []), 
-        uRes.json().catch(() => [])
-      ]);
-      setCategories(cats);
-      setProducts(prods);
-      setClients(users.filter((u: any) => u.roleType === "BIZ"));
+      if (!response.ok || !Array.isArray(data)) {
+        throw new Error("Nie udało się pobrać produktów do oferty.")
+      }
 
-      setRefNumber(`OFERTA/${new Date().getFullYear()}/${Math.floor(Math.random() * 9000) + 1000}`);
-      setQuoteDate(new Date().toLocaleDateString("pl-PL"));
-    } catch (e) {
-      toast.error("Nie udało się pobrać danych do oferty.");
+      setProducts(data as QuoteProduct[])
+      setRefNumber(
+        "OFERTA/" +
+          new Date().getFullYear() +
+          "/" +
+          String(Math.floor(Math.random() * 9000) + 1000)
+      )
+      setQuoteDate(new Date().toLocaleDateString("pl-PL"))
+    } catch {
+      toast.error("Nie udało się pobrać danych do oferty.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -83,7 +86,7 @@ export default function QuotesGenerator() {
     setItems(newItems);
   }
 
-  const getProduct = (id: string) => products.find(p => p.id === id) || { name: "Nieznany produkt", price: 0, sku: "BRAK SKU" };
+  const getProduct = (id: string): QuoteProduct => products.find((product) => product.id === id) || { id: "", name: "Nieznany produkt", price: 0, sku: "BRAK SKU" };
 
   const calculateTotal = () => {
     return items.reduce((sum, item) => {
