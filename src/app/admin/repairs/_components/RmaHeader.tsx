@@ -1,34 +1,29 @@
-"use client";
+"use client"
 
-import { Plus, ShieldAlert, Terminal } from "lucide-react";
+import { Plus } from "lucide-react"
 
-interface IRmaHeaderProps {
-  onAddClick: () => void;
-}
-
-export function RmaHeader({ onAddClick }: IRmaHeaderProps) {
+export function RmaHeader({ onAddClick }: { onAddClick: () => void }) {
   return (
-    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 pb-6 border-b border-black/5 dark:border-white/10">
-      <div className="flex items-center gap-6">
-        <div className="w-16 h-16 bg-primary text-white flex items-center justify-center rounded-2xl shadow-2xl shadow-primary/30">
-          <ShieldAlert className="w-8 h-8" />
+    <header className="flex flex-col justify-between gap-4 border-b border-[var(--ops-border)] pb-6 sm:flex-row sm:items-end">
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ops-muted)]">
+          Serwis i RMA
         </div>
-        <div className="flex flex-col">
-          <div className="flex items-center gap-3">
-             <span className="text-[11px] font-bold uppercase tracking-widest text-primary">Service Hub (RMA)</span>
-             <span className="w-1.5 h-1.5 bg-black/10 dark:bg-white/10 rounded-full" />
-             <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Diagnostic_v9</span>
-          </div>
-          <h1 className="text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight mt-1">Obsługa Serwisowa</h1>
-        </div>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          Zgłoszenia serwisowe
+        </h1>
+        <p className="mt-2 text-sm text-[var(--ops-muted)]">
+          Kolejka urządzeń, diagnoza, naprawa i zakończenie obsługi.
+        </p>
       </div>
-
-      <button 
+      <button
+        type="button"
         onClick={onAddClick}
-        className="h-14 px-10 bg-primary text-white font-bold uppercase text-[11px] tracking-widest flex items-center gap-4 transition-all hover:brightness-110 active:scale-95 shadow-xl shadow-primary/20 rounded-xl"
+        className="min-h-11 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white dark:bg-white dark:text-slate-950"
       >
-        <Plus className="w-5 h-5 shadow-glow" /> NOWE ZGŁOSZENIE RMA
+        <Plus className="mr-2 inline h-4 w-4" />
+        Nowe zgłoszenie
       </button>
-    </div>
-  );
+    </header>
+  )
 }
