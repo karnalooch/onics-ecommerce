@@ -42,8 +42,13 @@ function handlerSource(source: string, method: MutationMethod) {
 }
 
 function firstBodyReadIndex(source: string) {
-  const match = /req\.(?:json|text|formData|arrayBuffer)\s*\(/.exec(source)
-  return match?.index ?? -1
+  const directRead = /req\.(?:json|text|formData|arrayBuffer)\s*\(/.exec(source)
+  const helperRead = /\bread[A-Z]\w*(?:Json|Body)\s*\(\s*req\b/.exec(source)
+  const indexes = [directRead?.index, helperRead?.index].filter(
+    (index): index is number => typeof index === "number"
+  )
+
+  return indexes.length > 0 ? Math.min(...indexes) : -1
 }
 
 describe("API ingress authorization order", () => {
