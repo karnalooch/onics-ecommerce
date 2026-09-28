@@ -89,8 +89,8 @@ jobs:
           src/app/admin/knowledge/KnowledgeMaintenanceActions.tsx
           src/app/field/page.tsx
           src/app/field/FieldWorkbench.tsx
-          src/app/(b2b)/layout.tsx
-          src/app/(b2b)/dashboard/page.tsx
+          "src/app/(b2b)/layout.tsx"
+          "src/app/(b2b)/dashboard/page.tsx"
           src/app/api/health/live/route.ts
           src/app/api/health/ready/route.ts
           src/app/admin/price-lists/_lib/priceLogic.ts
