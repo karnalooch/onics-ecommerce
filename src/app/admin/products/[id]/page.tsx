@@ -1,5 +1,7 @@
 import { auth } from "@/auth";
 import { authorizeAPI } from "@/lib/authUtils";
+import { hasAccountRoleAccess } from "@/lib/accountAccess";
+import { findStoredUserBySession } from "@/lib/sessionIdentity";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
@@ -16,6 +18,29 @@ import {
   shouldDeferProductStockWrite,
   type InventoryReservationOrder,
 } from "@/lib/inventoryReservations";
+
+type StoredActor = {
+  id?: string;
+  email?: string;
+  roleType?: string;
+  isApproved?: boolean;
+  isBlocked?: boolean;
+};
+
+function assertCurrentAdminActionAccess(
+  users: StoredActor[],
+  actor: { id?: string; email?: string | null }
+) {
+  const currentActor = findStoredUserBySession(users, actor);
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error(
+      "Uprawnienia administratora zmieniły się przed zapisem produktu."
+    );
+  }
+}
 
 const ProductFormSchema = z.object({
   name: z.string().trim().min(2).max(240),
@@ -79,6 +104,10 @@ export default async function EditProductPage({ params }: { params: any }) {
     }
 
     await mutateMockData((db) => {
+      assertCurrentAdminActionAccess(
+        db.users as StoredActor[],
+        authCheck.user
+      );
       const productStore = db.products as any[];
       const categoryStore = db.categories as any[];
       const { expectedRevision, ...input } = parsed.data;

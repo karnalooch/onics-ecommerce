@@ -4,6 +4,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { authorizeAPI } from "@/lib/authUtils";
+import { hasAccountRoleAccess } from "@/lib/accountAccess";
+import { findStoredUserBySession } from "@/lib/sessionIdentity";
 import { mutateMockData } from "@/store/serverStore";
 import { buildRepairSubmissionFingerprint } from "@/lib/repairSubmissionIdempotency";
 import {
@@ -33,17 +35,60 @@ export type ActionState =
   | { success: true; message: string; data?: any }
   | { success: false; error: string };
 
-async function requireAdminAction() {
+type StoredActor = {
+  id?: string;
+  email?: string;
+  roleType?: string;
+  isApproved?: boolean;
+  isBlocked?: boolean;
+};
+
+type SessionActor = {
+  id?: string;
+  email?: string | null;
+};
+
+type AdminActionAuth =
+  | { authorized: true; actor: SessionActor }
+  | { authorized: false; response: ActionState };
+
+async function requireAdminAction(): Promise<AdminActionAuth> {
   const authCheck = await authorizeAPI(["ADMIN"]);
   if (!authCheck.authorized) {
-    return { success: false as const, error: "Brak uprawnień administratora." };
+    return {
+      authorized: false,
+      response: { success: false, error: "Brak uprawnień administratora." },
+    };
   }
-  return null;
+  return { authorized: true, actor: authCheck.user };
+}
+
+function assertCurrentAdminActionAccess(
+  users: StoredActor[],
+  actor: SessionActor
+) {
+  const currentActor = findStoredUserBySession(users, actor);
+  if (
+    !currentActor ||
+    !hasAccountRoleAccess(currentActor, ["ADMIN"])
+  ) {
+    throw new Error("ADMIN_ACCESS_REVOKED");
+  }
+}
+
+function currentAdminActionError(error: unknown): ActionState | null {
+  return error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED"
+    ? {
+        success: false,
+        error:
+          "Uprawnienia administratora zmieniły się przed zapisem. Odśwież panel i spróbuj ponownie.",
+      }
+    : null;
 }
 
 export async function addRepairAction(formData: FormData): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const adminAuth = await requireAdminAction();
+  if (!adminAuth.authorized) return adminAuth.response;
 
   const rawData = {
     requestId: formData.get("requestId"),
@@ -60,6 +105,10 @@ export async function addRepairAction(formData: FormData): Promise<ActionState> 
 
   try {
     const submission = await mutateMockData((db) => {
+      assertCurrentAdminActionAccess(
+        db.users as StoredActor[],
+        adminAuth.actor
+      );
       const repairs = db.repairs as RepairRecord[]
       const requestFingerprint = buildRepairSubmissionFingerprint({
         client: validated.data.client,
@@ -117,6 +166,8 @@ export async function addRepairAction(formData: FormData): Promise<ActionState> 
       data: publicRepair,
     };
   } catch (error) {
+    const adminError = currentAdminActionError(error);
+    if (adminError) return adminError;
     if (
       error instanceof Error &&
       error.message === "REPAIR_IDEMPOTENCY_KEY_REUSED"
@@ -132,11 +183,15 @@ export async function addRepairAction(formData: FormData): Promise<ActionState> 
 }
 
 export async function deleteRepairAction(id: string): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const adminAuth = await requireAdminAction();
+  if (!adminAuth.authorized) return adminAuth.response;
 
   try {
     await mutateMockData((db) => {
+      assertCurrentAdminActionAccess(
+        db.users as StoredActor[],
+        adminAuth.actor
+      );
       const repairs = db.repairs as RepairRecord[]
       const index = repairs.findIndex((repair) => repair.id === id)
       if (index === -1) throw new Error("REPAIR_NOT_FOUND")
@@ -149,6 +204,8 @@ export async function deleteRepairAction(id: string): Promise<ActionState> {
     revalidatePath("/admin/repairs");
     return { success: true, message: "Zgłoszenie usunięte." };
   } catch (error) {
+    const adminError = currentAdminActionError(error);
+    if (adminError) return adminError;
     if (error instanceof Error && error.message === "REPAIR_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono zgłoszenia." };
     }
@@ -168,8 +225,8 @@ export async function updateStatusAction(
   status: string,
   expectedStatus: string
 ): Promise<ActionState> {
-  const accessError = await requireAdminAction();
-  if (accessError) return accessError;
+  const adminAuth = await requireAdminAction();
+  if (!adminAuth.authorized) return adminAuth.response;
 
   if (!id.trim()) {
     return { success: false, error: "Brak identyfikatora zgłoszenia." };
@@ -180,6 +237,10 @@ export async function updateStatusAction(
 
   try {
     const submission = await mutateMockData((db) => {
+      assertCurrentAdminActionAccess(
+        db.users as StoredActor[],
+        adminAuth.actor
+      );
       const repairs = db.repairs as RepairRecord[]
       const repair = repairs.find((entry) => entry.id === id)
       if (!repair) throw new Error("REPAIR_NOT_FOUND")
@@ -214,6 +275,8 @@ export async function updateStatusAction(
         : `Status zmieniony na ${status}`,
     };
   } catch (error) {
+    const adminError = currentAdminActionError(error);
+    if (adminError) return adminError;
     if (error instanceof Error && error.message === "REPAIR_NOT_FOUND") {
       return { success: false, error: "Nie znaleziono zgłoszenia." };
     }

@@ -7,6 +7,8 @@ const ADMIN_AUTH_PATTERN =
   /authorizeAPI\s*\(\s*\[\s*["']ADMIN["']\s*\]\s*\)/
 const ADMIN_GUARD_CALL_PATTERN =
   /(?:authorizeAPI\s*\(\s*\[\s*["']ADMIN["']\s*\]\s*\)|requireAdminAction\s*\()/
+const CURRENT_ADMIN_WRITE_FENCE_PATTERN =
+  /assertCurrentAdminActionAccess\s*\(/
 
 function listSourceFiles(root: string): string[] {
   return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -167,6 +169,15 @@ describe("admin server action authorization contract", () => {
         if (!ADMIN_GUARD_CALL_PATTERN.test(action.source)) {
           offenders.push(
             `${relativePath(file)}:${action.name} does not invoke an ADMIN guard`
+          )
+        }
+
+        if (
+          /mutateMockData\s*\(/.test(action.source) &&
+          !CURRENT_ADMIN_WRITE_FENCE_PATTERN.test(action.source)
+        ) {
+          offenders.push(
+            `${relativePath(file)}:${action.name} mutates admin state without a current-account ADMIN fence`
           )
         }
       }
