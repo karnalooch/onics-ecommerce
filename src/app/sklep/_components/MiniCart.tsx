@@ -1,137 +1,162 @@
-// src/app/sklep/_components/MiniCart.tsx
-"use client";
+"use client"
 
-import { ShoppingBag, X, ArrowRight } from "lucide-react";
-import { useCartStore } from "@/store/cartStore";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing";
-import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart";
+import { ArrowRight, ShoppingCart, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useSyncExternalStore } from "react"
+import { useCartStore } from "@/store/cartStore"
+import { cartRequiresPricing, hasActiveCartPrice } from "@/lib/cartPricing"
+import { useAuthoritativeCart } from "@/lib/useAuthoritativeCart"
+
+const emptySubscribe = () => () => {}
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
 
 export function MiniCart({
   isB2B,
   identityKey,
 }: {
-  isB2B: boolean;
-  identityKey: string;
+  isB2B: boolean
+  identityKey: string
 }) {
-  const router = useRouter();
-  const { items: cart, removeItem, getTotalItems, getTotalPrice } = useCartStore();
-  const [mounted, setMounted] = useState(false);
+  const router = useRouter()
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot
+  )
+  const { items: cart, removeItem, getTotalItems, getTotalPrice } =
+    useCartStore()
   const { refreshingCart, availableStockById } = useAuthoritativeCart({
     enabled: mounted && isB2B,
     identityKey,
-  });
+  })
 
-  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) {
+    return (
+      <div className="flex h-40 items-center justify-center rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-950 dark:border-slate-700 dark:border-t-white" />
+      </div>
+    )
+  }
 
-  if (!mounted) return (
-    <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 h-40 flex items-center justify-center">
-       <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-    </div>
-  );
-
-  const cartCount = getTotalItems();
-  const total = getTotalPrice();
-  const requiresPricing = cartRequiresPricing(cart);
+  const cartCount = getTotalItems()
+  const total = getTotalPrice()
+  const requiresPricing = cartRequiresPricing(cart)
   const hasStockConflict = cart.some((item) => {
-    const availableStock = availableStockById[item.id];
+    const availableStock = availableStockById[item.id]
     return (
       hasActiveCartPrice(item.price) &&
       availableStock !== undefined &&
       item.quantity > availableStock
-    );
-  });
+    )
+  })
 
   return (
-    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 sticky top-28 flex flex-col max-h-[calc(100vh-160px)]">
-       <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-50">
-          <div className="flex items-center gap-3">
-             <div className="p-3 bg-primary/10 rounded-2xl relative">
-                <ShoppingBag className="w-5 h-5 text-primary" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-slate-900 text-white text-[9px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white">
-                    {cartCount}
-                  </span>
-                )}
-             </div>
-             <h3 className="font-black text-slate-800 uppercase tracking-tight italic">Twój <span className="text-primary italic">Zestaw</span></h3>
+    <aside className="sticky top-24 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
+      <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <div>
+          <h2 className="text-sm font-semibold">Wybrane pozycje</h2>
+          <div className="mt-1 font-mono text-xs text-slate-500">
+            {cartCount} szt.
           </div>
-       </div>
+        </div>
+        <ShoppingCart className="h-4 w-4 text-slate-500" />
+      </header>
 
-       {cart.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 opacity-30 gap-4">
-             <ShoppingBag className="w-12 h-12" />
-             <p className="text-[10px] font-black uppercase tracking-widest italic">Pusty Magazynek</p>
-          </div>
-       ) : (
-          <>
-            <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-thin">
-               {cart.map(item => (
-                 <div key={item.id} className="group flex items-start justify-between gap-4 p-4 rounded-2xl bg-slate-50/50 hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200">
-                    <div className="flex-1">
-                       <h4 className="text-[11px] font-black text-slate-700 leading-tight uppercase tracking-tight mb-1">{item.name}</h4>
-                       <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-black text-primary">x{item.quantity}</span>
-                          <span className="text-[10px] text-slate-300 font-bold">•</span>
-                          <span className="text-[10px] font-bold text-slate-400">
-                            {hasActiveCartPrice(item.price) ? `${item.price.toFixed(2)} zł` : "Na zapytanie"}
-                          </span>
-                       </div>
-                       {hasActiveCartPrice(item.price) &&
-                         availableStockById[item.id] !== undefined &&
-                         item.quantity >
-                           (availableStockById[item.id] ?? Number.POSITIVE_INFINITY) && (
-                           <div className="mt-1 text-[9px] font-black uppercase tracking-wide text-red-500">
-                             Dostępne {availableStockById[item.id]} szt.
-                           </div>
-                         )}
+      {cart.length === 0 ? (
+        <div className="p-6 text-sm leading-6 text-slate-500">
+          Nie wybrano jeszcze żadnych produktów.
+        </div>
+      ) : (
+        <>
+          <div className="max-h-[420px] divide-y divide-slate-200 overflow-y-auto dark:divide-slate-800">
+            {cart.map((item) => {
+              const availableStock = availableStockById[item.id]
+              const conflict =
+                hasActiveCartPrice(item.price) &&
+                availableStock !== undefined &&
+                item.quantity > availableStock
+
+              return (
+                <div key={item.id} className="flex gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">
+                      {item.name}
                     </div>
-                    <button onClick={() => removeItem(item.id)} className="p-1 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all">
-                       <X className="w-4 h-4" />
-                    </button>
-                 </div>
-               ))}
-            </div>
-
-            <div className="mt-8 pt-8 border-t-2 border-slate-50 space-y-6">
-               <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Wartość Razem</span>
-                  <div className="flex flex-col items-end">
-                     <span className="text-xl font-black text-slate-900 tracking-tight">
-                       {requiresPricing
-                         ? total > 0
-                           ? `${total.toFixed(2)} zł + wycena`
-                           : "Do wyceny"
-                         : `${total.toFixed(2)} zł`}
-                     </span>
-                     <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                       {hasStockConflict
-                         ? "część ilości przekracza bieżący stan"
-                         : requiresPricing
-                           ? "część pozycji bez aktywnej ceny"
-                           : "Netto + VAT"}
-                     </span>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs text-slate-500">
+                      <span>× {item.quantity}</span>
+                      <span>
+                        {hasActiveCartPrice(item.price)
+                          ? item.price.toLocaleString("pl-PL", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }) + " zł"
+                          : "wycena"}
+                      </span>
+                    </div>
+                    {conflict ? (
+                      <div className="mt-1 text-xs font-semibold text-red-700 dark:text-red-300">
+                        Dostępne: {availableStock} szt.
+                      </div>
+                    ) : null}
                   </div>
-               </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.id)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950/30"
+                    aria-label={"Usuń " + item.name}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
 
-               <Button 
-                 onClick={() => router.push('/koszyk')}
-                 disabled={refreshingCart}
-                 className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-[10px] gap-3 shadow-xl"
-               >
-                 {refreshingCart
-                   ? "Odświeżanie danych..."
-                   : hasStockConflict
-                     ? "Popraw dostępność"
-                     : requiresPricing
-                       ? "Przejdź do zapytania"
-                       : "Finalizuj Wybór"} <ArrowRight className="w-4 h-4" />
-               </Button>
+          <footer className="border-t border-slate-200 p-4 dark:border-slate-800">
+            <div className="flex justify-between gap-4 text-sm">
+              <span className="text-slate-500">Wartość netto</span>
+              <span className="text-right font-mono font-semibold">
+                {requiresPricing
+                  ? total > 0
+                    ? total.toLocaleString("pl-PL", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }) + " zł + wycena"
+                    : "Do wyceny"
+                  : total.toLocaleString("pl-PL", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }) + " zł"}
+              </span>
             </div>
-          </>
-       )}
-    </div>
-  );
+
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              {hasStockConflict
+                ? "Część ilości przekracza bieżący stan magazynowy."
+                : requiresPricing
+                  ? "Część pozycji wymaga indywidualnej wyceny."
+                  : "Ceny dotyczą Twojego konta w CEL-TRONICS."}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => router.push("/koszyk")}
+              disabled={refreshingCart}
+              className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-slate-950"
+            >
+              {refreshingCart
+                ? "Aktualizacja danych…"
+                : hasStockConflict
+                  ? "Sprawdź dostępność"
+                  : requiresPricing
+                    ? "Przejdź do zapytania"
+                    : "Przejdź do zamówienia"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </footer>
+        </>
+      )}
+    </aside>
+  )
 }
