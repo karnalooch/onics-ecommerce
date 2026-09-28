@@ -13,9 +13,22 @@ import {
   Tags,
   Users,
   Wrench,
+  type LucideIcon,
 } from "lucide-react"
 
-const groups = [
+type NavItem = {
+  href: string
+  label: string
+  icon: LucideIcon
+  exact?: boolean
+}
+
+type NavGroup = {
+  label: string
+  items: NavItem[]
+}
+
+const groups: NavGroup[] = [
   {
     label: "Praca",
     items: [
