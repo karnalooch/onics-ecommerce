@@ -14,6 +14,7 @@ const ROUTES = {
   ai: "src/app/api/products/ai-description/route.ts",
   train: "src/app/api/knowledge/train/route.ts",
   stream: "src/app/api/knowledge/train/stream/route.ts",
+  upload: "src/app/api/knowledge/upload/route.ts",
   validate: "src/app/api/knowledge/validate-key/route.ts",
 } as const
 
@@ -34,7 +35,7 @@ describe("admin external-cost abuse protection", () => {
       windowMs: 60 * 60_000,
     })
 
-    for (const routePath of [ROUTES.train, ROUTES.stream]) {
+    for (const routePath of [ROUTES.train, ROUTES.stream, ROUTES.upload]) {
       const source = read(routePath)
       expect(source).toContain(
         'checkAdminCostLimit("knowledge-training", authCheck.user)'
@@ -43,7 +44,12 @@ describe("admin external-cost abuse protection", () => {
   })
 
   it("bounds JSON before expensive work and removes raw req.json reads", () => {
-    for (const routePath of Object.values(ROUTES)) {
+    for (const routePath of [
+      ROUTES.ai,
+      ROUTES.train,
+      ROUTES.stream,
+      ROUTES.validate,
+    ]) {
       const source = read(routePath)
       expect(source).not.toContain("await req.json()")
       expect(source).toContain("readCommerceJson(")
