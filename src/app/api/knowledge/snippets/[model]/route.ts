@@ -19,8 +19,14 @@ export async function DELETE(
 
     if (!deleted) {
       return NextResponse.json(
-        { error: "Nie znaleziono wyekstrahowanego wpisu wiedzy." },
-        { status: 404 }
+        {
+          success: true,
+          message:
+            "Wyodrębniony wpis wiedzy był już nieobecny — nie było nic do usunięcia.",
+        },
+        {
+          headers: { "Idempotency-Replayed": "true" },
+        }
       )
     }
 
