@@ -7,6 +7,29 @@ function read(relativePath: string) {
 }
 
 describe("quote admin replay wiring", () => {
+  it("rechecks current admin access inside the quote update mutation", () => {
+    const route = read("src/app/api/quotes/route.ts")
+    const start = route.indexOf("export async function PUT")
+    const flow = route.slice(start)
+    const mutation = flow.indexOf("mutateMockData((db) =>")
+    const adminFence = flow.indexOf(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])',
+      mutation
+    )
+    const targetLookup = flow.indexOf(
+      "const quoteIndex = orders.findIndex(",
+      adminFence
+    )
+    const write = flow.indexOf("orders[quoteIndex] = nextQuote", adminFence)
+
+    expect(start).toBeGreaterThan(-1)
+    expect(mutation).toBeGreaterThan(-1)
+    expect(adminFence).toBeGreaterThan(mutation)
+    expect(targetLookup).toBeGreaterThan(adminFence)
+    expect(write).toBeGreaterThan(adminFence)
+    expect(flow).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
+  })
+
   it("checks exact replay before the terminal transition gate", () => {
     const route = read("src/app/api/quotes/route.ts")
     const start = route.indexOf("export async function PUT")

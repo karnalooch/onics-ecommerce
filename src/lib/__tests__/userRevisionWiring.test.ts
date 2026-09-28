@@ -90,6 +90,16 @@ describe("user revision fencing", () => {
     expect(route).toContain(
       "current.revision = nextUserRevision(currentRevision)"
     )
+    const mutation = route.indexOf("mutateMockData((db) =>")
+    const adminFence = route.indexOf(
+      'hasAccountRoleAccess(currentActor, ["ADMIN"])',
+      mutation
+    )
+    const write = route.indexOf("current.discount = parsed.data.discount", adminFence)
+    expect(mutation).toBeGreaterThan(-1)
+    expect(adminFence).toBeGreaterThan(mutation)
+    expect(write).toBeGreaterThan(adminFence)
+    expect(route).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
     expect(page).toContain(
       "expectedRevision: Number(selectedUser.revision ?? 0)"
     )

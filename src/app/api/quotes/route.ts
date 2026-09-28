@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import nodemailer from "nodemailer"
 import { z } from "zod"
 import { authorizeAPI } from "@/lib/authUtils"
+import { hasAccountRoleAccess } from "@/lib/accountAccess"
 import {
   COMMERCE_TRANSACTION_ROLES,
   isCommerceTransactionRole,
@@ -310,6 +311,14 @@ export async function PUT(req: Request) {
       const orders = db.orders as StoredQuote[]
       const products = db.products as StoredProduct[]
       const users = db.users as StoredUser[]
+      const currentActor = findStoredUserBySession(users, authCheck.user)
+      if (
+        !currentActor ||
+        !hasAccountRoleAccess(currentActor, ["ADMIN"])
+      ) {
+        throw new Error("ADMIN_ACCESS_REVOKED")
+      }
+
       const quoteIndex = orders.findIndex(
         (entry) => entry.id === parsed.data.id
       )
@@ -401,6 +410,12 @@ export async function PUT(req: Request) {
       }
     )
   } catch (error) {
+    if (error instanceof Error && error.message === "ADMIN_ACCESS_REVOKED") {
+      return NextResponse.json(
+        { error: "Uprawnienia administratora zmieniły się przed aktualizacją wyceny." },
+        { status: 403 }
+      )
+    }
     if (error instanceof Error && error.message === "QUOTE_NOT_FOUND") {
       return NextResponse.json(
         { error: "Nie znaleziono zapytania." },
