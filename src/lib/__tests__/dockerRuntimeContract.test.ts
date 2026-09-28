@@ -40,6 +40,8 @@ describe("local Docker runtime contract", () => {
 
     expect(entrypoint).toContain('if [ ! -e "$DB_PATH" ]; then')
     expect(entrypoint).toContain("cp /app/seed/db.json")
+    expect(entrypoint).toContain("db.paymentControl = {")
+    expect(entrypoint).toContain("enabled: false")
     expect(entrypoint).not.toContain("rm -f \"$DB_PATH\"")
   })
 
