@@ -126,7 +126,7 @@ export function B2BDashboardGrid({
 
   if (loading) {
     return (
-      <div className="flex min-h-[280px] items-center justify-center">
+      <div className="flex min-h-[280px] items-center justify-center border border-[#d9dbdc] bg-white">
         <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
       </div>
     )
@@ -136,26 +136,26 @@ export function B2BDashboardGrid({
     <>
       <label className="relative block">
         <span className="sr-only">Szukaj w katalogu</span>
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Model, SKU lub producent…"
-          className="h-12 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 text-sm font-medium outline-none focus:border-slate-950 dark:border-slate-700 dark:bg-[#0f1216] dark:focus:border-white"
+          className="h-13 w-full rounded-lg border border-[#cfd2d4] bg-white pl-12 pr-4 text-base font-medium text-slate-950 outline-none focus:border-primary"
         />
       </label>
 
       {visibleProducts.length === 0 ? (
-        <div className="mt-4 flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-[#0f1216]">
-          <PackageSearch className="h-6 w-6 text-slate-400" />
-          <h3 className="mt-3 font-semibold">Brak produktów</h3>
-          <p className="mt-1 text-sm text-slate-500">
+        <div className="mt-4 flex min-h-[220px] flex-col items-center justify-center border border-dashed border-[#cfd2d4] bg-white p-8 text-center">
+          <PackageSearch className="h-7 w-7 text-slate-400" />
+          <h3 className="mt-3 text-lg font-semibold text-slate-950">Brak produktów</h3>
+          <p className="mt-1 text-base text-slate-600">
             Zmień frazę wyszukiwania.
           </p>
         </div>
       ) : (
-        <section className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
-          <div className="hidden min-h-11 grid-cols-[130px_minmax(0,1fr)_160px_110px_150px_170px] items-center gap-4 border-b border-slate-200 px-4 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 dark:border-slate-800 lg:grid">
+        <section className="mt-4 overflow-hidden border border-[#d9dbdc] bg-white">
+          <div className="hidden min-h-11 grid-cols-[130px_minmax(0,1fr)_160px_110px_160px_170px] items-center gap-4 border-b border-[#d9dbdc] bg-[#f1f1ee] px-4 text-xs font-semibold uppercase tracking-[0.05em] text-slate-500 lg:grid">
             <span>SKU</span>
             <span>Produkt</span>
             <span>Producent</span>
@@ -164,7 +164,7 @@ export function B2BDashboardGrid({
             <span className="text-right">Akcja</span>
           </div>
 
-          <div className="divide-y divide-slate-200 dark:divide-slate-800">
+          <div className="divide-y divide-[#e0e1e1]">
             {visibleProducts.map((product) => {
               const price = Number(product.price ?? 0)
               const available = Number(product.stock ?? 0) > 0
@@ -173,32 +173,30 @@ export function B2BDashboardGrid({
               return (
                 <article
                   key={product.id}
-                  className="grid gap-3 px-4 py-4 lg:grid-cols-[130px_minmax(0,1fr)_160px_110px_150px_170px] lg:items-center"
+                  className="grid gap-3 px-4 py-4 lg:grid-cols-[130px_minmax(0,1fr)_160px_110px_160px_170px] lg:items-center"
                 >
-                  <div className="font-mono text-sm font-semibold">
+                  <div className="font-mono text-sm font-semibold text-slate-950">
                     {product.sku}
                   </div>
 
                   <div className="min-w-0">
-                    <div className="truncate font-semibold">
+                    <div className="truncate text-[15px] font-semibold text-slate-950">
                       {product.name}
                     </div>
-                    <div className="mt-1 text-xs text-slate-500 lg:hidden">
+                    <div className="mt-1 text-sm text-slate-500 lg:hidden">
                       {product.manufacturer || "Brak producenta"}
                     </div>
                   </div>
 
-                  <div className="hidden truncate text-sm text-slate-500 lg:block">
+                  <div className="hidden truncate text-sm text-slate-600 lg:block">
                     {product.manufacturer || "—"}
                   </div>
 
                   <div className="text-sm">
                     <span
                       className={
-                        "inline-flex rounded-md border px-2 py-1 text-xs font-semibold " +
-                        (available
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
-                          : "border-slate-200 text-slate-500 dark:border-slate-800")
+                        "font-semibold " +
+                        (available ? "text-[#16794b]" : "text-slate-500")
                       }
                     >
                       {available
@@ -207,7 +205,7 @@ export function B2BDashboardGrid({
                     </span>
                   </div>
 
-                  <div className="font-mono text-sm font-semibold">
+                  <div className="font-mono text-sm font-semibold text-slate-950">
                     {formatPrice(product)}
                   </div>
 
@@ -215,12 +213,15 @@ export function B2BDashboardGrid({
                     <button
                       type="button"
                       onClick={() => handleAddToCart(product)}
-                      disabled={
-                        !needsQuote && (!available || !cartOwnerReady)
+                      disabled={!needsQuote && (!available || !cartOwnerReady)}
+                      className={
+                        "inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 " +
+                        (needsQuote
+                          ? "bg-slate-700 hover:bg-slate-800"
+                          : "bg-primary hover:bg-[#a9161c]")
                       }
-                      className="min-h-10 rounded-lg bg-slate-950 px-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-950"
                     >
-                      <ShoppingCart className="mr-2 inline h-4 w-4" />
+                      <ShoppingCart className="h-4 w-4" />
                       {needsQuote ? "Zapytaj" : "Dodaj"}
                     </button>
                   </div>
