@@ -30,6 +30,18 @@ describe("quote admin replay wiring", () => {
     expect(flow).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
   })
 
+  it("rejects non-inquiry records before quote replay or transition logic", () => {
+    const route = read("src/app/api/quotes/route.ts")
+    const start = route.indexOf("export async function PUT")
+    const flow = route.slice(start)
+    const targetFence = flow.indexOf('quote.orderType !== "INQUIRY"')
+    const replay = flow.indexOf("isQuoteAdminUpdateReplay(quote, parsed.data)")
+
+    expect(targetFence).toBeGreaterThan(-1)
+    expect(replay).toBeGreaterThan(targetFence)
+    expect(flow).toContain('throw new Error("QUOTE_TARGET_INVALID")')
+  })
+
   it("checks exact replay before stale-status and terminal transition gates", () => {
     const route = read("src/app/api/quotes/route.ts")
     const start = route.indexOf("export async function PUT")
@@ -63,6 +75,7 @@ describe("quote admin replay wiring", () => {
 
     expect(actions.match(/expectedStatus: currentStatus/g)?.length).toBe(2)
     expect(dashboard).toContain('href: "/admin#pending-quotes"')
+    expect(dashboard).toContain('order.orderType === "INQUIRY"')
     expect(dashboard).toContain('id="pending-quotes"')
     expect(dashboard).toContain('actionType="processQuote"')
     expect(dashboard).toContain('currentStatus={String(quote.status || "")}')
