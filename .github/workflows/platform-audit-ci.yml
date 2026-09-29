@@ -4,13 +4,29 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gumball/**"
+      - "gumball.yaml"
+      - "templates/release-manifest.json"
   push:
     branches:
       - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gumball/**"
+      - "gumball.yaml"
+      - "templates/release-manifest.json"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: platform-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate-platform-audit:
