@@ -57,6 +57,15 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout exact revision for local CI contracts
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Validate ONICS CI cost-routing contracts
+        run: python3 -m unittest scripts/ci/test_onics_ci_plan.py -v
+
       - name: Fail closed over shared Gumball contracts
         env:
           REPO_POLICY_RESULT: ${{ needs.repo-policy.result }}
