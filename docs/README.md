@@ -30,6 +30,7 @@ The final **Aggregate CI gate remains caller-local and fail closed**.
 The caller-local Aggregate CI gate derives the required proof set from the exact changed paths and fails closed when required evidence is missing, failed, cancelled or unexpectedly skipped.
 
 - Gumball consumer validation runs for every pull request.
+- Inside Gumball Consumer, docs-only pull requests keep repository policy, governance and the security plan active while Dependency Review, CodeQL and Trivy are intentionally skipped.
 - Documentation and Gumball-candidate-only changes stay on the light lane.
 - Platform Audit runs for application/server changes.
 - Site PR CI runs for public/shared UI and relevant frontend-toolchain changes.
