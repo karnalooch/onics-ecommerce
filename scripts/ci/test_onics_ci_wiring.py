@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -81,6 +82,16 @@ class OnicsCiWiringTests(unittest.TestCase):
             workflow = read(path)
             self.assertIn("concurrency:", workflow, path)
             self.assertIn("cancel-in-progress: true", workflow, path)
+
+    def test_gumball_consumer_pins_one_platform_revision_and_enables_docs_light(self):
+        workflow = read(".github/workflows/gumball-consumer-ci.yml")
+        refs = re.findall(
+            r"engineering-platform/\.github/workflows/[^@]+@([0-9a-f]{40})",
+            workflow,
+        )
+        self.assertEqual(3, len(refs))
+        self.assertEqual(1, len(set(refs)))
+        self.assertIn("enable_docs_only_light_lane: true", workflow)
 
     def test_gumball_marks_local_ci_policy_high_risk(self):
         workflow = read(".github/workflows/gumball-consumer-ci.yml")
