@@ -1,0 +1,23 @@
+{
+  "id": "long-running-authorized-mutation-fence",
+  "source": "karnalooch/onics-ecommerce",
+  "category": "security",
+  "problem": "A privileged mutation can perform slow external work after initial authorization and state read; during that wait the requester can lose privileges, the request can be aborted, or the protected resource can change, making the original authorization/state snapshot stale.",
+  "invariant": "Any privileged write that performs slow or external preflight before commit must bind external work to the request lifetime, then revalidate the current actor under the write lock and revalidate the observed resource state immediately before mutation. Exact retries may replay safely; stale writers fail closed.",
+  "evidence": [
+    "src/app/api/payment-methods/route.ts",
+    "src/lib/paymentProviderActivation.ts",
+    "src/lib/paymentSettingsState.ts",
+    "src/lib/__tests__/paymentSettingsStateWiring.test.ts",
+    "src/app/api/products/ai-description/route.ts",
+    "src/lib/__tests__/aiDescriptionAuthorizationFence.test.ts"
+  ],
+  "do_not_copy": [
+    "CEL-TRONICS payment-provider names",
+    "Gemini-specific API calls or model selection",
+    "ONICS file-store implementation details",
+    "product-specific HTTP error wording"
+  ],
+  "failure_behavior": "Abort cancelled requests; reject writes if current authorization was revoked or the protected state changed during external work; preserve exact idempotent retries without silently applying stale intent.",
+  "status": "proven"
+}
