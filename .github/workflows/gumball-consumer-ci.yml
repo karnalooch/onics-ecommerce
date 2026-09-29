@@ -19,7 +19,7 @@ jobs:
   repo-policy:
     permissions:
       contents: read
-    uses: karnalooch/engineering-platform/.github/workflows/reusable-repo-policy.yml@6c94ec9f4817df430c3b6d5fdbbc025578ebf950
+    uses: karnalooch/engineering-platform/.github/workflows/reusable-repo-policy.yml@03eb6f6bc6cd2260349386489bffb005c44b3236
     with:
       max_non_lfs_mib: 10
       forbidden_path_components: ".next,node_modules,.local"
@@ -27,7 +27,7 @@ jobs:
   governance:
     permissions:
       contents: read
-    uses: karnalooch/engineering-platform/.github/workflows/reusable-governance.yml@6c94ec9f4817df430c3b6d5fdbbc025578ebf950
+    uses: karnalooch/engineering-platform/.github/workflows/reusable-governance.yml@03eb6f6bc6cd2260349386489bffb005c44b3236
     with:
       additional_high_risk_patterns: |
         scripts/ci/**
@@ -42,9 +42,10 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: karnalooch/engineering-platform/.github/workflows/reusable-security.yml@6c94ec9f4817df430c3b6d5fdbbc025578ebf950
+    uses: karnalooch/engineering-platform/.github/workflows/reusable-security.yml@03eb6f6bc6cd2260349386489bffb005c44b3236
     with:
       codeql_languages_json: '["javascript-typescript"]'
+      enable_docs_only_light_lane: true
 
   consumer-gate:
     name: Gumball consumer gate
