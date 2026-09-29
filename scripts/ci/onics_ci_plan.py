@@ -21,9 +21,6 @@ BROAD_CONTROL_PATTERNS = (
     "package.json",
     "package-lock.json",
     "next.config.*",
-    "tsconfig.json",
-    "eslint.config.*",
-    "vitest.config.*",
     ".node-version",
     ".nvmrc",
 )
@@ -35,6 +32,9 @@ PLATFORM_ONLY_PATTERNS = (
 )
 
 SITE_PATTERNS = (
+    "tsconfig.json",
+    "eslint.config.*",
+    "vitest.config.*",
     "src/app/page.tsx",
     "src/app/layout.tsx",
     "src/app/globals.css",
