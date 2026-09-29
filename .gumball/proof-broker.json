@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "allowed_permissions": [
+      "write",
+      "maintain",
+      "admin"
+    ],
+    "dispatch_ref": "default",
+    "allow_branch_workflow_definition": false,
+    "require_exact_sha_input": true,
+    "require_request_id_run_name": true,
+    "manual_workflow_dispatch_fallback": true,
+    "reconcile_interval_minutes": 60,
+    "status_label_template": "proof-status:$proof:$status",
+    "trusted_actor_logins": []
+  },
+  "proofs": {}
+}
