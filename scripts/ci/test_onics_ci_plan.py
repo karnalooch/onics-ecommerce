@@ -88,6 +88,29 @@ class OnicsCiPlanTests(unittest.TestCase):
         self.assertTrue(result.site)
         self.assertTrue(result.docker)
 
+    def test_typescript_config_runs_platform_and_site(self):
+        result = plan(["tsconfig.json"])
+        self.assertEqual(
+            result.required_checks,
+            [
+                "Gumball consumer gate",
+                "validate-platform-audit",
+                "validate-public-site",
+            ],
+        )
+
+    def test_next_config_runs_full_runtime_proof(self):
+        result = plan(["next.config.ts"])
+        self.assertEqual(
+            result.required_checks,
+            [
+                "Gumball consumer gate",
+                "validate-platform-audit",
+                "validate-public-site",
+                "docker-runtime",
+            ],
+        )
+
     def test_unknown_or_empty_fails_safe(self):
         for paths in ([], ["__UNKNOWN__"]):
             result = plan(paths)
