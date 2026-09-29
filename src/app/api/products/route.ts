@@ -299,10 +299,6 @@ export async function POST(req: Request) {
           )
 
           if (existing) {
-            if (item.expectedRevision === undefined) {
-              throw new Error("PRODUCT_IMPORT_TARGET_APPEARED")
-            }
-
             const currentRevision = catalogProductRevision(existing.revision)
             const candidate = { ...existing }
 
@@ -328,6 +324,14 @@ export async function POST(req: Request) {
             }
 
             const isReplay = isCatalogProductStateEqual(existing, candidate)
+            if (item.expectedRevision === undefined) {
+              if (isReplay) {
+                updatedCount += 1
+                continue
+              }
+              throw new Error("PRODUCT_IMPORT_TARGET_APPEARED")
+            }
+
             if (item.expectedRevision !== currentRevision) {
               if (isReplay) {
                 updatedCount += 1
