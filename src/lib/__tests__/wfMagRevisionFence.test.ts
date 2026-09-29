@@ -19,7 +19,7 @@ describe("WF-Mag staging revision binding", () => {
     const { staging } = processInventoryData(
       [
         {
-          sku: "SKU-1",
+          sku: " sku-1 ",
           name: "Existing",
           price: 120,
           stock: 6,
