@@ -78,9 +78,19 @@ jobs:
         run: |
           set -euo pipefail
 
-          mapfile -t required_checks < <(
-            python3 scripts/ci/onics_ci_plan.py --checks < .ci/changed-paths.txt
-          )
+          if grep -Eq '^(\.github/|scripts/ci/)' .ci/changed-paths.txt; then
+            required_checks=(
+              "Gumball consumer gate"
+              "validate-platform-audit"
+              "validate-public-site"
+              "docker-runtime"
+            )
+            echo "Control-plane change detected; forcing the full proof set."
+          else
+            mapfile -t required_checks < <(
+              python3 scripts/ci/onics_ci_plan.py --checks < .ci/changed-paths.txt
+            )
+          fi
 
           if [[ "${#required_checks[@]}" -eq 0 ]]; then
             echo "::error::CI planner produced an empty proof set."
