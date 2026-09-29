@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   AdminQuoteUpdateSchema,
+  assertQuoteAdminExpectedStatus,
   assertQuoteAdminTransition,
   isQuoteAdminActionable,
   isQuoteAdminUpdateReplay,
@@ -9,20 +10,36 @@ import {
 } from "../quoteAdmin"
 
 describe("quote admin invariants", () => {
-  it("accepts a complete quoted payload", () => {
+  it("accepts a complete quoted payload with observed status", () => {
     expect(
       AdminQuoteUpdateSchema.parse({
         id: "QUOTE-1",
+        expectedStatus: "INQUIRY",
         status: "QUOTED",
         deliveryTimeDays: 14,
         additionalDiscount: 7.5,
       })
     ).toEqual({
       id: "QUOTE-1",
+      expectedStatus: "INQUIRY",
       status: "QUOTED",
       deliveryTimeDays: 14,
       additionalDiscount: 7.5,
     })
+  })
+
+  it("requires an actionable observed status", () => {
+    for (const expectedStatus of [undefined, "QUOTED", "REJECTED", ""]) {
+      expect(
+        AdminQuoteUpdateSchema.safeParse({
+          id: "QUOTE-1",
+          expectedStatus,
+          status: "QUOTED",
+          deliveryTimeDays: 14,
+          additionalDiscount: 0,
+        }).success
+      ).toBe(false)
+    }
   })
 
   it("requires a 1-365 integer delivery time for quoted offers", () => {
@@ -30,6 +47,7 @@ describe("quote admin invariants", () => {
       expect(
         AdminQuoteUpdateSchema.safeParse({
           id: "QUOTE-1",
+          expectedStatus: "PENDING",
           status: "QUOTED",
           deliveryTimeDays,
           additionalDiscount: 0,
@@ -42,12 +60,14 @@ describe("quote admin invariants", () => {
     expect(
       AdminQuoteUpdateSchema.parse({
         id: "QUOTE-1",
+        expectedStatus: "PENDING",
         status: "REJECTED",
         deliveryTimeDays: null,
         additionalDiscount: 0,
       })
     ).toEqual({
       id: "QUOTE-1",
+      expectedStatus: "PENDING",
       status: "REJECTED",
       deliveryTimeDays: null,
       additionalDiscount: 0,
@@ -56,6 +76,7 @@ describe("quote admin invariants", () => {
     expect(
       AdminQuoteUpdateSchema.safeParse({
         id: "QUOTE-1",
+        expectedStatus: "PENDING",
         status: "REJECTED",
         deliveryTimeDays: 14,
         additionalDiscount: 0,
@@ -65,6 +86,7 @@ describe("quote admin invariants", () => {
     expect(
       AdminQuoteUpdateSchema.safeParse({
         id: "QUOTE-1",
+        expectedStatus: "PENDING",
         status: "REJECTED",
         deliveryTimeDays: null,
         additionalDiscount: 5,
@@ -82,6 +104,7 @@ describe("quote admin invariants", () => {
         },
         {
           id: "QUOTE-1",
+          expectedStatus: "INQUIRY",
           status: "QUOTED",
           deliveryTimeDays: 14,
           additionalDiscount: 7.5,
@@ -98,6 +121,7 @@ describe("quote admin invariants", () => {
         },
         {
           id: "QUOTE-1",
+          expectedStatus: "INQUIRY",
           status: "QUOTED",
           deliveryTimeDays: 21,
           additionalDiscount: 7.5,
@@ -114,6 +138,7 @@ describe("quote admin invariants", () => {
         },
         {
           id: "QUOTE-1",
+          expectedStatus: "PENDING",
           status: "REJECTED",
           deliveryTimeDays: null,
           additionalDiscount: 0,
@@ -130,12 +155,22 @@ describe("quote admin invariants", () => {
         },
         {
           id: "QUOTE-1",
+          expectedStatus: "PENDING",
           status: "QUOTED",
           deliveryTimeDays: 14,
           additionalDiscount: 0,
         }
       )
     ).toBe(false)
+  })
+
+  it("rejects stale observed quote status", () => {
+    expect(() =>
+      assertQuoteAdminExpectedStatus("INQUIRY", "PENDING")
+    ).toThrow("QUOTE_STATUS_CONFLICT")
+    expect(() =>
+      assertQuoteAdminExpectedStatus("PENDING", "PENDING")
+    ).not.toThrow()
   })
 
   it("recognizes only pending quote states as actionable", () => {
