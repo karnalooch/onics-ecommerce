@@ -52,7 +52,22 @@ class OnicsCiPlanTests(unittest.TestCase):
         result = plan(["src/auth.ts"])
         self.assertEqual(
             result.required_checks,
-            ["Gumball consumer gate", "docker-runtime"],
+            [
+                "Gumball consumer gate",
+                "validate-platform-audit",
+                "docker-runtime",
+            ],
+        )
+
+    def test_admin_navigation_runs_platform_and_docker(self):
+        result = plan(["src/app/admin/_components/AdminNavigation.tsx"])
+        self.assertEqual(
+            result.required_checks,
+            [
+                "Gumball consumer gate",
+                "validate-platform-audit",
+                "docker-runtime",
+            ],
         )
 
     def test_ci_change_fails_safe_to_all_local_checks(self):
