@@ -4,13 +4,61 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - ".github/workflows/**"
+      - "scripts/ci/**"
+      - "package.json"
+      - "package-lock.json"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "compose.yaml"
+      - "docker-compose*.yml"
+      - "START-ONICS.bat"
+      - "start-onics.ps1"
+      - "scripts/docker/**"
+      - "src/auth.ts"
+      - "src/lib/adminBootstrap.ts"
+      - "src/lib/health.ts"
+      - "src/lib/storageConfig.ts"
+      - "src/app/api/auth/**"
+      - "src/app/api/health/**"
+      - "src/app/admin/page.tsx"
+      - "src/app/admin/layout.tsx"
+      - "src/app/admin/_components/AdminNavigation.tsx"
+      - "src/app/logowanie/**"
   push:
     branches:
       - main
+    paths:
+      - ".github/workflows/**"
+      - "scripts/ci/**"
+      - "package.json"
+      - "package-lock.json"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "compose.yaml"
+      - "docker-compose*.yml"
+      - "START-ONICS.bat"
+      - "start-onics.ps1"
+      - "scripts/docker/**"
+      - "src/auth.ts"
+      - "src/lib/adminBootstrap.ts"
+      - "src/lib/health.ts"
+      - "src/lib/storageConfig.ts"
+      - "src/app/api/auth/**"
+      - "src/app/api/health/**"
+      - "src/app/admin/page.tsx"
+      - "src/app/admin/layout.tsx"
+      - "src/app/admin/_components/AdminNavigation.tsx"
+      - "src/app/logowanie/**"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: docker-runtime-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   docker-runtime:
