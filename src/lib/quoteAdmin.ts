@@ -3,6 +3,7 @@ import { z } from "zod"
 const QuotedQuoteUpdateSchema = z
   .object({
     id: z.string().min(1),
+    expectedStatus: z.enum(["PENDING", "INQUIRY"]),
     status: z.literal("QUOTED"),
     deliveryTimeDays: z.coerce.number().int().min(1).max(365),
     additionalDiscount: z.coerce.number().min(0).max(100).default(0),
@@ -12,6 +13,7 @@ const QuotedQuoteUpdateSchema = z
 const RejectedQuoteUpdateSchema = z
   .object({
     id: z.string().min(1),
+    expectedStatus: z.enum(["PENDING", "INQUIRY"]),
     status: z.literal("REJECTED"),
     deliveryTimeDays: z.null().optional(),
     additionalDiscount: z
@@ -53,6 +55,15 @@ export function isQuoteAdminUpdateReplay(
     (state.deliveryTimeDays ?? null) === null &&
     Number(state.additionalDiscount ?? 0) === 0
   )
+}
+
+export function assertQuoteAdminExpectedStatus(
+  currentStatus: unknown,
+  expectedStatus: AdminQuoteUpdate["expectedStatus"]
+) {
+  if (currentStatus !== expectedStatus) {
+    throw new Error("QUOTE_STATUS_CONFLICT")
+  }
 }
 
 export function isQuoteAdminActionable(currentStatus: unknown) {
