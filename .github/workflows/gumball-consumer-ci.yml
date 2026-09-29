@@ -1,0 +1,72 @@
+name: Gumball Consumer CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: gumball-consumer-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repo-policy:
+    permissions:
+      contents: read
+    uses: karnalooch/engineering-platform/.github/workflows/reusable-repo-policy.yml@6c94ec9f4817df430c3b6d5fdbbc025578ebf950
+    with:
+      max_non_lfs_mib: 10
+      forbidden_path_components: ".next,node_modules,.local"
+
+  governance:
+    permissions:
+      contents: read
+    uses: karnalooch/engineering-platform/.github/workflows/reusable-governance.yml@6c94ec9f4817df430c3b6d5fdbbc025578ebf950
+    with:
+      additional_high_risk_patterns: |
+        src/lib/payment*.ts
+        src/lib/manualPayments.ts
+        src/app/api/webhooks/**
+        src/app/api/payment-methods/**
+        src/store/serverStore.ts
+        PAYMENTS_PRODUCTION_RUNBOOK.md
+
+  security:
+    permissions:
+      contents: read
+      security-events: write
+    uses: karnalooch/engineering-platform/.github/workflows/reusable-security.yml@6c94ec9f4817df430c3b6d5fdbbc025578ebf950
+    with:
+      codeql_languages_json: '["javascript-typescript"]'
+
+  consumer-gate:
+    name: Gumball consumer gate
+    if: ${{ always() }}
+    needs:
+      - repo-policy
+      - governance
+      - security
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - name: Fail closed over shared Gumball contracts
+        env:
+          REPO_POLICY_RESULT: ${{ needs.repo-policy.result }}
+          GOVERNANCE_RESULT: ${{ needs.governance.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+        run: |
+          set -euo pipefail
+          printf 'repo-policy=%s\ngovernance=%s\nsecurity=%s\n' \
+            "$REPO_POLICY_RESULT" "$GOVERNANCE_RESULT" "$SECURITY_RESULT"
+
+          test "$REPO_POLICY_RESULT" = "success"
+          test "$GOVERNANCE_RESULT" = "success"
+          test "$SECURITY_RESULT" = "success"
