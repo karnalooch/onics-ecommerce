@@ -38,6 +38,7 @@ type AdminStatusRecord = {
 
 type AdminQuoteRow = {
   id?: string
+  orderType?: string
   status?: unknown
   productName?: string
   quantity?: number
@@ -86,7 +87,11 @@ export default async function AdminDashboard() {
     (user) => user.roleType === "BIZ" && !user.isApproved
   )
   const pendingQuotes = (orders as AdminQuoteRow[])
-    .filter((order) => isQuoteAdminActionable(order.status))
+    .filter(
+      (order) =>
+        order.orderType === "INQUIRY" &&
+        isQuoteAdminActionable(order.status)
+    )
     .filter((order) => Boolean(order.id))
   const activeRepairs = (repairs as AdminStatusRecord[]).filter(
     (repair) => !isRepairTerminalStatus(repair.status)
