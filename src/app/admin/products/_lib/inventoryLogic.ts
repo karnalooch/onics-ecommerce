@@ -1,4 +1,5 @@
 // src/app/admin/products/_lib/inventoryLogic.ts
+import { catalogProductRevision } from "@/lib/catalog";
 import { ICategory, IProduct, IStagingItem, IManufacturer } from "./types";
 
 export function processInventoryData(
@@ -94,7 +95,10 @@ export function processInventoryData(
        qualityReason: statusReason,
        knowledgeMatched,
        specs: row.specs || existingInCrt?.specs || "",
-       isValid: true
+       isValid: true,
+       expectedRevision: existingInCrt
+         ? catalogProductRevision(existingInCrt.revision)
+         : undefined
     };
   });
 
