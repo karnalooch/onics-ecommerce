@@ -30,15 +30,32 @@ describe("quote admin replay wiring", () => {
     expect(flow).toContain('throw new Error("ADMIN_ACCESS_REVOKED")')
   })
 
-  it("checks exact replay before the terminal transition gate", () => {
+  it("rejects non-inquiry records before quote replay or transition logic", () => {
+    const route = read("src/app/api/quotes/route.ts")
+    const start = route.indexOf("export async function PUT")
+    const flow = route.slice(start)
+    const targetFence = flow.indexOf('quote.orderType !== "INQUIRY"')
+    const replay = flow.indexOf("isQuoteAdminUpdateReplay(quote, parsed.data)")
+
+    expect(targetFence).toBeGreaterThan(-1)
+    expect(replay).toBeGreaterThan(targetFence)
+    expect(flow).toContain('throw new Error("QUOTE_TARGET_INVALID")')
+  })
+
+  it("checks exact replay before stale-status and terminal transition gates", () => {
     const route = read("src/app/api/quotes/route.ts")
     const start = route.indexOf("export async function PUT")
     const flow = route.slice(start)
 
     expect(flow).toContain("isQuoteAdminUpdateReplay(quote, parsed.data)")
+    expect(flow).toContain("assertQuoteAdminExpectedStatus(")
+    expect(flow).toContain("parsed.data.expectedStatus")
     expect(flow).toContain("assertQuoteAdminTransition(quote.status)")
     expect(flow.indexOf("isQuoteAdminUpdateReplay(quote, parsed.data)"))
+      .toBeLessThan(flow.indexOf("assertQuoteAdminExpectedStatus("))
+    expect(flow.indexOf("assertQuoteAdminExpectedStatus("))
       .toBeLessThan(flow.indexOf("assertQuoteAdminTransition(quote.status)"))
+    expect(flow).toContain('"QUOTE_STATUS_CONFLICT"')
   })
 
   it("returns the stored quote without recalculating on replay", () => {
@@ -50,6 +67,18 @@ describe("quote admin replay wiring", () => {
     expect(flow.indexOf("return { quote, replayed: true }"))
       .toBeLessThan(flow.indexOf("requireQuoteBasePrice(product.price)"))
     expect(flow).toContain('"Idempotency-Replayed": "true"')
+  })
+
+  it("wires the observed status from operator UI and renders the pending queue", () => {
+    const actions = read("src/app/admin/AdminActions.tsx")
+    const dashboard = read("src/app/admin/page.tsx")
+
+    expect(actions.match(/expectedStatus: currentStatus/g)?.length).toBe(2)
+    expect(dashboard).toContain('href: "/admin#pending-quotes"')
+    expect(dashboard).toContain('order.orderType === "INQUIRY"')
+    expect(dashboard).toContain('id="pending-quotes"')
+    expect(dashboard).toContain('actionType="processQuote"')
+    expect(dashboard).toContain('currentStatus={String(quote.status || "")}')
   })
 
   it("keeps divergent terminal retries behind the existing conflict gate", () => {

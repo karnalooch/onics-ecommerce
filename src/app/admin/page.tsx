@@ -36,6 +36,19 @@ type AdminStatusRecord = {
   status?: unknown
 }
 
+type AdminQuoteRow = {
+  id?: string
+  orderType?: string
+  status?: unknown
+  productName?: string
+  quantity?: number
+  message?: string
+  user?: {
+    email?: string
+    companyName?: string
+  }
+}
+
 type AdminProductRecord = {
   sku?: string
   name?: string
@@ -73,9 +86,13 @@ export default async function AdminDashboard() {
   const unapprovedUsers = (users as AdminUserRow[]).filter(
     (user) => user.roleType === "BIZ" && !user.isApproved
   )
-  const pendingQuotes = (orders as AdminStatusRecord[]).filter((order) =>
-    isQuoteAdminActionable(order.status)
-  )
+  const pendingQuotes = (orders as AdminQuoteRow[])
+    .filter(
+      (order) =>
+        order.orderType === "INQUIRY" &&
+        isQuoteAdminActionable(order.status)
+    )
+    .filter((order) => Boolean(order.id))
   const activeRepairs = (repairs as AdminStatusRecord[]).filter(
     (repair) => !isRepairTerminalStatus(repair.status)
   )
@@ -118,7 +135,7 @@ export default async function AdminDashboard() {
     {
       label: "Oferty wymagające działania",
       value: pendingQuotes.length,
-      href: "/admin/quotes",
+      href: "/admin#pending-quotes",
       icon: FileText,
       critical: pendingQuotes.length > 0,
       detail: "Wyceny w stanie wymagającym obsługi operatora.",
@@ -214,6 +231,64 @@ export default async function AdminDashboard() {
               </Link>
             )
           })}
+        </div>
+      </section>
+
+      <section id="pending-quotes" aria-labelledby="pending-quotes-heading">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <div>
+            <h2 id="pending-quotes-heading" className="text-sm font-semibold">
+              Zapytania ofertowe do obsługi
+            </h2>
+            <p className="mt-1 text-xs text-[var(--ops-muted)]">
+              Aktualne zapytania partnerów w stanie PENDING lub INQUIRY.
+            </p>
+          </div>
+          <Link href="/admin/quotes" className="text-sm font-semibold text-primary">
+            Generator oferty
+          </Link>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-[var(--ops-border)] bg-[var(--ops-panel)]">
+          {pendingQuotes.length === 0 ? (
+            <div className="flex min-h-32 items-center justify-center gap-3 px-5 text-sm text-[var(--ops-muted)]">
+              <CheckCircle2 className="h-5 w-5" />
+              Brak zapytań oczekujących na decyzję.
+            </div>
+          ) : (
+            <div className="divide-y divide-[var(--ops-border)]">
+              {pendingQuotes.slice(0, 8).map((quote) => (
+                <div
+                  key={quote.id}
+                  className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_minmax(180px,.7fr)_100px_auto] lg:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold">
+                      {quote.productName || "Produkt bez nazwy"}
+                    </div>
+                    <div className="mt-1 truncate text-sm text-[var(--ops-muted)]">
+                      {quote.user?.companyName ||
+                        quote.user?.email ||
+                        "Partner bez nazwy"}
+                    </div>
+                  </div>
+                  <div className="truncate text-sm text-[var(--ops-muted)]">
+                    {quote.message || "Brak dodatkowej wiadomości"}
+                  </div>
+                  <div className="font-mono text-sm text-[var(--ops-muted)]">
+                    {Number(quote.quantity || 0)} szt.
+                  </div>
+                  <div className="flex justify-end">
+                    <AdminActions
+                      actionType="processQuote"
+                      quoteId={quote.id}
+                      currentStatus={String(quote.status || "")}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

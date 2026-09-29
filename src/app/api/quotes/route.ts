@@ -22,6 +22,7 @@ import {
 } from "@/lib/rateLimit"
 import {
   AdminQuoteUpdateSchema,
+  assertQuoteAdminExpectedStatus,
   assertQuoteAdminTransition,
   isQuoteAdminUpdateReplay,
   requirePositiveQuoteTotal,
@@ -80,6 +81,7 @@ type StoredProduct = {
 
 type StoredQuote = {
   id?: string
+  orderType?: string
   clientQuoteRequestId?: string
   clientQuoteRequestFingerprint?: string
   user?: {
@@ -326,9 +328,16 @@ export async function PUT(req: Request) {
       if (quoteIndex === -1) throw new Error("QUOTE_NOT_FOUND")
 
       const quote = orders[quoteIndex]
+      if (quote.orderType !== "INQUIRY") {
+        throw new Error("QUOTE_TARGET_INVALID")
+      }
       if (isQuoteAdminUpdateReplay(quote, parsed.data)) {
         return { quote, replayed: true }
       }
+      assertQuoteAdminExpectedStatus(
+        quote.status,
+        parsed.data.expectedStatus
+      )
       assertQuoteAdminTransition(quote.status)
       let totalPriceFinal = Number(quote.totalPriceFinal || 0)
 
@@ -429,10 +438,24 @@ export async function PUT(req: Request) {
         { status: 403 }
       )
     }
-    if (error instanceof Error && error.message === "QUOTE_NOT_FOUND") {
+    if (
+      error instanceof Error &&
+      (error.message === "QUOTE_NOT_FOUND" ||
+        error.message === "QUOTE_TARGET_INVALID")
+    ) {
       return NextResponse.json(
         { error: "Nie znaleziono zapytania." },
         { status: 404 }
+      )
+    }
+    if (error instanceof Error && error.message === "QUOTE_STATUS_CONFLICT") {
+      return NextResponse.json(
+        {
+          error:
+            "Status zapytania zmienił się od ostatniego odczytu. Odśwież dane i ponów operację.",
+          code: "QUOTE_STATUS_CONFLICT",
+        },
+        { status: 409 }
       )
     }
     if (error instanceof Error && error.message === "QUOTE_NOT_ACTIONABLE") {

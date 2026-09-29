@@ -156,6 +156,7 @@ export default function AdminActions({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: quoteId,
+            expectedStatus: currentStatus,
             status: "QUOTED",
             deliveryTimeDays,
             additionalDiscount,
@@ -185,6 +186,7 @@ export default function AdminActions({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   id: quoteId,
+                  expectedStatus: currentStatus,
                   status: "REJECTED",
                   deliveryTimeDays: null,
                   additionalDiscount: 0,
