@@ -116,6 +116,7 @@ const ImportItemSchema = z
     stock: z.coerce.number().min(0).optional(),
     manufacturer: z.string().trim().optional(),
     specs: z.string().optional(),
+    expectedRevision: z.coerce.number().int().nonnegative().optional(),
     categoryId: z.string().trim().nullable().optional(),
     subcategoryId: z.string().trim().nullable().optional(),
     isNewCategory: z.boolean().optional(),
@@ -298,8 +299,14 @@ export async function POST(req: Request) {
           )
 
           if (existing) {
-            const beforeUpdate = { ...existing }
-            if (item.price !== undefined) existing.price = item.price
+            if (item.expectedRevision === undefined) {
+              throw new Error("PRODUCT_IMPORT_TARGET_APPEARED")
+            }
+
+            const currentRevision = catalogProductRevision(existing.revision)
+            const candidate = { ...existing }
+
+            if (item.price !== undefined) candidate.price = item.price
             if (item.stock !== undefined) {
               if (
                 shouldDeferProductStockWrite(
@@ -311,21 +318,34 @@ export async function POST(req: Request) {
               ) {
                 deferredStockCount += 1
               } else {
-                existing.stock = item.stock
+                candidate.stock = item.stock
               }
             }
-            if (item.manufacturer) existing.manufacturer = item.manufacturer
+            if (item.manufacturer) candidate.manufacturer = item.manufacturer
             if (categoryId) {
-              existing.categoryId = categoryId
-              existing.subcategoryId = subcategoryId
+              candidate.categoryId = categoryId
+              candidate.subcategoryId = subcategoryId
             }
-            if (!isCatalogProductStateEqual(beforeUpdate, existing)) {
-              existing.revision = nextCatalogProductRevision(
-                beforeUpdate.revision
-              )
+
+            const isReplay = isCatalogProductStateEqual(existing, candidate)
+            if (item.expectedRevision !== currentRevision) {
+              if (isReplay) {
+                updatedCount += 1
+                continue
+              }
+              throw new Error("PRODUCT_IMPORT_REVISION_CONFLICT")
+            }
+
+            if (!isReplay) {
+              Object.assign(existing, candidate)
+              existing.revision = nextCatalogProductRevision(currentRevision)
             }
             updatedCount += 1
           } else {
+            if (item.expectedRevision !== undefined) {
+              throw new Error("PRODUCT_IMPORT_TARGET_MISSING")
+            }
+
             const newProduct = buildWfMagCatalogProduct(item, {
               id: `p_${crypto.randomUUID()}`,
               categoryId,
@@ -394,6 +414,45 @@ export async function POST(req: Request) {
           {
             error:
               "Katalog zawiera zduplikowane SKU. Usuń konflikt przed importem WF-Mag.",
+          },
+          { status: 409 }
+        )
+      }
+      if (
+        error instanceof Error &&
+        error.message === "PRODUCT_IMPORT_REVISION_CONFLICT"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Produkt zmienił się od przygotowania importu WF-Mag. Odśwież katalog i przygotuj staging ponownie.",
+            code: "PRODUCT_IMPORT_REVISION_CONFLICT",
+          },
+          { status: 409 }
+        )
+      }
+      if (
+        error instanceof Error &&
+        error.message === "PRODUCT_IMPORT_TARGET_MISSING"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Produkt został usunięty po przygotowaniu importu WF-Mag. Odśwież katalog przed ponownym importem.",
+            code: "PRODUCT_IMPORT_TARGET_MISSING",
+          },
+          { status: 409 }
+        )
+      }
+      if (
+        error instanceof Error &&
+        error.message === "PRODUCT_IMPORT_TARGET_APPEARED"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Produkt o tym SKU pojawił się po przygotowaniu importu WF-Mag. Odśwież katalog przed ponownym importem.",
+            code: "PRODUCT_IMPORT_TARGET_APPEARED",
           },
           { status: 409 }
         )
