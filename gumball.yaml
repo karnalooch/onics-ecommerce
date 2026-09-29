@@ -1,0 +1,29 @@
+schema_version: 1
+name: Gumball
+profile: release-critical
+platform_source:
+  repository: karnalooch/engineering-platform
+  commit: 6c94ec9f4817df430c3b6d5fdbbc025578ebf950
+  version: 0.6.0
+adoption:
+  mode: preserve-local
+ci:
+  aggregate_gate: caller-local
+  fail_closed: true
+  anti_noop: true
+docs:
+  index_required: true
+  blueprint_diagram_style: required
+repository_os:
+  policy: .gumball/repository-os.json
+  lifecycle: required
+  labels: required
+  release_lineage: required
+  ci_cost_governor: required
+proof_broker:
+  policy: .gumball/proof-broker.json
+  trusted_dispatch: supported
+  manual_fallback: required
+agents:
+  preserve_local_instructions: true
+  evaluate_upstream_promotion: true
