@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "lifecycle": {
+    "merged_branch_delete_after_hours": 24,
+    "closed_unmerged_branch_delete_after_days": 14,
+    "orphan_branch_report_after_days": 30,
+    "stale_pr_after_days": 30,
+    "stale_pr_close_after_additional_days": 14,
+    "stale_issue_after_days": 60,
+    "stale_issue_auto_close": false,
+    "protected_branch_patterns": [
+      "main",
+      "master",
+      "release/*",
+      "hotfix/*"
+    ],
+    "keep_labels": [
+      "lifecycle:keep"
+    ],
+    "blocked_labels": [
+      "lifecycle:blocked"
+    ]
+  },
+  "projects": {
+    "enabled": false,
+    "owner": null,
+    "number": null,
+    "status_field": "Status",
+    "semantic_statuses": {
+      "backlog": [
+        "Backlog",
+        "Triage"
+      ],
+      "ready": [
+        "Ready",
+        "Todo"
+      ],
+      "in_progress": [
+        "In Progress"
+      ],
+      "in_review": [
+        "In Review",
+        "Review"
+      ],
+      "done": [
+        "Done"
+      ],
+      "blocked": [
+        "Blocked"
+      ]
+    },
+    "close_issue_on_done": true,
+    "ready_label": "status:ready",
+    "blocked_label": "lifecycle:blocked"
+  },
+  "labels": {
+    "required_pr_dimensions": [
+      "type",
+      "area",
+      "risk",
+      "ci"
+    ],
+    "definitions": [
+      {
+        "name": "type:feature",
+        "description": "New user-visible capability"
+      },
+      {
+        "name": "type:fix",
+        "description": "Bug or defect fix"
+      },
+      {
+        "name": "type:chore",
+        "description": "Maintenance or repository housekeeping"
+      },
+      {
+        "name": "type:docs",
+        "description": "Documentation-only or documentation-led change"
+      },
+      {
+        "name": "type:refactor",
+        "description": "Behavior-preserving structural change"
+      },
+      {
+        "name": "type:test",
+        "description": "Test or validation change"
+      },
+      {
+        "name": "type:release",
+        "description": "Version, release or promotion change"
+      },
+      {
+        "name": "area:ci",
+        "description": "CI, workflows or runners"
+      },
+      {
+        "name": "area:governance",
+        "description": "Repository policy or governance"
+      },
+      {
+        "name": "area:docs",
+        "description": "Documentation system"
+      },
+      {
+        "name": "area:tooling",
+        "description": "Developer or agent tooling"
+      },
+      {
+        "name": "area:security",
+        "description": "Security controls"
+      },
+      {
+        "name": "area:release",
+        "description": "Release, versioning or artifact lineage"
+      },
+      {
+        "name": "area:runtime",
+        "description": "Runtime, native, hardware or visual proof"
+      },
+      {
+        "name": "area:project",
+        "description": "Planning, Projects or lifecycle automation"
+      },
+      {
+        "name": "risk:low",
+        "description": "Low-risk localized change"
+      },
+      {
+        "name": "risk:medium",
+        "description": "Moderate cross-cutting change"
+      },
+      {
+        "name": "risk:high",
+        "description": "Governance, release, security or shared CI change"
+      },
+      {
+        "name": "ci:light",
+        "description": "Cheap validation only"
+      },
+      {
+        "name": "ci:standard",
+        "description": "Normal affected tests/build validation"
+      },
+      {
+        "name": "ci:heavy",
+        "description": "Heavy runtime/native/visual/release proof may be required"
+      },
+      {
+        "name": "lifecycle:blocked",
+        "description": "Work is explicitly blocked"
+      },
+      {
+        "name": "lifecycle:stale",
+        "description": "Work exceeded configured inactivity window"
+      },
+      {
+        "name": "lifecycle:keep",
+        "description": "Exempt from stale closure/cleanup"
+      },
+      {
+        "name": "lifecycle:auto-close",
+        "description": "May be closed automatically after stale grace"
+      },
+      {
+        "name": "status:ready",
+        "description": "Accepted and ready to start"
+      }
+    ]
+  },
+  "release": {
+    "stages": [
+      "dev",
+      "preview",
+      "beta",
+      "rc",
+      "stable"
+    ],
+    "build_once_promote_many": true,
+    "require_exact_source_sha": true,
+    "require_artifact_sha256": true,
+    "reject_version_source_conflicts": true,
+    "require_semver": true,
+    "artifact_required_stages": [
+      "preview",
+      "beta",
+      "rc",
+      "stable"
+    ]
+  },
+  "ci_cost": {
+    "target_runner_minutes": {
+      "light": 5,
+      "standard": 15
+    },
+    "automatic_heavy_build_lanes_max": 1,
+    "unknown_runtime_change": "heavy",
+    "cancel_superseded_pr_runs": true,
+    "reuse_verified_artifact_by_fingerprint": true,
+    "defer_non_merge_critical_heavy_proofs_to": [
+      "manual",
+      "release",
+      "nightly"
+    ]
+  }
+}

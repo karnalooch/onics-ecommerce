@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "application": {
+    "name": "CEL-TRONICS",
+    "version": "0.1.0",
+    "stage": "dev"
+  },
+  "source": {
+    "sha": "0000000000000000000000000000000000000000"
+  },
+  "build": {
+    "id": "CHANGE_ME",
+    "profile": "release",
+    "toolchain": "Node.js 24 / Next.js"
+  },
+  "artifact": {
+    "name": "CHANGE_ME",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "provenance": {
+    "gumball_version": "0.6.0",
+    "build_fingerprint": "CHANGE_ME"
+  }
+}

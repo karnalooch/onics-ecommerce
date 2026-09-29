@@ -1,0 +1,98 @@
+name: Gumball Repository Ops
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - converted_to_draft
+      - edited
+      - closed
+  issues:
+    types:
+      - opened
+      - reopened
+      - closed
+      - labeled
+      - unlabeled
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: gumball-repository-ops-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  metadata-reconcile:
+    name: Labels and Project flow
+    if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'issues' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      GUMBALL_PROJECT_TOKEN: ${{ secrets.GUMBALL_PROJECT_TOKEN }}
+    steps:
+      - name: Checkout trusted default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      - name: Reconcile canonical labels
+        run: python scripts/ops/github_ops.py --apply labels-sync
+
+      - name: Classify pull request
+        if: ${{ github.event_name == 'pull_request_target' }}
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python scripts/ops/github_ops.py --apply pr-label --number "${PR_NUMBER}"
+
+      - name: Reconcile Project item from event
+        run: python scripts/ops/github_ops.py --apply project-event
+
+  scheduled-housekeeping:
+    name: Daily repository housekeeping
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      GUMBALL_PROJECT_TOKEN: ${{ secrets.GUMBALL_PROJECT_TOKEN }}
+    steps:
+      - name: Checkout trusted default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      - name: Reconcile canonical labels
+        run: python scripts/ops/github_ops.py --apply labels-sync
+
+      - name: Apply safe lifecycle actions
+        run: python scripts/ops/github_ops.py --apply housekeeping
+
+      - name: Reconcile Project board and close Done issues
+        run: python scripts/ops/github_ops.py --apply project-audit
