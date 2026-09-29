@@ -29,6 +29,7 @@ jobs:
           required_checks=(
             "validate-public-site"
             "validate-platform-audit"
+            "Gumball consumer gate"
           )
 
           deadline=$((SECONDS + 1500))
