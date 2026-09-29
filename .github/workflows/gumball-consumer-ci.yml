@@ -65,7 +65,7 @@ jobs:
           persist-credentials: false
 
       - name: Validate ONICS CI cost-routing contracts
-        run: python3 -m unittest scripts/ci/test_onics_ci_plan.py -v
+        run: python3 -m unittest discover -s scripts/ci -p 'test_onics_ci_*.py' -v
 
       - name: Fail closed over shared Gumball contracts
         env:
