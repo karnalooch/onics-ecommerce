@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import {
   AlertCircle,
+  ArrowLeft,
   ChevronRight,
   Loader2,
   Search,
@@ -28,7 +30,7 @@ type FieldItem = {
 }
 
 function formatMoney(value: number | null) {
-  if (value == null || !Number.isFinite(value)) return "Cena ukryta"
+  if (value == null || !Number.isFinite(value)) return "Cena niedostępna"
   return (
     value.toLocaleString("pl-PL", {
       minimumFractionDigits: 2,
@@ -108,96 +110,111 @@ export function FieldWorkbench({
 
   const accountLabel =
     role === "BIZ" && discount > 0
-      ? "Cena konta · rabat " + String(discount) + "%"
+      ? "Rabat konta " + String(discount) + "%"
       : role
 
   return (
-    <div className="min-h-screen bg-[#f5f6f7] text-slate-950 dark:bg-[#090b0e] dark:text-slate-100">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div>
-            <div className="text-sm font-extrabold tracking-[0.18em]">ONICS</div>
-            <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              Field / installer
+    <div className="min-h-screen bg-[#f3f3ef] text-slate-950">
+      <header className="border-b border-[#d9dbdc] bg-white">
+        <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-4">
+            <Link href="/dashboard" className="shrink-0" aria-label="Wróć do strefy partnera">
+              <Image
+                src="/assets/logo.svg"
+                alt="CEL-TRONICS"
+                width={154}
+                height={31}
+                priority
+                className="h-auto w-[142px] sm:w-[154px]"
+              />
+            </Link>
+            <div className="hidden border-l border-[#d9dbdc] pl-4 sm:block">
+              <div className="text-sm font-semibold text-slate-900">Tryb instalatora</div>
+              <div className="mt-0.5 text-xs text-slate-500">wyszukiwanie techniczne</div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="max-w-[180px] truncate text-sm font-semibold">
+
+          <div className="min-w-0 text-right">
+            <div className="max-w-[220px] truncate text-sm font-semibold text-slate-900">
               {identity}
             </div>
-            <div className="text-xs text-slate-500">{accountLabel}</div>
+            <div className="mt-0.5 text-xs text-slate-500">{accountLabel}</div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 sm:py-7">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <main className="mx-auto max-w-[1480px] px-4 py-5 sm:px-6 sm:py-7">
+        <div className="flex flex-col gap-4 border-b border-[#d9dbdc] pb-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Strefa partnera
+            </Link>
+            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-slate-950 sm:text-4xl">
               Znajdź urządzenie
             </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Model, symbol, producent albo parametr techniczny.
+            <p className="mt-2 text-base leading-7 text-slate-600">
+              Model, SKU, producent albo parametr techniczny.
             </p>
           </div>
+
           <button
             type="button"
             aria-pressed={ladderMode}
             onClick={() => setLadderMode((value) => !value)}
             className={
-              "min-h-12 rounded-xl border px-4 text-sm font-semibold " +
+              "inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border px-4 text-base font-semibold transition " +
               (ladderMode
-                ? "border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950"
-                : "border-slate-300 bg-white dark:border-slate-700 dark:bg-[#0f1216]")
+                ? "border-slate-950 bg-slate-950 text-white"
+                : "border-[#cfd2d4] bg-white text-slate-800 hover:border-slate-400")
             }
           >
-            <Wrench className="mr-2 inline h-4 w-4" />
+            <Wrench className="h-4 w-4" />
             Tryb drabiny
           </button>
         </div>
 
-        <label className="relative block">
+        <label className="relative mt-6 block">
           <span className="sr-only">Szukaj urządzenia</span>
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="np. BCS, 8 MP PoE, INTEGRA 64…"
             className={
-              "w-full rounded-xl border border-slate-300 bg-white pl-12 pr-12 text-base font-medium outline-none focus:border-slate-950 focus:ring-2 focus:ring-slate-950/10 dark:border-slate-700 dark:bg-[#0f1216] dark:focus:border-white " +
-              (ladderMode ? "h-16 text-lg" : "h-14")
+              "w-full rounded-lg border border-[#cfd2d4] bg-white pl-12 pr-12 font-medium text-slate-950 outline-none focus:border-primary " +
+              (ladderMode ? "h-16 text-lg" : "h-14 text-base")
             }
           />
           {loading ? (
-            <Loader2 className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-slate-400" />
+            <Loader2 className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-slate-500" />
           ) : null}
         </label>
 
         {error ? (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200">
+          <div className="mt-4 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-[15px] text-red-900">
             <AlertCircle className="h-5 w-5 shrink-0" />
             {error}
           </div>
         ) : null}
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(300px,.72fr)_minmax(0,1.28fr)]">
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(320px,.72fr)_minmax(0,1.28fr)]">
           <section
             aria-label="Wyniki wyszukiwania"
-            className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]"
+            className="overflow-hidden border border-[#d9dbdc] bg-white"
           >
-            <div className="flex min-h-12 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-800">
-              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                Wyniki
-              </span>
-              <span className="font-mono text-xs text-slate-500">
-                {items.length}
-              </span>
+            <div className="flex min-h-12 items-center justify-between border-b border-[#d9dbdc] bg-[#f1f1ee] px-4">
+              <span className="text-sm font-semibold text-slate-700">Wyniki</span>
+              <span className="font-mono text-xs text-slate-500">{items.length}</span>
             </div>
 
-            <div className="divide-y divide-slate-200 dark:divide-slate-800">
+            <div className="divide-y divide-[#e0e1e1]">
               {!loading && items.length === 0 ? (
-                <div className="p-5 text-sm text-slate-500">
-                  Brak wyników. Spróbuj symbolu albo konkretnego parametru.
+                <div className="p-5 text-[15px] leading-6 text-slate-600">
+                  Brak wyników. Spróbuj symbolu, producenta albo konkretnego parametru.
                 </div>
               ) : null}
 
@@ -209,38 +226,36 @@ export function FieldWorkbench({
                     type="button"
                     onClick={() => setSelectedId(item.id)}
                     className={
-                      "w-full min-h-[88px] px-4 py-3 text-left transition-colors " +
+                      "w-full min-h-[96px] px-4 py-3 text-left transition-colors " +
                       (active
-                        ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
-                        : "hover:bg-slate-50 dark:hover:bg-white/[0.03]")
+                        ? "border-l-4 border-primary bg-[#fbf7f7] pl-3"
+                        : "border-l-4 border-transparent hover:bg-[#fafaf8]")
                     }
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate font-mono text-sm font-semibold">
+                        <div className="truncate font-mono text-sm font-semibold text-slate-950">
                           {item.sku}
                         </div>
-                        <div
-                          className={
-                            "mt-1 truncate text-sm " +
-                            (active ? "opacity-75" : "text-slate-500")
-                          }
-                        >
+                        <div className="mt-1 truncate text-sm text-slate-600">
                           {item.manufacturer} ·{" "}
                           {item.subcategoryName ||
                             item.categoryName ||
                             "Bez kategorii"}
                         </div>
                       </div>
-                      <ChevronRight className="mt-1 h-4 w-4 shrink-0 opacity-50" />
+                      <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-400" />
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold">
-                        {item.stock > 0
-                          ? "Stan: " + String(item.stock)
-                          : "Stan: 0"}
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <span
+                        className={
+                          "text-sm font-semibold " +
+                          (item.stock > 0 ? "text-[#16794b]" : "text-slate-500")
+                        }
+                      >
+                        {item.stock > 0 ? "Stan: " + String(item.stock) : "Brak na stanie"}
                       </span>
-                      <span className="text-sm font-semibold">
+                      <span className="text-sm font-semibold text-slate-950">
                         {formatMoney(item.price)}
                       </span>
                     </div>
@@ -252,48 +267,50 @@ export function FieldWorkbench({
 
           <section
             aria-live="polite"
-            className="min-w-0 rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]"
+            className="min-w-0 border border-[#d9dbdc] bg-white"
           >
             {!selected ? (
-              <div className="flex min-h-[320px] items-center justify-center p-8 text-center text-sm text-slate-500">
+              <div className="flex min-h-[360px] items-center justify-center p-8 text-center text-base text-slate-600">
                 Wybierz urządzenie z listy.
               </div>
             ) : (
-              <div className={ladderMode ? "p-5 sm:p-7" : "p-5"}>
-                <div className="flex flex-col justify-between gap-5 border-b border-slate-200 pb-5 dark:border-slate-800 sm:flex-row">
+              <div className={ladderMode ? "p-5 sm:p-7" : "p-5 sm:p-6"}>
+                <div className="grid gap-5 border-b border-[#d9dbdc] pb-5 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <div className="min-w-0">
-                    <div className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                    <div className="text-sm font-medium text-slate-500">
                       {selected.manufacturer}
                     </div>
                     <h2
                       className={
-                        "mt-2 break-words font-mono font-semibold " +
-                        (ladderMode
-                          ? "text-2xl sm:text-3xl"
-                          : "text-xl sm:text-2xl")
+                        "mt-2 break-words font-mono font-semibold text-slate-950 " +
+                        (ladderMode ? "text-3xl" : "text-2xl")
                       }
                     >
                       {selected.sku}
                     </h2>
                     {selected.name !== selected.sku ? (
-                      <p className="mt-2 text-sm text-slate-500">
+                      <p className="mt-2 text-base leading-6 text-slate-600">
                         {selected.name}
                       </p>
                     ) : null}
                   </div>
+
                   <div className="sm:text-right">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Twoja cena
-                    </div>
+                    <div className="text-sm font-medium text-slate-500">Cena konta</div>
                     <div
                       className={
-                        "mt-1 font-semibold " +
-                        (ladderMode ? "text-2xl" : "text-xl")
+                        "mt-1 font-semibold text-slate-950 " +
+                        (ladderMode ? "text-3xl" : "text-2xl")
                       }
                     >
                       {formatMoney(selected.price)}
                     </div>
-                    <div className="mt-1 text-sm text-slate-500">
+                    <div
+                      className={
+                        "mt-1 text-sm font-medium " +
+                        (selected.stock > 0 ? "text-[#16794b]" : "text-slate-500")
+                      }
+                    >
                       {selected.stock > 0
                         ? "Stan magazynowy: " + String(selected.stock)
                         : "Brak stanu magazynowego"}
@@ -301,14 +318,14 @@ export function FieldWorkbench({
                   </div>
                 </div>
 
-                <div className="mt-5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    Najważniejsze dane
-                  </div>
+                <div className="mt-6">
+                  <h3 className="text-base font-semibold text-slate-950">
+                    Najważniejsze dane techniczne
+                  </h3>
                   {selected.facts.length > 0 ? (
                     <dl
                       className={
-                        "mt-2 grid gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 " +
+                        "mt-3 grid border border-[#d9dbdc] " +
                         (ladderMode
                           ? "sm:grid-cols-2"
                           : "sm:grid-cols-2 xl:grid-cols-3")
@@ -318,16 +335,16 @@ export function FieldWorkbench({
                         <div
                           key={fact.label}
                           className={
-                            "bg-white p-4 dark:bg-[#0f1216] " +
+                            "border-b border-r border-[#e0e1e1] bg-[#fafaf8] p-4 " +
                             (ladderMode ? "min-h-24" : "min-h-20")
                           }
                         >
-                          <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                          <dt className="text-xs font-semibold uppercase tracking-[0.05em] text-slate-500">
                             {fact.label}
                           </dt>
                           <dd
                             className={
-                              "mt-2 font-mono font-semibold " +
+                              "mt-2 font-mono font-semibold text-slate-950 " +
                               (ladderMode ? "text-xl" : "text-base")
                             }
                           >
@@ -337,38 +354,40 @@ export function FieldWorkbench({
                       ))}
                     </dl>
                   ) : (
-                    <div className="mt-2 rounded-lg border border-slate-200 p-4 text-sm text-slate-500 dark:border-slate-800">
+                    <div className="mt-3 border-l-2 border-[#d9dbdc] bg-[#fafaf8] px-4 py-3 text-[15px] leading-6 text-slate-600">
                       Brak ustrukturyzowanych parametrów. Poniżej pozostaje opis źródłowy.
                     </div>
                   )}
                 </div>
 
-                <div className="mt-6">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                    <ShieldCheck className="h-4 w-4" />
-                    Zweryfikowana procedura
+                <div className="mt-7">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-[#16794b]" />
+                    <h3 className="text-base font-semibold text-slate-950">
+                      Zweryfikowana procedura
+                    </h3>
                   </div>
                   {selected.procedure.length > 0 ? (
-                    <ol className="mt-3 space-y-2">
+                    <ol className="mt-3 divide-y divide-[#d9dbdc] border-y border-[#d9dbdc]">
                       {selected.procedure.map((step, index) => (
                         <li
                           key={String(index) + "-" + step}
                           className={
-                            "flex gap-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800 " +
-                            (ladderMode ? "min-h-16 text-base" : "text-sm")
+                            "grid gap-3 py-4 sm:grid-cols-[42px_minmax(0,1fr)] " +
+                            (ladderMode ? "text-lg" : "text-base")
                           }
                         >
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-300 font-mono font-semibold dark:border-slate-700">
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#cfd2d4] font-mono text-sm font-semibold text-slate-700">
                             {index + 1}
                           </span>
-                          <span className="pt-1 leading-6">{step}</span>
+                          <span className="leading-7 text-slate-800">{step}</span>
                         </li>
                       ))}
                     </ol>
                   ) : (
-                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                      Brak zweryfikowanej instrukcji krok po kroku w bazie.
-                      ONICS nie generuje procedury z domysłów.
+                    <div className="mt-3 border-l-2 border-[#b7791f] bg-[#fff9e8] px-4 py-3 text-[15px] leading-6 text-[#6b4f11]">
+                      Brak zweryfikowanej instrukcji krok po kroku w bazie. Nie tworzymy
+                      procedur na podstawie domysłów.
                       <Link href="/kontakt" className="ml-1 font-semibold underline">
                         Pomoc techniczna
                       </Link>
@@ -377,14 +396,12 @@ export function FieldWorkbench({
                 </div>
 
                 {!ladderMode ? (
-                  <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-800">
-                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                      Opis źródłowy
-                    </div>
-                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-300">
+                  <div className="mt-7 border-t border-[#d9dbdc] pt-5">
+                    <h3 className="text-base font-semibold text-slate-950">Opis źródłowy</h3>
+                    <p className="mt-2 whitespace-pre-wrap text-[15px] leading-7 text-slate-700">
                       {selected.description || "Brak opisu technicznego."}
                     </p>
-                    <div className="mt-3 font-mono text-xs text-slate-500">
+                    <div className="mt-4 font-mono text-xs text-slate-500">
                       Źródło: {selected.source || "katalog główny"}
                     </div>
                   </div>
