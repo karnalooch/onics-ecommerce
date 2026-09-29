@@ -130,7 +130,7 @@ describe("catalog product revision fencing", () => {
     const ai = read("src/app/api/products/ai-description/route.ts")
     const inventory = read("src/lib/inventoryReservations.ts")
 
-    expect(products).toContain("isCatalogProductStateEqual(beforeUpdate")
+    expect(products).toContain("isCatalogProductStateEqual(existing, candidate)")
     expect(products).toContain(
       "existing.revision = nextCatalogProductRevision("
     )
