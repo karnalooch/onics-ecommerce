@@ -26,6 +26,13 @@ on:
       - ".gumball/**"
       - "gumball.yaml"
       - "templates/release-manifest.json"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "compose.yaml"
+      - "docker-compose*.yml"
+      - "START-ONICS.bat"
+      - "start-onics.ps1"
+      - "scripts/docker/**"
   workflow_dispatch:
 
 permissions:
