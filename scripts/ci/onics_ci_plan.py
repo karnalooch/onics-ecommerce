@@ -47,7 +47,7 @@ SITE_PATTERNS = (
     "src/components/**",
 )
 
-DOCKER_PATTERNS = (
+DOCKER_ONLY_PATTERNS = (
     "Dockerfile",
     ".dockerignore",
     "compose.yaml",
@@ -55,12 +55,20 @@ DOCKER_PATTERNS = (
     "START-ONICS.bat",
     "start-onics.ps1",
     "scripts/docker/**",
+)
+
+DOCKER_PATTERNS = (
+    *DOCKER_ONLY_PATTERNS,
     "src/auth.ts",
     "src/lib/adminBootstrap.ts",
     "src/lib/health.ts",
     "src/lib/storageConfig.ts",
     "src/app/api/auth/**",
     "src/app/api/health/**",
+    "src/app/admin/page.tsx",
+    "src/app/admin/layout.tsx",
+    "src/app/admin/_components/AdminNavigation.tsx",
+    "src/app/logowanie/**",
 )
 
 
@@ -116,7 +124,7 @@ def plan(paths: list[str]) -> Plan:
             or path.startswith("fixtures/")
             or path.endswith((".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json"))
         )
-        and not matches(path, DOCKER_PATTERNS)
+        and not matches(path, DOCKER_ONLY_PATTERNS)
         for path in normalized
         if not is_docs_or_platform_only(path)
     )
