@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
   checks: read
+  pull-requests: read
+
+concurrency:
+  group: aggregate-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   aggregate-ci-gate:
@@ -20,6 +25,51 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Checkout exact revision for CI planner
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Resolve changed paths
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          BEFORE_SHA: ${{ github.event.before || '' }}
+          TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p .ci
+          : > .ci/changed-paths.txt
+
+          if [[ "${EVENT_NAME}" == "pull_request" && -n "${PR_NUMBER}" ]]; then
+            gh api --paginate \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100" \
+              --jq '.[].filename' > .ci/changed-paths.txt
+          elif [[ "${EVENT_NAME}" == "push" && -n "${BEFORE_SHA}" && ! "${BEFORE_SHA}" =~ ^0+$ ]]; then
+            compare_json="$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${REPOSITORY}/compare/${BEFORE_SHA}...${TARGET_SHA}")"
+            jq -r '.files[].filename' <<<"${compare_json}" > .ci/changed-paths.txt
+            if [[ "$(jq '.files | length' <<<"${compare_json}")" -ge 300 ]]; then
+              echo "__UNKNOWN__" >> .ci/changed-paths.txt
+            fi
+          else
+            echo "__UNKNOWN__" > .ci/changed-paths.txt
+          fi
+
+          if [[ ! -s .ci/changed-paths.txt ]]; then
+            echo "__UNKNOWN__" > .ci/changed-paths.txt
+          fi
+
+          echo "Changed paths:"
+          cat .ci/changed-paths.txt
+
       - name: Wait for required validation checks
         env:
           GH_TOKEN: ${{ github.token }}
@@ -28,16 +78,35 @@ jobs:
         run: |
           set -euo pipefail
 
-          required_checks=(
-            "validate-public-site"
-            "validate-platform-audit"
-            "Gumball consumer gate"
-          )
+          if grep -Eq '^(\.github/|scripts/ci/)' .ci/changed-paths.txt; then
+            required_checks=(
+              "Gumball consumer gate"
+              "validate-platform-audit"
+              "validate-public-site"
+              "docker-runtime"
+            )
+            echo "Control-plane change detected; forcing the full proof set."
+          else
+            mapfile -t required_checks < <(
+              python3 scripts/ci/onics_ci_plan.py --checks < .ci/changed-paths.txt
+            )
+          fi
+
+          if [[ "${#required_checks[@]}" -eq 0 ]]; then
+            echo "::error::CI planner produced an empty proof set."
+            exit 1
+          fi
+
+          printf 'Required checks for %s:\n' "${TARGET_SHA}"
+          printf '  - %s\n' "${required_checks[@]}"
 
           deadline=$((SECONDS + 1500))
 
           while (( SECONDS < deadline )); do
-            checks_json="$(gh api               -H "Accept: application/vnd.github+json"               -H "X-GitHub-Api-Version: 2022-11-28"               "/repos/${REPOSITORY}/commits/${TARGET_SHA}/check-runs?per_page=100")"
+            checks_json="$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${REPOSITORY}/commits/${TARGET_SHA}/check-runs?per_page=100")"
 
             all_succeeded=true
 
@@ -59,7 +128,7 @@ jobs:
               echo "${check_name}: status=${status}, conclusion=${conclusion}"
 
               if [[ "${status}" == "completed" && "${conclusion}" != "success" ]]; then
-                echo "::error::${check_name} zakończył się wynikiem ${conclusion}."
+                echo "::error::${check_name} ended with ${conclusion}."
                 exit 1
               fi
 

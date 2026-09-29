@@ -4,13 +4,43 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gumball/**"
+      - "gumball.yaml"
+      - "templates/release-manifest.json"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "compose.yaml"
+      - "docker-compose*.yml"
+      - "START-ONICS.bat"
+      - "start-onics.ps1"
+      - "scripts/docker/**"
   push:
     branches:
       - main
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".gumball/**"
+      - "gumball.yaml"
+      - "templates/release-manifest.json"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "compose.yaml"
+      - "docker-compose*.yml"
+      - "START-ONICS.bat"
+      - "start-onics.ps1"
+      - "scripts/docker/**"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: platform-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate-platform-audit:
