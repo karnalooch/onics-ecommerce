@@ -1,7 +1,7 @@
 # CEL-TRONICS Ecommerce — Handover
 
-Stan referencyjny: **26.09.2026**  
-Bazowy `main`: **`83fae7a5`**
+Stan referencyjny: **29.09.2026**  
+Bazowy `main`: **`b025b404`**
 
 > [!IMPORTANT]
 > Ten plik jest krótkim punktem wejścia do aktualnej architektury i zasad pracy.
@@ -198,35 +198,32 @@ Readiness sprawdza lokalną gotowość storage/auth/payment config bez wykonywan
 
 ## 10. CI / governance
 
-Aktualne bramki PR:
+ONICS korzysta z Gumballa jako współdzielonej warstwy platform-engineering, ale caller-local `Aggregate CI gate` pozostaje ostateczną granicą merge.
 
-- Site PR CI,
-- Platform Audit CI,
-- Payment production acceptance,
-- file-store recovery drill,
-- production build,
-- health/readiness smoke,
-- dependency audit,
-- Aggregate CI gate.
+Aktualny model PR jest change-aware:
 
-### Znany otwarty blocker GitHub governance
+- **Gumball Consumer CI** zawsze uruchamia repo-policy, governance i Security cost plan,
+- docs-only PR-y zachowują tanie policy/governance/contracts, ale mogą pominąć Dependency Review, CodeQL i Trivy,
+- Site PR CI, Platform Audit CI i Docker Runtime CI uruchamiają się tylko dla powierzchni, które rzeczywiście ich wymagają,
+- zmiany `.github/**` i `scripts/ci/**` wymuszają pełny proof-set,
+- relewantne zmiany nadal wykonują Payment production acceptance, file-store recovery drill, production build, health/readiness smoke i dependency audit,
+- superseded PR runs są anulowane,
+- `Aggregate CI gate` failuje zamknięcie na brakującym, failed, cancelled albo nieoczekiwanie skipped wymaganym dowodzie.
 
-Issue **#16** pozostaje otwarte.
+### GitHub governance
 
-Na 26.09.2026 GitHub raportuje dla `main`:
+Issue **#16** jest zamknięte. Dla `main` aktywny jest repozytoryjny ruleset **`main protection`**.
 
-- `protected: false`,
-- brak aktywnych rulesetów.
+Aktualnie GitHub raportuje `main` jako `protected: true`. Ruleset:
 
-Docelowo `main` powinien wymuszać:
+- wymaga zmian przez pull request,
+- wymaga status checku **`Aggregate CI gate`**,
+- ma włączoną strict/up-to-date politykę status checks,
+- blokuje deletion i non-fast-forward/force-push,
+- nie ma bypass actors,
+- pozostawia required approving reviews na 0 dla repo utrzymywanego jednoosobowo.
 
-- wejście zmian przez PR,
-- wymagany `aggregate-ci-gate`,
-- strict/up-to-date checks,
-- blokadę force push,
-- blokadę usunięcia brancha.
-
-Nie uznawać governance za domknięte, dopóki ustawienia repozytorium nie zostaną faktycznie włączone i zweryfikowane.
+Governance jest więc egzekwowane przez ustawienia repozytorium, a nie tylko przez konwencję CI.
 
 ## 11. Zasady dalszej pracy
 
@@ -242,7 +239,8 @@ Nie uznawać governance za domknięte, dopóki ustawienia repozytorium nie zosta
 
 Świadomie poza obecnym baseline:
 
-1. migracja file-backed DB do transakcyjnej bazy danych przed multi-instance/horizontal scaling,
-2. repo governance z realnie chronionym `main` (#16).
+1. migracja file-backed DB do transakcyjnej bazy danych przed multi-instance/horizontal scaling.
+
+Repo governance nie jest już otwartą granicą architektury — `main` jest chroniony aktywnym rulesetem.
 
 Pozostałe prace traktować jako produktowy polish / konkretne wymagania, a nie pretekst do dalszej abstrakcji zamkniętych subsystemów.
