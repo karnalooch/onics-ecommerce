@@ -8,6 +8,7 @@
     "src/app/api/payment-methods/route.ts",
     "src/lib/paymentProviderActivation.ts",
     "src/lib/paymentSettingsState.ts",
+    "src/lib/__tests__/paymentSettingsState.test.ts",
     "src/lib/__tests__/paymentSettingsStateWiring.test.ts",
     "src/app/api/products/ai-description/route.ts",
     "src/lib/__tests__/aiDescriptionAuthorizationFence.test.ts"
