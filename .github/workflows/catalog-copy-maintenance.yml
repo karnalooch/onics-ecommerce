@@ -1,0 +1,59 @@
+name: Catalog copy maintenance
+
+on:
+  push:
+    branches: [fix/catalog-names-descriptions]
+    paths:
+      - .github/workflows/catalog-copy-maintenance.yml
+      - src/lib/catalogCopy.ts
+      - scripts/ci/catalog_copy_seed.mjs
+      - scripts/ci/test_catalog_copy.mjs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-copy-maintenance
+  cancel-in-progress: false
+
+jobs:
+  normalize-development-seed:
+    if: github.repository == 'karnalooch/onics-ecommerce' && github.ref == 'refs/heads/fix/catalog-names-descriptions'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the exact reviewed feature revision
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+      - name: Test bounded copy transformations
+        run: node --test scripts/ci/test_catalog_copy.mjs
+      - name: Normalize only the repository development seed
+        run: |
+          node scripts/ci/catalog_copy_seed.mjs --apply --seed-only
+          node scripts/ci/catalog_copy_seed.mjs --check
+          git diff --check
+      - name: Commit only catalog text on the same feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/data/db.json; then exit 0; fi
+          test "$(git diff --name-only)" = 'src/data/db.json'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- src/data/db.json
+          git commit -m 'fix(catalog): clean existing product titles and descriptions'
+          git push origin HEAD:refs/heads/fix/catalog-names-descriptions
+      - name: Upload product-copy review only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: catalog-copy-${{ github.sha }}
+          path: artifacts/catalog-copy/
+          if-no-files-found: warn
+          retention-days: 7
