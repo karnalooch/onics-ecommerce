@@ -3,9 +3,10 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
+import shutil
 import subprocess
 import time
+import traceback
 import urllib.error
 import urllib.request
 from playwright.sync_api import Browser, Page, expect, sync_playwright
@@ -125,7 +126,8 @@ def verify_registration(page: Page, width: int) -> None:
     capture(page, "registration", width)
     submit = page.get_by_role("button", name="Wyślij zgłoszenie", exact=True)
     submit.click()
-    expect(page.get_by_role("alert")).to_contain_text("Popraw zaznaczone pola")
+    # Next's route announcer is also an alert; assertions concern the actual form.
+    expect(page.locator("main").get_by_role("alert")).to_contain_text("Popraw zaznaczone pola")
     expect(page.locator("#register-email")).to_be_focused()
     capture(page, "registration-invalid", width)
     page.locator("#register-email").fill("public-proof@example.invalid")
@@ -144,7 +146,7 @@ def verify_registration(page: Page, width: int) -> None:
 
     page.route("**/api/register", registration_response)
     submit.click()
-    expect(page.get_by_role("alert")).to_contain_text("Zbyt wiele prób")
+    expect(page.locator("main").get_by_role("alert")).to_contain_text("Zbyt wiele prób")
     expect(page.locator("#register-companyName")).to_have_value("CI demonstration — no real account")
     capture(page, "registration-retry", width)
     submit.click()
@@ -169,6 +171,7 @@ def verify_viewport(browser: Browser, width: int, height: int) -> dict[str, int]
             raise AssertionError(f"Browser exceptions: {errors}")
         return {"width": width, "height": height}
     except Exception:
+        (OUTPUT / f"failure-{width}.txt").write_text(f"URL: {page.url}\n{traceback.format_exc()}", encoding="utf8")
         page.screenshot(path=str(OUTPUT / f"failure-{width}.png"), full_page=True)
         raise
     finally:
@@ -177,7 +180,8 @@ def verify_viewport(browser: Browser, width: int, height: int) -> dict[str, int]
 
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    manifest = {"checkout_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(), "run_id": os.getenv("GITHUB_RUN_ID"), "status": "failed", "viewports": [], "registration": "browser-intercepted; no server mutation"}
+    shutil.copyfile("public/assets/logo.svg", OUTPUT / "celtronics.svg")
+    manifest = {"checkout_sha": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(), "run_id": os.getenv("GITHUB_RUN_ID"), "status": "failed", "viewports": [], "failed_viewports": [], "registration": "browser-intercepted; no server mutation"}
     try:
         wait_for_server()
         with sync_playwright() as playwright:
@@ -185,11 +189,17 @@ def main() -> None:
             manifest["browser"] = browser.version
             try:
                 for width, height in VIEWPORTS:
-                    manifest["viewports"].append(verify_viewport(browser, width, height))
+                    try:
+                        manifest["viewports"].append(verify_viewport(browser, width, height))
+                    except Exception as error:
+                        manifest["failed_viewports"].append({"width": width, "height": height, "error": str(error)})
             finally:
                 browser.close()
+        if manifest["failed_viewports"]:
+            raise AssertionError(f"Public proof failed at {len(manifest['failed_viewports'])} viewport(s); see failure artifacts")
         manifest["status"] = "passed"
     finally:
+        manifest["logo_sha256"] = hashlib.sha256((OUTPUT / "celtronics.svg").read_bytes()).hexdigest()
         manifest["screenshots"] = {file.name: hashlib.sha256(file.read_bytes()).hexdigest() for file in sorted(OUTPUT.glob("*.png"))}
         (OUTPUT / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf8")
 
