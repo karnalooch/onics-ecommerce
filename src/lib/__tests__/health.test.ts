@@ -75,6 +75,11 @@ function readyOptions() {
     p24PosId: "",
     p24ApiKey: "",
     p24Crc: "",
+    smtpHost: "",
+    smtpPort: "",
+    smtpUser: "",
+    smtpPass: "",
+    adminEmail: "",
   }
 }
 
@@ -103,6 +108,7 @@ describe("production readiness", () => {
         database: "ok",
         uploads: "ok",
         adminBootstrap: "ok",
+        notifications: "ok",
         payments: "ok",
       },
     })
@@ -207,6 +213,57 @@ describe("production readiness", () => {
     ).toMatchObject({
       ready: true,
       checks: { payments: "ok" },
+    })
+  })
+
+  it("keeps SMTP notifications optional when all core settings are absent", () => {
+    expect(evaluateReadiness(readyOptions())).toMatchObject({
+      ready: true,
+      checks: { notifications: "ok" },
+    })
+  })
+
+  it("fails readiness when SMTP notification configuration is partial", () => {
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        smtpHost: "smtp.example.com",
+      })
+    ).toMatchObject({
+      ready: false,
+      checks: { notifications: "error" },
+    })
+  })
+
+  it("fails readiness when configured SMTP port is invalid", () => {
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        smtpHost: "smtp.example.com",
+        smtpPort: "not-a-port",
+        smtpUser: "mailer@example.com",
+        smtpPass: "secret",
+        adminEmail: "admin@example.com",
+      })
+    ).toMatchObject({
+      ready: false,
+      checks: { notifications: "error" },
+    })
+  })
+
+  it("accepts complete SMTP notification configuration", () => {
+    expect(
+      evaluateReadiness({
+        ...readyOptions(),
+        smtpHost: "smtp.example.com",
+        smtpPort: "465",
+        smtpUser: "mailer@example.com",
+        smtpPass: "secret",
+        adminEmail: "admin@example.com",
+      })
+    ).toMatchObject({
+      ready: true,
+      checks: { notifications: "ok" },
     })
   })
 
