@@ -1,4 +1,5 @@
 // src/app/admin/products/_lib/inventoryLogic.ts
+import { catalogProductRevision } from "@/lib/catalog";
 import { ICategory, IProduct, IStagingItem, IManufacturer } from "./types";
 
 export function processInventoryData(
@@ -33,7 +34,10 @@ export function processInventoryData(
     let skuVal = normalize(row.sku || findVal(["Symbol", "Kod", "SKU"], 2));
     let nameVal = normalize(row.name || findVal(["Nazwa", "Produkt"], 3));
 
-    const existingInCrt = initialProducts.find(p => p.sku === skuVal);
+    const existingInCrt = initialProducts.find(
+      (product) =>
+        normalize(product.sku).toLowerCase() === skuVal.toLowerCase()
+    );
     const knowledgeMatched = !!existingInCrt;
 
     if (inputCat && !isJunk(inputCat)) lastKnownCat = inputCat;
@@ -94,7 +98,10 @@ export function processInventoryData(
        qualityReason: statusReason,
        knowledgeMatched,
        specs: row.specs || existingInCrt?.specs || "",
-       isValid: true
+       isValid: true,
+       expectedRevision: existingInCrt
+         ? catalogProductRevision(existingInCrt.revision)
+         : undefined
     };
   });
 
