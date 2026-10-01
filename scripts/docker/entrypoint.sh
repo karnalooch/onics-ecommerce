@@ -18,6 +18,18 @@ UPLOAD_ROOT="${CELTRONICS_UPLOAD_ROOT:-/app/var/celtronics/uploads}"
 BACKUP_ROOT="${CELTRONICS_DB_BACKUP_DIR:-/app/var/celtronics/backups}"
 RUNTIME_ROOT="$(dirname "$DB_PATH")"
 
+if [ "$RUNTIME_PROFILE" = "production" ]; then
+  if [ -z "${AUTH_SECRET:-}" ] || [ -z "${NEXTAUTH_SECRET:-}" ]; then
+    echo "[docker] AUTH_SECRET and NEXTAUTH_SECRET are required in production runtime profile" >&2
+    exit 1
+  fi
+
+  if [ ! -e "$DB_PATH" ] && [ -z "${ADMIN_BOOTSTRAP_PASSWORD:-}" ]; then
+    echo "[docker] ADMIN_BOOTSTRAP_PASSWORD is required for the first production bootstrap" >&2
+    exit 1
+  fi
+fi
+
 mkdir -p "$RUNTIME_ROOT" "$UPLOAD_ROOT" "$BACKUP_ROOT"
 
 if [ ! -e "$DB_PATH" ]; then
@@ -69,12 +81,7 @@ ensure_secret() {
   export "$env_name=$value"
 }
 
-if [ "$RUNTIME_PROFILE" = "production" ]; then
-  if [ -z "${AUTH_SECRET:-}" ] || [ -z "${NEXTAUTH_SECRET:-}" ]; then
-    echo "[docker] AUTH_SECRET and NEXTAUTH_SECRET are required in production runtime profile" >&2
-    exit 1
-  fi
-else
+if [ "$RUNTIME_PROFILE" != "production" ]; then
   ensure_secret AUTH_SECRET .auth-secret
   ensure_secret NEXTAUTH_SECRET .nextauth-secret
 fi
