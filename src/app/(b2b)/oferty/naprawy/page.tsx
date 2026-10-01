@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useCallback, useEffect, useState } from "react"
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { Loader2, Plus, Wrench } from "lucide-react"
 
 type Repair = {
@@ -12,6 +12,19 @@ type Repair = {
   status: string
 }
 
+type RepairFields = { item: string; serial: string; description: string }
+
+function isRepairReceipt(value: unknown, requestId: string, fields: RepairFields): value is Repair {
+  if (!value || typeof value !== "object") return false
+  const record = value as Record<string, unknown>
+  return typeof record.id === "string" && record.id.trim().length > 0 &&
+    record.clientRequestId === requestId &&
+    record.item === fields.item && record.serial === fields.serial &&
+    record.description === fields.description &&
+    typeof record.date === "string" && Number.isFinite(Date.parse(record.date)) &&
+    typeof record.status === "string" && record.status.length > 0
+}
+
 export default function RmaInstallerPage() {
   const [repairs, setRepairs] = useState<Repair[]>([])
   const [loading, setLoading] = useState(true)
@@ -21,74 +34,93 @@ export default function RmaInstallerPage() {
   const [item, setItem] = useState("")
   const [serial, setSerial] = useState("")
   const [description, setDescription] = useState("")
+  const mountedRef = useRef(false)
+  const submittingRef = useRef(false)
+  const submissionRef = useRef<{ signature: string; requestId: string } | null>(null)
+  const submissionControllerRef = useRef<AbortController | null>(null)
 
   const loadRepairs = useCallback(async () => {
-    setError("")
     try {
       const response = await fetch("/api/repairs", { cache: "no-store" })
-      const payload: unknown = await response.json().catch(() => [])
+      const payload: unknown = await response.json().catch(() => null)
       if (!response.ok || !Array.isArray(payload)) {
         throw new Error("Nie udało się pobrać zgłoszeń.")
       }
-      setRepairs(payload as Repair[])
+      if (mountedRef.current) setRepairs(payload as Repair[])
     } catch (caught) {
-      setError(
+      if (mountedRef.current) setError(
         caught instanceof Error ? caught.message : "Nie udało się pobrać zgłoszeń."
       )
     } finally {
-      setLoading(false)
+      if (mountedRef.current) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
+    mountedRef.current = true
     const timer = window.setTimeout(() => {
       void loadRepairs()
     }, 0)
-    return () => window.clearTimeout(timer)
+    return () => {
+      mountedRef.current = false
+      window.clearTimeout(timer)
+      submissionControllerRef.current?.abort()
+    }
   }, [loadRepairs])
 
   const submitRepair = async (event: FormEvent) => {
     event.preventDefault()
+    if (submittingRef.current || !mountedRef.current) return
+    submittingRef.current = true
     setSaving(true)
     setError("")
+    const controller = new AbortController()
+    submissionControllerRef.current = controller
 
     try {
+      const fields = { item: item.trim(), serial: serial.trim(), description: description.trim() }
+      const signature = JSON.stringify(fields)
+      // Retain the same key after an uncertain response; the server scopes replay to the account.
+      if (submissionRef.current?.signature !== signature) {
+        submissionRef.current = { signature, requestId: crypto.randomUUID() }
+      }
+      const requestId = submissionRef.current.requestId
       const response = await fetch("/api/repairs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item, serial, description }),
+        signal: controller.signal,
+        body: JSON.stringify({ requestId, ...fields }),
       })
       const payload: unknown = await response.json().catch(() => null)
+      if (!mountedRef.current || controller.signal.aborted) return
 
-      if (
-        !response.ok ||
-        !payload ||
-        typeof payload !== "object" ||
-        !("id" in payload)
-      ) {
+      if (!response.ok || !isRepairReceipt(payload, requestId, fields)) {
         const message =
           payload &&
           typeof payload === "object" &&
           "error" in payload &&
           typeof payload.error === "string"
             ? payload.error
-            : "Nie udało się utworzyć zgłoszenia."
+            : "Nie udało się potwierdzić zgłoszenia. Spróbuj ponownie bez zmiany danych."
         throw new Error(message)
       }
 
-      setRepairs((current) => [payload as Repair, ...current])
+      setRepairs((current) => [payload, ...current.filter((repair) => repair.id !== payload.id)])
+      submissionRef.current = null
       setItem("")
       setSerial("")
       setDescription("")
       setFormOpen(false)
     } catch (caught) {
-      setError(
+      if (mountedRef.current && !controller.signal.aborted) setError(
         caught instanceof Error
           ? caught.message
           : "Nie udało się utworzyć zgłoszenia."
       )
     } finally {
-      setSaving(false)
+      submittingRef.current = false
+      if (submissionControllerRef.current === controller) submissionControllerRef.current = null
+      if (mountedRef.current) setSaving(false)
     }
   }
 
@@ -107,8 +139,9 @@ export default function RmaInstallerPage() {
 
         <button
           type="button"
+          disabled={saving}
           onClick={() => setFormOpen((open) => !open)}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white hover:bg-[#a9161c]"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white hover:bg-[#a9161c] disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
           Nowe zgłoszenie
@@ -131,7 +164,9 @@ export default function RmaInstallerPage() {
                 Model urządzenia
               </span>
               <input
+                name="item"
                 required
+                disabled={saving}
                 minLength={2}
                 maxLength={200}
                 value={item}
@@ -145,7 +180,9 @@ export default function RmaInstallerPage() {
                 Numer seryjny
               </span>
               <input
+                name="serial"
                 required
+                disabled={saving}
                 minLength={2}
                 maxLength={120}
                 value={serial}
@@ -160,7 +197,9 @@ export default function RmaInstallerPage() {
               Opis usterki
             </span>
             <textarea
+              name="description"
               required
+              disabled={saving}
               minLength={5}
               maxLength={3000}
               rows={5}
@@ -173,8 +212,9 @@ export default function RmaInstallerPage() {
           <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
+              disabled={saving}
               onClick={() => setFormOpen(false)}
-              className="min-h-11 rounded-lg border border-[#cfd2d4] px-4 text-base font-medium text-slate-700"
+              className="min-h-11 rounded-lg border border-[#cfd2d4] px-4 text-base font-medium text-slate-700 disabled:opacity-50"
             >
               Anuluj
             </button>
@@ -195,7 +235,7 @@ export default function RmaInstallerPage() {
       ) : null}
 
       {error ? (
-        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-[15px] text-red-900">
+        <div role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-[15px] text-red-900">
           {error}
         </div>
       ) : null}
