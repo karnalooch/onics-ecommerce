@@ -20,6 +20,8 @@ on:
       - "src/lib/**"
       - "src/store/**"
       - "src/data/**"
+      - "src/app/(b2b)/**"
+      - "src/app/field/**"
       - "src/app/page.tsx"
       - "src/app/layout.tsx"
       - "src/app/globals.css"
@@ -49,6 +51,8 @@ on:
       - "src/lib/**"
       - "src/store/**"
       - "src/data/**"
+      - "src/app/(b2b)/**"
+      - "src/app/field/**"
       - "src/app/page.tsx"
       - "src/app/layout.tsx"
       - "src/app/globals.css"
@@ -91,12 +95,13 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Lint public site changes
+      - name: Lint public and partner site changes
         run: >
           npx eslint
           src/app/page.tsx src/app/layout.tsx
           src/app/kontakt src/app/logowanie src/app/produkty src/app/rejestracja
-          src/app/sklep src/app/uslugi
+          src/app/sklep src/app/uslugi "src/app/(b2b)" src/app/field
+          src/components/ui/B2BDashboardGrid.tsx
           src/components/ui/IconicNav.tsx src/components/shell/AppChrome.tsx
           src/components/brand src/components/public
           src/lib/__tests__/publicBrandContract.test.ts src/lib/__tests__/publicPresentation.test.tsx
@@ -109,8 +114,10 @@ jobs:
         run: |
           node --test scripts/ci/test_catalog_heading_removal.mjs
           node scripts/ci/catalog_heading_removal.mjs --check
-      - name: Test public proof fail-closed contract
-        run: python3 -m unittest discover -s scripts/ci -p 'test_public_proof*.py' -v
+      - name: Test public and partner proof fail-closed contracts
+        run: |
+          python3 -m unittest discover -s scripts/ci -p 'test_public_proof*.py' -v
+          python3 -m unittest discover -s scripts/ci -p 'test_partner_proof*.py' -v
       - name: Run tests
         run: npm test -- --run
       - name: Build
@@ -120,7 +127,7 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/onics-visual-tools"
           "$RUNNER_TEMP/onics-visual-tools/bin/pip" install playwright==1.56.0
           "$RUNNER_TEMP/onics-visual-tools/bin/python" -m playwright install --with-deps chromium
-      - name: Public browser proof
+      - name: Public and partner browser proof
         shell: bash
         env:
           # Trust only this loopback CI server, not a new application default.
@@ -137,11 +144,20 @@ jobs:
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
           "$RUNNER_TEMP/onics-visual-tools/bin/python" scripts/ci/public_acceptance.py
+          "$RUNNER_TEMP/onics-visual-tools/bin/python" scripts/ci/partner_acceptance.py
       - name: Upload exact-revision public proof
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: public-presentation-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/public-presentation/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload exact-revision partner proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: partner-presentation-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/partner-presentation/
           if-no-files-found: warn
           retention-days: 14
