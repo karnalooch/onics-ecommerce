@@ -56,8 +56,7 @@ function statusMeta(order: PartnerOrder) {
           ? "Najpierw oczekujemy na potwierdzenie wpływu przelewu."
           : "Warunki i termin dostawy wymagają potwierdzenia.",
       icon: Clock,
-      className:
-        "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
+      tone: "warning" as const,
     }
   }
 
@@ -69,8 +68,7 @@ function statusMeta(order: PartnerOrder) {
           ? "Zwrot środków został potwierdzony."
           : "Zamówienie nie będzie realizowane.",
       icon: XCircle,
-      className:
-        "border-red-200 bg-red-50 text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100",
+      tone: "danger" as const,
     }
   }
 
@@ -79,8 +77,7 @@ function statusMeta(order: PartnerOrder) {
       label: "Zwrócone",
       detail: "Proces zwrotu został zakończony.",
       icon: RotateCcw,
-      className:
-        "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100",
+      tone: "warning" as const,
     }
   }
 
@@ -89,8 +86,7 @@ function statusMeta(order: PartnerOrder) {
       label: "Zapytanie handlowe",
       detail: "Oczekuje na odpowiedź zespołu handlowego.",
       icon: MessageSquare,
-      className:
-        "border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-white/[0.03] dark:text-slate-200",
+      tone: "neutral" as const,
     }
   }
 
@@ -99,8 +95,7 @@ function statusMeta(order: PartnerOrder) {
       label: "Wysłane",
       detail: "Przesyłka została przekazana do realizacji.",
       icon: Truck,
-      className:
-        "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100",
+      tone: "success" as const,
     }
   }
 
@@ -108,10 +103,16 @@ function statusMeta(order: PartnerOrder) {
     label: "Potwierdzone",
     detail: "Zamówienie zostało zaakceptowane do realizacji.",
     icon: ShieldCheck,
-    className:
-      "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100",
+    tone: "success" as const,
   }
 }
+
+const toneClass = {
+  success: "border-[#b8d7c7] bg-[#f2f8f5] text-[#11603b]",
+  warning: "border-[#e4cf9d] bg-[#fff9e8] text-[#6b4f11]",
+  danger: "border-red-200 bg-red-50 text-red-800",
+  neutral: "border-[#d9dbdc] bg-[#f7f7f4] text-slate-700",
+} as const
 
 export default function B2BClientOrdersPage() {
   const [orders, setOrders] = useState<PartnerOrder[]>([])
@@ -148,21 +149,19 @@ export default function B2BClientOrdersPage() {
   }, [loadOrders])
 
   return (
-    <div className="mx-auto max-w-[1200px] space-y-6">
-      <header className="border-b border-slate-200 pb-6 dark:border-slate-800">
-        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Realizacja
-        </div>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+    <div className="mx-auto max-w-[1180px]">
+      <header className="border-b border-[#d9dbdc] pb-7">
+        <p className="text-base font-semibold text-primary">Realizacja</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-slate-950 sm:text-4xl">
           Zamówienia
         </h1>
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          Status realizacji, płatności, terminy i pozycje zamówień.
+        <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+          Status realizacji, płatność, przewidywany termin oraz pozycje każdego zamówienia.
         </p>
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100">
+        <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-[15px] text-red-900">
           {error}
         </div>
       ) : null}
@@ -172,15 +171,15 @@ export default function B2BClientOrdersPage() {
           <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
         </div>
       ) : orders.length === 0 ? (
-        <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center dark:border-slate-700 dark:bg-[#0f1216]">
-          <Package className="h-6 w-6 text-slate-400" />
-          <div className="mt-3 font-semibold">Brak zamówień</div>
-          <p className="mt-1 max-w-md text-sm text-slate-500">
+        <div className="mt-6 flex min-h-52 flex-col items-center justify-center border border-dashed border-[#cfd2d4] bg-white p-8 text-center">
+          <Package className="h-7 w-7 text-slate-400" />
+          <div className="mt-3 text-lg font-semibold text-slate-950">Brak zamówień</div>
+          <p className="mt-2 max-w-md text-base leading-7 text-slate-600">
             Zamówienia i zapytania utworzone z katalogu pojawią się tutaj.
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="mt-6 space-y-5">
           {orders.map((order) => {
             const status = statusMeta(order)
             const StatusIcon = status.icon
@@ -188,14 +187,14 @@ export default function B2BClientOrdersPage() {
             return (
               <article
                 key={order.id}
-                className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]"
+                className="overflow-hidden border border-[#d9dbdc] bg-white"
               >
-                <header className="grid gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <header className="grid gap-3 border-b border-[#d9dbdc] bg-[#fafaf8] px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div>
-                    <div className="font-mono text-sm font-semibold">
+                    <div className="font-mono text-sm font-semibold text-slate-950">
                       #{order.id}
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">
+                    <div className="mt-1 text-sm text-slate-600">
                       {order.orderType === "ORDER" ? "Zamówienie" : "Zapytanie"} ·{" "}
                       {new Date(order.createdAt).toLocaleString("pl-PL")}
                     </div>
@@ -204,7 +203,7 @@ export default function B2BClientOrdersPage() {
                   <div
                     className={
                       "inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold " +
-                      status.className
+                      toneClass[status.tone]
                     }
                   >
                     <StatusIcon className="h-4 w-4" />
@@ -212,27 +211,27 @@ export default function B2BClientOrdersPage() {
                   </div>
                 </header>
 
-                <div className="grid gap-6 p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,.6fr)]">
+                <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(300px,.6fr)]">
                   <section>
-                    <h2 className="text-sm font-semibold">Pozycje</h2>
-                    <div className="mt-3 divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                    <h2 className="text-base font-semibold text-slate-950">Pozycje</h2>
+                    <div className="mt-3 border border-[#d9dbdc]">
                       {(order.items || []).map((item, index) => (
                         <div
                           key={item.id || item.sku || String(index)}
-                          className="grid gap-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_100px_120px] sm:items-center"
+                          className="grid gap-2 border-b border-[#e0e1e1] px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_100px_130px] sm:items-center"
                         >
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-medium">
+                            <div className="truncate text-[15px] font-medium text-slate-950">
                               {item.name || item.sku || "Produkt"}
                             </div>
                             <div className="mt-1 font-mono text-xs text-slate-500">
                               {item.sku || "brak SKU"}
                             </div>
                           </div>
-                          <div className="font-mono text-sm">
+                          <div className="font-mono text-sm text-slate-700">
                             × {item.quantity}
                           </div>
-                          <div className="text-right font-mono text-sm font-semibold">
+                          <div className="text-right font-mono text-sm font-semibold text-slate-950">
                             {formatMoney(item.price)}
                           </div>
                         </div>
@@ -241,14 +240,12 @@ export default function B2BClientOrdersPage() {
                   </section>
 
                   <aside className="space-y-4">
-                    <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-                      <div className="text-sm font-semibold">{status.label}</div>
-                      <p className="mt-2 text-sm leading-6 text-slate-500">
-                        {status.detail}
-                      </p>
+                    <div className={"rounded-lg border p-4 " + toneClass[status.tone]}>
+                      <div className="text-base font-semibold">{status.label}</div>
+                      <p className="mt-2 text-[15px] leading-6">{status.detail}</p>
                       {order.estimatedDeliveryDays ? (
-                        <div className="mt-3 flex items-center gap-2 text-sm">
-                          <Truck className="h-4 w-4 text-slate-500" />
+                        <div className="mt-3 flex items-center gap-2 text-[15px]">
+                          <Truck className="h-4 w-4" />
                           Termin: około {order.estimatedDeliveryDays} dni roboczych
                         </div>
                       ) : null}
@@ -256,31 +253,31 @@ export default function B2BClientOrdersPage() {
 
                     {order.paymentProvider === "BANK_TRANSFER" &&
                     order.bankTransferIban ? (
-                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
-                        <div className="flex items-center gap-2 font-semibold">
+                      <div className="rounded-lg border border-[#cfd7e6] bg-[#f5f8fc] p-4 text-[15px] text-slate-800">
+                        <div className="flex items-center gap-2 font-semibold text-slate-950">
                           <Landmark className="h-4 w-4" />
                           Przelew bankowy
                         </div>
-                        <dl className="mt-3 space-y-2">
+                        <dl className="mt-3 space-y-3">
                           <div>
-                            <dt className="text-xs opacity-70">Odbiorca</dt>
-                            <dd>{order.bankTransferRecipient || "—"}</dd>
+                            <dt className="text-xs text-slate-500">Odbiorca</dt>
+                            <dd className="mt-1">{order.bankTransferRecipient || "—"}</dd>
                           </div>
                           <div>
-                            <dt className="text-xs opacity-70">IBAN</dt>
-                            <dd className="break-all font-mono">
+                            <dt className="text-xs text-slate-500">IBAN</dt>
+                            <dd className="mt-1 break-all font-mono">
                               {order.bankTransferIban}
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-xs opacity-70">Tytuł</dt>
-                            <dd className="font-mono">
+                            <dt className="text-xs text-slate-500">Tytuł</dt>
+                            <dd className="mt-1 font-mono">
                               {order.bankTransferReference || "—"}
                             </dd>
                           </div>
                           <div>
-                            <dt className="text-xs opacity-70">Kwota</dt>
-                            <dd className="font-semibold">
+                            <dt className="text-xs text-slate-500">Kwota</dt>
+                            <dd className="mt-1 font-semibold">
                               {formatMoney(
                                 order.bankTransferAmount ??
                                   order.totalPriceFinal
@@ -292,14 +289,14 @@ export default function B2BClientOrdersPage() {
                       </div>
                     ) : null}
 
-                    <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+                    <div className="border border-[#d9dbdc] p-4">
                       <div className="flex justify-between gap-3 text-sm text-slate-500">
                         <span>Wartość bazowa</span>
                         <span className="font-mono line-through">
                           {formatMoney(order.totalPriceOrig)}
                         </span>
                       </div>
-                      <div className="mt-2 flex justify-between gap-3 font-semibold">
+                      <div className="mt-3 flex justify-between gap-3 text-base font-semibold text-slate-950">
                         <span>Wartość netto</span>
                         <span className="font-mono">
                           {formatMoney(order.totalPriceFinal)}

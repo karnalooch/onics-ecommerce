@@ -1,0 +1,40 @@
+.results {
+  /* The partner sidebar reduces content width independently of the viewport. */
+  container: partner-catalog / inline-size;
+  min-width: 0;
+  --catalog-columns: 130px minmax(0, 1fr) 130px 80px 140px 110px;
+}
+
+.tableHeader,
+.manufacturer {
+  display: none;
+}
+
+.row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sku {
+  overflow-wrap: anywhere;
+}
+
+@container partner-catalog (min-width: 960px) {
+  .tableHeader,
+  .row {
+    display: grid;
+    grid-template-columns: var(--catalog-columns);
+    align-items: center;
+  }
+
+  .manufacturer {
+    display: block;
+  }
+
+  .compactManufacturer {
+    display: none;
+  }
+
+  .actions {
+    text-align: right;
+  }
+}

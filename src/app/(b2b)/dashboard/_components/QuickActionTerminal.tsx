@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, ChevronRight, Terminal, Box } from "lucide-react";
+import { ChevronRight, Terminal, Box, type LucideIcon } from "lucide-react";
 
 interface IQuickAction {
   title: string;
   desc: string;
   href: string;
-  Icon: any;
+  Icon: LucideIcon;
   variant?: "primary" | "white";
   badge?: string;
 }

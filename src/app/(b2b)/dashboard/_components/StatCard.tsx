@@ -1,12 +1,12 @@
 "use client";
 
-import { ArrowUpRight, TrendingUp } from "lucide-react";
+import { TrendingUp, type LucideIcon } from "lucide-react";
 
 interface IStatCardProps {
   label: string;
   value: string;
   subValue?: string;
-  Icon: any;
+  Icon: LucideIcon;
   variant?: "primary" | "white";
   trend?: string;
 }

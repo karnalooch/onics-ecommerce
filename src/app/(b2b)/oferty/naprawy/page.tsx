@@ -1,6 +1,6 @@
 "use client"
 
-import { FormEvent, useCallback, useEffect, useState } from "react"
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { Loader2, Plus, Wrench } from "lucide-react"
 
 type Repair = {
@@ -12,6 +12,19 @@ type Repair = {
   status: string
 }
 
+type RepairFields = { item: string; serial: string; description: string }
+
+function isRepairReceipt(value: unknown, requestId: string, fields: RepairFields): value is Repair {
+  if (!value || typeof value !== "object") return false
+  const record = value as Record<string, unknown>
+  return typeof record.id === "string" && record.id.trim().length > 0 &&
+    record.clientRequestId === requestId &&
+    record.item === fields.item && record.serial === fields.serial &&
+    record.description === fields.description &&
+    typeof record.date === "string" && Number.isFinite(Date.parse(record.date)) &&
+    typeof record.status === "string" && record.status.length > 0
+}
+
 export default function RmaInstallerPage() {
   const [repairs, setRepairs] = useState<Repair[]>([])
   const [loading, setLoading] = useState(true)
@@ -21,97 +34,116 @@ export default function RmaInstallerPage() {
   const [item, setItem] = useState("")
   const [serial, setSerial] = useState("")
   const [description, setDescription] = useState("")
+  const mountedRef = useRef(false)
+  const submittingRef = useRef(false)
+  const submissionRef = useRef<{ signature: string; requestId: string } | null>(null)
+  const submissionControllerRef = useRef<AbortController | null>(null)
 
   const loadRepairs = useCallback(async () => {
-    setError("")
     try {
       const response = await fetch("/api/repairs", { cache: "no-store" })
-      const payload: unknown = await response.json().catch(() => [])
+      const payload: unknown = await response.json().catch(() => null)
       if (!response.ok || !Array.isArray(payload)) {
         throw new Error("Nie udało się pobrać zgłoszeń.")
       }
-      setRepairs(payload as Repair[])
+      if (mountedRef.current) setRepairs(payload as Repair[])
     } catch (caught) {
-      setError(
+      if (mountedRef.current) setError(
         caught instanceof Error ? caught.message : "Nie udało się pobrać zgłoszeń."
       )
     } finally {
-      setLoading(false)
+      if (mountedRef.current) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
+    mountedRef.current = true
     const timer = window.setTimeout(() => {
       void loadRepairs()
     }, 0)
-    return () => window.clearTimeout(timer)
+    return () => {
+      mountedRef.current = false
+      window.clearTimeout(timer)
+      submissionControllerRef.current?.abort()
+    }
   }, [loadRepairs])
 
   const submitRepair = async (event: FormEvent) => {
     event.preventDefault()
+    if (submittingRef.current || !mountedRef.current) return
+    submittingRef.current = true
     setSaving(true)
     setError("")
+    const controller = new AbortController()
+    submissionControllerRef.current = controller
 
     try {
+      const fields = { item: item.trim(), serial: serial.trim(), description: description.trim() }
+      const signature = JSON.stringify(fields)
+      // Retain the same key after an uncertain response; the server scopes replay to the account.
+      if (submissionRef.current?.signature !== signature) {
+        submissionRef.current = { signature, requestId: crypto.randomUUID() }
+      }
+      const requestId = submissionRef.current.requestId
       const response = await fetch("/api/repairs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ item, serial, description }),
+        signal: controller.signal,
+        body: JSON.stringify({ requestId, ...fields }),
       })
       const payload: unknown = await response.json().catch(() => null)
+      if (!mountedRef.current || controller.signal.aborted) return
 
-      if (
-        !response.ok ||
-        !payload ||
-        typeof payload !== "object" ||
-        !("id" in payload)
-      ) {
+      if (!response.ok || !isRepairReceipt(payload, requestId, fields)) {
         const message =
           payload &&
           typeof payload === "object" &&
           "error" in payload &&
           typeof payload.error === "string"
             ? payload.error
-            : "Nie udało się utworzyć zgłoszenia."
+            : "Nie udało się potwierdzić zgłoszenia. Spróbuj ponownie bez zmiany danych."
         throw new Error(message)
       }
 
-      setRepairs((current) => [payload as Repair, ...current])
+      setRepairs((current) => [payload, ...current.filter((repair) => repair.id !== payload.id)])
+      submissionRef.current = null
       setItem("")
       setSerial("")
       setDescription("")
       setFormOpen(false)
     } catch (caught) {
-      setError(
+      if (mountedRef.current && !controller.signal.aborted) setError(
         caught instanceof Error
           ? caught.message
           : "Nie udało się utworzyć zgłoszenia."
       )
     } finally {
-      setSaving(false)
+      submittingRef.current = false
+      if (submissionControllerRef.current === controller) submissionControllerRef.current = null
+      if (mountedRef.current) setSaving(false)
     }
   }
 
   return (
-    <div className="mx-auto max-w-[1200px] space-y-6">
-      <header className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 dark:border-slate-800 sm:flex-row sm:items-end">
+    <div className="mx-auto max-w-[1180px]">
+      <header className="flex flex-col justify-between gap-5 border-b border-[#d9dbdc] pb-7 sm:flex-row sm:items-end">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-            Serwis
-          </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          <p className="text-base font-semibold text-primary">Serwis</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-slate-950 sm:text-4xl">
             Zgłoszenia serwisowe
           </h1>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Zgłoś urządzenie i śledź jego status bez kontaktowania się po numer RMA.
+          <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+            Zgłoś urządzenie do serwisu i sprawdzaj jego bieżący status w jednym miejscu.
           </p>
         </div>
+
         <button
           type="button"
+          disabled={saving}
           onClick={() => setFormOpen((open) => !open)}
-          className="min-h-11 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white dark:bg-white dark:text-slate-950"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white hover:bg-[#a9161c] disabled:opacity-50"
         >
-          <Plus className="mr-2 inline h-4 w-4" />
+          <Plus className="h-4 w-4" />
           Nowe zgłoszenie
         </button>
       </header>
@@ -119,70 +151,82 @@ export default function RmaInstallerPage() {
       {formOpen ? (
         <form
           onSubmit={submitRepair}
-          className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0f1216]"
+          className="mt-6 border border-[#d9dbdc] bg-white p-5 sm:p-6"
         >
-          <h2 className="text-sm font-semibold">Nowe zgłoszenie</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <h2 className="text-xl font-semibold text-slate-950">Nowe zgłoszenie serwisowe</h2>
+          <p className="mt-2 text-[15px] leading-6 text-slate-600">
+            Podaj urządzenie, numer seryjny i możliwie konkretny opis usterki.
+          </p>
+
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <label>
-              <span className="mb-2 block text-sm font-semibold">
+              <span className="mb-2 block text-base font-medium text-slate-900">
                 Model urządzenia
               </span>
               <input
+                name="item"
                 required
+                disabled={saving}
                 minLength={2}
                 maxLength={200}
                 value={item}
                 onChange={(event) => setItem(event.target.value)}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-transparent px-3 dark:border-slate-700"
+                className="h-12 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 text-base text-slate-950 outline-none focus:border-primary"
               />
             </label>
+
             <label>
-              <span className="mb-2 block text-sm font-semibold">
+              <span className="mb-2 block text-base font-medium text-slate-900">
                 Numer seryjny
               </span>
               <input
+                name="serial"
                 required
+                disabled={saving}
                 minLength={2}
                 maxLength={120}
                 value={serial}
                 onChange={(event) => setSerial(event.target.value)}
-                className="h-12 w-full rounded-lg border border-slate-300 bg-transparent px-3 font-mono dark:border-slate-700"
+                className="h-12 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 font-mono text-base text-slate-950 outline-none focus:border-primary"
               />
             </label>
           </div>
 
-          <label className="mt-4 block">
-            <span className="mb-2 block text-sm font-semibold">
+          <label className="mt-5 block">
+            <span className="mb-2 block text-base font-medium text-slate-900">
               Opis usterki
             </span>
             <textarea
+              name="description"
               required
+              disabled={saving}
               minLength={5}
               maxLength={3000}
-              rows={4}
+              rows={5}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              className="w-full rounded-lg border border-slate-300 bg-transparent p-3 dark:border-slate-700"
+              className="w-full rounded-lg border border-[#cfd2d4] bg-white p-4 text-base leading-7 text-slate-950 outline-none focus:border-primary"
             />
           </label>
 
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
+              disabled={saving}
               onClick={() => setFormOpen(false)}
-              className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold dark:border-slate-700"
+              className="min-h-11 rounded-lg border border-[#cfd2d4] px-4 text-base font-medium text-slate-700 disabled:opacity-50"
             >
               Anuluj
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="min-h-11 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-slate-950"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-base font-semibold text-white hover:bg-[#a9161c] disabled:opacity-50"
             >
               {saving ? (
-                <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Wrench className="mr-2 inline h-4 w-4" />
+                <Wrench className="h-4 w-4" />
               )}
               Wyślij do serwisu
             </button>
@@ -191,17 +235,15 @@ export default function RmaInstallerPage() {
       ) : null}
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100">
+        <div role="alert" className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-[15px] text-red-900">
           {error}
         </div>
       ) : null}
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-[#0f1216]">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-          <h2 className="text-sm font-semibold">Twoje zgłoszenia</h2>
-          <span className="font-mono text-xs text-slate-500">
-            {repairs.length}
-          </span>
+      <section className="mt-6 overflow-hidden border border-[#d9dbdc] bg-white">
+        <div className="flex items-center justify-between border-b border-[#d9dbdc] bg-[#f1f1ee] px-4 py-3">
+          <h2 className="text-base font-semibold text-slate-900">Twoje zgłoszenia</h2>
+          <span className="font-mono text-xs text-slate-500">{repairs.length}</span>
         </div>
 
         {loading ? (
@@ -209,31 +251,33 @@ export default function RmaInstallerPage() {
             <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
           </div>
         ) : repairs.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">
+          <div className="p-8 text-center text-base text-slate-600">
             Nie masz jeszcze zgłoszeń serwisowych.
           </div>
         ) : (
-          <div className="divide-y divide-slate-200 dark:divide-slate-800">
+          <div className="divide-y divide-[#e0e1e1]">
             {repairs.map((repair) => (
               <div
                 key={repair.id}
-                className="grid gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_140px_140px] sm:items-center"
+                className="grid gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_140px_150px] sm:items-center"
               >
                 <div className="min-w-0">
-                  <div className="font-semibold">{repair.item}</div>
+                  <div className="text-[15px] font-semibold text-slate-950">{repair.item}</div>
                   <div className="mt-1 font-mono text-xs text-slate-500">
                     {repair.id} · S/N {repair.serial}
                   </div>
                   {repair.description ? (
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
                       {repair.description}
                     </p>
                   ) : null}
                 </div>
-                <div className="text-sm text-slate-500">
+
+                <div className="text-sm text-slate-600">
                   {new Date(repair.date).toLocaleDateString("pl-PL")}
                 </div>
-                <div className="rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-semibold dark:border-slate-800">
+
+                <div className="border-l-2 border-[#d9dbdc] pl-3 text-sm font-semibold text-slate-800">
                   {repair.status}
                 </div>
               </div>

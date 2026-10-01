@@ -135,32 +135,33 @@ export default function SettingsPage() {
 
   if (!profile) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100">
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-[15px] text-red-900">
         {message || "Brak profilu."}
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-[1100px] space-y-6">
-      <header className="border-b border-slate-200 pb-6 dark:border-slate-800">
-        <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-          Konto partnera
-        </div>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          Dane firmy
+    <div className="mx-auto max-w-[1120px]">
+      <header className="border-b border-[#d9dbdc] pb-7">
+        <p className="text-base font-semibold text-primary">Konto partnera</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-0.02em] text-slate-950 sm:text-4xl">
+          Dane firmy i kontakt
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-          Dane identyfikacyjne są zarządzane przez CEL-TRONICS. Tutaj aktualizujesz kontakt i główny adres dostaw.
+        <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600">
+          Dane identyfikacyjne są zarządzane przez CEL-TRONICS. Tutaj aktualizujesz
+          numer kontaktowy i główny adres dostaw.
         </p>
       </header>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <form
           onSubmit={handleSubmit}
-          className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0f1216]"
+          className="border border-[#d9dbdc] bg-white p-5 sm:p-6"
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <h2 className="text-xl font-semibold text-slate-950">Dane kontaktowe</h2>
+
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <ReadOnlyField
               icon={Building2}
               label="Firma"
@@ -178,7 +179,7 @@ export default function SettingsPage() {
             />
 
             <label>
-              <span className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <span className="mb-2 flex items-center gap-2 text-base font-medium text-slate-900">
                 <Phone className="h-4 w-4 text-slate-500" />
                 Telefon kontaktowy
               </span>
@@ -187,13 +188,13 @@ export default function SettingsPage() {
                 maxLength={50}
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
-                className="h-11 w-full rounded-lg border border-slate-300 bg-transparent px-3 dark:border-slate-700"
+                className="h-12 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 text-base text-slate-950 outline-none focus:border-primary"
               />
             </label>
           </div>
 
-          <label className="mt-4 block">
-            <span className="mb-2 flex items-center gap-2 text-sm font-semibold">
+          <label className="mt-5 block">
+            <span className="mb-2 flex items-center gap-2 text-base font-medium text-slate-900">
               <MapPin className="h-4 w-4 text-slate-500" />
               Główny adres dostaw
             </span>
@@ -203,57 +204,57 @@ export default function SettingsPage() {
               value={address}
               onChange={(event) => setAddress(event.target.value)}
               placeholder="Ulica, kod pocztowy, miejscowość"
-              className="h-11 w-full rounded-lg border border-slate-300 bg-transparent px-3 dark:border-slate-700"
+              className="h-12 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 text-base text-slate-950 outline-none focus:border-primary"
             />
           </label>
 
           {message ? (
             <div
-              className="mt-4 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800"
+              className="mt-5 border-l-2 border-primary bg-[#fbf7f7] px-4 py-3 text-[15px] leading-6 text-slate-700"
               aria-live="polite"
             >
               {message}
             </div>
           ) : null}
 
-          <div className="mt-5 flex justify-end">
+          <div className="mt-6 flex justify-end">
             <button
               type="submit"
               disabled={saving}
-              className="min-h-11 rounded-lg bg-slate-950 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-slate-950"
+              className="inline-flex min-h-12 items-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white hover:bg-[#a9161c] disabled:opacity-50"
             >
               {saving ? (
-                <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Save className="mr-2 inline h-4 w-4" />
+                <Save className="h-4 w-4" />
               )}
               Zapisz dane
             </button>
           </div>
         </form>
 
-        <aside className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-[#0f1216]">
+        <aside className="h-fit border border-[#d9dbdc] bg-white p-5">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-emerald-600" />
-            <h2 className="text-sm font-semibold">Status konta</h2>
+            <ShieldCheck className="h-5 w-5 text-[#16794b]" />
+            <h2 className="text-base font-semibold text-slate-950">Status konta</h2>
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-500">
+          <p className="mt-3 text-[15px] leading-6 text-slate-600">
             {profile.isApproved
-              ? "Konto jest zatwierdzone i ma dostęp do strefy B2B."
+              ? "Konto jest zatwierdzone i ma dostęp do funkcji partnera."
               : "Konto oczekuje na zatwierdzenie."}
           </p>
 
-          <dl className="mt-5 divide-y divide-slate-200 border-y border-slate-200 text-sm dark:divide-slate-800 dark:border-slate-800">
+          <dl className="mt-5 divide-y divide-[#d9dbdc] border-y border-[#d9dbdc] text-[15px]">
             <div className="flex justify-between gap-4 py-3">
-              <dt className="text-slate-500">Poziom</dt>
-              <dd className="font-mono font-semibold">{profile.tierName}</dd>
+              <dt className="text-slate-600">Poziom</dt>
+              <dd className="font-mono font-semibold text-slate-950">{profile.tierName}</dd>
             </div>
             <div className="flex justify-between gap-4 py-3">
-              <dt className="flex items-center gap-2 text-slate-500">
+              <dt className="flex items-center gap-2 text-slate-600">
                 <Percent className="h-4 w-4" />
                 Rabat konta
               </dt>
-              <dd className="font-mono font-semibold">
+              <dd className="font-mono font-semibold text-slate-950">
                 {profile.discount.toFixed(1)}%
               </dd>
             </div>
@@ -275,11 +276,11 @@ function ReadOnlyField({
 }) {
   return (
     <div>
-      <span className="mb-2 flex items-center gap-2 text-sm font-semibold">
+      <span className="mb-2 flex items-center gap-2 text-base font-medium text-slate-900">
         <Icon className="h-4 w-4 text-slate-500" />
         {label}
       </span>
-      <div className="flex h-11 items-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm font-medium dark:border-slate-800 dark:bg-white/[0.03]">
+      <div className="flex h-12 items-center rounded-lg border border-[#d9dbdc] bg-[#f7f7f4] px-4 text-base font-medium text-slate-700">
         {value}
       </div>
     </div>
