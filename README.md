@@ -18,7 +18,7 @@ npm ci
 npm run dev
 ```
 
-The development server runs on http://localhost:3100.
+The development server runs on http://localhost:3001.
 
 When `CELTRONICS_DB_PATH` and `CELTRONICS_UPLOAD_ROOT` are omitted in development, the app uses repository-local fallback paths. Knowledge uploads are stored under `.local/celtronics/uploads`, outside `public/`, so uploaded supplier files are not exposed as static assets.
 
@@ -141,7 +141,7 @@ docker compose ps
 
 > **Destructive reset:** `docker compose down --volumes` deletes the local Docker volume, including the JSON database, uploads, generated local secrets and backups. Use it only when you intentionally want a completely fresh local instance.
 
-For an exposed/production deployment, do not reuse this local Compose preset unchanged. Supply real secrets, TLS/reverse-proxy handling, trusted forwarded-header rewriting, durable backup policy and the production payment configuration described in `PAYMENTS_PRODUCTION_RUNBOOK.md`.
+For an exposed deployment, do not reuse this local Compose preset unchanged. The repository includes a separate fail-closed single-host production profile in `docker-compose.production.yml`, fronted by `Caddyfile.production`. Follow [PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md) for TLS, secret, durable-storage and trusted client-IP setup, then use [PAYMENTS_PRODUCTION_RUNBOOK.md](./PAYMENTS_PRODUCTION_RUNBOOK.md) before enabling payment providers.
 
 ## Validation
 
@@ -214,7 +214,7 @@ The file-backed store is an interim persistence layer. It is suitable only for a
 The application exposes two uncached operational endpoints:
 
 - `GET /api/health/live` — process liveness only; returns HTTP 200 while the Next.js server can answer requests.
-- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required session secrets and lock settings are valid, the JSON database is readable/writable and valid, the private upload root exists and is readable/writable, any unsealed active admin still has a bootstrap secret available, and every payment provider that is effectively enabled by the persisted global/per-provider control plane has complete local runtime configuration. Disabled providers do not affect readiness. The health endpoint never contacts an external payment provider; network credential probes remain an explicit activation-time operation. Otherwise readiness returns HTTP 503.
+- `GET /api/health/ready` — production readiness; returns HTTP 200 only when required session secrets and lock settings are valid, the JSON database is readable/writable and valid, the private upload root exists and is readable/writable, any unsealed active admin still has a bootstrap secret available, optional SMTP notifications are either fully configured or fully disabled, and every payment provider that is effectively enabled by the persisted global/per-provider control plane has complete local runtime configuration. Disabled providers do not affect readiness. The health endpoint never contacts an external payment provider; network credential probes remain an explicit activation-time operation. Otherwise readiness returns HTTP 503.
 
 The readiness payload reports only coarse check states (`ok` / `error`) and does not expose filesystem paths, secrets or raw exception messages.
 

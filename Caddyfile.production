@@ -1,0 +1,15 @@
+{
+	admin off
+}
+
+{$CELTRONICS_DOMAIN} {
+	log
+	encode zstd gzip
+
+	reverse_proxy celtronics:3001 {
+		# The application uses these headers for client rate-limit identity.
+		# Never pass client-supplied values through unchanged.
+		header_up -CF-Connecting-IP
+		header_up X-Real-IP {remote_host}
+	}
+}

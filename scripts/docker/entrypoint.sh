@@ -3,10 +3,32 @@ set -eu
 
 umask 077
 
+RUNTIME_PROFILE="${CELTRONICS_RUNTIME_PROFILE:-local}"
+case "$RUNTIME_PROFILE" in
+  local|production)
+    ;;
+  *)
+    echo "[docker] unsupported CELTRONICS_RUNTIME_PROFILE: $RUNTIME_PROFILE" >&2
+    exit 1
+    ;;
+esac
+
 DB_PATH="${CELTRONICS_DB_PATH:-/app/var/celtronics/db.json}"
 UPLOAD_ROOT="${CELTRONICS_UPLOAD_ROOT:-/app/var/celtronics/uploads}"
 BACKUP_ROOT="${CELTRONICS_DB_BACKUP_DIR:-/app/var/celtronics/backups}"
 RUNTIME_ROOT="$(dirname "$DB_PATH")"
+
+if [ "$RUNTIME_PROFILE" = "production" ]; then
+  if [ -z "${AUTH_SECRET:-}" ] || [ -z "${NEXTAUTH_SECRET:-}" ]; then
+    echo "[docker] AUTH_SECRET and NEXTAUTH_SECRET are required in production runtime profile" >&2
+    exit 1
+  fi
+
+  if [ ! -e "$DB_PATH" ] && [ -z "${ADMIN_BOOTSTRAP_PASSWORD:-}" ]; then
+    echo "[docker] ADMIN_BOOTSTRAP_PASSWORD is required for the first production bootstrap" >&2
+    exit 1
+  fi
+fi
 
 mkdir -p "$RUNTIME_ROOT" "$UPLOAD_ROOT" "$BACKUP_ROOT"
 
@@ -59,14 +81,21 @@ ensure_secret() {
   export "$env_name=$value"
 }
 
-ensure_secret AUTH_SECRET .auth-secret
-ensure_secret NEXTAUTH_SECRET .nextauth-secret
+if [ "$RUNTIME_PROFILE" != "production" ]; then
+  ensure_secret AUTH_SECRET .auth-secret
+  ensure_secret NEXTAUTH_SECRET .nextauth-secret
+fi
 
 BOOTSTRAP_FILE="$RUNTIME_ROOT/.admin-bootstrap-password"
 
 needs_bootstrap="$(node /app/bootstrap-state.cjs)"
 
 if [ "$needs_bootstrap" = "yes" ] && [ -z "${ADMIN_BOOTSTRAP_PASSWORD:-}" ]; then
+  if [ "$RUNTIME_PROFILE" = "production" ]; then
+    echo "[docker] ADMIN_BOOTSTRAP_PASSWORD is required until the active admin is sealed" >&2
+    exit 1
+  fi
+
   if [ ! -f "$BOOTSTRAP_FILE" ]; then
     {
       printf 'Local-'
