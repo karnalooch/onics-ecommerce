@@ -19,7 +19,7 @@ test('preserves all fields except name/specs and does not mutate input', () => {
 test('is idempotent, including barcode and title', () => {
  const once = normalizeCatalogProductCopy(product); assert.deepEqual(normalizeCatalogProductCopy(once), once);
 });
-test('keeps technical zero values and nonzero/unrecognized currency tails', () => {
+test('keeps technical zero values and unrecognized currency tails', () => {
  for (const text of ['Temperatura: 0 °C | Napięcie: 12 V', 'Opis | PLN | 0 | 0 | 2 | 0 | 5905033330375', 'Opis | PLN | 0 | 0 | 0 | 0 | uwaga']) assert.equal(cleanCatalogDescription(text), text);
 });
 test('placeholder is absence of knowledge, not a fabricated product description', () => {
@@ -52,4 +52,20 @@ test('normalizes capacity units without rewriting similar model identifiers', ()
 test('retains barcode leading zeroes and unsafe numeric entities verbatim', () => {
  assert.equal(cleanCatalogDescription('Moduł | PLN | 0 | 0 | 0 | 0 | 0012345678905'), 'Moduł. EAN: 0012345678905');
  assert.equal(cleanCatalogText('&#0; &#xD800; &#1114112;'), '&#0; &#xD800; &#1114112;');
+});
+test('recognizes the four binary source columns without assigning them technical meaning', () => {
+ for (const flags of ['1 | 0 | 0 | 0', '0 | 0 | 1 | 0', '0 | 0 | 0 | 1']) {
+   assert.equal(cleanCatalogDescription(`Centrala GSM/LTE | PLN | ${flags} | 5905033339149`), 'Centrala GSM/LTE. EAN: 5905033339149');
+ }
+});
+test('nested entities are decoded to a fixed point or preserved, never partially decoded', () => {
+ for (const value of ['A &amp;nbsp; B', '&amp;amp;amp;amp;nbsp;', '&#38;amp;nbsp;', 'e&#769;', '&amp;quot;']) {
+   const result = cleanCatalogText(value);
+   assert.equal(cleanCatalogText(result), result);
+ }
+ assert.equal(cleanCatalogText('A &amp;nbsp; B'), 'A B');
+});
+test('fixes the observed barrier punctuation without changing negative temperatures or model suffixes', () => {
+ assert.equal(cleanCatalogDescription('Aktywna bariera podczerwieni -5 wiązek, temperatura -25 °C'), 'Aktywna bariera podczerwieni – 5 wiązek, temperatura -25 °C');
+ assert.equal(normalizeCatalogProductCopy({sku:'ACTIVA-5',name:'ACTIVA-5 — aktywna bariera podczerwieni -5 wiązek'}).name, 'ACTIVA-5 — aktywna bariera podczerwieni – 5 wiązek');
 });

@@ -13,25 +13,45 @@ const ENTITIES: Record<string, string> = {
   ndash: "–", mdash: "—", deg: "°", times: "×", oslash: "ø", Oslash: "Ø",
 }
 
-export function cleanCatalogText(value: unknown): string {
-  if (typeof value !== "string") return ""
-  return value.normalize("NFC")
+function decodeTextEntities(value: string): string {
+  return value
     .replace(/&(nbsp|quot|apos|amp|lt|gt|ndash|mdash|deg|times|oslash|Oslash);/g, (_, key: string) => ENTITIES[key])
     .replace(/&#(x[0-9a-f]+|[0-9]+);/gi, (entity, code: string) => {
       const number = code[0].toLowerCase() === "x" ? parseInt(code.slice(1), 16) : Number(code)
       return number >= 32 && number <= 0x10ffff && !(number >= 0xd800 && number <= 0xdfff)
         ? String.fromCodePoint(number) : entity
     })
-    .replace(/[\s\u00a0\u202f]+/gu, " ")
+}
+
+function normalizeWhitespace(value: string): string {
+  return value.normalize("NFC").replace(/[\s\u00a0\u202f]+/gu, " ")
+    .replace(/(bariera podczerwieni) -(?=\d+ wiąz)/giu, "$1 – ")
     .trim()
 }
 
-/** Remove only the observed currency + four empty cells + optional barcode tail. */
+export function cleanCatalogText(value: unknown): string {
+  if (typeof value !== "string") return ""
+  const original = normalizeWhitespace(value)
+  let text = original
+  // Decode to a fixed point or preserve the input; never partially decode an
+  // arbitrarily nested entity that would change again on the next invocation.
+  for (let pass = 0; pass < 3; pass += 1) {
+    const next = normalizeWhitespace(decodeTextEntities(text))
+    if (next === text) return text
+    text = next
+  }
+  return original
+}
+
+/** Remove the observed currency + four binary import columns + optional barcode tail.
+ * Binary column meanings are unknown: do not turn them into product/stock facts.
+ * Original values remain in the seed migration report and Git history.
+ */
 export function cleanCatalogDescription(value: unknown): string {
   let text = cleanCatalogText(value)
   if (EMPTY_COPY.test(text)) return ""
   let barcode = ""
-  text = text.replace(/\s*\|\s*PLN\s*\|\s*0\s*\|\s*0\s*\|\s*0\s*\|\s*0(?:\s*\|\s*(\d{8}|\d{12,14}))?\s*$/u,
+  text = text.replace(/\s*\|\s*PLN\s*\|\s*[01]\s*\|\s*[01]\s*\|\s*[01]\s*\|\s*[01](?:\s*\|\s*(\d{8}|\d{12,14}))?\s*$/u,
     (_match, captured: string | undefined) => {
       barcode = captured ?? ""
       return ""
