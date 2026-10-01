@@ -100,6 +100,11 @@ jobs:
           src/components/ui/IconicNav.tsx src/components/shell/AppChrome.tsx
           src/components/brand src/components/public
           src/lib/__tests__/publicBrandContract.test.ts src/lib/__tests__/publicPresentation.test.tsx
+          src/lib/catalogCopy.ts src/lib/__tests__/catalogCopyIntegration.test.ts
+      - name: Test catalog copy and seed idempotence
+        run: |
+          node --test scripts/ci/test_catalog_copy.mjs
+          node scripts/ci/catalog_copy_seed.mjs --check
       - name: Test public proof fail-closed contract
         run: python3 -m unittest discover -s scripts/ci -p 'test_public_proof*.py' -v
       - name: Run tests
