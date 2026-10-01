@@ -131,3 +131,63 @@ describe("local Docker runtime contract", () => {
     expect(entrypoint).toContain(".nextauth-secret")
   })
 })
+
+describe("production edge runtime contract", () => {
+  it("keeps the application private behind the Caddy edge", () => {
+    const compose = read("docker-compose.production.yml")
+    const appStart = compose.indexOf("  celtronics:")
+    const edgeStart = compose.indexOf("  caddy:")
+    const appBlock = compose.slice(appStart, edgeStart)
+
+    expect(appStart).toBeGreaterThanOrEqual(0)
+    expect(edgeStart).toBeGreaterThan(appStart)
+    expect(appBlock).toContain('CELTRONICS_RUNTIME_PROFILE: "production"')
+    expect(appBlock).toContain('expose:')
+    expect(appBlock).not.toContain("\n    ports:")
+    expect(compose).toContain('image: caddy:2.11.4-alpine')
+    expect(compose).toContain('"80:80"')
+    expect(compose).toContain('"443:443"')
+  })
+
+  it("requires explicit production secrets instead of generating them", () => {
+    const compose = read("docker-compose.production.yml")
+    const entrypoint = read("scripts/docker/entrypoint.sh")
+
+    expect(compose).toContain('AUTH_SECRET: "${AUTH_SECRET:?Set AUTH_SECRET}"')
+    expect(compose).toContain(
+      'NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET}"'
+    )
+    expect(entrypoint).toContain(
+      'if [ "$RUNTIME_PROFILE" = "production" ]; then'
+    )
+    expect(entrypoint).toContain(
+      "AUTH_SECRET and NEXTAUTH_SECRET are required in production runtime profile"
+    )
+    expect(entrypoint).toContain(
+      "ADMIN_BOOTSTRAP_PASSWORD is required until the active admin is sealed"
+    )
+  })
+
+  it("pins durable production storage and does not use the repository filesystem", () => {
+    const compose = read("docker-compose.production.yml")
+
+    expect(compose).toContain(
+      'source: "${CELTRONICS_DATA_ROOT:?Set CELTRONICS_DATA_ROOT}"'
+    )
+    expect(compose).toContain("target: /app/var/celtronics")
+    expect(compose).toContain(
+      'CELTRONICS_DB_PATH: "/app/var/celtronics/db.json"'
+    )
+    expect(compose).toContain(
+      'CELTRONICS_UPLOAD_ROOT: "/app/var/celtronics/uploads"'
+    )
+  })
+
+  it("sanitizes client-controlled identity headers at the edge", () => {
+    const caddyfile = read("Caddyfile.production")
+
+    expect(caddyfile).toContain("header_up -CF-Connecting-IP")
+    expect(caddyfile).toContain("header_up X-Real-IP {remote_host}")
+    expect(caddyfile).toContain("reverse_proxy celtronics:3001")
+  })
+})
