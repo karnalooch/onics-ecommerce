@@ -14,6 +14,8 @@ on:
       - ".nvmrc"
       - "Dockerfile"
       - ".dockerignore"
+      - ".env.production.example"
+      - "Caddyfile.production"
       - "compose.yaml"
       - "docker-compose*.yml"
       - "START-ONICS.bat"
@@ -42,6 +44,8 @@ on:
       - ".nvmrc"
       - "Dockerfile"
       - ".dockerignore"
+      - ".env.production.example"
+      - "Caddyfile.production"
       - "compose.yaml"
       - "docker-compose*.yml"
       - "START-ONICS.bat"
@@ -78,8 +82,89 @@ jobs:
       - name: Validate Compose
         run: docker compose config --quiet
 
+      - name: Validate production edge configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          env_file="$(mktemp)"
+          trap 'rm -f "$env_file"' EXIT
+          cat > "$env_file" <<'EOF'
+          CELTRONICS_DOMAIN=example.test
+          CELTRONICS_DATA_ROOT=/tmp/celtronics-production-ci
+          AUTH_SECRET=ci-auth-secret-not-for-production
+          NEXTAUTH_SECRET=ci-nextauth-secret-not-for-production
+          ADMIN_BOOTSTRAP_PASSWORD=ci-bootstrap-password
+          EOF
+
+          docker compose \
+            --env-file "$env_file" \
+            -f docker-compose.production.yml \
+            config --quiet
+
+          docker run --rm \
+            -e CELTRONICS_DOMAIN=example.test \
+            -v "$PWD/Caddyfile.production:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine \
+            validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
       - name: Build and start local runtime
         run: docker compose up -d --build
+
+      - name: Verify production profile fails closed on missing bootstrap secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image_id="$(docker compose images -q celtronics)"
+          if [[ -z "$image_id" ]]; then
+            echo "Built CEL-TRONICS image was not found."
+            exit 1
+          fi
+
+          runtime_dir="$(mktemp -d)"
+          chmod 0777 "$runtime_dir"
+          trap 'rm -rf "$runtime_dir"' EXIT
+
+          set +e
+          missing_session_output="$(
+            docker run --rm \
+              -e CELTRONICS_RUNTIME_PROFILE=production \
+              -v "$runtime_dir:/app/var/celtronics" \
+              "$image_id" 2>&1
+          )"
+          missing_session_status=$?
+          set -e
+
+          if [[ "$missing_session_status" -eq 0 ]]; then
+            echo "Production runtime unexpectedly started without session secrets."
+            exit 1
+          fi
+          grep -q "AUTH_SECRET and NEXTAUTH_SECRET are required" \
+            <<< "$missing_session_output"
+
+          rm -rf "$runtime_dir"
+          runtime_dir="$(mktemp -d)"
+          chmod 0777 "$runtime_dir"
+
+          set +e
+          missing_bootstrap_output="$(
+            docker run --rm \
+              -e CELTRONICS_RUNTIME_PROFILE=production \
+              -e AUTH_SECRET=ci-auth-secret \
+              -e NEXTAUTH_SECRET=ci-nextauth-secret \
+              -v "$runtime_dir:/app/var/celtronics" \
+              "$image_id" 2>&1
+          )"
+          missing_bootstrap_status=$?
+          set -e
+
+          if [[ "$missing_bootstrap_status" -eq 0 ]]; then
+            echo "Production runtime unexpectedly started with an unsealed admin and no bootstrap secret."
+            exit 1
+          fi
+          grep -q "ADMIN_BOOTSTRAP_PASSWORD is required" \
+            <<< "$missing_bootstrap_output"
 
       - name: Wait for healthy container
         shell: bash
