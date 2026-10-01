@@ -172,7 +172,10 @@ Readiness validates:
 - readable/writable valid JSON database,
 - private upload storage,
 - admin bootstrap state,
+- complete SMTP quote-notification configuration when any notification core setting is supplied,
 - local runtime configuration for every effectively enabled payment provider.
+
+SMTP quote notifications are optional. Leaving all core notification settings unset keeps readiness green; a partial SMTP configuration fails readiness before traffic is accepted. `SMTP_PORT` defaults to 587 when the core configuration is complete.
 
 If global payments are OFF, provider configuration does not make the whole application unready.
 
@@ -404,6 +407,7 @@ Before enabling production payments:
 - [ ] `Payment production acceptance` is green,
 - [ ] `GET /api/health/live` returns 200,
 - [ ] `GET /api/health/ready` returns 200,
+- [ ] if quote notification email is expected, `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` and `ADMIN_EMAIL` are configured and `SMTP_PORT` is valid,
 - [ ] Stripe production secret/webhook secret and HTTPS origin are configured before Stripe is enabled,
 - [ ] the external Stripe webhook endpoint targets `/api/webhooks/stripe`,
 - [ ] bank recipient/account data are verified before bank transfer is enabled,
