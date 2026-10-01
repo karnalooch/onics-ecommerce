@@ -1,0 +1,83 @@
+name: celtronics-production
+
+services:
+  celtronics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CELTRONICS_PUBLIC_URL: "https://${CELTRONICS_DOMAIN:?Set CELTRONICS_DOMAIN}"
+    image: celtronics-onics:production
+    init: true
+    restart: unless-stopped
+    expose:
+      - "3001"
+    environment:
+      NODE_ENV: "production"
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
+      CELTRONICS_RUNTIME_PROFILE: "production"
+      AUTH_URL: "https://${CELTRONICS_DOMAIN:?Set CELTRONICS_DOMAIN}"
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: "https://${CELTRONICS_DOMAIN:?Set CELTRONICS_DOMAIN}"
+      NEXT_PUBLIC_APP_URL: "https://${CELTRONICS_DOMAIN:?Set CELTRONICS_DOMAIN}"
+      AUTH_SECRET: "${AUTH_SECRET:?Set AUTH_SECRET}"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET}"
+      ADMIN_BOOTSTRAP_PASSWORD: "${ADMIN_BOOTSTRAP_PASSWORD:-}"
+      CELTRONICS_DB_PATH: "/app/var/celtronics/db.json"
+      CELTRONICS_UPLOAD_ROOT: "/app/var/celtronics/uploads"
+      CELTRONICS_DB_BACKUP_DIR: "/app/var/celtronics/backups"
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASS: "${SMTP_PASS:-}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-}"
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+      BANK_TRANSFER_RECIPIENT: "${BANK_TRANSFER_RECIPIENT:-}"
+      BANK_TRANSFER_ACCOUNT_NUMBER: "${BANK_TRANSFER_ACCOUNT_NUMBER:-}"
+      P24_MERCHANT_ID: "${P24_MERCHANT_ID:-}"
+      P24_POS_ID: "${P24_POS_ID:-}"
+      P24_API_KEY: "${P24_API_KEY:-}"
+      P24_CRC: "${P24_CRC:-}"
+    volumes:
+      - type: bind
+        source: "${CELTRONICS_DATA_ROOT:?Set CELTRONICS_DATA_ROOT}"
+        target: /app/var/celtronics
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/api/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    depends_on:
+      celtronics:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CELTRONICS_DOMAIN: "${CELTRONICS_DOMAIN:?Set CELTRONICS_DOMAIN}"
+    volumes:
+      - ./Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  caddy-data:
+  caddy-config:
