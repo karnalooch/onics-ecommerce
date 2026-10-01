@@ -2,11 +2,11 @@ name: Site PR CI
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
       - ".github/workflows/**"
       - "scripts/ci/**"
+      - "public/assets/**"
       - "package.json"
       - "package-lock.json"
       - "next.config.*"
@@ -15,6 +15,11 @@ on:
       - "tsconfig.json"
       - "eslint.config.*"
       - "vitest.config.*"
+      - "src/auth.ts"
+      - "src/proxy.ts"
+      - "src/lib/**"
+      - "src/store/**"
+      - "src/data/**"
       - "src/app/page.tsx"
       - "src/app/layout.tsx"
       - "src/app/globals.css"
@@ -26,11 +31,11 @@ on:
       - "src/app/uslugi/**"
       - "src/components/**"
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - ".github/workflows/**"
       - "scripts/ci/**"
+      - "public/assets/**"
       - "package.json"
       - "package-lock.json"
       - "next.config.*"
@@ -39,6 +44,11 @@ on:
       - "tsconfig.json"
       - "eslint.config.*"
       - "vitest.config.*"
+      - "src/auth.ts"
+      - "src/proxy.ts"
+      - "src/lib/**"
+      - "src/store/**"
+      - "src/data/**"
       - "src/app/page.tsx"
       - "src/app/layout.tsx"
       - "src/app/globals.css"
@@ -53,7 +63,6 @@ on:
 
 permissions:
   contents: read
-
 concurrency:
   group: site-pr-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -61,7 +70,7 @@ concurrency:
 jobs:
   validate-public-site:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       CI: "true"
       AUTH_SECRET: "ci-public-site-validation-only"
@@ -69,41 +78,61 @@ jobs:
       NEXTAUTH_URL: "http://localhost:3000"
       CELTRONICS_DB_PATH: "./src/data/db.json"
       CELTRONICS_UPLOAD_ROOT: "./.ci/celtronics-knowledge"
-
     steps:
-      - name: Checkout
+      - name: Checkout exact revision
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Setup Node
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "24"
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
       - name: Lint public site changes
         run: >
           npx eslint
-          src/app/page.tsx
-          src/app/layout.tsx
-          src/app/kontakt/page.tsx
-          src/app/logowanie/page.tsx
-          src/app/produkty/page.tsx
-          src/app/rejestracja/page.tsx
-          src/app/rejestracja/_components/PartnerRegistrationForm.tsx
-          src/app/sklep/page.tsx
-          src/app/sklep/ShopDashboardClient.tsx
-          src/app/sklep/_components/ShopSidebar.tsx
-          src/app/sklep/_components/ProductGrid.tsx
-          src/app/sklep/_components/ProductCard.tsx
-          src/app/sklep/_components/MiniCart.tsx
-          src/app/uslugi/page.tsx
-          src/components/ui/IconicNav.tsx
-
+          src/app/page.tsx src/app/layout.tsx
+          src/app/kontakt src/app/logowanie src/app/produkty src/app/rejestracja
+          src/app/sklep src/app/uslugi
+          src/components/ui/IconicNav.tsx src/components/shell/AppChrome.tsx
+          src/components/brand src/components/public
+          src/lib/__tests__/publicBrandContract.test.ts src/lib/__tests__/publicPresentation.test.tsx
+      - name: Test public proof fail-closed contract
+        run: python3 -m unittest discover -s scripts/ci -p 'test_public_proof*.py' -v
       - name: Run tests
         run: npm test -- --run
-
       - name: Build
         run: npm run build
+      - name: Install isolated browser proof tools
+        run: |
+          python3 -m venv "$RUNNER_TEMP/onics-visual-tools"
+          "$RUNNER_TEMP/onics-visual-tools/bin/pip" install playwright==1.56.0
+          "$RUNNER_TEMP/onics-visual-tools/bin/python" -m playwright install --with-deps chromium
+      - name: Public browser proof
+        shell: bash
+        env:
+          # Trust only this loopback CI server, not a new application default.
+          AUTH_TRUST_HOST: "true"
+          AUTH_URL: "http://127.0.0.1:3000"
+          NEXTAUTH_URL: "http://127.0.0.1:3000"
+          CELTRONICS_DB_PATH: "${{ github.workspace }}/.ci/public-proof/db.json"
+          CELTRONICS_UPLOAD_ROOT: "${{ github.workspace }}/.ci/public-proof/uploads"
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/public-presentation
+          node scripts/ci/prepare_public_proof.mjs
+          npm run start -- --hostname 127.0.0.1 --port 3000 > artifacts/public-presentation/server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          "$RUNNER_TEMP/onics-visual-tools/bin/python" scripts/ci/public_acceptance.py
+      - name: Upload exact-revision public proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-presentation-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/public-presentation/
+          if-no-files-found: warn
+          retention-days: 14
