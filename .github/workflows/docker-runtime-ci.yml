@@ -142,6 +142,10 @@ jobs:
           fi
           grep -q "AUTH_SECRET and NEXTAUTH_SECRET are required" \
             <<< "$missing_session_output"
+          if [[ -e "$runtime_dir/db.json" ]]; then
+            echo "Production runtime mutated persistent storage before validating session secrets."
+            exit 1
+          fi
 
           rm -rf "$runtime_dir"
           runtime_dir="$(mktemp -d)"
@@ -165,6 +169,10 @@ jobs:
           fi
           grep -q "ADMIN_BOOTSTRAP_PASSWORD is required" \
             <<< "$missing_bootstrap_output"
+          if [[ -e "$runtime_dir/db.json" ]]; then
+            echo "Production runtime seeded persistent storage before validating first-bootstrap credentials."
+            exit 1
+          fi
 
       - name: Wait for healthy container
         shell: bash
