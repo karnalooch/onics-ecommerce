@@ -1,127 +1,65 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
-import { useState } from "react"
-import { LogOut, Menu, X } from "lucide-react"
+import { useRef, useState, type KeyboardEvent } from "react"
+import { ArrowUpRight, LogOut, Menu, X } from "lucide-react"
+import { BrandLogo } from "@/components/brand/BrandLogo"
+import { companyContact, publicNavigation } from "@/components/public/public-content"
+import s from "@/components/public/public.module.css"
 
-const publicItems = [
-  { name: "Firma", path: "/" },
-  { name: "Usługi", path: "/uslugi" },
-  { name: "Katalog", path: "/produkty" },
-  { name: "Kontakt", path: "/kontakt" },
-]
+function NavigationLinks({ pathname, close }: { pathname: string; close?: () => void }) {
+  return publicNavigation.map((item) => (
+    <Link key={item.href} href={item.href} onClick={close}
+      aria-current={pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`)) ? "page" : undefined}>
+      {item.label}
+    </Link>
+  ))
+}
+
+function AccountActions({ close }: { close?: () => void }) {
+  const { data: session, status } = useSession()
+  if (status === "loading") return <span className={s.accountLoading} role="status">Wczytywanie konta…</span>
+  const authenticated = status === "authenticated"
+  const role = (session?.user as { role?: string } | undefined)?.role
+  const href = authenticated ? (role === "ADMIN" ? "/admin" : "/dashboard") : "/logowanie"
+  const label = authenticated && role === "ADMIN" ? "Panel operacyjny" : "Strefa partnera"
+  return (
+    <div className={s.accountActions}>
+      <Link href={href} className={s.partnerAction} onClick={close}>{label}<ArrowUpRight size={17} aria-hidden="true" /></Link>
+      {authenticated && <button type="button" className={s.signOut} onClick={() => signOut({ callbackUrl: "/" })}><LogOut size={17} aria-hidden="true" />Wyloguj</button>}
+    </div>
+  )
+}
+
+function HeaderDetails() {
+  return <div className={s.topLine}><div className={s.container}><span>Systemy zabezpieczeń / Siedlce</span><a href={companyContact.telephoneHref}>{companyContact.phone}</a><a href={companyContact.emailHref}>{companyContact.email}</a></div></div>
+}
 
 export function IconicNav() {
   const pathname = usePathname()
-  const { data: session, status } = useSession()
-  const [mobileOpen, setMobileOpen] = useState(false)
-
-  const isAuthenticated = status === "authenticated"
-  const role = (session?.user as { role?: string } | undefined)?.role
-  const workspaceHref = role === "ADMIN" ? "/admin" : "/dashboard"
-  const workspaceLabel = role === "ADMIN" ? "Panel operacyjny" : "Strefa partnera"
-
-  const activePath = (path: string) => {
-    if (path === "/") return pathname === "/"
-    return pathname.startsWith(path)
+  const [openPath, setOpenPath] = useState<string | null>(null)
+  const toggle = useRef<HTMLButtonElement>(null)
+  const open = openPath === pathname
+  const close = () => setOpenPath(null)
+  function onKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape" && open) { close(); toggle.current?.focus() }
   }
-
   return (
-    <header className="sticky top-0 z-[100] border-b border-[#dedfdf] bg-white">
-      <div className="mx-auto flex h-[68px] w-full max-w-[1320px] items-center gap-8 px-5 sm:px-7">
-        <Link
-          href="/"
-          className="shrink-0"
-          aria-label="CEL-TRONICS — strona główna"
-        >
-          <Image
-            src="/assets/logo.svg"
-            alt="CEL-TRONICS"
-            width={170}
-            height={34}
-            priority
-            className="h-auto w-[150px] sm:w-[170px]"
-          />
-        </Link>
-
-        <nav className="hidden flex-1 items-stretch gap-1 md:flex" aria-label="Główna nawigacja">
-          {publicItems.map((item) => {
-            const active = activePath(item.path)
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={
-                  "flex items-center border-b-2 px-4 text-[15px] font-medium transition-colors " +
-                  (active
-                    ? "border-primary text-slate-950"
-                    : "border-transparent text-slate-600 hover:text-slate-950")
-                }
-              >
-                {item.name}
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2">
-          {isAuthenticated ? (
-            <>
-              <Link
-                href={workspaceHref}
-                className="inline-flex min-h-11 items-center rounded-lg bg-slate-950 px-4 text-[15px] font-semibold text-white transition hover:bg-slate-800"
-              >
-                {workspaceLabel}
-              </Link>
-              <button
-                type="button"
-                onClick={() => signOut({ callbackUrl: "/" })}
-                className="hidden min-h-11 items-center gap-2 rounded-lg border border-[#d8dadd] px-4 text-[15px] font-medium text-slate-700 hover:border-slate-400 sm:inline-flex"
-              >
-                <LogOut className="h-4 w-4" />
-                Wyloguj
-              </button>
-            </>
-          ) : (
-            <Link
-              href="/logowanie"
-              className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-[15px] font-semibold text-white transition hover:bg-[#a9161c]"
-            >
-              Strefa partnera
-            </Link>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-11 w-11 items-center justify-center rounded-lg border border-[#d8dadd] text-slate-800 md:hidden"
-            aria-expanded={mobileOpen}
-            aria-label={mobileOpen ? "Zamknij menu" : "Otwórz menu"}
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
+    <header className={s.header} onKeyDown={onKeyDown}>
+      <HeaderDetails />
+      <div className={`${s.container} ${s.navBar}`}>
+        <Link href="/" aria-label="CEL-TRONICS — strona główna" onClick={close}><BrandLogo className={s.logo} eager /></Link>
+        <nav className={s.desktopNavigation} aria-label="Główna nawigacja"><NavigationLinks pathname={pathname} /></nav>
+        <div className={s.desktopAccount}><AccountActions /></div>
+        <button ref={toggle} type="button" className={s.menuToggle} aria-controls="public-menu" aria-expanded={open} aria-label={open ? "Zamknij menu" : "Otwórz menu"} onClick={() => setOpenPath(open ? null : pathname)}>{open ? <X size={22} aria-hidden="true" /> : <Menu size={22} aria-hidden="true" />}<span>Menu</span></button>
       </div>
-
-      {mobileOpen ? (
-        <nav className="border-t border-[#e3e4e4] bg-white px-5 py-3 md:hidden" aria-label="Nawigacja mobilna">
-          <div className="mx-auto grid max-w-[1320px]">
-            {publicItems.map((item) => (
-              <Link
-                key={item.path}
-                href={item.path}
-                onClick={() => setMobileOpen(false)}
-                className="border-b border-[#ececec] py-3 text-base font-medium text-slate-800 last:border-b-0"
-              >
-                {item.name}
-              </Link>
-            ))}
-          </div>
-        </nav>
-      ) : null}
+      <div id="public-menu" className={s.mobilePanel} hidden={!open}>
+        <nav className={s.mobileNavigation} aria-label="Nawigacja mobilna"><NavigationLinks pathname={pathname} close={close} /></nav>
+        <AccountActions close={close} />
+        <a href={companyContact.telephoneHref} className={s.mobilePhone}>Zadzwoń: {companyContact.phone}</a>
+      </div>
     </header>
   )
 }
