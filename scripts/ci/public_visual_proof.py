@@ -38,6 +38,11 @@ def visit(page: Page, path: str) -> None:
 def capture(page: Page, name: str, width: int) -> None:
     page.evaluate("document.fonts.ready")
     page.wait_for_function("Array.from(document.querySelectorAll('header img')).every(img => img.complete && img.naturalWidth > 0)")
+    # State/focus assertions happen before capture. Full-page proofs start at zero
+    # so sticky chrome is not accidentally painted over content halfway down the PNG.
+    page.mouse.move(0, 0)
+    page.evaluate("window.scrollTo({top: 0, left: 0, behavior: 'instant'})")
+    page.evaluate("new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
     actual = page.evaluate("document.documentElement.scrollWidth")
     if actual > width:
         raise AssertionError(f"Horizontal overflow: {actual}px at {width}px on {page.url}")
@@ -49,6 +54,13 @@ def capture(page: Page, name: str, width: int) -> None:
     if not box or abs(box["width"] / box["height"] - 2045 / 515) > .02:
         raise AssertionError("Logo aspect ratio changed")
     page.screenshot(path=str(OUTPUT / f"{name}-{width}.png"), full_page=True)
+
+
+def assert_skip_clearance(page: Page) -> None:
+    main = page.locator("#public-content").bounding_box()
+    header = page.locator('header').first.bounding_box()
+    if not main or not header or main["y"] < header["y"] + header["height"] - 1:
+        raise AssertionError("Skip navigation hid its target behind the sticky public header")
 
 
 def verify_mobile_menu(page: Page, width: int) -> None:
@@ -74,11 +86,13 @@ def verify_company_pages(page: Page, width: int) -> None:
     expect(page.get_by_role("link", name="Przejdź do treści")).to_be_focused()
     page.keyboard.press("Enter")
     expect(page.locator("#public-content")).to_be_focused()
+    assert_skip_clearance(page)
     if width < 1024:
         page.evaluate("window.scrollTo(0, 0)")
         verify_mobile_menu(page, width)
     page.get_by_role("link", name="Omów instalację", exact=True).click()
     expect(page).to_have_url(f"{BASE_URL}/kontakt")
+    expect(page.locator("main h1")).to_contain_text("Zacznijmy")
     capture(page, "contact", width)
     expect(page.locator('main a[href^="mailto:"]')).not_to_have_count(0)
     visit(page, "/uslugi")

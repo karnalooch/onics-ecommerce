@@ -15,6 +15,9 @@ function isOperationalSurface(pathname: string) {
   )
 }
 
+// The tallest public header is 128px; leave 16px clearance for native skip navigation.
+const publicAnchorClearance = 144
+
 export function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   if (isOperationalSurface(pathname)) return <>{children}</>
@@ -22,7 +25,7 @@ export function AppChrome({ children }: { children: React.ReactNode }) {
     <div className={s.surface}>
       <a href="#public-content" className={s.skipLink}>Przejdź do treści</a>
       <IconicNav />
-      <main id="public-content" className={s.main} tabIndex={-1}>{children}</main>
+      <main id="public-content" className={s.main} tabIndex={-1} style={{ scrollMarginTop: publicAnchorClearance }}>{children}</main>
       <PublicFooter />
     </div>
   )
