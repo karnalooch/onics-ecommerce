@@ -30,6 +30,11 @@ type ReadinessOptions = {
   p24PosId?: string | null
   p24ApiKey?: string | null
   p24Crc?: string | null
+  smtpHost?: string | null
+  smtpPort?: string | null
+  smtpUser?: string | null
+  smtpPass?: string | null
+  adminEmail?: string | null
 }
 
 type ReadinessCheck = "ok" | "error"
@@ -42,6 +47,7 @@ export type ReadinessResult = {
     database: ReadinessCheck
     uploads: ReadinessCheck
     adminBootstrap: ReadinessCheck
+    notifications: ReadinessCheck
     payments: ReadinessCheck
   }
 }
@@ -144,6 +150,26 @@ function paymentRuntimeOptions(
   }
 }
 
+function validateNotifications(options: ReadinessOptions) {
+  const smtpHost = (options.smtpHost ?? process.env.SMTP_HOST)?.trim()
+  const smtpUser = (options.smtpUser ?? process.env.SMTP_USER)?.trim()
+  const smtpPass = (options.smtpPass ?? process.env.SMTP_PASS)?.trim()
+  const adminEmail = (options.adminEmail ?? process.env.ADMIN_EMAIL)?.trim()
+  const smtpPort = (options.smtpPort ?? process.env.SMTP_PORT)?.trim()
+
+  const coreValues = [smtpHost, smtpUser, smtpPass, adminEmail]
+  if (coreValues.every((value) => !value)) return
+
+  if (coreValues.some((value) => !value)) {
+    throw new Error("SMTP notification configuration is incomplete.")
+  }
+
+  const port = smtpPort ? Number(smtpPort) : 587
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error("SMTP_PORT must be an integer between 1 and 65535.")
+  }
+}
+
 function validatePayments(options: ReadinessOptions) {
   const database = readDatabaseRoot(options)
   const control = normalizePaymentControl(database.paymentControl)
@@ -194,6 +220,7 @@ export function evaluateReadiness(
     database: check(() => validateDatabase(options)),
     uploads: check(() => validateUploads(options)),
     adminBootstrap: check(() => validateAdminBootstrap(options)),
+    notifications: check(() => validateNotifications(options)),
     payments: check(() => validatePayments(options)),
   }
 
