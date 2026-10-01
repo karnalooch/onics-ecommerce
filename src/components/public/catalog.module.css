@@ -4,6 +4,8 @@
 .search input::placeholder { color: #606973; }
 .search button { cursor: pointer; }
 .toolbar { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-block: 20px; color: var(--ct-muted); font-size: .9375rem; }
+.toolbar > div { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 20px; min-width: 0; }
+.toolbar a { display: inline-flex; align-items: center; min-height: 44px; }
 .list { border-top: 1px solid var(--ct-line); }
 .row { display: grid; grid-template-columns: 80px minmax(0,1fr) 225px; gap: 28px; align-items: start; padding-block: 30px; border-bottom: 1px solid var(--ct-line); }
 .identity { min-width: 0; }

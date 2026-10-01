@@ -13,6 +13,7 @@ import subprocess
 import traceback
 import urllib.request
 
+from public_layout_contract import validate_catalog_actions
 from public_proof_contract import CASES, validate_evidence, validate_server_log, validate_session
 
 OUTPUT = Path("artifacts/public-presentation")
@@ -65,6 +66,9 @@ def verify_case(browser, proof, fixture: dict, name: str, width: int, height: in
         proof.visit(page, f"/produkty?q={product['sku']}")
         expect(page.locator("main article")).to_have_count(1)
         expect(page.locator("main article h2")).to_contain_text(product["name"])
+        validate_catalog_actions(
+            page.locator("main").get_by_role("link", name="Wybrane produkty", exact=True).bounding_box(),
+            page.locator("main").get_by_role("link", name="Wyczyść filtry", exact=True).bounding_box())
         for state in ("catalog", "device"):
             main = page.locator("main")
             button = main.get_by_role("button", name="Dodaj do koszyka", exact=True)
