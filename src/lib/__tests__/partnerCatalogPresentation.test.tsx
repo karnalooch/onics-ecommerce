@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act } from "react"
+import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { B2BDashboardGrid } from "@/components/ui/B2BDashboardGrid"
 
@@ -19,6 +20,10 @@ vi.mock("@/lib/useCartOwnerBinding", () => ({
 vi.mock("@/components/ui/QuoteRequestModal", () => ({ QuoteRequestModal: () => null }))
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }))
 
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+let host: HTMLDivElement
+let root: Root
+let mounted: boolean
 const fetchMock = vi.fn<typeof fetch>()
 const product = {
   id: "partner-catalog-fixture",
@@ -36,8 +41,27 @@ function response(payload: unknown, status = 200) {
   })
 }
 
-function renderCatalog() {
-  return render(<B2BDashboardGrid nip="CI-NIP" email="partner@example.test" ownerKey="id:partner-fixture" />)
+async function renderCatalog() {
+  await act(async () => {
+    root.render(<B2BDashboardGrid nip="CI-NIP" email="partner@example.test" ownerKey="id:partner-fixture" />)
+  })
+}
+
+function findButton(label: string) {
+  return Array.from(host.querySelectorAll<HTMLButtonElement>("button"))
+    .find((button) => button.textContent?.trim() === label)
+}
+
+async function clickButton(label: string) {
+  const button = findButton(label)
+  if (!button) throw new Error(`Missing button: ${label}`)
+  await act(async () => { button.click() })
+}
+
+function unmount() {
+  if (!mounted) return
+  act(() => root.unmount())
+  mounted = false
 }
 
 beforeEach(() => {
@@ -46,93 +70,97 @@ beforeEach(() => {
   state.addItem.mockReturnValue(true)
   state.cartOwnerReady = true
   vi.stubGlobal("fetch", fetchMock)
+  host = document.createElement("div")
+  document.body.append(host)
+  root = createRoot(host)
+  mounted = true
 })
 
 afterEach(() => {
-  cleanup()
+  unmount()
+  host.remove()
   vi.unstubAllGlobals()
 })
 
 describe("partner catalog failure and retry states", () => {
   it("shows empty results only after a successful empty response", async () => {
     fetchMock.mockResolvedValueOnce(response([]))
-    renderCatalog()
-    await screen.findByText("Brak produktów")
-    expect(screen.queryByRole("alert")).toBeNull()
-    expect(screen.queryByRole("button", { name: "Spróbuj ponownie" })).toBeNull()
+    await renderCatalog()
+    expect(host.querySelector("h3")?.textContent).toBe("Brak produktów")
+    expect(host.querySelector('[role="alert"]')).toBeNull()
+    expect(findButton("Spróbuj ponownie")).toBeUndefined()
   })
 
   it.each([401, 403, 503])("does not disguise HTTP %s as an empty catalog", async (status) => {
     fetchMock.mockResolvedValueOnce(response({ error: "Controlled failure" }, status))
-    renderCatalog()
-    expect((await screen.findByRole("alert")).textContent).toContain("Nie udało się pobrać katalogu")
-    expect(screen.queryByText("Brak produktów")).toBeNull()
-    expect(screen.queryByRole("button", { name: "Dodaj" })).toBeNull()
+    await renderCatalog()
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("Nie udało się pobrać katalogu")
+    expect(host.textContent).not.toContain("Brak produktów")
+    expect(findButton("Dodaj")).toBeUndefined()
   })
 
   it.each([null, { items: [] }])("rejects a malformed successful payload: %j", async (payload) => {
     fetchMock.mockResolvedValueOnce(response(payload))
-    renderCatalog()
-    await screen.findByRole("alert")
-    expect(screen.queryByText("Brak produktów")).toBeNull()
+    await renderCatalog()
+    expect(host.querySelector('[role="alert"]')).not.toBeNull()
+    expect(host.textContent).not.toContain("Brak produktów")
   })
 
   it("does not disguise invalid JSON as an empty catalog", async () => {
     fetchMock.mockResolvedValueOnce(new Response("not-json", { status: 200 }))
-    renderCatalog()
-    await screen.findByRole("alert")
-    expect(screen.queryByText("Brak produktów")).toBeNull()
+    await renderCatalog()
+    expect(host.querySelector('[role="alert"]')).not.toBeNull()
+    expect(host.textContent).not.toContain("Brak produktów")
   })
 
   it("offers retry after a network error", async () => {
     fetchMock.mockRejectedValueOnce(new TypeError("Network unavailable"))
-    renderCatalog()
-    await screen.findByRole("alert")
-    expect(screen.getByRole("button", { name: "Spróbuj ponownie" })).toBeDefined()
-    expect(screen.queryByText("Brak produktów")).toBeNull()
+    await renderCatalog()
+    expect(host.querySelector('[role="alert"]')).not.toBeNull()
+    expect(findButton("Spróbuj ponownie")).toBeDefined()
+    expect(host.textContent).not.toContain("Brak produktów")
   })
 
-  it("retries the real catalog endpoint and replaces the error with account prices", async () => {
+  it("retries the catalog endpoint and replaces the error with account prices", async () => {
     fetchMock.mockResolvedValueOnce(response({ error: "Unavailable" }, 503))
     fetchMock.mockResolvedValueOnce(response([product]))
-    renderCatalog()
-    fireEvent.click(await screen.findByRole("button", { name: "Spróbuj ponownie" }))
-    await screen.findByText("83,00 zł netto")
+    await renderCatalog()
+    await clickButton("Spróbuj ponownie")
+    expect(host.querySelector("article")?.textContent).toContain("83,00 zł netto")
     expect(fetchMock).toHaveBeenCalledTimes(2)
     for (const [url, options] of fetchMock.mock.calls) {
       expect(url).toBe("/api/products")
       expect(options?.cache).toBe("no-store")
     }
-    expect(screen.queryByRole("alert")).toBeNull()
-    expect(screen.queryByText("Brak produktów")).toBeNull()
+    expect(host.querySelector('[role="alert"]')).toBeNull()
+    expect(host.textContent).not.toContain("Brak produktów")
   })
 
-  it("announces loading and cancels an unfinished request on unmount", () => {
+  it("announces loading and cancels an unfinished request on unmount", async () => {
     fetchMock.mockReturnValueOnce(new Promise<Response>(() => undefined))
-    const view = renderCatalog()
-    expect(screen.getByRole("status", { name: "Ładowanie katalogu" })).toBeDefined()
-    expect(screen.queryByText("Brak produktów")).toBeNull()
+    await renderCatalog()
+    expect(host.querySelector('[role="status"]')?.getAttribute("aria-label")).toBe("Ładowanie katalogu")
+    expect(host.textContent).not.toContain("Brak produktów")
     const signal = fetchMock.mock.calls[0]?.[1]?.signal
     expect(signal?.aborted).toBe(false)
-    view.unmount()
+    unmount()
     expect(signal?.aborted).toBe(true)
   })
 
   it("preserves the cart owner readiness boundary", async () => {
     state.cartOwnerReady = false
     fetchMock.mockResolvedValueOnce(response([product]))
-    renderCatalog()
-    const button = await screen.findByRole("button", { name: "Dodaj" })
-    expect((button as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(button)
+    await renderCatalog()
+    expect(findButton("Dodaj")?.disabled).toBe(true)
+    await clickButton("Dodaj")
     expect(state.addItem).not.toHaveBeenCalled()
     expect(state.push).not.toHaveBeenCalled()
   })
 
   it("preserves account-priced cart data and navigation after loading", async () => {
     fetchMock.mockResolvedValueOnce(response([product]))
-    renderCatalog()
-    fireEvent.click(await screen.findByRole("button", { name: "Dodaj" }))
+    await renderCatalog()
+    await clickButton("Dodaj")
     expect(state.addItem).toHaveBeenCalledWith({
       id: product.id,
       sku: product.sku,
