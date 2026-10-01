@@ -1,150 +1,67 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
-import { useState } from "react"
-import { Loader2 } from "lucide-react"
+import { useRef, useState, type FormEvent } from "react"
+import { ArrowUpRight } from "lucide-react"
+import { PublicPageHeading } from "@/components/public/PublicPageHeading"
+import { companyContact } from "@/components/public/public-content"
+import p from "@/components/public/pages.module.css"
+import s from "@/components/public/public.module.css"
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+function sessionDestination(value: unknown): string | null {
+  if (!value || typeof value !== "object" || !("user" in value)) return null
+  const user = value.user
+  if (!user || typeof user !== "object" || !("role" in user) || typeof user.role !== "string") return null
+  return user.role === "ADMIN" ? "/admin" : "/"
+}
+
+function usePartnerLogin() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-
-  const handleSubmit = async (event: React.FormEvent) => {
+  const pending = useRef(false)
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setLoading(true)
-    setError("")
-
+    if (pending.current) return
+    const data = new FormData(event.currentTarget)
+    pending.current = true; setLoading(true); setError("")
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      })
-
-      if (result?.error) {
-        setError("Nie udało się zalogować. Sprawdź adres e-mail i hasło.")
-        return
-      }
-
-      const sessionResponse = await fetch("/api/auth/session")
-      const session = await sessionResponse.json()
-
-      window.location.href =
-        session?.user?.role === "ADMIN" ? "/admin" : "/"
-    } catch {
-      setError(
-        "Logowanie jest chwilowo niedostępne. Spróbuj ponownie za moment."
-      )
-    } finally {
-      setLoading(false)
-    }
+      const result = await signIn("credentials", { email: String(data.get("email") ?? ""), password: String(data.get("password") ?? ""), redirect: false })
+      if (!result?.ok || result.error) { setError("Nie udało się zalogować. Sprawdź adres e-mail i hasło."); return }
+      const response = await fetch("/api/auth/session", { cache: "no-store" })
+      if (!response.ok) throw new Error("Session unavailable")
+      const destination = sessionDestination(await response.json())
+      if (!destination) throw new Error("Session unavailable")
+      window.location.href = destination
+    } catch { setError("Logowanie jest chwilowo niedostępne. Spróbuj ponownie za moment.") }
+    finally { pending.current = false; setLoading(false) }
   }
+  return { error, loading, submit }
+}
 
-  return (
-    <div className="min-h-[calc(100vh-68px)] bg-[#f2f2ef] px-5 py-12 sm:py-16">
-      <div className="mx-auto w-full max-w-[540px]">
-        <div className="mb-8 flex justify-center">
-          <Link href="/" aria-label="Wróć do CEL-TRONICS">
-            <Image
-              src="/assets/logo.svg"
-              alt="CEL-TRONICS"
-              width={210}
-              height={42}
-              priority
-              className="h-auto w-[190px] sm:w-[210px]"
-            />
-          </Link>
-        </div>
+function PasswordField({ disabled }: { disabled: boolean }) {
+  const [showPassword, setShowPassword] = useState(false)
+  return <div className={p.field}>
+    <label htmlFor="login-password">Hasło</label>
+    <div className={p.passwordRow}><input id="login-password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required disabled={disabled} /><button type="button" className={p.passwordToggle} aria-controls="login-password" aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? "Ukryj" : "Pokaż"}</button></div>
+  </div>
+}
+function LoginForm() {
+  const { error, loading, submit } = usePartnerLogin()
+  return <section className={p.authPanel} aria-labelledby="login-form-title"><h2 id="login-form-title">Dane logowania</h2>
+    {error && <p role="alert" className={p.error}>{error}</p>}
+    <form className={p.form} onSubmit={submit} aria-busy={loading}>
+      <label className={p.field} htmlFor="login-email"><span>Adres e-mail</span><input id="login-email" name="email" type="email" autoComplete="email" required disabled={loading} placeholder="partner@firma.pl" /></label>
+      <PasswordField disabled={loading} />
+      <button type="submit" className={s.primaryAction} disabled={loading}>{loading ? "Logowanie…" : "Zaloguj się"}<ArrowUpRight size={20} aria-hidden="true" /></button>
+    </form>
+    <p className={p.note}>Nie masz dostępu firmowego? <Link href="/rejestracja" className={s.textAction}>Załóż konto partnera</Link></p>
+  </section>
+}
 
-        <main className="rounded-2xl border border-[#dedfdf] bg-white p-6 shadow-[0_18px_45px_rgba(18,24,32,0.06)] sm:p-9">
-          <p className="text-[15px] font-semibold text-primary">
-            CEL-TRONICS · strefa partnera
-          </p>
-          <h1 className="mt-2 text-[34px] font-semibold leading-[1.12] tracking-[-0.025em] text-slate-950 sm:text-[38px]">
-            Zaloguj się do konta firmy
-          </h1>
-          <p className="mt-4 text-[17px] leading-7 text-slate-600">
-            Katalog z cenami Twojej firmy, zamówienia, zapytania i obsługa serwisowa w jednym miejscu.
-          </p>
-
-          {error ? (
-            <div
-              role="alert"
-              className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[15px] leading-6 text-red-800"
-            >
-              {error}
-            </div>
-          ) : null}
-
-          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 block text-base font-medium text-slate-900">
-                Adres e-mail
-              </span>
-              <input
-                id="login-email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                placeholder="partner@firma.pl"
-                className="h-13 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 text-base text-slate-950 outline-none transition focus:border-primary"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-base font-medium text-slate-900">
-                Hasło
-              </span>
-              <input
-                id="login-password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                className="h-13 w-full rounded-lg border border-[#cfd2d4] bg-white px-4 text-base text-slate-950 outline-none transition focus:border-primary"
-              />
-            </label>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex min-h-13 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-base font-semibold text-white transition hover:bg-[#a9161c] disabled:cursor-wait disabled:opacity-60"
-            >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-              {loading ? "Logowanie…" : "Zaloguj się"}
-            </button>
-          </form>
-
-          <div className="mt-8 border-t border-[#e2e3e3] pt-6">
-            <p className="text-base leading-7 text-slate-600">
-              Nie masz jeszcze dostępu firmowego?
-            </p>
-            <Link
-              href="/rejestracja"
-              className="mt-2 inline-flex text-base font-semibold text-primary hover:underline"
-            >
-              Załóż konto partnera
-            </Link>
-          </div>
-        </main>
-
-        <div className="mt-6 text-center text-sm leading-6 text-slate-600">
-          Pomoc z kontem:{" "}
-          <a href="tel:+48256336800" className="font-semibold text-slate-900 hover:text-primary">
-            25 633 68 00
-          </a>
-          {" · "}
-          <a href="mailto:serwis@celtronics.pl" className="font-semibold text-slate-900 hover:text-primary">
-            serwis@celtronics.pl
-          </a>
-        </div>
-      </div>
-    </div>
-  )
+export default function LoginPage() {
+  return <div className={p.page}><div className={p.authGrid}>
+    <div><PublicPageHeading eyebrow="CEL-TRONICS · strefa partnera" title={<>Twoja firma.<br />Twoje warunki.</>}>Zaloguj się do konta firmy. Katalog z cenami partnera, zamówienia i obsługa serwisowa korzystają z uprawnień przypisanych do Twojego konta.</PublicPageHeading><p className={p.note}>Potrzebujesz pomocy z dostępem?<br /><a href={companyContact.telephoneHref} className={s.textAction}>{companyContact.phone}</a><br /><a href={companyContact.emailHref} className={s.textAction}>{companyContact.email}</a></p></div>
+    <LoginForm />
+  </div></div>
 }

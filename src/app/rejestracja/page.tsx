@@ -1,122 +1,42 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { CheckCircle2, Loader2 } from "lucide-react"
-import {
-  PartnerRegistrationForm,
-  type PartnerRegistrationData,
-} from "./_components/PartnerRegistrationForm"
+import { useRef, useState } from "react"
+import { PartnerRegistrationForm, type PartnerRegistrationData } from "./_components/PartnerRegistrationForm"
+import { PublicPageHeading } from "@/components/public/PublicPageHeading"
+import p from "@/components/public/pages.module.css"
+import s from "@/components/public/public.module.css"
 
-export default function RegisterPage() {
-  const router = useRouter()
+function useRegistration() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
-
-  const handleRegister = async (data: PartnerRegistrationData) => {
-    setError("")
-    setLoading(true)
-
+  const pending = useRef(false)
+  async function submit(data: PartnerRegistrationData) {
+    if (pending.current) return
+    pending.current = true; setLoading(true); setError("")
     try {
-      const response = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      })
-
-      const result = await response.json()
-
+      const response = await fetch("/api/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) })
+      const result: unknown = await response.json()
       if (!response.ok) {
-        setError(
-          result.error ||
-            "Nie udało się wysłać zgłoszenia. Sprawdź dane i spróbuj ponownie."
-        )
-        return
+        const message = result && typeof result === "object" && "error" in result && typeof result.error === "string" ? result.error : "Nie udało się wysłać zgłoszenia. Spróbuj ponownie."
+        setError(message); return
       }
-
+      if (response.status !== 202 || !result || typeof result !== "object" || !("success" in result) || result.success !== true) throw new Error("Unexpected response")
       setSuccess(true)
-      setTimeout(() => router.push("/logowanie"), 2500)
-    } catch {
-      setError(
-        "Nie udało się połączyć z serwisem rejestracji. Spróbuj ponownie za moment."
-      )
-    } finally {
-      setLoading(false)
-    }
+    } catch { setError("Nie udało się połączyć z serwisem rejestracji. Spróbuj ponownie za moment.") }
+    finally { pending.current = false; setLoading(false) }
   }
-
-  if (success) {
-    return (
-      <div className="min-h-[calc(100vh-68px)] bg-[#f6f6f3] px-5 py-14 sm:px-7">
-        <div className="mx-auto max-w-[620px] rounded-xl border border-[#cfd8d2] bg-white p-7 sm:p-9">
-          <CheckCircle2 className="h-8 w-8 text-[#16794b]" />
-          <h1 className="mt-5 text-3xl font-semibold tracking-[-0.02em] text-slate-950">
-            Zgłoszenie wysłane do CEL-TRONICS
-          </h1>
-          <p className="mt-4 text-base leading-7 text-slate-600">
-            Dane firmy trafiły do weryfikacji. Po aktywacji konta otrzymasz
-            dostęp do strefy partnera i przypisanych warunków handlowych.
-          </p>
-          <div className="mt-6 flex items-center gap-2 text-sm font-medium text-slate-600">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Przechodzimy do logowania…
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-[#f6f6f3] px-5 py-12 sm:px-7 lg:py-16">
-      <div className="mx-auto max-w-[1040px]">
-        <header className="grid gap-6 border-b border-[#d9dbdc] pb-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-end">
-          <div>
-            <p className="text-base font-semibold text-primary">CEL-TRONICS · strefa partnera</p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-5xl">
-              Załóż konto firmowe
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-              Zgłoszenie tworzy dostęp dla firmy. Po weryfikacji konta udostępniamy
-              ceny, katalog, zamówienia i obsługę serwisową przypisaną do partnera.
-            </p>
-          </div>
-
-          <div className="border-l-2 border-primary pl-5 text-sm leading-6 text-slate-600">
-            <strong className="block text-base font-semibold text-slate-950">
-              Dostęp nie jest aktywowany automatycznie.
-            </strong>
-            Dane firmy sprawdza zespół CEL-TRONICS przed udostępnieniem warunków handlowych.
-          </div>
-        </header>
-
-        {error ? (
-          <div
-            role="alert"
-            className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[15px] leading-6 text-red-800"
-          >
-            {error}
-          </div>
-        ) : null}
-
-        <div className="mt-7 border border-[#d9dbdc] bg-white">
-          <PartnerRegistrationForm
-            onSubmit={handleRegister}
-            loading={loading}
-          />
-        </div>
-
-        <p className="mt-5 text-[15px] text-slate-600">
-          Masz już konto?{" "}
-          <Link
-            href="/logowanie"
-            className="font-semibold text-primary hover:underline"
-          >
-            Zaloguj się do strefy partnera CEL-TRONICS
-          </Link>
-        </p>
-      </div>
-    </div>
-  )
+  return { error, success, loading, submit }
+}
+function RegistrationReceived() {
+  return <section className={p.success}><h1>Zgłoszenie przyjęte do obsługi</h1><p>Dziękujemy. Przesłane dane zostaną obsłużone zgodnie ze stanem konta. Ten komunikat nie potwierdza utworzenia nowego konta ani aktywacji dostępu.</p><p>Ceny i funkcje partnera są dostępne dopiero po weryfikacji przez CEL-TRONICS.</p><Link href="/logowanie" className={s.primaryAction}>Przejdź do logowania</Link></section>
+}
+export default function RegisterPage() {
+  const { error, success, loading, submit } = useRegistration()
+  if (success) return <div className={p.page}><RegistrationReceived /></div>
+  return <div className={p.page}>
+    <PublicPageHeading eyebrow="CEL-TRONICS · strefa partnera" title="Załóż konto firmowe">Prześlij dane firmy do weryfikacji. Dostęp do cen, zamówień i obsługi serwisowej przyznajemy po zatwierdzeniu konta — nie automatycznie po wypełnieniu formularza.</PublicPageHeading>
+    <div className={p.split}><section className={p.authPanel} aria-label="Zgłoszenie firmy">{error && <p role="alert" className={p.error}>{error}</p>}<PartnerRegistrationForm onSubmit={submit} loading={loading} /></section><aside className={p.aside}><h2>Co dalej?</h2><ol className={p.checklist}><li>Sprawdzimy przesłane dane firmy.</li><li>Po zatwierdzeniu konto uzyska właściwe uprawnienia.</li><li>Warunki handlowe pozostaną przypisane do Twojej firmy.</li></ol><p>Masz już konto?</p><Link href="/logowanie">Zaloguj się do strefy partnera CEL-TRONICS</Link><Link href="/kontakt">Pomoc z dostępem</Link></aside></div>
+  </div>
 }

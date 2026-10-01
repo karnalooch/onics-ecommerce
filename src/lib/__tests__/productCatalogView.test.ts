@@ -306,23 +306,24 @@ describe("storefront catalog-content wiring", () => {
 
 describe("catalog projection wiring", () => {
   it("uses the shared server projection instead of a session-losing self-fetch", () => {
-    const publicPage = fs.readFileSync(
-      path.join(process.cwd(), "src/app/produkty/page.tsx"),
-      "utf8"
-    )
-    const apiRoute = fs.readFileSync(
-      path.join(process.cwd(), "src/app/api/products/route.ts"),
-      "utf8"
-    )
+    const publicPage = fs.readFileSync(path.join(process.cwd(), "src/app/produkty/page.tsx"), "utf8")
+    const publicLoader = fs.readFileSync(path.join(process.cwd(), "src/app/produkty/catalog-data.ts"), "utf8")
+    const detailPage = fs.readFileSync(path.join(process.cwd(), "src/app/produkty/[id]/page.tsx"), "utf8")
+    const apiRoute = fs.readFileSync(path.join(process.cwd(), "src/app/api/products/route.ts"), "utf8")
 
-    expect(publicPage).toContain("buildProductCatalogView")
+    expect(publicPage).toContain("loadPublicCatalog(sessionUser)")
+    expect(detailPage).toContain("loadPublicCatalog(sessionUser)")
+    expect(publicLoader).toContain("buildProductCatalogView")
+    expect(publicLoader).toContain("categories as ProductCatalogCategory[], sessionUser")
     expect(publicPage).toContain("buildCatalogCategoryOptions")
     expect(publicPage).toContain("getProductCatalogDescription")
     expect(publicPage).toContain("matchesProductCatalogQuery")
     expect(publicPage).toContain("matchesCatalogCategory")
     expect(apiRoute).toContain("buildProductCatalogView")
     expect(apiRoute).toContain("categories as ProductCatalogCategory[]")
-    expect(publicPage).not.toContain("/api/products")
-    expect(publicPage).not.toContain("NEXTAUTH_URL")
+    for (const source of [publicPage, publicLoader, detailPage]) {
+      expect(source).not.toContain("/api/products")
+      expect(source).not.toContain("NEXTAUTH_URL")
+    }
   })
 })

@@ -92,12 +92,45 @@ describe("catalog product revision fencing", () => {
     )
   })
 
+  it("binds WF-Mag staging to the observed product revision", () => {
+    const inventory = read(
+      "src/app/admin/products/_lib/inventoryLogic.ts"
+    )
+    const types = read("src/app/admin/products/_lib/types.ts")
+    const products = read("src/app/api/products/route.ts")
+
+    expect(types).toContain("expectedRevision?: number")
+    expect(inventory).toContain(
+      "catalogProductRevision(existingInCrt.revision)"
+    )
+    expect(products).toContain(
+      "expectedRevision: z.coerce.number().int().nonnegative().optional()"
+    )
+  })
+
+  it("fails closed when WF-Mag staging identity changed before commit", () => {
+    const products = read("src/app/api/products/route.ts")
+    const importStart = products.indexOf("if (importRequest?.success)")
+    const importEnd = products.indexOf("const parsed = CatalogProductInputSchema", importStart)
+    const flow = products.slice(importStart, importEnd)
+
+    expect(flow).toContain('throw new Error("PRODUCT_IMPORT_TARGET_APPEARED")')
+    expect(flow).toContain('throw new Error("PRODUCT_IMPORT_TARGET_MISSING")')
+    expect(flow).toContain('throw new Error("PRODUCT_IMPORT_REVISION_CONFLICT")')
+    expect(flow).toContain("item.expectedRevision !== currentRevision")
+    expect(flow).toContain("isCatalogProductStateEqual(existing, candidate)")
+    expect(flow.indexOf("item.expectedRevision !== currentRevision"))
+      .toBeLessThan(flow.indexOf("Object.assign(existing, candidate)"))
+    expect(flow).toContain("if (isReplay) {")
+    expect(flow).toContain("continue")
+  })
+
   it("advances revisions for import, AI and inventory side writers", () => {
     const products = read("src/app/api/products/route.ts")
     const ai = read("src/app/api/products/ai-description/route.ts")
     const inventory = read("src/lib/inventoryReservations.ts")
 
-    expect(products).toContain("isCatalogProductStateEqual(beforeUpdate")
+    expect(products).toContain("isCatalogProductStateEqual(existing, candidate)")
     expect(products).toContain(
       "existing.revision = nextCatalogProductRevision("
     )

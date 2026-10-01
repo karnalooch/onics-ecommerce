@@ -1,0 +1,83 @@
+.page { width: min(calc(100% - 80px), 1320px); margin-inline: auto; padding-block: 64px 88px; }
+.intro { max-width: 900px; margin-bottom: 44px; }
+.eyebrow { color: var(--ct-accent); font-size: .8125rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 20px; }
+.intro h1 { font-size: clamp(36px, 4.5vw, 60px); line-height: 1.1; letter-spacing: -.045em; font-weight: 600; margin: 0; }
+.lead { margin-top: 24px; max-width: 740px; color: var(--ct-muted); font-size: 1.0625rem; line-height: 1.8; }
+.section { margin-top: 64px; }
+.section h2, .aside h2 { font-size: clamp(25px, 2.5vw, 34px); font-weight: 600; line-height: 1.25; letter-spacing: -.025em; margin-bottom: 20px; }
+.split { display: grid; grid-template-columns: 1.45fr 1fr; gap: 72px; align-items: start; }
+.aside { padding: 30px; background: var(--ct-soft); border-top: 3px solid var(--ct-accent); }
+.aside p, .aside address { font-style: normal; color: var(--ct-muted); line-height: 1.8; margin-top: 14px; }
+.aside a { display: flex; align-items: center; gap: 10px; min-height: 48px; font-weight: 600; overflow-wrap: anywhere; }
+.aside a:hover { color: var(--ct-accent); }
+.services { border-top: 1px solid var(--ct-line); }
+.service { display: grid; grid-template-columns: 44px 1fr 1fr; gap: 28px; padding: 38px 0; border-bottom: 1px solid var(--ct-line); }
+.number { color: var(--ct-accent); font-variant-numeric: tabular-nums; font-size: .875rem; }
+.service h2 { margin: 0 0 14px; font-size: 1.5rem; font-weight: 600; line-height: 1.3; letter-spacing: -.02em; }
+.service p { color: var(--ct-muted); font-size: 1rem; line-height: 1.8; margin: 0; }
+.scope { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; }
+.scope li { padding-left: 14px; border-left: 2px solid var(--ct-line); font-size: .9375rem; line-height: 1.6; }
+.callout { margin-top: 64px; padding: 38px; background: var(--ct-soft); display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+.callout h2 { font-size: 1.625rem; font-weight: 600; letter-spacing: -.02em; margin-bottom: 12px; }
+.callout p { color: var(--ct-muted); max-width: 720px; line-height: 1.8; }
+.callout > a { flex-shrink: 0; }
+.topic { display: grid; grid-template-columns: 1fr 30px; align-items: center; gap: 18px; min-height: 104px; padding: 24px 0; border-bottom: 1px solid var(--ct-line); }
+.topic:first-child { border-top: 1px solid var(--ct-line); }
+.topic h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 8px; }
+.topic p { color: var(--ct-muted); font-size: .9375rem; line-height: 1.7; }
+.topic:hover h3 { color: var(--ct-accent); }
+.note { font-size: .9375rem; line-height: 1.8; color: var(--ct-muted); margin-block: 20px; }
+.checklist { list-style: decimal; padding-left: 24px; display: grid; gap: 12px; color: var(--ct-muted); line-height: 1.8; }
+.authGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 96px; align-items: start; padding-block: 20px; }
+.authPanel { padding: 36px; border: 1px solid var(--ct-line); border-top: 3px solid var(--ct-accent); }
+.authPanel h2 { font-size: 1.5rem; font-weight: 600; margin: 0 0 24px; }
+.form { display: grid; gap: 22px; }
+.field { display: grid; gap: 9px; min-width: 0; }
+.field > span:first-child { font-size: .9375rem; font-weight: 600; }
+.field input, .field select, .field textarea { width: 100%; min-height: 52px; padding: 12px 14px; border: 1px solid #8c949e; border-radius: 5px; background: var(--ct-canvas); color: var(--ct-ink); font: inherit; }
+.field input::placeholder, .field textarea::placeholder { color: #606973; }
+.field input[aria-invalid="true"] { border-color: #b42318; }
+.hint { font-size: .8125rem; font-weight: 400; line-height: 1.65; color: var(--ct-muted); }
+.fieldError { font-size: .875rem; line-height: 1.6; color: #a32319; }
+.error { border-left: 3px solid #b42318; background: #fff1f0; color: #84201a; padding: 16px 18px; margin-bottom: 24px; line-height: 1.7; }
+.passwordRow { position: relative; }
+.passwordRow input { padding-right: 78px; }
+.passwordToggle { position: absolute; right: 4px; top: 4px; min-height: 44px; padding-inline: 12px; font-size: .875rem; font-weight: 600; cursor: pointer; }
+.form button[type="submit"] { cursor: pointer; }
+.form button:disabled { cursor: wait; opacity: .65; }
+.form fieldset { border: 0; min-width: 0; margin: 0; padding: 0; }
+.form fieldset:disabled { opacity: .7; }
+.form legend { font-size: 1.25rem; font-weight: 600; margin-bottom: 24px; }
+.fieldGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.fieldset { padding-top: 30px !important; border-top: 1px solid var(--ct-line) !important; }
+.consent { display: flex; align-items: flex-start; gap: 14px; padding-block: 14px; cursor: pointer; font-size: .9375rem; line-height: 1.7; }
+.consent input { width: 20px; height: 20px; margin-top: 3px; flex-shrink: 0; accent-color: var(--ct-accent); }
+.success { max-width: 740px; margin-inline: auto; padding: 44px; background: var(--ct-soft); border-top: 3px solid #16794b; }
+.success h1 { font-size: clamp(30px, 4vw, 44px); line-height: 1.15; font-weight: 600; letter-spacing: -.03em; }
+.success p { color: var(--ct-muted); line-height: 1.8; margin-top: 24px; }
+.success a { margin-top: 24px; }
+@media (max-width: 1023px) {
+  .page { width: calc(100% - 48px); padding-block: 44px 64px; }
+  .split, .authGrid { gap: 36px; }
+  .authPanel { padding: 26px; }
+  .service { grid-template-columns: 28px 1fr; gap: 24px; }
+  .scope { grid-column: 2; }
+  .callout { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 699px) {
+  .page { width: calc(100% - 40px); padding-block: 34px 52px; }
+  .intro { margin-bottom: 32px; }
+  .intro h1 { font-size: clamp(33px, 8.5vw, 45px); }
+  .lead { font-size: 1rem; margin-top: 20px; }
+  .split, .authGrid, .fieldGrid { grid-template-columns: 1fr; gap: 30px; }
+  .authGrid { padding: 0; }
+  .authPanel { padding: 24px 20px; }
+  .authGrid .intro { margin-bottom: 0; }
+  .service { gap: 16px; padding-block: 28px; }
+  .service h2 { font-size: 1.25rem; }
+  .scope { gap: 10px; }
+  .scope li { font-size: .875rem; padding-left: 10px; }
+  .section, .callout { margin-top: 42px; }
+  .aside, .callout { padding: 24px; }
+  .success { padding: 28px 22px; }
+}

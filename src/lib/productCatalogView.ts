@@ -1,4 +1,5 @@
 import { calculateCustomerUnitPrice } from "@/lib/commerce"
+import { cleanCatalogDescription, normalizeCatalogProductCopy } from "@/lib/catalogCopy"
 import { getKnowledge } from "@/lib/knowledge/parser"
 import {
   findStoredUserBySession,
@@ -77,7 +78,7 @@ export function projectProductCatalogClassification(
         : undefined
 
     return {
-      ...product,
+      ...normalizeCatalogProductCopy(product),
       categoryName: category?.name ?? null,
       subcategoryName: subcategory?.name ?? null,
     }
@@ -143,7 +144,7 @@ export function getProductCatalogDescription(product: ProductCatalogRecord) {
     product.catalogSpecs,
     product.seoDescription,
   ]) {
-    const description = String(value ?? "").trim()
+    const description = cleanCatalogDescription(value)
     if (description) return description
   }
 
