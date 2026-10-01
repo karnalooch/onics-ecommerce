@@ -1,12 +1,14 @@
 # Existing catalog copy cleanup
 
+> **Historical result of PR #270.** On 2026-10-01 the owner subsequently approved deletion of the 29 unresolved source-heading records listed below. The follow-up removed exactly those records from the development seed, leaving 397 products. See [catalog-heading-removal.md](catalog-heading-removal.md) for the exact manifest, checksums, preservation checks and scope. The retention statements below describe the earlier copy-only change, not the current seed.
+
 ## Owner request and scope
 
 Clean the names and descriptions of existing CEL-TRONICS articles. This is an editorial cleanup of existing source text, not manufacturer research, specification certification, product deletion, category remapping or a production database migration.
 
 Baseline: `7727013015992c96a44f93311fd32f430b1a4146`, development seed `src/data/db.json`.
 
-Verified result:
+Verified result of the copy-only change:
 
 - 426 records retained in the same order, with the same IDs and SKUs.
 - 397 model-only titles changed to `SKU — readable description lead`.
@@ -35,7 +37,7 @@ No guessed brand, parameters, compliance claims or SEO marketing filler are adde
 
 `productCatalogView.ts` applies the shared copy normalization to the browsing projection. `getProductCatalogDescription` skips empty/placeholder source text and cleans the selected stored, knowledge or SEO description. This also handles a pre-existing persisted database without writing during a read.
 
-The repository seed is genuinely edited, not merely masked with CSS. However, existing Docker volumes are not replaced by rebuilding the image. This work does not claim that a live database was migrated or that any public deployment occurred. Import writers and their ownership rules are unchanged; stale imported copy is normalized on the supported catalog read path rather than written back automatically. The parallel WF-Mag work is not modified.
+The repository seed is genuinely edited, not merely masked with CSS. However, existing Docker volumes are not replaced by rebuilding the image. This work does not claim that a live database was migrated or that any public deployment occurred. Import writers and their ownership rules are unchanged; stale imported copy is normalized on the supported catalog read path rather than written back automatically. The parallel WF-Mag work is not modified by this copy-only change.
 
 ## Offline seed maintenance and tests
 
@@ -62,7 +64,7 @@ Both GitHub Actions migration runs passed, including the no-op second invocation
 - Run `36836113990`, artifact `11149626299`: first pass, 426 records touched, 397 titles, 393 descriptions; 65 review flags.
 - Run `36836681587`, artifact `11149427049`: remaining recognized binary tails and punctuation; final review list reduced to 29 missing-description records.
 
-Seed SHA-256 chain:
+Seed SHA-256 chain for the copy-only change:
 
 ```text
 baseline: cdb4c3b1fc0e38dd7a4982ad5d1e45dd47eb2d653e318e44a00f51ef8063343f
@@ -72,9 +74,9 @@ final:    54508fbd61ebb78afff4f1ee5a1a448543a662382d07f860b2447e7bf9848cec
 
 Both report archives were downloaded and their SHA-256 values independently checked. Every second-pass `before` value matches its first-pass `after`. Final check reports zero further changes.
 
-## 29 unresolved source records — not fabricated descriptions
+## Historical 29-record review list — subsequently approved for deletion
 
-Each has no substantive source description and zero price/stock. Many names resemble source section headings, but this cleanup does not decide deletion or product validity. Keep their IDs and original model/name for subsequent source reconciliation:
+Each had no substantive source description and zero price/stock. They were retained in PR #270 pending the owner's decision. That decision is now recorded in [catalog-heading-removal.md](catalog-heading-removal.md); this list remains as audit history, not an instruction to recreate the records.
 
 ```text
 INTEGRA
