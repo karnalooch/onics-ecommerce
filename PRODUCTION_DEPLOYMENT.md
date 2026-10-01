@@ -102,7 +102,7 @@ docker run --rm \
   --env-file .env.production \
   -v "$PWD/Caddyfile.production:/etc/caddy/Caddyfile:ro" \
   caddy:2.11.4-alpine \
-  validate --config /etc/caddy/Caddyfile --adapter caddyfile
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 ```
 
 ## 6. Start production
