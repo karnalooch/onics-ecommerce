@@ -39,14 +39,20 @@ function usePartnerLogin() {
   return { error, loading, submit }
 }
 
+function PasswordField({ disabled }: { disabled: boolean }) {
+  const [showPassword, setShowPassword] = useState(false)
+  return <div className={p.field}>
+    <label htmlFor="login-password">Hasło</label>
+    <div className={p.passwordRow}><input id="login-password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required disabled={disabled} /><button type="button" className={p.passwordToggle} aria-controls="login-password" aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? "Ukryj" : "Pokaż"}</button></div>
+  </div>
+}
 function LoginForm() {
   const { error, loading, submit } = usePartnerLogin()
-  const [showPassword, setShowPassword] = useState(false)
   return <section className={p.authPanel} aria-labelledby="login-form-title"><h2 id="login-form-title">Dane logowania</h2>
     {error && <p role="alert" className={p.error}>{error}</p>}
     <form className={p.form} onSubmit={submit} aria-busy={loading}>
       <label className={p.field} htmlFor="login-email"><span>Adres e-mail</span><input id="login-email" name="email" type="email" autoComplete="email" required disabled={loading} placeholder="partner@firma.pl" /></label>
-      <label className={p.field} htmlFor="login-password"><span>Hasło</span><span className={p.passwordRow}><input id="login-password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required disabled={loading} /><button type="button" className={p.passwordToggle} aria-controls="login-password" aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>{showPassword ? "Ukryj" : "Pokaż"}</button></span></label>
+      <PasswordField disabled={loading} />
       <button type="submit" className={s.primaryAction} disabled={loading}>{loading ? "Logowanie…" : "Zaloguj się"}<ArrowUpRight size={20} aria-hidden="true" /></button>
     </form>
     <p className={p.note}>Nie masz dostępu firmowego? <Link href="/rejestracja" className={s.textAction}>Załóż konto partnera</Link></p>
