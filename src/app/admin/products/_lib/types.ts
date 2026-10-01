@@ -53,6 +53,7 @@ export interface IStagingItem {
   knowledgeMatched: boolean;
   specs: string;
   isValid: boolean;
+  expectedRevision?: number;
   catalogPrice?: number;
   catalogSpecs?: string;
   priceMismatch?: boolean;
