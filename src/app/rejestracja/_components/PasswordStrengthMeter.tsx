@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Zap, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { Zap, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface IPasswordStrengthMeterProps {
