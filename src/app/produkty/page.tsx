@@ -1,299 +1,60 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import {
-  ArrowRight,
-  LockKeyhole,
-  Package,
-  Search,
-  ShieldCheck,
-} from "lucide-react"
 import { auth } from "@/auth"
-import { AddToCartButton } from "@/components/ui/AddToCartButton"
-import { initializeMockData } from "@/store/serverStore"
-import {
-  buildCatalogCategoryOptions,
-  buildProductCatalogView,
-  getProductCatalogDescription,
-  matchesCatalogCategory,
-  matchesProductCatalogQuery,
-  type ProductCatalogCategory,
-  type ProductCatalogRecord,
-  type ProductCatalogUser,
-} from "@/lib/productCatalogView"
-import type { CartItem } from "@/store/cartStore"
 import { buildCartOwnerKey } from "@/lib/cartIdentity"
+import { buildCatalogCategoryOptions, getProductCatalogDescription, matchesCatalogCategory, matchesProductCatalogQuery } from "@/lib/productCatalogView"
+import { catalogHref, catalogProductHref, paginateCatalog, readCatalogFilters, type CatalogFilters, type CatalogSearchParams, type PublicCatalogProduct } from "@/lib/publicCatalogPresentation"
+import { PublicPageHeading } from "@/components/public/PublicPageHeading"
+import { ProductImage } from "@/components/public/ProductImage"
+import { CatalogPurchase } from "@/components/public/CatalogPurchase"
+import { CatalogUnavailable } from "@/components/public/CatalogUnavailable"
+import { loadPublicCatalog } from "./catalog-data"
+import p from "@/components/public/pages.module.css"
+import c from "@/components/public/catalog.module.css"
+import s from "@/components/public/public.module.css"
 
-export const metadata: Metadata = {
-  title: "Katalog B2B",
-  description:
-    "Katalog produktowy CEL-TRONICS — systemy alarmowe, monitoring CCTV, kontrola dostępu, PPOŻ, sieci i osprzęt dla partnerów B2B.",
-  alternates: { canonical: "/produkty" },
-}
-
+export const metadata: Metadata = { title: "Katalog urządzeń", description: "Katalog CEL-TRONICS — urządzenia do instalacji, ceny konta i obsługa partnerów.", alternates: { canonical: "/produkty" } }
 export const revalidate = 0
 
-type SearchParams = Promise<Record<string, string | string[] | undefined>>
-type CatalogProduct = ProductCatalogRecord & {
-  priceHidden?: boolean
-  imageUrl?: string
-  specs?: string
+function CatalogFiltersForm({ filters, categories }: { filters: CatalogFilters; categories: Array<{ id: string; name: string }> }) {
+  const matched = categories.find((item) => item.id.toLowerCase() === filters.category.toLowerCase() || item.name.toLowerCase() === filters.category.toLowerCase())
+  return <form method="get" action="/produkty" className={c.search} role="search" aria-label="Wyszukiwanie katalogu">
+    <label htmlFor="catalog-query">Szukaj urządzenia<input id="catalog-query" name="q" type="search" defaultValue={filters.query} placeholder="Nazwa, SKU, producent…" /></label>
+    <label htmlFor="catalog-category">Kategoria<select id="catalog-category" name="category" defaultValue={matched?.id ?? filters.category}><option value="">Wszystkie kategorie</option>{filters.category && !matched && <option value={filters.category}>{filters.category}</option>}{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+    <button type="submit" className={s.primaryAction}>Szukaj</button>
+  </form>
 }
-
-const normalize = (value: unknown) => String(value ?? "").trim().toLowerCase()
-
-const getCategoryLabel = (product: CatalogProduct) =>
-  product.subcategoryName || product.categoryName || "Pozostałe"
-
-export default async function ConsumerCatalogPage({
-  searchParams,
-}: {
-  searchParams?: SearchParams
-}) {
+function ProductRow({ product, filters, cartOwnerKey, signedIn }: { product: PublicCatalogProduct; filters: CatalogFilters; cartOwnerKey: string | null; signedIn: boolean }) {
+  return <article className={c.row}>
+    <ProductImage src={typeof product.imageUrl === "string" ? product.imageUrl : undefined} />
+    <div className={c.identity}><p className={c.sku}>SKU: {product.sku || "Brak SKU"}</p><h2><Link href={catalogProductHref(product, filters)}>{product.name || "Produkt bez nazwy"}</Link></h2><p className={c.muted}>{product.manufacturer || "Producent nieokreślony"} · {product.subcategoryName || product.categoryName || "Pozostałe"}</p><p className={c.description}>{getProductCatalogDescription(product) || "Opis nie jest jeszcze dostępny."}</p></div>
+    <CatalogPurchase product={product} ownerKey={cartOwnerKey} signedIn={signedIn} />
+  </article>
+}
+function EmptyCatalog({ hasFilters }: { hasFilters: boolean }) {
+  return <section className={c.empty}><h2>{hasFilters ? "Brak produktów dla wybranych filtrów" : "Katalog nie zawiera jeszcze produktów"}</h2><p>{hasFilters ? "Zmień frazę lub kategorię. Możesz też skontaktować się z nami w sprawie urządzenia." : "Skontaktuj się z CEL-TRONICS w sprawie potrzebnego sprzętu."}</p><div className={s.actions}>{hasFilters && <Link href="/produkty" className={s.partnerAction}>Wyczyść filtry</Link>}<Link href="/kontakt" className={s.textAction}>Pomoc w doborze</Link></div></section>
+}
+function Pagination({ filters, page, pages }: { filters: CatalogFilters; page: number; pages: number }) {
+  return <nav className={c.pagination} aria-label="Strony katalogu">{page > 1 && <Link href={catalogHref(filters, page - 1)} className={s.partnerAction} rel="prev">Poprzednia strona</Link>}<span>Strona {page} z {pages}</span>{page < pages && <Link href={catalogHref(filters, page + 1)} className={s.partnerAction} rel="next">Następna strona</Link>}</nav>
+}
+export default async function ConsumerCatalogPage({ searchParams }: { searchParams?: Promise<CatalogSearchParams> }) {
   const session = await auth()
-  const sessionUser = session?.user as
-    | { id?: string; email?: string | null }
-    | undefined
+  const sessionUser = session?.user as { id?: string; email?: string | null } | undefined
   const cartOwnerKey = buildCartOwnerKey(sessionUser)
-  const params = (await searchParams) ?? {}
-  const query = typeof params.q === "string" ? params.q.trim() : ""
-  const activeCategory =
-    typeof params.category === "string" ? params.category.trim() : ""
-
-  let products: CatalogProduct[] = []
-
-  try {
-    const {
-      products: storedProducts,
-      users,
-      categories: storedCategories,
-    } = initializeMockData()
-    products = (await buildProductCatalogView(
-      storedProducts as ProductCatalogRecord[],
-      users as ProductCatalogUser[],
-      storedCategories as ProductCatalogCategory[],
-      sessionUser
-    )) as CatalogProduct[]
-  } catch (error) {
-    console.error("Błąd pobierania produktów:", error)
-  }
-
-  const categories = buildCatalogCategoryOptions(products)
-  const visibleProducts = products.filter(
-    (product) =>
-      matchesProductCatalogQuery(product, query) &&
-      matchesCatalogCategory(product, activeCategory)
-  )
-
-  const categoryHref = (category?: string) => {
-    const next = new URLSearchParams()
-    if (query) next.set("q", query)
-    if (category) next.set("category", category)
-    const suffix = next.toString()
-    return suffix ? `/produkty?${suffix}` : "/produkty"
-  }
-
-  return (
-    <div className="bg-[#f6f6f3]">
-      <div className="mx-auto max-w-[1320px] px-5 py-12 sm:px-7 lg:py-16">
-        <header className="grid gap-6 border-b border-[#d9dbdc] pb-8 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <p className="text-base font-semibold text-primary">Katalog urządzeń</p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-5xl">
-              Sprzęt do instalacji i serwisu.
-            </h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-              Szukaj po nazwie, SKU, producencie albo kategorii. Ceny konta i funkcje
-              zakupowe są udostępniane zgodnie z rolą i zatwierdzeniem partnera.
-            </p>
-          </div>
-
-          {!session ? (
-            <Link
-              href="/logowanie"
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#d5d7d8] bg-white px-4 text-[15px] font-semibold text-slate-800"
-            >
-              <LockKeyhole className="h-4 w-4 text-primary" />
-              Zaloguj się po ceny partnera
-            </Link>
-          ) : null}
-        </header>
-
-        <form method="get" className="mt-7 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
-            <input
-              type="search"
-              name="q"
-              defaultValue={query}
-              placeholder="Nazwa, SKU, producent, parametr techniczny…"
-              className="h-13 w-full rounded-lg border border-[#cfd2d4] bg-white pl-12 pr-4 text-base text-slate-950 outline-none focus:border-primary"
-            />
-            {activeCategory ? <input type="hidden" name="category" value={activeCategory} /> : null}
-          </div>
-          <button
-            type="submit"
-            className="min-h-13 rounded-lg bg-primary px-6 text-base font-semibold text-white hover:bg-[#a9161c]"
-          >
-            Szukaj
-          </button>
-        </form>
-
-        <nav className="mt-5 flex gap-1 overflow-x-auto border-b border-[#d9dbdc]" aria-label="Kategorie katalogu">
-          <Link
-            href={categoryHref()}
-            className={
-              "shrink-0 border-b-2 px-3 py-3 text-sm font-semibold " +
-              (!activeCategory
-                ? "border-primary text-slate-950"
-                : "border-transparent text-slate-600 hover:text-slate-950")
-            }
-          >
-            Wszystkie
-          </Link>
-          {categories.map((category) => {
-            const active =
-              normalize(activeCategory) === normalize(category.id) ||
-              normalize(activeCategory) === normalize(category.name)
-            return (
-              <Link
-                key={category.id}
-                href={categoryHref(category.id)}
-                className={
-                  "shrink-0 border-b-2 px-3 py-3 text-sm font-semibold " +
-                  (active
-                    ? "border-primary text-slate-950"
-                    : "border-transparent text-slate-600 hover:text-slate-950")
-                }
-              >
-                {category.name}
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="mt-5 border border-[#d9dbdc] bg-white">
-          <div className="hidden grid-cols-[96px_minmax(0,1fr)_190px_150px_190px] gap-4 border-b border-[#d9dbdc] bg-[#f1f1ee] px-4 py-3 text-xs font-semibold uppercase tracking-[0.06em] text-slate-500 lg:grid">
-            <span>Produkt</span>
-            <span>Identyfikacja</span>
-            <span>Klasyfikacja</span>
-            <span>Dostępność</span>
-            <span className="text-right">Cena / akcja</span>
-          </div>
-
-          {visibleProducts.length > 0 ? (
-            <div className="divide-y divide-[#e0e1e1]">
-              {visibleProducts.map((product: CatalogProduct) => {
-                const price = Number(product.price ?? 0)
-                const stock = Number(product.stock ?? 0)
-                const canShowPrice =
-                  !product.priceHidden && Number.isFinite(price) && price > 0
-                const cartProduct: CartItem = {
-                  id: String(product.id ?? product.sku ?? product.name ?? "product"),
-                  sku: String(product.sku ?? ""),
-                  name: String(product.name ?? "Produkt"),
-                  price: Number.isFinite(price) ? price : 0,
-                  quantity: 1,
-                }
-
-                return (
-                  <article
-                    key={product.id ?? product.sku}
-                    className="grid gap-4 p-4 lg:grid-cols-[96px_minmax(0,1fr)_190px_150px_190px] lg:items-center"
-                  >
-                    <div className="flex h-20 w-20 items-center justify-center overflow-hidden border border-[#e0e1e1] bg-[#fafaf8]">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt=""
-                          className="h-full w-full object-contain p-2"
-                        />
-                      ) : (
-                        <Package className="h-6 w-6 text-slate-400" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="font-mono text-xs font-semibold text-primary">
-                        {product.sku || "Bez SKU"}
-                      </div>
-                      <h2 className="mt-1 text-lg font-semibold leading-6 text-slate-950">
-                        {product.name || "Produkt bez nazwy"}
-                      </h2>
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-600">
-                        {getProductCatalogDescription(product) || getCategoryLabel(product)}
-                      </p>
-                    </div>
-
-                    <div className="text-sm leading-6">
-                      <div className="font-semibold text-slate-900">
-                        {product.manufacturer || "Producent nieokreślony"}
-                      </div>
-                      <div className="text-slate-600">{getCategoryLabel(product)}</div>
-                    </div>
-
-                    <div className="text-sm">
-                      {canShowPrice ? (
-                        <>
-                          <div className="font-semibold text-slate-950">
-                            {Number.isFinite(stock) ? `${stock} szt.` : "—"}
-                          </div>
-                          <div className="mt-1 text-slate-500">stan katalogowy</div>
-                        </>
-                      ) : (
-                        <div className="text-slate-600">Po zalogowaniu</div>
-                      )}
-                    </div>
-
-                    <div className="lg:text-right">
-                      {canShowPrice ? (
-                        <>
-                          <strong className="block text-lg font-semibold text-slate-950">
-                            {price.toFixed(2)} PLN
-                          </strong>
-                          <span className="mt-1 block text-xs text-slate-500">netto</span>
-                          <div className="mt-3 flex lg:justify-end">
-                            <AddToCartButton product={cartProduct} ownerKey={cartOwnerKey} />
-                          </div>
-                        </>
-                      ) : (
-                        <Link
-                          href="/logowanie"
-                          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#d7d9da] px-3 text-sm font-semibold text-slate-700 hover:border-slate-400"
-                        >
-                          <LockKeyhole className="h-4 w-4 text-primary" />
-                          Pokaż cenę
-                        </Link>
-                      )}
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="p-10 text-center">
-              <Package className="mx-auto h-8 w-8 text-slate-400" />
-              <h2 className="mt-4 text-xl font-semibold text-slate-950">
-                Brak produktów dla wybranych filtrów
-              </h2>
-              <p className="mt-2 text-base text-slate-600">
-                Zmień wyszukiwaną frazę albo wróć do całego katalogu.
-              </p>
-              <Link href="/produkty" className="mt-5 inline-flex items-center gap-2 font-semibold text-primary">
-                Wyczyść filtry
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          )}
-        </div>
-
-        <footer className="mt-5 flex flex-col justify-between gap-3 text-sm text-slate-600 sm:flex-row sm:items-center">
-          <span>Wyświetlono {visibleProducts.length} z {products.length} produktów</span>
-          <Link href="/kontakt" className="inline-flex items-center gap-2 font-semibold text-primary">
-            Potrzebujesz pomocy w doborze?
-            <ShieldCheck className="h-4 w-4" />
-          </Link>
-        </footer>
-      </div>
-    </div>
-  )
+  const filters = readCatalogFilters((await searchParams) ?? {})
+  const result = await loadPublicCatalog(sessionUser)
+  const products = result.status === "ready" ? result.products : []
+  const visible = products.filter((product) => matchesProductCatalogQuery(product, filters.query) && matchesCatalogCategory(product, filters.category))
+  const pagination = paginateCatalog(visible, filters.requestedPage)
+  const activeFilters = { ...filters, requestedPage: pagination.page }
+  return <div className={p.page}>
+    <PublicPageHeading eyebrow="Katalog urządzeń" title={<>Sprzęt do instalacji.<br />Dane do decyzji.</>}>Znajdź urządzenie po nazwie, SKU, producencie lub kategorii. Ceny i funkcje zakupowe pozostają zgodne z aktualnymi uprawnieniami konta.</PublicPageHeading>
+    <CatalogFiltersForm filters={filters} categories={buildCatalogCategoryOptions(products)} />
+    {result.status === "error" ? <CatalogUnavailable retryHref={catalogHref(filters, filters.requestedPage)} reference={result.reference} /> : <>
+      <div className={c.toolbar}><span>Wyniki {pagination.from}–{pagination.to} z {pagination.total}</span><div><Link href="/koszyk" className={s.textAction}>Wybrane produkty</Link>{(filters.query || filters.category) && <Link href="/produkty" className={s.textAction}>Wyczyść filtry</Link>}</div></div>
+      {pagination.items.length ? <div className={c.list}>{pagination.items.map((product) => <ProductRow key={product.id} product={product} filters={activeFilters} cartOwnerKey={cartOwnerKey} signedIn={Boolean(sessionUser)} />)}</div> : <EmptyCatalog hasFilters={Boolean(filters.query || filters.category)} />}
+      {pagination.total > 0 && <Pagination filters={filters} page={pagination.page} pages={pagination.pages} />}
+    </>}
+    <p className={p.note}>Potrzebujesz pomocy? <Link href="/kontakt" className={s.textAction}>Porozmawiaj z CEL-TRONICS</Link></p>
+  </div>
 }
